@@ -1,0 +1,569 @@
+# OPS-39 — redact-pii (spec 07 กฎข้อ 21 รอบ 43, AC-54)
+# คำสั่ง: cd apps/backend && TEST_TYPE=unit NODE_OPTIONS=--experimental-vm-modules jest src/lib/__tests__/redact-pii.unit.spec.ts
+
+## RED (test ใหม่บนโค้ด develop 62b868a1) — 22 ล้ม
+# (a) ชั้น 0 และ guard ค่าลงท้าย backslash 0–3 ชั้นผ่านทั้งก่อนและหลัง; ReDoS 14 กรณีใหม่ผ่านทั้งก่อนและหลัง (กิ่งใหม่ยังไม่มีบน develop)
+    ✕ (a) \' ของ util.inspect ใน JSON escape 1 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✕ (a) \' ของ util.inspect ใน JSON escape 2 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✕ (a) \' ของ util.inspect ใน JSON escape 3 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✕ (b) array ใต้ key PII (inspect บรรทัดเดียว) escape 0 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (inspect บรรทัดเดียว) escape 1 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (inspect บรรทัดเดียว) escape 2 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (inspect บรรทัดเดียว) escape 3 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (inspect หลายบรรทัด (breakLength 1)) escape 0 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (inspect หลายบรรทัด (breakLength 1)) escape 1 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่ (1 ms)
+    ✕ (b) array ใต้ key PII (inspect หลายบรรทัด (breakLength 1)) escape 2 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่ (1 ms)
+    ✕ (b) array ใต้ key PII (inspect หลายบรรทัด (breakLength 1)) escape 3 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (JSON) escape 0 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (JSON) escape 1 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (JSON) escape 2 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (JSON) escape 3 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (inspect array ยาว (> 6 สมาชิก) และสมาชิกหลายท่อน) escape 0 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่ (1 ms)
+    ✕ (b) array ใต้ key PII (inspect array ยาว (> 6 สมาชิก) และสมาชิกหลายท่อน) escape 1 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (inspect array ยาว (> 6 สมาชิก) และสมาชิกหลายท่อน) escape 2 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (inspect array ยาว (> 6 สมาชิก) และสมาชิกหลายท่อน) escape 3 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) JSON array ระดับ 0 ยัง parse ได้ และ key ถัดไปถูก redact ตามปกติ (1 ms)
+    ✕ (c) fuzz PIIMARK 600 object × escape 0–3 ชั้น ไม่หลุด (seed 46393) (85 ms)
+    ✕ array ใต้ key PII ทุกสมาชิกเป็น [REDACTED] (OPS-39)
+Tests:       22 failed, 67 passed, 89 total
+
+## RED รอบ 2 (review #559 blocker: array ไม่มี ] → ทุก key ล้มและสแกนถึงท้าย O(n²)) บนหัว PR 167770e9 — 5 ล้ม
+    ✕ ข้อความยาว (สมาชิก + ท่อนยาวไม่มี ] (review #559)) redact เสร็จเร็ว (ไม่ quadratic) (493 ms)
+    ✕ ข้อความยาว (สมาชิก + ท่อนยาวไม่มี ] key city) redact เสร็จเร็ว (ไม่ quadratic) (496 ms)
+    ✕ ข้อความยาว (สมาชิก + ท่อนยาวไม่มี ] ไม่มีช่องว่าง) redact เสร็จเร็ว (ไม่ quadratic) (519 ms)
+    ✕ ข้อความยาว (สมาชิกสองตัว + ท่อนที่ escape) redact เสร็จเร็ว (ไม่ quadratic) (1747 ms)
+    ✕ ข้อความยาว (สมาชิก ' + ท่อนที่ escape 2 ชั้น) redact เสร็จเร็ว (ไม่ quadratic) (1975 ms)
+Tests:       5 failed, 89 passed, 94 total
+# nit review #559: test quote จากสมาชิกตัวแรก (inspect `["Som'chai"]` → เดิม `[[REDACTED]]`, JSON pretty-print เดิม parse ไม่ได้)
+# และ array ที่มีสมาชิกซ้อน (เดิม Somchai หลุด) — ล้มบน 167770e9 (ตรวจด้วยสคริปต์ใน scratchpad), ผ่านหลังแก้
+
+## RED รอบ 3 (re-review #559 blocker: `]` optional ทำให้ key ถัดไปหลุดเมื่อค่าที่ไม่ใช่ PII ลงท้ายด้วย `<pii-key>: [`) บนหัว PR a1be50fa — 60 ล้ม
+    ✕ (b) note ลงท้าย "name: [" (inspect, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด (1 ms)
+    ✕ (b) note ลงท้าย "name: [" (inspect, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "name: [" (inspect, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "name: [" (inspect, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "name: [" (JSON, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "name: [" (JSON, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "name: [" (JSON, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "name: [" (JSON, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "name: [" (JSON pretty-print, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "name: [" (JSON pretty-print, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "name: [" (JSON pretty-print, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "name: [" (JSON pretty-print, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "city: [ '" (inspect, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "city: [ '" (inspect, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "city: [ '" (inspect, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "city: [ '" (inspect, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "phone: [\"x\", " (inspect, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "phone: [\"x\", " (inspect, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "phone: [\"x\", " (inspect, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด (1 ms)
+    ✕ (b) note ลงท้าย "phone: [\"x\", " (inspect, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "phone: [\"x\", " (JSON, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "phone: [\"x\", " (JSON, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "phone: [\"x\", " (JSON, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "phone: [\"x\", " (JSON pretty-print, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "phone: [\"x\", " (JSON pretty-print, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "phone: [\"x\", " (JSON pretty-print, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "Name: [1, " (inspect, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "Name: [1, " (inspect, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "Name: [1, " (inspect, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "Name: [1, " (inspect, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "Name: [1, " (JSON, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "Name: [1, " (JSON, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "Name: [1, " (JSON, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "Name: [1, " (JSON, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "Name: [1, " (JSON pretty-print, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "Name: [1, " (JSON pretty-print, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "Name: [1, " (JSON pretty-print, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "Name: [1, " (JSON pretty-print, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "address_1: [\n" (inspect, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "address_1: [\n" (inspect, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "address_1: [\n" (inspect, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "address_1: [\n" (inspect, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "address_1: [\n" (JSON, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "address_1: [\n" (JSON, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "address_1: [\n" (JSON, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "address_1: [\n" (JSON, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "address_1: [\n" (JSON pretty-print, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "address_1: [\n" (JSON pretty-print, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "address_1: [\n" (JSON pretty-print, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "address_1: [\n" (JSON pretty-print, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "email: [ 'a', " (JSON, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "email: [ 'a', " (JSON, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "email: [ 'a', " (JSON, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "email: [ 'a', " (JSON, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "email: [ 'a', " (JSON pretty-print, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "email: [ 'a', " (JSON pretty-print, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "email: [ 'a', " (JSON pretty-print, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) note ลงท้าย "email: [ 'a', " (JSON pretty-print, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✕ (b) สมาชิกที่ไม่แบน (null/true/false) ไม่ทำให้สมาชิกตัวหลังหลุด
+    ✕ (c) fuzz PIIMARK 600 object × escape 0–3 ชั้น ไม่หลุด (seed 46393) (77 ms)
+Tests:       60 failed, 121 passed, 181 total
+
+## RED รอบ 4 (re-review #559 รอบ 3: สมาชิกปลอมกลืนจำนวนเงิน/id/key ที่ไม่ใช่ PII) บนหัว PR 2b71fd4d — 51 ล้ม
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, inspect, escape 0 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, inspect, escape 1 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, inspect, escape 2 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, inspect, escape 3 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, inspect breakLength 1, escape 0 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, inspect breakLength 1, escape 1 ชั้น) ไม่ถูกตัด (1 ms)
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, inspect breakLength 1, escape 2 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, inspect breakLength 1, escape 3 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, JSON, escape 0 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, JSON pretty-print, escape 0 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, inspect, escape 0 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, inspect, escape 1 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, inspect, escape 2 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, inspect, escape 3 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, inspect breakLength 1, escape 0 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, inspect breakLength 1, escape 1 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, inspect breakLength 1, escape 2 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, inspect breakLength 1, escape 3 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, JSON, escape 0 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, JSON pretty-print, escape 0 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, inspect, escape 0 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, inspect, escape 1 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, inspect, escape 2 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, inspect, escape 3 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, inspect breakLength 1, escape 0 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, inspect breakLength 1, escape 1 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, inspect breakLength 1, escape 2 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, inspect breakLength 1, escape 3 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, JSON, escape 0 ชั้น) ไม่ถูกตัด (1 ms)
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, JSON pretty-print, escape 0 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, inspect, escape 0 ชั้น) ไม่ถูกตัด (1 ms)
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, inspect, escape 1 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, inspect, escape 2 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, inspect, escape 3 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, inspect breakLength 1, escape 0 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, inspect breakLength 1, escape 1 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, inspect breakLength 1, escape 2 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, inspect breakLength 1, escape 3 ชั้น) ไม่ถูกตัด (1 ms)
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, JSON, escape 0 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, JSON pretty-print, escape 0 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, inspect, escape 0 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, inspect, escape 1 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, inspect, escape 2 ชั้น) ไม่ถูกตัด (1 ms)
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, inspect, escape 3 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, inspect breakLength 1, escape 0 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, inspect breakLength 1, escape 1 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, inspect breakLength 1, escape 2 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, inspect breakLength 1, escape 3 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, JSON, escape 0 ชั้น) ไม่ถูกตัด
+    ✕ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, JSON pretty-print, escape 0 ชั้น) ไม่ถูกตัด
+    ✕ (c) fuzz PIIMARK 600 object × escape 0–3 ชั้น ไม่หลุด (seed 46393) (162 ms)
+Tests:       51 failed, 220 passed, 271 total
+# test คอมไพล์ regex (เพิ่มรอบนี้): ล้มกับโค้ดระหว่างทางก่อนลดขนาด pattern (1,111ms — source 54,752 ตัวอักษร) ผ่านหลังลดขนาด (19ms — 16,900 ตัวอักษร; develop 494)
+
+## RED รอบ 5 (re-review #559 รอบ 4: whitespace/newline ยาวคั่น key กับค่า — lookbehind STRUCTURAL_KEY ย้อนผ่าน \s* ทุกจุด backtrack) บนหัว PR 7fe8a2e3
+# (jest -t เลือก 4 กรณีใหม่; ตารางชื่อซ้ำจึงแสดง 2 ครั้ง)
+    ✕ ข้อความยาว (name: + ช่องว่างยาว) redact เสร็จเร็ว (ไม่ quadratic) (2490 ms)
+    ✕ ข้อความยาว ("name": + ช่องว่างยาว + x) redact เสร็จเร็ว (ไม่ quadratic) (2613 ms)
+    ✕ ข้อความยาว (name: + newline ยาว + x) redact เสร็จเร็ว (ไม่ quadratic) (1995 ms)
+    ✕ ข้อความยาว (,name: + ช่องว่างยาว + [) redact เสร็จเร็ว (ไม่ quadratic) (2493 ms)
+    ✕ ข้อความยาว (name: + ช่องว่างยาว) redact เสร็จเร็ว (ไม่ quadratic) (2577 ms)
+    ✕ ข้อความยาว ("name": + ช่องว่างยาว + x) redact เสร็จเร็ว (ไม่ quadratic) (2523 ms)
+    ✕ ข้อความยาว (name: + newline ยาว + x) redact เสร็จเร็ว (ไม่ quadratic) (2042 ms)
+    ✕ ข้อความยาว (,name: + ช่องว่างยาว + [) redact เสร็จเร็ว (ไม่ quadratic) (2502 ms)
+Tests:       8 failed, 270 skipped, 1 passed, 279 total
+
+## GREEN (หลังแก้รอบ 5: `(?=\[)` หน้า STRUCTURAL_KEY)
+# ReDoS 2 กรณีของรอบ 4 (newline ที่ escape) เดิมเขียนเป็น newline ดิบโดยไม่ตั้งใจ — แก้เป็น `\n` ตามชื่อ
+    ✓ บรรทัด recreate a payment session → ไม่มีชื่อ/อีเมล/เบอร์/ที่อยู่เหลือ แต่ id ยังอยู่ครบ (9 ms)
+    ✓ อีเมลทุกที่ในข้อความ (ไม่ต้องมี key)
+    ✓ ค่าของ key ในรูป JS object (util.inspect) และ Ruby hash
+    ✓ key ที่ลงท้ายเหมือนกันแต่ไม่อยู่ในรายการไม่ถูกแตะ
+    ✓ เบอร์โทรไทยที่มีขอบเขต (0812345678) (8 ms)
+    ✓ เบอร์โทรไทยที่มีขอบเขต (021234567)
+    ✓ เบอร์โทรไทยที่มีขอบเขต (+66812345678)
+    ✓ เบอร์โทรไทยที่มีขอบเขต (ต้นสตริง)
+    ✓ เลขกลาง ULID/id และตัวเลขที่ไม่ใช่เบอร์ไม่ถูกตัด
+    ✓ ทศนิยมยาวและชื่อไฟล์ที่มี @ ไม่ถูกตัด
+    ✓ key PII ไม่สนตัวพิมพ์ และค่าที่เป็นตัวเลขใต้ key PII ถูก redact
+    ✓ ค่าในเครื่องหมาย backtick ของ util.inspect (สตริงที่มีทั้ง ' และ ") (1 ms)
+    ✓ JSON ที่ escape ซ้อน (JSON อยู่ในสตริงของ JSON อีกชั้น) (1 ms)
+    ✓ ค่า email ลงท้ายด้วย backslash ใน JSON escape ซ้อน ไม่ทำให้ city ถัดไปหลุด (เคส review #536)
+    ✓ escape 0 ชั้น: ค่าที่ลงท้าย/มี backslash และ quote ถูก redact ครบ ทุก key ถัดไปด้วย
+    ✓ escape 1 ชั้น: ค่าที่ลงท้าย/มี backslash และ quote ถูก redact ครบ ทุก key ถัดไปด้วย
+    ✓ escape 2 ชั้น: ค่าที่ลงท้าย/มี backslash และ quote ถูก redact ครบ ทุก key ถัดไปด้วย
+    ✓ escape 3 ชั้น: ค่าที่ลงท้าย/มี backslash และ quote ถูก redact ครบ ทุก key ถัดไปด้วย
+    ✓ escape ≥ 4 ชั้นไม่ redact ค่าของ key (ยอมรับตามกฎข้อ 18b รอบ 43) และไม่ทำให้ข้อความเสีย
+    ✓ สตริงหลายท่อนของ util.inspect (address_1 ที่มี \n) ถูก redact ทุกท่อน
+    ✓ สตริงหลายท่อนของ util.inspect ใน JSON escape 1 ชั้น ถูก redact ทุกท่อน (1 ms)
+    ✓ สตริงหลายท่อนของ util.inspect ใน JSON escape 2 ชั้น ถูก redact ทุกท่อน
+    ✓ สตริงหลายท่อนของ util.inspect ใน JSON escape 3 ชั้น ถูก redact ทุกท่อน
+    ✓ อีเมลที่ local part มี ' (ข้อความธรรมดา) ไม่เหลือ o'
+    ✓ อีเมลที่ local part มี ' (ใน quote เดี่ยว) ไม่เหลือ o'
+    ✓ อีเมลที่ local part มี ' (ใน quote คู่) ไม่เหลือ o'
+    ✓ ข้อความยาว (a ติดกัน 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (404 ของ id ยาว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (จุดและขีดติดกัน 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (a' ติดกัน 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (9 ms)
+    ✓ ข้อความยาว (backslash 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาว (escape quote ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาว (escape quote ภายในค่า ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาวที่มี key PII (escape 3 ชั้น ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาวที่มี key PII (escape 3 ชั้น quote ภายในยาว) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาวที่มี key PII (สตริงหลายท่อนไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาวที่มี key PII (key PII ซ้ำไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาวที่มี key PII (ช่วง backslash ยาวหลังค่า) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาวที่มี key PII (ท่อน escape ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาวที่มี key PII (ท่อน escape ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาวที่มี key PII (escaped newline ยาวไม่มี +) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ (a) \' ของ util.inspect ใน JSON escape 0 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✓ (a) \' ของ util.inspect ใน JSON escape 1 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✓ (a) \' ของ util.inspect ใน JSON escape 2 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✓ (a) \' ของ util.inspect ใน JSON escape 3 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✓ (a) guard: ค่าลงท้าย backslash ตามด้วย city ใน escape 0 ชั้น → ไม่มี Bangkok
+    ✓ (a) guard: ค่าลงท้าย backslash ตามด้วย city ใน escape 1 ชั้น → ไม่มี Bangkok
+    ✓ (a) guard: ค่าลงท้าย backslash ตามด้วย city ใน escape 2 ชั้น → ไม่มี Bangkok
+    ✓ (a) guard: ค่าลงท้าย backslash ตามด้วย city ใน escape 3 ชั้น → ไม่มี Bangkok
+    ✓ (b) array ใต้ key PII (inspect บรรทัดเดียว) escape 0 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (inspect บรรทัดเดียว) escape 1 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (inspect บรรทัดเดียว) escape 2 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (inspect บรรทัดเดียว) escape 3 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (inspect หลายบรรทัด (breakLength 1)) escape 0 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่ (1 ms)
+    ✓ (b) array ใต้ key PII (inspect หลายบรรทัด (breakLength 1)) escape 1 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (inspect หลายบรรทัด (breakLength 1)) escape 2 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (inspect หลายบรรทัด (breakLength 1)) escape 3 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (JSON) escape 0 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (JSON) escape 1 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (JSON) escape 2 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (JSON) escape 3 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (inspect array ยาว (> 6 สมาชิก) และสมาชิกหลายท่อน) escape 0 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่ (1 ms)
+    ✓ (b) array ใต้ key PII (inspect array ยาว (> 6 สมาชิก) และสมาชิกหลายท่อน) escape 1 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (inspect array ยาว (> 6 สมาชิก) และสมาชิกหลายท่อน) escape 2 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (inspect array ยาว (> 6 สมาชิก) และสมาชิกหลายท่อน) escape 3 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) inspect หลายบรรทัดของ array ยาวถูกตัดจริง (กัน fixture เปลี่ยนรูป)
+    ✓ (b) JSON array ระดับ 0 ยัง parse ได้ และ key ถัดไปถูก redact ตามปกติ
+    ✓ (b) quote ของผลมาจากสมาชิกตัวแรก (JSON pretty-print ยัง parse ได้)
+    ✓ (b) array ที่มีสมาชิกซ้อน/object (ไม่บังคับตามกฎ 21b) ไม่ทำให้ key ถัดไปหลุดหรือ id หาย
+    ✓ (b) note ลงท้าย "name: [" (inspect, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด (1 ms)
+    ✓ (b) note ลงท้าย "name: [" (inspect, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [" (inspect, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [" (inspect, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [" (JSON, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [" (JSON, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [" (JSON, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [" (JSON, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [" (JSON pretty-print, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [" (JSON pretty-print, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [" (JSON pretty-print, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [" (JSON pretty-print, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "city: [ '" (inspect, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "city: [ '" (inspect, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "city: [ '" (inspect, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "city: [ '" (inspect, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "city: [ '" (JSON, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "city: [ '" (JSON, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "city: [ '" (JSON, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "city: [ '" (JSON, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "city: [ '" (JSON pretty-print, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "city: [ '" (JSON pretty-print, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "city: [ '" (JSON pretty-print, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "city: [ '" (JSON pretty-print, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "phone: [\"x\", " (inspect, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด (1 ms)
+    ✓ (b) note ลงท้าย "phone: [\"x\", " (inspect, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "phone: [\"x\", " (inspect, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "phone: [\"x\", " (inspect, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "phone: [\"x\", " (JSON, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "phone: [\"x\", " (JSON, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "phone: [\"x\", " (JSON, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "phone: [\"x\", " (JSON, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "phone: [\"x\", " (JSON pretty-print, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "phone: [\"x\", " (JSON pretty-print, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด (1 ms)
+    ✓ (b) note ลงท้าย "phone: [\"x\", " (JSON pretty-print, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "phone: [\"x\", " (JSON pretty-print, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "Name: [1, " (inspect, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "Name: [1, " (inspect, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "Name: [1, " (inspect, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "Name: [1, " (inspect, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "Name: [1, " (JSON, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "Name: [1, " (JSON, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "Name: [1, " (JSON, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด (1 ms)
+    ✓ (b) note ลงท้าย "Name: [1, " (JSON, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "Name: [1, " (JSON pretty-print, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "Name: [1, " (JSON pretty-print, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "Name: [1, " (JSON pretty-print, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "Name: [1, " (JSON pretty-print, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [\"" (inspect, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [\"" (inspect, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [\"" (inspect, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [\"" (inspect, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด (1 ms)
+    ✓ (b) note ลงท้าย "name: [\"" (JSON, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [\"" (JSON, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [\"" (JSON, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [\"" (JSON, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [\"" (JSON pretty-print, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [\"" (JSON pretty-print, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "name: [\"" (JSON pretty-print, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด (1 ms)
+    ✓ (b) note ลงท้าย "name: [\"" (JSON pretty-print, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "address_1: [\n" (inspect, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "address_1: [\n" (inspect, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "address_1: [\n" (inspect, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "address_1: [\n" (inspect, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "address_1: [\n" (JSON, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "address_1: [\n" (JSON, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "address_1: [\n" (JSON, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "address_1: [\n" (JSON, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด (1 ms)
+    ✓ (b) note ลงท้าย "address_1: [\n" (JSON pretty-print, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "address_1: [\n" (JSON pretty-print, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "address_1: [\n" (JSON pretty-print, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "address_1: [\n" (JSON pretty-print, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "email: [ 'a', " (inspect, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "email: [ 'a', " (inspect, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "email: [ 'a', " (inspect, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "email: [ 'a', " (inspect, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "email: [ 'a', " (JSON, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด (1 ms)
+    ✓ (b) note ลงท้าย "email: [ 'a', " (JSON, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "email: [ 'a', " (JSON, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "email: [ 'a', " (JSON, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "email: [ 'a', " (JSON pretty-print, escape 0 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "email: [ 'a', " (JSON pretty-print, escape 1 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "email: [ 'a', " (JSON pretty-print, escape 2 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) note ลงท้าย "email: [ 'a', " (JSON pretty-print, escape 3 ชั้น) ไม่ทำให้ key ถัดไปหลุด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, inspect, escape 0 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, inspect, escape 1 ชั้น) ไม่ถูกตัด (1 ms)
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, inspect, escape 2 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, inspect, escape 3 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, inspect breakLength 1, escape 0 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, inspect breakLength 1, escape 1 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, inspect breakLength 1, escape 2 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, inspect breakLength 1, escape 3 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, JSON, escape 0 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, JSON, escape 1 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, JSON, escape 2 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, JSON, escape 3 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, JSON pretty-print, escape 0 ชั้น) ไม่ถูกตัด (1 ms)
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, JSON pretty-print, escape 1 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, JSON pretty-print, escape 2 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 0, JSON pretty-print, escape 3 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, inspect, escape 0 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, inspect, escape 1 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, inspect, escape 2 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, inspect, escape 3 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, inspect breakLength 1, escape 0 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, inspect breakLength 1, escape 1 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, inspect breakLength 1, escape 2 ชั้น) ไม่ถูกตัด (1 ms)
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, inspect breakLength 1, escape 3 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, JSON, escape 0 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, JSON, escape 1 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, JSON, escape 2 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, JSON, escape 3 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, JSON pretty-print, escape 0 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, JSON pretty-print, escape 1 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, JSON pretty-print, escape 2 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 1, JSON pretty-print, escape 3 ชั้น) ไม่ถูกตัด (1 ms)
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, inspect, escape 0 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, inspect, escape 1 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, inspect, escape 2 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, inspect, escape 3 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, inspect breakLength 1, escape 0 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, inspect breakLength 1, escape 1 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, inspect breakLength 1, escape 2 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, inspect breakLength 1, escape 3 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, JSON, escape 0 ชั้น) ไม่ถูกตัด (1 ms)
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, JSON, escape 1 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, JSON, escape 2 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, JSON, escape 3 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, JSON pretty-print, escape 0 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, JSON pretty-print, escape 1 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, JSON pretty-print, escape 2 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 2, JSON pretty-print, escape 3 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, inspect, escape 0 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, inspect, escape 1 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, inspect, escape 2 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, inspect, escape 3 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, inspect breakLength 1, escape 0 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, inspect breakLength 1, escape 1 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, inspect breakLength 1, escape 2 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, inspect breakLength 1, escape 3 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, JSON, escape 0 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, JSON, escape 1 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, JSON, escape 2 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, JSON, escape 3 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, JSON pretty-print, escape 0 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, JSON pretty-print, escape 1 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, JSON pretty-print, escape 2 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 3, JSON pretty-print, escape 3 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, inspect, escape 0 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, inspect, escape 1 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, inspect, escape 2 ชั้น) ไม่ถูกตัด (1 ms)
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, inspect, escape 3 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, inspect breakLength 1, escape 0 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, inspect breakLength 1, escape 1 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, inspect breakLength 1, escape 2 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, inspect breakLength 1, escape 3 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, JSON, escape 0 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, JSON, escape 1 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, JSON, escape 2 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, JSON, escape 3 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, JSON pretty-print, escape 0 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, JSON pretty-print, escape 1 ชั้น) ไม่ถูกตัด (1 ms)
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, JSON pretty-print, escape 2 ชั้น) ไม่ถูกตัด
+    ✓ (b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case 4, JSON pretty-print, escape 3 ชั้น) ไม่ถูกตัด
+    ✓ (b) สมาชิกที่ไม่แบน (null/true/false) ไม่ทำให้สมาชิกตัวหลังหลุด
+    ✓ (c) fuzz PIIMARK 600 object × escape 0–3 ชั้น ไม่หลุด (seed 46393) (97 ms)
+    ✓ ข้อความยาว (name: ' + \' ซ้ำไม่มี quote ปิด) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาว (name: [ + 'a', ซ้ำไม่มี ]) redact เสร็จเร็ว (ไม่ quadratic) (4 ms)
+    ✓ ข้อความยาว (\"name\":[ + \\\"a\\\", ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาว (\' ชั้น 1 ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาว (\' ชั้น 2 ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (4 ms)
+    ✓ ข้อความยาว (\' ชั้น 3 ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (5 ms)
+    ✓ ข้อความยาว (array ของสมาชิก \' ชั้น 1 ไม่มี ]) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาว (array ของสมาชิก \' ชั้น 2 ไม่มี ]) redact เสร็จเร็ว (ไม่ quadratic) (4 ms)
+    ✓ ข้อความยาว (array ของสมาชิก \' ชั้น 3 ไม่มี ]) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาว (array ตัวเลขไม่มี ]) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาว (array ท่อน + ไม่มี ]) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาว (array หลายบรรทัดที่ escape ไม่มี ]) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาว (key array ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาว (key array ซ้ำในสตริง) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาว (array ไม่ปิดตามด้วย backslash ยาว) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาว (สมาชิก + ท่อนยาวไม่มี ] (review #559)) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (สมาชิก + ท่อนยาวไม่มี ] key city) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (สมาชิก + ท่อนยาวไม่มี ] ไม่มีช่องว่าง) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (สมาชิกสองตัว + ท่อนที่ escape) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาว (สมาชิก ' + ท่อนที่ escape 2 ชั้น) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาว (note ลงท้าย name: [ ซ้ำ (JSON)) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (note ลงท้าย city: [ ' ซ้ำ (inspect)) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาว (array ของ null ไม่มี ]) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (สมาชิกที่มี key PII ข้างใน ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (\' ชั้น 1 ที่มี key PII ข้างใน) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (note ลงท้าย name: [ ตามด้วย field ที่ไม่ใช่ PII ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (สมาชิก ' ข้าม field JSON ซ้ำไม่มี ]) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (สมาชิกข้าม newline ที่ escape ซ้ำไม่มี ]) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว ([name: + newline ที่ escape ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (name: + ช่องว่างยาว) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว ("name": + ช่องว่างยาว + x) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (name: + newline ยาว + x) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาว (,name: + ช่องว่างยาว + [) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ การใช้ครั้งแรกของ regex ที่คอมไพล์ใหม่ ≤ 200ms (17 ms)
+    ✓ key ไม่สนตัวพิมพ์ และตัวเลขใต้ key PII
+    ✓ Error และ Map ที่ส่งเป็น meta ถูก redact (ไม่หลุดเป็นค่าเดิม) (8 ms)
+    ✓ array ใต้ key PII ทุกสมาชิกเป็น [REDACTED] (OPS-39)
+    ✓ message, stack/cause และ field อื่นของ log ไม่มี PII แต่มี worker_mode, level และ id ครบ (4 ms)
+    ✓ ไม่แก้ object ของผู้เรียก (redact บนสำเนา)
+    ✓ AC-48c development → undefined (Medusa ใช้ logger เดิมซึ่งไม่ redact)
+Tests:       275 passed, 275 total
+
+## ชุดอื่น
+backend test:unit: Test Suites: 133 passed, 133 total; Tests: 2119 passed, 2119 total
+storefront test:e2e:unit: 165 passed
+backend typecheck: ผ่าน; backend lint: 0 error (warning 4 รายการเดิมของ OPS-38/json-logger ไม่ได้แตะ); backend build: ผ่าน
+
+## ตรวจเพิ่มนอก test (scratchpad ไม่ commit) — รอบ 5
+ไล่ค้นกลุ่ม whitespace/newline ยาวคั่น: key 13 รูป (quote/escape 0–3, `=>`) × ตัวคั่น 8 แบบ (space, tab, \n ดิบ, \r\n, \n ที่ escape 1–2 ชั้น, ผสม) ×
+prefix 9 × suffix 14 × ตำแหน่ง 7 (หลัง key, หลัง `[`, หลังสมาชิก, ก่อน key, ใน key ของสมาชิก, ในกิ่ง \') = 91,728 รูป วัด 10k vs 40k:
+ถูก flag 11 (เวลา < 7ms ใกล้เกณฑ์) วัดซ้ำ best-of-3 ที่ 25k/100k/400k/1.6M เชิงเส้นทุกตัว:
+"\\n  \"name\": [ \\n   x"                           25k=0.5 100k=2.1 400k=8.2 1600k=34.5
+"\\\"name\\\"=> [ 'name\tx\\\""                      25k=1.2 100k=5.0 400k=20.2 1600k=81.2
+"{\n  \\\\\\\"name\\\\\\\": [ 'name\tx[\"a\""        25k=1.3 100k=5.0 400k=20.1 1600k=80.9
+"x \\\\\\\\\\\\\\\"name\\\\\\\\\\\\\\\": 'it\\\\'s   25k=0.7 100k=2.9 400k=12.2 1600k=46.7
+"'name: [ 'name \\n   x["                            25k=1.5 100k=6.4 400k=25.4 1600k=99.9
+"\\n  city: [ 'name\\\\nx1"                          25k=1.4 100k=5.5 400k=21.7 1600k=84.9
+name: sp 1.6M = 18.3
+{"name": sp x 1.6M = 18.3
+name: nl x 1.6M = 16.8
+,name: sp [ 1.6M = 19.2
+fuzz เดิมหลังแก้: ผลเท่าเดิมทุกค่า (สองทิศเทียบ develop = 0/0; stress 240,000 หลุด 81 เท่าเดิม)
+
+## ตรวจเพิ่มนอก test (scratchpad ไม่ commit) — รอบ 4
+fuzz เทียบ develop 62b868a1 ตรวจสองทิศ (note 0–2 ตัวลงท้ายรูปเปิด key PII แต่ละตัวตามด้วย field ที่ไม่ใช่ PII total/amount/display_id/request_id/currency_code,
+PII เป็น string/ตัวเลข/array ที่มี null, inspect/JSON/pretty-print × escape 0–3 ชั้น) seed 1–20 และ 101–120 รวม 480,000 กรณี:
+  (1) PII หลุดใน PR แต่ develop ไม่หลุด = 0 (2) id/จำนวนเงิน/ชื่อ key ที่ไม่ใช่ PII หายใน PR แต่ develop ไม่หาย = 0
+  รูปเปิด array 12 แบบ: PR หลุด 22 + 8 (develop 79,155 + 80,802 — ที่หลุดใน PR คือ array จริงที่ guard ตัดสินว่าข้ามโครงสร้าง ซึ่ง develop ก็หลุด)
+fuzz เดิม 240,000 กรณี (อักขระโครงสร้างหนาแน่น): หลุด 81 (develop หลุด array ทั้งหมด — ไม่ใช่ regression); fuzz seed คงที่ใน unit ไม่หลุด
+ค้นหา "ทุกจุดเริ่มล้ม" ไล่ครบ (key 12 รูป × token 20 ชนิด ≤ 3 token + prefix) + สุ่ม 60,000 unit: ตัวที่ถูก flag 30 ตัว วัดซ้ำ best-of-3 ที่ 100k/400k
+  อัตราสูงสุด 5.4 (`[name: "\n]+`: 100k 1.7 / 200k 3.0 / 400k 6.6 / 800k 12.4 / 1.6M 32.2ms — เชิงเส้น), ช้าสุดที่ 100k = 1.9ms
+ReDoS 41 แบบ เวลา ms ที่ 100k / 200k / 400k / อัตรา 400k÷100k:
+\' level0                      1.5     2.8     5.8 3.8
+arr no ]                       4.2     7.9    16.4 3.9
+esc arr                        2.2     4.4     9.2 4.2
+model1                         3.0     6.1    12.3 4.0
+model2                         3.7     7.5    15.0 4.0
+model3                         4.9     9.9    19.8 4.0
+model1 no dq                   2.7     5.5    10.9 4.0
+model2 no dq                   3.9     7.8    17.1 4.4
+model3 no dq                   4.7     9.3    18.7 3.9
+arr model1                     3.3     6.3    12.6 3.8
+arr model2                     3.6     7.3    14.5 4.0
+arr model3                     3.8     7.6    15.1 4.0
+keys model1                    6.7     8.9    19.3 2.9
+keys model2                    4.5     9.1    19.0 4.2
+keys model3                    5.2    10.5    22.1 4.3
+tail model1                    1.0     2.0     4.3 4.4
+tail model2                    1.4     2.8     5.5 4.0
+tail model3                    2.0     4.0     8.0 4.0
+arr nums                       5.0     5.4     9.6 1.9
+arr tails                      3.1     6.0    11.9 3.9
+arr esc nl                     3.0     6.0    11.9 4.0
+key arr rep                    1.7     3.4     6.8 4.1
+key arr in str                 1.9     3.8     7.7 4.0
+arr then bs                    3.2     6.5    13.1 4.1
+arr esc elems B3               1.3     2.5     5.0 3.9
+arr more items                 1.3     2.4     4.7 3.6
+arr dq run                     3.9     7.7    16.2 4.2
+model all bs                   9.4    18.7    36.4 3.9
+model dq then bs               5.6    11.1    22.2 4.0
+model dq then bad              2.8     5.7    11.4 4.0
+r559 name                      1.8     3.6     7.2 4.0
+r559 city                      1.7     3.3     6.7 4.1
+r559 nospace                   1.9     3.7     7.4 4.0
+r559 esc1                      1.7     5.0     6.9 4.0
+r559 esc2                      1.9     3.8     7.6 4.0
+note opener json               1.4     2.8     5.5 4.1
+note opener inspect            1.8     3.5     8.2 4.6
+arr null rep                   1.7     3.4     7.1 4.1
+arr key inside str             1.7     3.5     7.0 4.0
+model key inside               1.6     3.2     6.4 4.1
+nested name keys arr esc       1.5     3.1     6.2 4.0
+
+(ผลรอบก่อนหน้าด้านล่างเก็บไว้อ้างอิง)
+## ตรวจเพิ่มนอก test (scratchpad ไม่ commit) — รอบ 3
+fuzz เทียบ develop 62b868a1 (20 seed × 500 object, note 0–2 ตัวลงท้ายด้วยรูปเปิด key PII, PII เป็น string/ตัวเลข/array ที่มี null, inspect/JSON/pretty-print × escape 0–3 ชั้น = 116,400 กรณี):
+  รูปเปิด array 12 แบบ: PR หลุด 0, develop หลุด 79,155, หลุดใน PR แต่ develop ไม่หลุด 0, id หาย 0
+  รวมรูปเปิด scalar (`name: '` ฯลฯ — ช่องเดิมของ develop): PR หลุด 20,188, develop หลุด 82,893, หลุดใน PR แต่ develop ไม่หลุด 0, id หาย 3 (develop หายเหมือนกันทั้ง 3)
+fuzz เดิม 240,000 กรณี: หลุด 0
+ค้นหา "ทุกจุดเริ่มล้ม" ไล่ครบ (key 12 รูป × token 20 ชนิด รวม `name: `/`null` ≤ 3 token + prefix) และสุ่ม 60,000 unit: ตัวที่ถูก flag (เวลา < 10ms ใกล้เกณฑ์) วัดซ้ำที่ 25k/50k/100k/200k โตเชิงเส้นทุกตัว (เช่น 2.6/5.5/9.8/20.7ms)
+ReDoS 41 แบบ เวลา ms ที่ 100k / 200k / 400k / อัตรา 400k÷100k (ช้าที่สุด 100k = 20.9ms จาก guard ต่ออักขระ):
+\' level0                      7.0    14.1    27.8 4.0
+arr no ]                       9.2    18.8    37.0 4.0
+esc arr                        2.1     3.9     8.0 3.9
+model1                        13.0    26.3    52.4 4.0
+model2                        13.5    27.0    54.6 4.0
+model3                        14.6    28.3    55.6 3.8
+model1 no dq                  12.4    24.9    50.6 4.1
+model2 no dq                  13.0    25.7    51.3 3.9
+model3 no dq                  13.2    26.7    53.2 4.0
+arr model1                     8.5    17.1    33.9 4.0
+arr model2                     6.8    13.5    26.9 4.0
+arr model3                     4.5     9.0    18.3 4.0
+keys model1                   12.1    21.2    44.0 3.6
+keys model2                   10.8    21.8    44.1 4.1
+keys model3                   11.9    23.7    48.6 4.1
+tail model1                    5.9    12.0    24.4 4.2
+tail model2                    7.0    14.1    27.2 3.9
+tail model3                    8.0    15.9    32.2 4.0
+arr nums                       4.4     8.5    16.8 3.8
+arr tails                      7.0    13.4    26.2 3.7
+arr esc nl                     5.4    10.4    21.1 3.9
+key arr rep                    3.1     7.9    15.0 4.8
+key arr in str                 6.5    10.0    21.0 3.2
+arr then bs                    7.2    14.1    28.0 3.9
+arr esc elems B3               6.3    12.5    24.6 3.9
+arr more items                 0.3     0.6     1.1 3.4
+arr dq run                    16.8    32.9    65.3 3.9
+model all bs                  20.9    41.6    82.8 4.0
+model dq then bs              12.2    24.1    48.3 4.0
+model dq then bad             11.5    23.1    46.2 4.0
+r559 name                      6.1    13.3    24.4 4.0
+r559 city                      5.9    12.2    23.7 4.0
+r559 nospace                   5.9    12.0    23.6 4.0
+r559 esc1                      6.8    12.9    31.3 4.6
+r559 esc2                      7.0    14.1    28.3 4.0
+note opener json               3.1     6.5    12.6 4.0
+note opener inspect            4.8     9.7    19.3 4.0
+arr null rep                   1.8     3.1     5.9 3.3
+arr key inside str             3.1     6.1    12.2 4.0
+model key inside               3.1     6.2    12.3 4.0
+nested name keys arr esc       3.7     6.5    14.0 3.7
