@@ -94,6 +94,13 @@ test("AC-10: side menu และ search drawer เป็น Sheet ที่ม�
       await expect(
         dialog.getByTestId("close-search-drawer")
       ).toHaveAccessibleName(THAI)
+      // กฎ 21: txt-medium (shim Text เดิม) → text-sm leading-[1.4rem] คงระยะบรรทัด 22.4px
+      for (const id of ["search-input", "search-empty"]) {
+        await expect(dialog.getByTestId(id), id).toHaveCSS(
+          "line-height",
+          "22.4px"
+        )
+      }
       await evidence("02-search-sheet")
     }
   )

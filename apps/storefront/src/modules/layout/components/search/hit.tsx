@@ -46,7 +46,9 @@ const SearchHit = ({ hit, onNavigate }: SearchHitProps) => {
             </div>
           )}
         </div>
-        <p className="text-sm text-foreground line-clamp-2">{hit.title}</p>
+        <p className="text-sm leading-[1.4rem] text-foreground line-clamp-2">
+          {hit.title}
+        </p>
       </LocalizedClientLink>
     </li>
   )

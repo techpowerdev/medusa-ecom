@@ -171,3 +171,59 @@ $ tsc --noEmit
   21 passed (14.3s)
 - core-50-nav-narrow 1280: nav-menu-button width ต่าง 1.265625px (macOS ค่าเดิม ไม่เปลี่ยน — ผ่านใน CI Linux)
 - core-38-mobile-layout ผ่านแล้วหลัง SFUI-2 fix
+
+# ===== รอบ 3 (2026-11-26) แก้ตาม review: กฎ 21 txt-*medium* → text-sm leading-[1.4rem] (search hit/index 7 จุด), side-menu hover:text-muted-foreground/60 =====
+# backend :9170, storefront :8170 (prod build), DB medusa_sfui3b สร้างใหม่, Redis db 12
+
+## RED — sfui-3b-sheet.spec.ts:49 (เพิ่ม assert line-height ของ search-input/search-empty) บน build ก่อนแก้
+  ✘ toHaveCSS line-height Expected: "22.4px" Received: "20px"
+
+## lint
+✖ 27 problems (0 errors, 27 warnings)
+
+## typecheck
+$ tsc --noEmit
+(exit 0)
+
+## test:unit
+ Test Files  129 passed (129)
+      Tests  2005 passed (2005)
+
+## test:e2e:unit
+  192 passed (7.5s)
+
+## build (prod)
+(exit 0)
+
+## e2e sfui-mobile-390 (รันก่อนบน DB สะอาด)
+  ✓  1 [chromium] › e2e/sfui-mobile-390.spec.ts:20:5 › AC-17: หน้าแรก, store, PDP, cart, checkout, account, orders ที่ 390px ไม่ล้นแนวนอน (35.3s)
+  1 passed (35.9s)
+
+## e2e core-19a, core-15b, core-70, core-75, flash-sale-fs14, sfui-3b-sheet, sfui-3c-select
+  ✓   3 [chromium] › e2e/core-15b-search-drawer-error.spec.ts:12:5 › AC-114: /store/search ตอบ 500 → search drawer แสดง search-drawer-error ไทย ไม่มี pageerror และ console.error 1 บรรทัดต่อ search ที่ล้ม (1.6s)
+  ✓   1 [chromium] › e2e/core-75-thai-substring-search.spec.ts:99:5 › AC-174: คำไทยกลางชื่อสินค้าได้ชุดเดียวกันจาก drawer, /th/search?q= และ /th/store?q= (2.0s)
+  ✓   4 [chromium] › e2e/core-70-unified-search.spec.ts:95:5 › AC-169: คำค้นเดียวกันได้ชุดสินค้าเดียวกันจาก drawer, /th/search?q= และ /th/store?q= (2.2s)
+  ✓   5 [chromium] › e2e/flash-sale-fs14.spec.ts:165:5 › AC-20: /store (search hit) การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (1.8s)
+  ✓   6 [chromium] › e2e/core-75-thai-substring-search.spec.ts:127:5 › AC-174: drawer ค้น "ยืด" เจอสินค้า seed t-shirt (633ms)
+  ✓   8 [chromium] › e2e/flash-sale-fs14.spec.ts:188:5 › AC-20: /search?q=<ชื่อ X> การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (473ms)
+  ✓   7 [chromium] › e2e/core-70-unified-search.spec.ts:124:5 › AC-169: พิมพ์คำค้นใน /th/store → URL ใช้ q (1.1s)
+  ✓   2 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:69:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th) (4.4s)
+  ✓  11 [chromium] › e2e/core-70-unified-search.spec.ts:135:5 › AC-169: drawer ค้น "shirt" ได้สินค้า seed อย่างน้อย 1 ชิ้น และตรงกับ /th/search?q=shirt (962ms)
+  ✓  10 [chromium] › e2e/flash-sale-fs14.spec.ts:203:5 › AC-20: 375×812 ราคา flash อยู่ในกรอบการ์ดบน /store, /search และ PLP (1.3s)
+  ✓  12 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:69:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/store) (2.1s)
+  ✓   9 [chromium] › e2e/sfui-3b-sheet.spec.ts:49:5 › AC-10: side menu และ search drawer เป็น Sheet ที่มีชื่อไทย, Tab วนใน sheet, Escape ปิดแล้ว focus กลับปุ่มที่เปิด (6.5s)
+  ✓  15 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:69:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/products/t-shirt) (4.1s)
+  ✓  13 [chromium] › e2e/sfui-3c-select.spec.ts:29:5 › AC-11: เลือกที่อยู่ที่บันทึกไว้ด้วย ArrowDown + Enter และ Escape ไม่เปลี่ยนค่า (7.6s)
+  ✓  18 [chromium] › e2e/sfui-3c-select.spec.ts:97:5 › AC-11: กดแก้ไขเบอร์โทร → edit-panel ของเบอร์โทร data-open=true แผงอื่น false (Collapsible) (1.6s)
+  ✓  17 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:149:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th) (3.8s)
+  ✓  16 [chromium] › e2e/sfui-3b-sheet.spec.ts:138:7 › viewport 390×844 › AC-10: mobile-actions-modal เป็น Sheet ชื่อไทย, Escape ปิดแล้ว focus กลับ mobile-actions-button; แถบ mobile-actions ยัง opacity 1 (6.6s)
+  ✓  19 [chromium] › e2e/sfui-3c-select.spec.ts:132:5 › กฎ 4b: ชี้ nav-cart-link → nav-cart-dropdown เป็น PopoverContent ภาษาไทย, ออกจากพื้นที่ → ปิด (3.5s)
+  ✓  21 [chromium] › e2e/sfui-3b-sheet.spec.ts:209:5 › AC-10 (review SFUI-3c): รายการประเทศใน side menu เปิด/เลือกด้วยคีย์บอร์ดโดย Sheet ไม่ปิด และลูกศรสะท้อนสถานะเปิดจริง (2.7s)
+  ✓  20 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:149:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th/products/t-shirt) (5.9s)
+  ✓  22 [chromium] › e2e/sfui-3c-select.spec.ts:165:5 › กฎ 4: ตัวเลือกประเทศใน side menu เป็น Select — คลิกเปิดรายการภาษาไทย/ประเทศ, Escape ปิด (2.1s)
+  ✓  14 [chromium] › e2e/flash-sale-fs14.spec.ts:251:5 › AC-20: rail หน้าแรก การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (18.2s)
+  ✓  24 [chromium] › e2e/flash-sale-fs14.spec.ts:285:5 › AC-25: /store ค้นใหม่ → ข้อมูล flash ยิงด้วย variant ของผลค้นล่าสุดเท่านั้น 1 ครั้ง (4.7s)
+  ✓  23 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:189:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1 (12.6s)
+  ✓  25 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:189:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0 (4.0s)
+  ✓  26 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:214:7 › viewport 375×812 › AC-63: search drawer + ข้อความ 200 ตัวอักษรไม่มีช่องว่าง ไม่ล้นจอ/ไม่ล้น drawer (921ms)
+  26 passed (39.8s)

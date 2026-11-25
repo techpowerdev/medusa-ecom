@@ -68,7 +68,7 @@ const SearchPanel = ({ onNavigate }: { onNavigate: () => void }) => {
           placeholder="ค้นหาสินค้า"
           aria-label="ค้นหาสินค้า"
           autoFocus
-          className="text-sm w-full bg-transparent py-4 text-foreground outline-hidden placeholder:text-muted-foreground"
+          className="text-sm leading-[1.4rem] w-full bg-transparent py-4 text-foreground outline-hidden placeholder:text-muted-foreground"
           data-testid="search-input"
         />
       </div>
@@ -76,21 +76,21 @@ const SearchPanel = ({ onNavigate }: { onNavigate: () => void }) => {
       <div className="flex-1 overflow-y-auto">
         {!hasInput ? (
           <p
-            className="px-4 py-6 text-sm text-center text-muted-foreground"
+            className="px-4 py-6 text-sm leading-[1.4rem] text-center text-muted-foreground"
             data-testid="search-empty"
           >
             พิมพ์เพื่อค้นหาสินค้า
           </p>
         ) : status === "error" ? (
           <p
-            className="px-4 py-6 text-sm text-center text-destructive"
+            className="px-4 py-6 text-sm leading-[1.4rem] text-center text-destructive"
             data-testid="search-drawer-error"
           >
             ค้นหาสินค้าไม่สำเร็จ
           </p>
         ) : !isSettled ? (
           <p
-            className="px-4 py-6 text-sm text-center text-muted-foreground"
+            className="px-4 py-6 text-sm leading-[1.4rem] text-center text-muted-foreground"
             data-testid="search-loading"
           >
             กำลังค้นหา&hellip;
@@ -103,14 +103,14 @@ const SearchPanel = ({ onNavigate }: { onNavigate: () => void }) => {
           </ul>
         ) : isPending || !query.trim() ? (
           <p
-            className="px-4 py-6 text-sm text-center text-muted-foreground"
+            className="px-4 py-6 text-sm leading-[1.4rem] text-center text-muted-foreground"
             data-testid="search-loading"
           >
             กำลังค้นหา&hellip;
           </p>
         ) : (
           <p
-            className="px-4 py-6 text-sm text-center text-muted-foreground [overflow-wrap:anywhere]"
+            className="px-4 py-6 text-sm leading-[1.4rem] text-center text-muted-foreground [overflow-wrap:anywhere]"
             data-testid="search-no-results"
           >
             ไม่พบสินค้าสำหรับ &quot;{query}&quot;

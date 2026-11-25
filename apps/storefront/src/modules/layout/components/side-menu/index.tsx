@@ -77,7 +77,7 @@ const SideMenu = ({ regions, storeName }: SideMenuProps) => {
                     <li key={key}>
                       <LocalizedClientLink
                         href={href}
-                        className="text-3xl leading-10 hover:text-muted-foreground"
+                        className="text-3xl leading-10 hover:text-muted-foreground/60"
                         onClick={close}
                         data-testid={`${key}-link`}
                       >
