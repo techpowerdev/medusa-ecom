@@ -31,45 +31,63 @@ export const PII_KEYS = [
 // ภายในค่า token เป็น "ช่วง backslash ทั้งช่วง + อักขระ" หรืออักขระเดียว (แตกได้แบบเดียว → ไม่ backtrack ข้าม token)
 const BS = "\\\\" // regex ของ backslash 1 ตัว
 const KEY_NAMES = `(?:${PII_KEYS.join("|")})`
-// OPS-39 (review #559): รูป `<pii-key>:` (รวม quote ของ key ที่ escape ≤ 3 ชั้น และ `=>`) — ตรวจด้วย lookahead ความยาวคงที่ทีละตำแหน่ง
+// OPS-39 (review #559): รูป `<pii-key>:` (รวม quote ของ key ที่ escape ≤ 3 ชั้น และ `=>`)
 const KEY_AHEAD = `(?<![A-Za-z0-9_$])${KEY_NAMES}${BS}{0,7}["']?\\s*(?::|=>)`
-// guard ก่อนอักขระเนื้อหาของกิ่งใหม่ (สมาชิก array และ \' ชั้น 1–3): ห้ามมี key PII อยู่ในค่า → match ไม่กลืน key ถัดไป
-// และการสแกนจากจุดเริ่มใดๆ หยุดก่อน key PII ถัดไปเสมอ (ทุกจุดเริ่มที่ล้มรวมกันยัง linear)
-const G = `(?!${KEY_AHEAD})`
+// guard ก่อนอักขระเนื้อหาของกิ่งใหม่ (สมาชิก array และ \' ชั้น 1–3) — lookahead ความยาวคงที่ ตรวจเฉพาะบางอักขระ จึงยัง linear:
+// เนื้อหาห้ามข้ามขอบของโครงสร้าง (quote เปิดของสมาชิกอาจเป็น quote ปิดของค่าอื่น เช่น `{ message: 'city: [', total: '1999.50' }`)
+// - key PII (`<pii-key>:`) → ไม่กลืน key ถัดไป และการสแกนจากจุดเริ่มใดๆ หยุดก่อน key PII ถัดไป
+// - newline ดิบ (เนื้อหา string ของ inspect/JSON escape เป็น \n เสมอ)
+// - newline ที่ escape + เยื้อง ≥ 2 ช่อง + `key: <ค่า>` (บรรทัดใหม่ของ inspect/pretty-print ที่ถูก JSON.stringify) — ตรวจที่ `n` หลัง backslash
+const FIELD_LINE = `(?<=${BS})n[ \\t]{2,}${BS}{0,7}["']?[A-Za-z_$][\\w$]*${BS}{0,7}["']?\\s?:[ \\t]?(?:${BS}{0,7}["'\`\\[{]|\\d|null|true|false)`
+const G = `(?![\\r\\n]|${KEY_AHEAD}|${FIELD_LINE})`
+// - เฉพาะเนื้อหาที่ quote ด้วย ' หรือ backtick (inspect): ขอบ field ของ JSON `,"key":<ค่า>` (quote ของ key escape 0–3 ชั้น) — ตรวจที่ `,`
+//   (ในเนื้อหาที่ quote ด้วย " quote ที่ escape เป็นเนื้อหาปกติ จึงไม่ใช้)
+const FIELD_JSON = `,[ \\t]?${BS}{0,7}"[A-Za-z_$][\\w$]*${BS}{0,7}":[ \\t]?(?:${BS}{0,7}["\\[{]|-?\\d|null|true|false)`
+const GQ = `(?![\\r\\n]|${KEY_AHEAD}|${FIELD_LINE}|${FIELD_JSON})`
 // หลังค่าของกิ่งใหม่: ห้ามตามด้วย `:`/`=>` (ค่านั้นคือ key ไม่ใช่สมาชิก) หรือชื่อ key PII (quote ปิดของค่าคือ quote เปิดของ key ถัดไป)
 const NOT_KEY_AFTER = `(?!\\s*(?::|=>)|${KEY_AHEAD})`
 const escapedQuoteRun = (g: number) => `(?:\\${g}\\${g}${BS}${BS})*\\${g}"` // n = m·(2B+2) + B แล้ว " (B = group g)
 // OPS-39 (กฎข้อ 21a รอบ 43): util.inspect quote ด้วย ' และ escape ' ภายในเป็น \' เมื่อสตริงมีครบทั้ง ', " และ backtick
 // ใน JSON escape ชั้น k (h = 2^k): \' = backslash h ตัว + ' และ backslash จริง = 2h ตัว — `\\.` ของกิ่งทั่วไปปิดผิดที่เมื่อ k ≥ 1
 // จึงลองทีละชั้น (3, 2, 1) โดยยืนยันชั้นด้วย " ภายในค่า (มีเสมอในกรณีนี้; JSON escape เป็น backslash h−1 ตัว + `"`)
-// ก่อนเจอ " ที่ยืนยันชั้น ' ที่ปิดได้ทำให้กิ่งนั้นล้ม — กิ่งของชั้นที่ไม่ใช่จึงหยุดที่ ' หรือ " ถัดไป; ค่าที่มีรูป `<pii-key>:` อยู่ข้างใน
-// ไม่เข้ากิ่งนี้ (G) แต่ตกไปกิ่งทั่วไปแบบเดิม — กิ่งนี้จึงไม่กลืน key ที่ develop redact ได้
+// ก่อนเจอ " ที่ยืนยันชั้น ' ที่ปิดได้ทำให้กิ่งนั้นล้ม — กิ่งของชั้นที่ไม่ใช่จึงหยุดที่ ' หรือ " ถัดไป; ค่าที่ข้ามขอบโครงสร้าง (GQ)
+// ไม่เข้ากิ่งนี้แต่ตกไปกิ่งทั่วไปแบบเดิม — กิ่งนี้จึงไม่กลืนสิ่งที่ develop ไม่กลืน
 const inspectEscapedQuoteBody = (h: number) => {
   const pairs = `(?:${BS}{${2 * h}})*`
-  const plain = `(?:${G}[^${BS}'"]|${BS}+${G}[^${BS}'"]|${pairs}${BS}{${h}}')`
+  const plain = `(?:${BS}*${GQ}[^${BS}'"]|${pairs}${BS}{${h}}')`
   const dq = `${pairs}${BS}{${h - 1}}"`
   return `${plain}*${dq}(?:${plain}|${dq})*${pairs}'${NOT_KEY_AFTER}`
 }
 const INSPECT_ESCAPED_QUOTE = `(?:${[8, 4, 2].map(inspectEscapedQuoteBody).join("|")})` // ใช้หลัง ' เปิดเท่านั้น
-// g = guard ก่อนอักขระเนื้อหา ("" = แบบเดิมของ develop สำหรับค่าเดี่ยว, G = สมาชิก array)
-const inspectSegment = (g: string) =>
-  `(?:'${INSPECT_ESCAPED_QUOTE}|'(?:${BS}${g}.|${g}[^'${BS}])*'|${BS}+"(?:${g}[^"])*"|"(?:${BS}${g}.|${g}[^"${BS}])*"|\`(?:${BS}${g}.|${g}[^\`${BS}])*\`)`
-const inspectTail = (g: string) => `(?:(?:\\s|${BS}+n)*\\+(?:\\s|${BS}+n)*${inspectSegment(g)})*`
-// ค่าเดี่ยว: group n = quote, n+1 = backslash ของ quote ที่ escape (ESCAPED_OPEN — ลองช่วงยาวก่อน)
-const scalarValue = (n: number, g: string) =>
-  `(["'\`])(?:(?<=')${INSPECT_ESCAPED_QUOTE}|(?:${BS}${g}.|${g}(?!\\${n})[^${BS}])*\\${n})${inspectTail(g)}` +
-  `|(${BS}{7}|${BS}{3}|${BS})"(?:(?!${escapedQuoteRun(n + 1)})(?:${BS}+${g}[^${BS}]|${g}[^${BS}]))*${escapedQuoteRun(n + 1)}${inspectTail(g)}` +
+// g / gq = guard ก่อนอักขระเนื้อหาที่ quote ด้วย " / ' หรือ backtick ("" = แบบเดิมของ develop สำหรับค่าเดี่ยว)
+const inspectSegment = (g: string, gq: string) =>
+  `(?:'${INSPECT_ESCAPED_QUOTE}|'(?:${BS}${gq}.|${gq}[^'${BS}])*'|${BS}+"(?:${g}[^"])*"|"(?:${BS}${g}.|${g}[^"${BS}])*"|\`(?:${BS}${gq}.|${gq}[^\`${BS}])*\`)`
+const inspectTail = (g: string, gq: string) => `(?:(?:\\s|${BS}+n)*\\+(?:\\s|${BS}+n)*${inspectSegment(g, gq)})*`
+// ค่าเดี่ยว (แบบเดิมของ develop + กิ่ง \'): group n = quote, n+1 = backslash ของ quote ที่ escape (ESCAPED_OPEN — ลองช่วงยาวก่อน)
+const scalarValue = (n: number) =>
+  `(?:(["'\`])(?:(?<=')${INSPECT_ESCAPED_QUOTE}|(?:${BS}.|(?!\\${n})[^${BS}])*\\${n})` +
+  `|(${BS}{7}|${BS}{3}|${BS})"(?:(?!${escapedQuoteRun(n + 1)})(?:${BS}+[^${BS}]|[^${BS}]))*${escapedQuoteRun(n + 1)})${inspectTail("", "")}` +
   `|\\d+(?:\\.\\d+)?(?![\\w.])`
+// สมาชิก array: เนื้อหามี guard; สมาชิกที่ escape ชั้น k (quote = backslash B ตัว) ห้ามมี " ที่ backslash น้อยกว่า B (= โครงสร้างของชั้นที่ต่ำกว่า)
+// group n = quote ' หรือ backtick, n+1 = backslash ของ quote ที่ escape
+const itemValue = (n: number) =>
+  `(?:"(?:${BS}${G}.|${G}[^"${BS}])*"` +
+  `|(['\`])(?:(?<=')${INSPECT_ESCAPED_QUOTE}|(?:${BS}${GQ}.|${GQ}(?!\\${n})[^${BS}])*\\${n})` +
+  `|(${BS}{7}|${BS}{3}|${BS})"(?:(?!${escapedQuoteRun(n + 1)})(?:\\${n + 1}${BS}*"|${BS}*${G}[^${BS}"]))*${escapedQuoteRun(n + 1)})${inspectTail(G, GQ)}` +
+  `|-?\\d+(?:\\.\\d+)?(?![\\w.])|(?:null|true|false|undefined)(?![\\w$])`
 // OPS-39 (กฎข้อ 21b รอบ 43): array แบบแบน (JSON, JSON escape, util.inspect บรรทัดเดียว/หลายบรรทัด/`... n more items`) — redact ทั้ง array
-// สมาชิก (string/ตัวเลข/null/true/false) จับแบบ atomic (`(?=(x))\5`) จึงแตกได้แบบเดียว ตัวคั่นกับสมาชิกขึ้นต้นด้วยอักขระคนละชุด
-// `]` ไม่บังคับ: array ที่ไม่มี `]` (หรือมีสมาชิกซ้อน/object — ไม่บังคับตามกฎ 21b) ถูก redact เท่าที่ parse ได้
-// review #559: สมาชิกห้ามมี/ห้ามตามด้วยรูป `<pii-key>:` (G, NOT_KEY_AFTER) — match ของ array จึงไม่กลืน key ถัดไป (เช่นค่า note ที่ลงท้ายด้วย `name: [`)
-// และสแกนจากแต่ละจุดเริ่มไม่เกิน key ถัดไป → linear
+// สมาชิกจับแบบ atomic (`(?=(x))\5`) จึงแตกได้แบบเดียว ตัวคั่นกับสมาชิกขึ้นต้นด้วยอักขระคนละชุด และต้องปิดด้วย `]`
+// (array ซ้อน/object ใน array ไม่ redact — ไม่บังคับตามกฎ 21b); guard ทำให้การสแกนจากแต่ละจุดเริ่มไม่เกิน key PII ถัดไป → linear
+// re-review #559 รอบ 3 (ไม่กลืนจำนวนเงิน/id/key ที่ไม่ใช่ PII):
+// - สมาชิกต้องตามด้วยขอบของ array (`,`, `]`, newline/`\n` ที่ escape หรือท้ายข้อความ) — สมาชิกปลอม `', total: '` ตามด้วย `1999.50'` จึงไม่นับ
+// - กิ่ง array ใช้เฉพาะ key ที่ตำแหน่งของโครงสร้าง (ต้นข้อความ หรือหลัง `{` `,` `[` newline ดิบ/ที่ escape + ช่องว่าง)
+//   ข้อความ `name: [` ในค่าอื่น (`'Invalid name: ['`) จึงไม่เริ่ม array
 const ARRAY_SEPARATOR = `(?:\\s|,|${BS}+n|\\.\\.\\. \\d+ more items?)`
-const ARRAY_ITEM = `(?:${scalarValue(6, G)}|(?:null|true|false|undefined)(?![\\w$]))`
-const KEY_VALUE = new RegExp(
+const ITEM_END = `(?=\\s*(?:[,\\]]|${BS}+n|$))`
+const STRUCTURAL_KEY = `(?<=(?:^|[{,\\[\\n]|${BS}+n)[ \\t]*${BS}{0,7}["']?${KEY_NAMES}${BS}{0,7}["']?\\s*(?::|=>)\\s*)`
+export const KEY_VALUE = new RegExp(
   `((?<![A-Za-z0-9_$])(${BS}{0,7}["']|)${KEY_NAMES}\\2\\s*(?::|=>)\\s*)` +
-    `(?:(\\[)((?:${ARRAY_SEPARATOR}|(?=(${ARRAY_ITEM})${NOT_KEY_AFTER})\\5)*)(\\]?)|${scalarValue(9, "")})`,
+    `(?:${STRUCTURAL_KEY}(\\[)((?:${ARRAY_SEPARATOR}|(?=(${itemValue(6)})${NOT_KEY_AFTER}${ITEM_END})\\5)*)(\\])|${scalarValue(9)})`,
   "gi"
 )
 // (a) สตริงรูปอีเมล — เริ่ม match ได้เฉพาะต้นช่วงอักขระ local และจำกัดความยาวตาม RFC 5321 (local ≤ 64, label ≤ 63)
@@ -85,15 +103,12 @@ const THAI_PHONE = /(?<![A-Za-z0-9.])(?:0|\+66)\d{8,9}(?![A-Za-z0-9])/g
 
 export function redactPii(text: string): string {
   return text
-    .replace(KEY_VALUE, (match, ...groups: (string | undefined)[]) => {
-      const [prefix, , bracket, items = "", , , , close, quote, escaped] = groups
-      if (bracket && !close && /^(?:\s|,|\\+n)*$/.test(items)) {
-        return match // ไม่มีสมาชิกและไม่มี ] (เช่นข้อความ `name: [` ในค่าอื่น) — คงไว้
-      }
+    .replace(KEY_VALUE, (_match, ...groups: (string | undefined)[]) => {
+      const [prefix, , bracket, items = "", , , , , quote, escaped] = groups
       if (bracket) {
         // quote ของสมาชิกตัวแรก (JSON ทั้งระดับ 0 และ pretty-print ยัง parse ได้) — สมาชิกตัวเลขล้วน/ว่าง ไม่มี quote
         const q = /^(?:\s|,|\\+n)*(["'`]|\\+")/.exec(items)?.[1] ?? ""
-        return `${prefix}[${q}${REDACTED}${q}${close}`
+        return `${prefix}[${q}${REDACTED}${q}]`
       }
       const q = quote ?? (escaped === undefined ? "" : `${escaped}"`)
       return `${prefix}${q}${REDACTED}${q}`

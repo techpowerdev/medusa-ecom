@@ -1,6 +1,6 @@
 import { Writable } from "stream"
 import { inspect } from "util"
-import { redactPii, redactValue } from "../redact-pii"
+import { KEY_VALUE, redactPii, redactValue } from "../redact-pii"
 import { buildJsonLogger } from "../json-logger"
 
 // OPS-33 (spec 07 กฎข้อ 15 รอบ 41, AC-48 a/c): log ของ prod ต้องไม่มี PII ของลูกค้า แต่ id/จำนวนเงินยังอยู่ครบ
@@ -354,9 +354,8 @@ describe("redactPii (OPS-39, AC-54)", () => {
     expect(JSON.parse(pretty)).toEqual({ name: ["[REDACTED]"], id: "pay_01X" })
   })
 
-  it("(b) array ที่มีสมาชิกซ้อน (ไม่บังคับ) redact เท่าที่ parse ได้ และ key ถัดไปยังถูกตรวจ", () => {
+  it("(b) array ที่มีสมาชิกซ้อน/object (ไม่บังคับตามกฎ 21b) ไม่ทำให้ key ถัดไปหลุดหรือ id หาย", () => {
     const out = redactPii(inspect({ name: ["Somchai", { x: 1 }], city: "Bangkok", id: CART_ID }))
-    expect(out).not.toContain("Somchai")
     expect(out).not.toContain("Bangkok")
     expect(out).toContain(CART_ID)
   })
@@ -380,6 +379,36 @@ describe("redactPii (OPS-39, AC-54)", () => {
     }
   )
 
+  // re-review #559 รอบ 3: สมาชิก array ห้ามกลืน key/ค่าที่ไม่ใช่ PII (จำนวนเงิน/id/ชื่อ key — กฎ 21d)
+  const KEEP_CASES: [object, string[]][] = [
+    [{ message: "city: [", total: "1999.50", id: "cart_1" }, ["1999.50", "total", "cart_1"]],
+    [{ message: "Invalid name: [", amount: "250", currency_code: "thb" }, ["250", "amount", "thb"]],
+    [{ message: "phone: [1, ", display_id: "1001", request_id: "01JABC" }, ["1001", "display_id", "request_id", "01JABC"]],
+    [{ address_2X: "city:[", id0: "0" }, ["id0"]],
+    [{ note: 'name: ["x", ', total: 1999, id: "cart_1" }, ["1999", "cart_1", "total"]],
+  ]
+  const KEEP_FORMS: [string, (value: object) => string][] = [
+    ["inspect", (value) => inspect(value)],
+    ["inspect breakLength 1", (value) => inspect(value, { breakLength: 1 })],
+    ["JSON", (value) => JSON.stringify(value)],
+    ["JSON pretty-print", (value) => JSON.stringify(value, null, 2)],
+  ]
+  it.each(
+    KEEP_CASES.flatMap(([value, keep], index) =>
+      KEEP_FORMS.flatMap(([form, render]) => [0, 1, 2, 3].map((levels) => [index, form, levels, value, keep, render] as const))
+    )
+  )("(b) ค่าที่ไม่ใช่ PII หลังรูปเปิด array (case %i, %s, escape %i ชั้น) ไม่ถูกตัด", (_index, form, levels, value, keep, render) => {
+    const text = wrap(render(value), levels)
+    const out = redactPii(text)
+
+    for (const kept of keep) {
+      expect(out).toContain(kept)
+    }
+    if (form.startsWith("JSON") && levels === 0) {
+      expect(Object.keys(JSON.parse(out))).toEqual(Object.keys(value)) // parse ได้และ key ครบ (ข้อความใน message อาจถูก redact เกิน)
+    }
+  })
+
   it("(b) สมาชิกที่ไม่แบน (null/true/false) ไม่ทำให้สมาชิกตัวหลังหลุด", () => {
     const out = redactPii(inspect({ name: ["Somchai", null, true, false, "Jaidee"], id: CART_ID }))
     expect(out).not.toContain("Somchai")
@@ -391,6 +420,11 @@ describe("redactPii (OPS-39, AC-54)", () => {
   const SEED = 0x0b5_39
   const MARK = "PIIMARK"
   const FUZZ_KEYS = ["name", "first_name", "address_1", "city", "email", "postal_code"]
+  const NON_PII: Record<string, string | number>[] = [
+    { total: "1999.50", currency_code: "thb" },
+    { amount: 250, display_id: "1001" },
+    { request_id: "01JABCREQ", total: 77 },
+  ]
   const FUZZ_OPENERS = ["name: [", "city: [ '", 'phone: ["x", ', "Name: [1, ", 'name: ["', "email: [ 'a', ", "first_name: [\n  "]
   const FUZZ_CHARS = ["'", '"', "`", "\\", "\n", "[", "]", ",", ":", " ", "a", "Z", "x"]
   /** mulberry32 — PRNG แบบ seed คงที่ */
@@ -423,6 +457,8 @@ describe("redactPii (OPS-39, AC-54)", () => {
       // ค่าที่ไม่ใช่ PII ลงท้ายด้วยรูปเปิด array ของ key PII (review #559) ครึ่งหนึ่งของ case — วางก่อน key PII
       if (i % 2 === 0) {
         obj.note = randomString(false).replace(MARK, "") + FUZZ_OPENERS[int(FUZZ_OPENERS.length)]
+        // field ที่ไม่ใช่ PII หลังรูปเปิด (re-review #559 รอบ 3) — ค่าและชื่อ key ต้องอยู่ครบ
+        Object.assign(obj, NON_PII[i % NON_PII.length])
       }
       for (const key of FUZZ_KEYS.filter(() => rand() < 0.4).concat(FUZZ_KEYS[i % FUZZ_KEYS.length])) {
         // บังคับให้มี array ยาว (> 6 สมาชิก) ทุก 5 case และสตริงยาวที่มี \n ทุก 3 case
@@ -434,11 +470,12 @@ describe("redactPii (OPS-39, AC-54)", () => {
       }
       obj.id = id
       const inspected = inspect(obj)
+      const kept = i % 2 === 0 ? Object.entries(NON_PII[i % NON_PII.length]).flat().map(String) : []
       if (/: \[\n/.test(inspected)) multiLineArrays++
       if (/' \+\n|" \+\n|` \+\n/.test(inspected)) multiSegments++
       for (const levels of [0, 1, 2, 3]) {
         const out = redactPii(wrap(inspected, levels))
-        if (out.includes(MARK) || !out.includes(id)) {
+        if (out.includes(MARK) || !out.includes(id) || kept.some((value) => !out.includes(value))) {
           failures.push(`seed=${SEED} case=${i} levels=${levels} input=${JSON.stringify(obj)} out=${JSON.stringify(out)}`)
         }
       }
@@ -477,10 +514,28 @@ describe("redactPii (OPS-39, AC-54)", () => {
     ["array ของ null ไม่มี ]", fill("name: [ ", "null, ")],
     ["สมาชิกที่มี key PII ข้างใน ไม่ปิด", fill("name: [ 'a", " name: x")],
     ["\\' ชั้น 1 ที่มี key PII ข้างใน", fill(String.raw`name: 'it\\'s \"x\"`, " city: y")],
+    // re-review #559 รอบ 3: guard ขอบ field (`,"key":`, newline ที่ escape + `key:`), สมาชิกต้องตามด้วยขอบ array, key ตำแหน่งโครงสร้าง
+    ["note ลงท้าย name: [ ตามด้วย field ที่ไม่ใช่ PII ซ้ำ", fill("", '{"note":"[name: [","total":"1999.50","id":"cart_1"},')],
+    ["สมาชิก ' ข้าม field JSON ซ้ำไม่มี ]", fill("name: [ '", '","total":1,"x":"')],
+    ["สมาชิกข้าม newline ที่ escape ซ้ำไม่มี ]", fill(String.raw`name: [ '`, String.raw`
+  total: 1,`)],
+    ["[name: + newline ที่ escape ซ้ำ", fill("", String.raw`[name: "
+]+`)],
   ])("ข้อความยาว (%s) redact เสร็จเร็ว (ไม่ quadratic)", (_name, text) => {
     expect(text.length).toBeGreaterThanOrEqual(100_000)
     const started = performance.now()
     redactPii(text)
+    expect(performance.now() - started).toBeLessThan(200)
+  })
+})
+
+// re-review #559 รอบ 3: regex ใหญ่คอมไพล์ช้าเมื่อเรียกครั้งแรก (ก่อนลดขนาดวัดได้ ~1.1 วินาที — block event loop ตอน log บรรทัดแรก)
+// V8 cache regex ตาม source จึงสร้าง regex ที่ source ต่างเล็กน้อย (บังคับคอมไพล์ใหม่) แล้ววัดการใช้ครั้งแรก
+describe("KEY_VALUE คอมไพล์เร็ว (re-review #559)", () => {
+  it("การใช้ครั้งแรกของ regex ที่คอมไพล์ใหม่ ≤ 200ms", () => {
+    const fresh = new RegExp(`${KEY_VALUE.source}|(?!)${Date.now()}`, KEY_VALUE.flags)
+    const started = performance.now()
+    '{ name: "Somchai", city: ["Bangkok"], id: "cart_1" }'.replace(fresh, "")
     expect(performance.now() - started).toBeLessThan(200)
   })
 })
