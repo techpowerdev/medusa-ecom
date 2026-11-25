@@ -184,3 +184,74 @@ describe("legacy-medusa.css — ชั้นเข้ากันได้ขอ
     expect(found).toBe(true)
   })
 })
+
+/** declaration ของ selector `:root` ที่เขียนไว้ใน globals.css เอง (ไม่รวม :root ที่ @theme generate) */
+function rootDeclsInSource(css: string): Record<string, string> {
+  const decls: Record<string, string> = {}
+  postcss.parse(css).walkRules((rule) => {
+    if (rule.selector !== ":root") return
+    rule.walkDecls((decl) => {
+      decls[decl.prop] = decl.value
+    })
+  })
+  return decls
+}
+
+describe("globals.css — token ของ shadcn (AC-4 ขั้น 1b, กฎ 7; ADR-030 ข้อ 7)", () => {
+  const root = rootDeclsInSource(globals)
+
+  it("import tw-animate-css (แทน tailwindcss-animate)", () => {
+    expect(globals).toContain('@import "tw-animate-css";')
+  })
+
+  it(":root ชี้ --primary / --primary-foreground / --ring ไปที่ brand", () => {
+    expect(root["--primary"]).toBe("var(--color-brand-900)")
+    expect(root["--primary-foreground"]).toBe("var(--color-brand-50)")
+    expect(root["--ring"]).toBe("var(--color-brand-400)")
+  })
+
+  it(":root มี token อื่นของ shadcn ครบ (ค่า neutral)", () => {
+    for (const name of [
+      "--radius",
+      "--background",
+      "--foreground",
+      "--card",
+      "--card-foreground",
+      "--popover",
+      "--popover-foreground",
+      "--secondary",
+      "--secondary-foreground",
+      "--muted",
+      "--muted-foreground",
+      "--accent",
+      "--accent-foreground",
+      "--destructive",
+      "--border",
+      "--input",
+    ]) {
+      expect(root[name], name).toBeDefined()
+    }
+  })
+
+  it("utility ของ shadcn (bg-primary, text-primary-foreground, ring-ring, rounded-md, animate-in) generate ได้", async () => {
+    const compiled = await compile([
+      "bg-primary",
+      "text-primary-foreground",
+      "ring-ring",
+      "bg-background",
+      "border-input",
+      "rounded-md",
+      "animate-in",
+    ])
+    expect(declsOf(compiled, ".bg-primary")["background-color"]).toBe("var(--color-primary)")
+    expect(declsOf(compiled, ".text-primary-foreground").color).toBe("var(--color-primary-foreground)")
+    expect(declsOf(compiled, ".ring-ring")["--tw-ring-color"]).toBe("var(--color-ring)")
+    expect(declsOf(compiled, ".bg-background")["background-color"]).toBe("var(--color-background)")
+    expect(declsOf(compiled, ".border-input")["border-color"]).toBe("var(--color-input)")
+    expect(declsOf(compiled, ".rounded-md")["border-radius"]).toBeDefined()
+    expect(declsOf(compiled, ".animate-in").animation).toBeDefined()
+    // @theme inline: --color-primary ชี้ var(--primary) ที่ :root
+    expect(cssVar(globals, "--color-primary")).toBe("var(--primary)")
+    expect(cssVar(globals, "--color-ring")).toBe("var(--ring)")
+  })
+})
