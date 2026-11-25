@@ -102,8 +102,8 @@ describe("globals.css — ฟอนต์ (AC-3 ส่วน CSS, กฎ 8)", ()
   })
 
   it("class typography ของ preset (txt-*) ใช้ var(--font-sans) — ไม่ fix Inter", async () => {
-    const root = await compile(["txt-medium", "txt-small-plus"])
-    for (const cls of [".txt-medium", ".txt-small-plus"]) {
+    const root = await compile(["txt-medium", "txt-medium-plus"])
+    for (const cls of [".txt-medium", ".txt-medium-plus"]) {
       expect(declsOf(root, cls)["font-family"], cls).toBe("var(--font-sans)")
     }
   })
