@@ -39,12 +39,12 @@ const Flag = ({ country }: { country: string }) => (
 
 // SFUI-3c (spec 09 กฎ 4, 12): Listbox ของ headless → Select ของ shadcn (Radix)
 // เปิดด้วยคลิก/Enter/Space/ArrowDown ตาม Select — ไม่ผูกการเปิดกับ hover ของ side menu อีกต่อไป
-// (Select ของ Radix ปิด pointer event นอกรายการขณะเปิด จึงเปิด/ปิดตาม hover แล้วกระพริบ); `toggleState` ยังใช้ปิดลูกศรของ side menu หลังเลือก
+// (Select ของ Radix ปิด pointer event นอกรายการขณะเปิด จึงเปิด/ปิดตาม hover แล้วกระพริบ); `toggleState` เป็นสถานะเปิดของ Select (SFUI-3b) ให้ลูกศรของ side menu
 const CountrySelect = ({ toggleState, regions }: CountrySelectProps) => {
   const { countryCode } = useParams()
   const currentPath = usePathname().split(`/${countryCode}`)[1]
 
-  const { close } = toggleState
+  const { state, open, close } = toggleState
 
   const options = useMemo(() => {
     return regions
@@ -71,7 +71,13 @@ const CountrySelect = ({ toggleState, regions }: CountrySelectProps) => {
 
   return (
     <div>
-      <Select value={current?.country ?? ""} onValueChange={handleChange}>
+      {/* SFUI-3b: สถานะเปิดของ Select = toggleState → ลูกศรของ side menu สะท้อนสถานะจริง (เปิดด้วยคลิก/คีย์บอร์ด) */}
+      <Select
+        value={current?.country ?? ""}
+        onValueChange={handleChange}
+        open={state}
+        onOpenChange={(next) => (next ? open() : close())}
+      >
         <SelectTrigger
           // SFUI-3c: หน้าตาเดิมเป็นข้อความธรรมดาใน side menu (ไม่มีกรอบ) และ side menu มีลูกศรของตัวเองแล้ว → ซ่อน chevron ของ SelectTrigger
           className="h-auto data-[size=default]:h-auto w-full border-0 bg-transparent p-0 py-1 text-inherit shadow-none text-sm leading-5 [&>svg]:hidden"

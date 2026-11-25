@@ -98,6 +98,9 @@ const SideMenu = ({ regions, storeName }: SideMenuProps) => {
                     />
                   )}
                   <ArrowRight
+                    aria-hidden
+                    data-testid="country-select-arrow"
+                    data-state={countryToggleState.state ? "open" : "closed"}
                     className={cn(
                       "size-4 transition-transform duration-150",
                       countryToggleState.state ? "-rotate-90" : ""

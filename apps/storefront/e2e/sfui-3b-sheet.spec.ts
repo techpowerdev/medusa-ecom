@@ -198,3 +198,72 @@ test.describe("viewport 390×844", () => {
     ).toEqual([])
   })
 })
+
+test("AC-10 (review SFUI-3c): รายการประเทศใน side menu เปิด/เลือกด้วยคีย์บอร์ดโดย Sheet ไม่ปิด และลูกศรสะท้อนสถานะเปิดจริง", async ({
+  page,
+  step,
+  evidence,
+}) => {
+  const warnings = radixWarnings(page)
+  const sheet = page.getByTestId("nav-menu-popup")
+  const trigger = page.getByTestId("country-select-button")
+  const arrow = page.getByTestId("country-select-arrow")
+  const listbox = page.getByRole("listbox")
+
+  await step("เปิด side menu → ลูกศรอยู่ในสถานะปิด", async () => {
+    await page.goto(`/${CC}`)
+    await page.getByTestId("nav-menu-button").click()
+    await expect(sheet).toBeVisible()
+    await expect(arrow).toHaveAttribute("data-state", "closed")
+  })
+
+  await step(
+    "Enter บน country-select-button → รายการประเทศเปิด (portal) Sheet ยังเปิด ลูกศรเป็น open",
+    async () => {
+      await trigger.focus()
+      await page.keyboard.press("Enter")
+      await expect(listbox).toBeVisible()
+      await expect(listbox.getByRole("option").first()).toBeVisible()
+      await expect(sheet).toBeVisible()
+      await expect(arrow).toHaveAttribute("data-state", "open")
+      await evidence("04-side-menu-country-open")
+    }
+  )
+
+  await step(
+    "Escape ปิดเฉพาะรายการประเทศ — Sheet ยังเปิด focus กลับ trigger ลูกศรเป็น closed",
+    async () => {
+      await page.keyboard.press("Escape")
+      await expect(listbox).toBeHidden()
+      await expect(sheet).toBeVisible()
+      await expect(trigger).toBeFocused()
+      await expect(arrow).toHaveAttribute("data-state", "closed")
+    }
+  )
+
+  await step(
+    "เปิดอีกครั้งแล้วเลือกประเทศปัจจุบันด้วย ArrowDown + Enter → รายการปิด Sheet ยังเปิด อยู่หน้าเดิม",
+    async () => {
+      await page.keyboard.press("Enter")
+      await expect(listbox).toBeVisible()
+      await page.keyboard.press("ArrowDown")
+      await page.keyboard.press("Enter")
+      await expect(listbox).toBeHidden()
+      await expect(sheet).toBeVisible()
+      await expect(page).toHaveURL(new RegExp(`/${CC}$`))
+      await expect(arrow).toHaveAttribute("data-state", "closed")
+    }
+  )
+
+  await step(
+    "Escape ครั้งถัดไปปิด Sheet และ focus กลับ nav-menu-button",
+    async () => {
+      await expectEscapeReturnsFocus(page, page.getByTestId("nav-menu-button"))
+    }
+  )
+
+  expect(
+    warnings,
+    "console warning ของ Radix (DialogTitle / aria-describedby)"
+  ).toEqual([])
+})
