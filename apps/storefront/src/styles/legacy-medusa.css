@@ -5,12 +5,6 @@
   - task เจ้าของไฟล์ (SFUI-2..5e) ย้าย class ไปเป็น token ของ shadcn ตามตารางกฎ 21; SFUI-6 ลบทั้งไฟล์และ @import ใน globals.css
 */
 
-/* tailwindcss-radix (plugin ของ v3) — ใช้ที่ product-tabs/accordion.tsx (ลบใน SFUI-4) */
-@custom-variant radix-state-open (&[data-state="open"]);
-@custom-variant radix-state-closed (&[data-state="closed"]);
-@custom-variant group-radix-state-open (&:is(:where(.group)[data-state="open"] *));
-@custom-variant group-radix-state-closed (&:is(:where(.group)[data-state="closed"] *));
-
 /* preset ใส่ตัวแปรดิบ (light) ใน :root ด้วย addBase — โค้ดที่อ้าง var(--fg-*) ตรง (prop color ของ icon ใน discount-code — SFUI-5c) */
 :root {
   --fg-muted: rgba(113, 113, 122, 1);
@@ -39,7 +33,6 @@
   --color-ui-bg-disabled: rgba(244, 244, 245, 1);
   --color-ui-bg-field: rgba(250, 250, 250, 1);
   --color-ui-bg-interactive: rgba(59, 130, 246, 1);
-  --color-ui-bg-overlay: rgba(24, 24, 27, 0.4);
   --color-ui-bg-subtle: rgba(250, 250, 250, 1);
   --color-ui-bg-subtle-hover: rgba(244, 244, 245, 1);
   --color-ui-border-base: rgba(228, 228, 231, 1);
@@ -52,7 +45,6 @@
   --color-ui-fg-interactive: rgba(59, 130, 246, 1);
   --color-ui-fg-interactive-hover: rgba(37, 99, 235, 1);
   --color-ui-fg-muted: rgba(113, 113, 122, 1);
-  --color-ui-fg-on-color: rgba(255, 255, 255, 1);
   --color-ui-fg-subtle: rgba(82, 82, 91, 1);
   --color-ui-tag-red-text: rgba(159, 18, 57, 1);
 
@@ -63,7 +55,6 @@
   --shadow-details-contrast-on-bg-interactive: 0px 1px 2px 0px rgba(30, 58, 138, 0.6);
   --shadow-elevation-card-hover: 0px 0px 0px 1px rgba(0, 0, 0, 0.08), 0px 1px 2px -1px rgba(0, 0, 0, 0.08), 0px 2px 8px 0px rgba(0, 0, 0, 0.1);
   --shadow-elevation-card-rest: 0px 0px 0px 1px rgba(0, 0, 0, 0.08), 0px 1px 2px -1px rgba(0, 0, 0, 0.08), 0px 2px 4px 0px rgba(0, 0, 0, 0.04);
-  --shadow-elevation-modal: 0px 0px 0px 1px rgba(255, 255, 255, 1) inset, 0px 0px 0px 1.5px rgba(228, 228, 231, 0.6) inset, 0px 0px 0px 1px rgba(0, 0, 0, 0.08), 0px 8px 16px 0px rgba(0, 0, 0, 0.08), 0px 16px 32px 0px rgba(0, 0, 0, 0.08);
 }
 
 @utility txt-compact-medium {

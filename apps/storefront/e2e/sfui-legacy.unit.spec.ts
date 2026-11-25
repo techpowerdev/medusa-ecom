@@ -48,46 +48,6 @@ const TASKS: Task[] = [
 ]
 
 const PENDING: Partial<Record<Task, string[]>> = {
-  "SFUI-3a": [
-    "src/modules/account/components/address-card/add-address.tsx",
-    "src/modules/account/components/address-card/edit-address-modal.tsx",
-    "src/modules/common/components/modal/index.tsx",
-  ],
-  "SFUI-3b": [
-    "src/modules/layout/components/search/drawer.tsx",
-    "src/modules/layout/components/search/hit.tsx",
-    "src/modules/layout/components/search/index.tsx",
-    "src/modules/layout/components/side-menu/index.tsx",
-    "src/modules/products/components/product-actions/mobile-actions.tsx",
-  ],
-  "SFUI-3c": [
-    "src/modules/account/components/account-info/index.tsx",
-    "src/modules/checkout/components/address-select/index.tsx",
-    "src/modules/layout/components/cart-dropdown/index.tsx",
-    "src/modules/layout/components/country-select/index.tsx",
-  ],
-  "SFUI-3d": [
-    "src/core-19f-continue-after-timeout.test.ts",
-    "src/lib/constants.tsx",
-    "src/modules/checkout/components/payment-container/index.tsx",
-    "src/modules/checkout/components/payment/index.tsx",
-    "src/pay-14-stale-session.test.ts",
-    "src/pay-16-payment-container.test.ts",
-    "src/pay-16-payment-step-state.test.ts",
-    "src/payment-session-lock-timeout.test.ts",
-  ],
-  "SFUI-3e": [
-    "src/core-4i-b-ui-results.test.ts",
-    "src/modules/checkout/components/shipping/index.tsx",
-    "src/modules/order/components/order-pay/index.tsx",
-  ],
-  "SFUI-4": [
-    "src/modules/products/components/product-tabs/accordion.tsx",
-    "src/modules/store/components/refinement-list/options-picker/index.tsx",
-    "src/modules/store/components/store-refinements/option-refinements.tsx",
-    "src/modules/store/components/store-refinements/price-range.tsx",
-    "src/modules/store/components/store-refinements/refinement-group.tsx",
-  ],
   "SFUI-5b": [
     "src/app/[countryCode]/(main)/search/page.tsx",
     "src/modules/categories/templates/index.tsx",

@@ -157,20 +157,12 @@ describe("globals.css — Tailwind v4 CSS-first คงค่า theme เดิ�
 })
 
 describe("legacy-medusa.css — ชั้นเข้ากันได้ของ preset (กฎ 16)", () => {
-  it("สี/เงา ui-* และ variant radix-state-* generate ได้", async () => {
-    const root = await compile([
-      "text-ui-fg-subtle",
-      "border-ui-border-base",
-      "shadow-borders-base",
-      "radix-state-open:hidden",
-      "group-radix-state-open:hidden",
-    ])
-    const css = root.toString()
+  // SFUI-4: variant radix-state-* ถูกลบพร้อมผู้ใช้คนสุดท้าย (product-tabs/accordion.tsx ใช้ data-[state=…] ของ shadcn แทน)
+  it("สี/เงา ui-* generate ได้", async () => {
+    const root = await compile(["text-ui-fg-subtle", "border-ui-border-base", "shadow-borders-base"])
     expect(declsOf(root, ".text-ui-fg-subtle").color).toBe("var(--color-ui-fg-subtle)")
     expect(declsOf(root, ".border-ui-border-base")["border-color"]).toBe("var(--color-ui-border-base)")
     expect(declsOf(root, ".shadow-borders-base")["--tw-shadow"]).toBeDefined()
-    expect(css).toMatch(/\[data-state="open"\]/)
-    expect(css).toMatch(/\.group\[data-state="open"\]|:where\(\.group\)\[data-state="open"\]|\.group\)\[data-state="open"\]/)
   })
 
   it("ring ที่ไม่ระบุสีเป็น blue-500/50 แบบ v3 และตัวแปรดิบ --fg-* ของ preset อยู่ใน :root", async () => {

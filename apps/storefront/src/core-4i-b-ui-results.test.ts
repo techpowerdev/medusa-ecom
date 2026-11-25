@@ -55,14 +55,13 @@ vi.mock("@modules/order/components/order-pay/pay-buttons", () => ({
   OrderCardButton: () => null,
   OrderPromptPayButton: () => null,
 }))
-// RadioGroup ของ headlessui → ปุ่มที่เลือกวิธีชำระ (`data-provider` ของ test กำหนดผ่าน `selectProvider`)
+// RadioGroup ของ shadcn (SFUI-3d) → ปุ่มที่เลือกวิธีชำระผ่าน onValueChange (`data-provider` ของ test กำหนดผ่าน `selectProvider`)
 const selectProvider = { value: CARD }
-vi.mock("@headlessui/react", async () => {
+vi.mock("@/components/ui/radio-group", async () => {
   const { createElement: h } = await import("react")
   return {
-    Radio: () => null,
-    RadioGroup: ({ onChange }: { onChange: (v: string) => void }) =>
-      h("button", { "data-testid": "select-provider", onClick: () => onChange(selectProvider.value) }),
+    RadioGroup: ({ onValueChange }: { onValueChange: (v: string) => void }) =>
+      h("button", { "data-testid": "select-provider", onClick: () => onValueChange(selectProvider.value) }),
   }
 })
 
