@@ -1,13 +1,13 @@
 "use client"
 
 import {
-  Listbox,
-  ListboxButton,
-  ListboxOption,
-  ListboxOptions,
-  Transition,
-} from "@headlessui/react"
-import { Fragment, useEffect, useMemo, useState } from "react"
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { useMemo } from "react"
 import ReactCountryFlag from "react-country-flag"
 
 import { StateType } from "@lib/hooks/use-toggle-state"
@@ -26,13 +26,25 @@ type CountrySelectProps = {
   regions: HttpTypes.StoreRegion[]
 }
 
-const CountrySelect = ({ toggleState, regions }: CountrySelectProps) => {
-  const [current, setCurrent] = useState<CountryOption | undefined>(undefined)
+const Flag = ({ country }: { country: string }) => (
+  <ReactCountryFlag
+    svg
+    style={{
+      width: "16px",
+      height: "16px",
+    }}
+    countryCode={country}
+  />
+)
 
+// SFUI-3c (spec 09 กฎ 4, 12): Listbox ของ headless → Select ของ shadcn (Radix)
+// เปิดด้วยคลิก/Enter/Space/ArrowDown ตาม Select — ไม่ผูกการเปิดกับ hover ของ side menu อีกต่อไป
+// (Select ของ Radix ปิด pointer event นอกรายการขณะเปิด จึงเปิด/ปิดตาม hover แล้วกระพริบ); `toggleState` ยังใช้ปิดลูกศรของ side menu หลังเลือก
+const CountrySelect = ({ toggleState, regions }: CountrySelectProps) => {
   const { countryCode } = useParams()
   const currentPath = usePathname().split(`/${countryCode}`)[1]
 
-  const { state, close } = toggleState
+  const { close } = toggleState
 
   const options = useMemo(() => {
     return regions
@@ -48,82 +60,47 @@ const CountrySelect = ({ toggleState, regions }: CountrySelectProps) => {
       .sort((a, b) => a.label.localeCompare(b.label))
   }, [regions])
 
-  useEffect(() => {
-    if (countryCode) {
-      const option = options?.find((o) => o?.country === countryCode)
-      setCurrent(option)
-    }
-  }, [options, countryCode])
+  const current = countryCode
+    ? options?.find((o) => o.country === countryCode)
+    : undefined
 
-  const handleChange = (option: CountryOption) => {
-    updateRegion(option.country, currentPath)
+  const handleChange = (country: string) => {
+    updateRegion(country, currentPath)
     close()
   }
 
   return (
     <div>
-      <Listbox
-        as="span"
-        onChange={handleChange}
-        defaultValue={
-          countryCode
-            ? options?.find((o) => o?.country === countryCode)
-            : undefined
-        }
-      >
-        <ListboxButton className="py-1 w-full">
-          <div className="txt-compact-small flex items-start gap-x-2">
+      <Select value={current?.country ?? ""} onValueChange={handleChange}>
+        <SelectTrigger
+          // SFUI-3c: หน้าตาเดิมเป็นข้อความธรรมดาใน side menu (ไม่มีกรอบ) และ side menu มีลูกศรของตัวเองแล้ว → ซ่อน chevron ของ SelectTrigger
+          className="h-auto data-[size=default]:h-auto w-full border-0 bg-transparent p-0 py-1 text-inherit shadow-none text-sm leading-5 [&>svg]:hidden"
+          data-testid="country-select-button"
+        >
+          <div className="flex items-start gap-x-2">
             <span>จัดส่งไปที่:</span>
-            {current && (
-              <span className="txt-compact-small flex items-center gap-x-2">
-                <ReactCountryFlag
-                  svg
-                  style={{
-                    width: "16px",
-                    height: "16px",
-                  }}
-                  countryCode={current.country ?? ""}
-                />
-                {current.label}
-              </span>
-            )}
+            <SelectValue>
+              {current && (
+                <span className="text-sm leading-5 flex items-center gap-x-2">
+                  <Flag country={current.country} />
+                  {current.label}
+                </span>
+              )}
+            </SelectValue>
           </div>
-        </ListboxButton>
-        <div className="flex relative w-full min-w-[320px]">
-          <Transition
-            show={state}
-            as={Fragment}
-            leave="transition ease-in duration-150"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <ListboxOptions
-              className="absolute -bottom-[calc(100%-36px)] left-0 xsmall:left-auto xsmall:right-0 max-h-[442px] overflow-y-scroll z-[900] bg-white drop-shadow-md text-small-regular uppercase text-black no-scrollbar rounded-rounded w-full"
-              static
+        </SelectTrigger>
+        <SelectContent className="max-h-[442px] text-small-regular uppercase">
+          {options?.map((o) => (
+            <SelectItem
+              key={o.country}
+              value={o.country}
+              className="py-2 pl-3 pr-8 cursor-pointer gap-x-2"
             >
-              {options?.map((o, index) => {
-                return (
-                  <ListboxOption
-                    key={index}
-                    value={o}
-                    className="py-2 hover:bg-gray-200 px-3 cursor-pointer flex items-center gap-x-2"
-                  >
-                    <ReactCountryFlag
-                      svg
-                      style={{
-                        width: "16px",
-                        height: "16px",
-                      }}
-                      countryCode={o?.country ?? ""}
-                    />{" "}
-                    {o?.label}
-                  </ListboxOption>
-                )
-              })}
-            </ListboxOptions>
-          </Transition>
-        </div>
-      </Listbox>
+              <Flag country={o.country} /> {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   )
 }

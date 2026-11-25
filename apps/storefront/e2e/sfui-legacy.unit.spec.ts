@@ -60,12 +60,6 @@ const PENDING: Partial<Record<Task, string[]>> = {
     "src/modules/layout/components/side-menu/index.tsx",
     "src/modules/products/components/product-actions/mobile-actions.tsx",
   ],
-  "SFUI-3c": [
-    "src/modules/account/components/account-info/index.tsx",
-    "src/modules/checkout/components/address-select/index.tsx",
-    "src/modules/layout/components/cart-dropdown/index.tsx",
-    "src/modules/layout/components/country-select/index.tsx",
-  ],
   "SFUI-3d": [
     "src/core-19f-continue-after-timeout.test.ts",
     "src/lib/constants.tsx",
