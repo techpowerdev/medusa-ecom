@@ -2,6 +2,7 @@
 
 สถานะ: accepted (owner, 2026-10-26)
 เกี่ยวข้อง: ADR-008 (supersede **เฉพาะส่วน i18n**), ADR-002, spec 01 (CORE-4b/4c/4d, CORE-7), spec 02–06 (ข้อความ UI storefront)
+— หมายเหตุ 2026-11-26: [ADR-030](ADR-030-storefront-shadcn-ui.md) (shadcn/ui) **ไม่กระทบ** ADR นี้ — ข้อความไทยเขียนตรงในโค้ดคงเดิม, ข้อความ a11y ใหม่ของ overlay (`DialogTitle`/`DialogDescription`) เป็นภาษาไทย
 
 ## บริบท
 - ADR-008 ข้อ 1–3 ให้แปล UI ด้วย next-intl และเลือก locale จาก cookie `_medusa_locale` โดยคาดว่า "หน้าที่อ่าน cookie render แบบ dynamic

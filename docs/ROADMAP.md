@@ -1,6 +1,6 @@
 # ROADMAP — milestone, ลำดับ PR, สถานะ
 
-อัปเดตล่าสุด: 2026-11-26 (OPS-40 ☑ #562 merge เข้า develop; เพิ่ม OPS-41 หลัง go-live) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
+อัปเดตล่าสุด: 2026-11-26 (OPS-40 ☑ #562 merge เข้า develop; เพิ่ม OPS-41 หลัง go-live; เสนอรอบ 44 storefront shadcn/ui — spec 09, ADR-030 proposed) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
 [`docs/roadmap/history.md`](roadmap/history.md) และ follow-up เก่า (รอบ 13–39) อยู่ที่
 [`docs/roadmap/followups-archive.md`](roadmap/followups-archive.md)
 
@@ -8,7 +8,7 @@
 
 - **ตอนนี้**: **release v0.3.1 แล้ว (2026-11-25)** — #561 `develop → main` (merge commit `88bb0b63`, tag `v0.3.1`): รอบ 42 (21 task) +
   รอบ 43 ส่วน v0.3.1 (OPS-36 #554, PAY-23 #555, PAY-24 #556, OPS-39 #559) เป็น 🚀 · OPS-40 (PII ค่าเดี่ยวจาก review #559) ☑ #562 (merge 2026-11-26 — ข้อยกเว้น d1/d2/d3 ของกฎ 22d + กรณีรู้แล้ว `cart_13rjFZ` → OPS-41), **ไม่อยู่ใน v0.3.1**
-- **รอ owner ตัดสิน**: ไม่มีคำถามค้างของรอบ 43 — เหลือเฉพาะเรื่องก่อน go-live (Stripe live, ค่าส่ง, staging)
+- **รอ owner ตัดสิน**: ไม่มีคำถามค้างของรอบ 43 — เหลือเฉพาะเรื่องก่อน go-live (Stripe live, ค่าส่ง, staging); รอบ 44: อนุมัติ ADR-030 + spec 09 Q1/Q2
 - **ขั้นต่อไป**: go-live (checklist ข้อ 1–16) → **v1.0.0** (ร้านเปิดจริงครั้งแรก)
 
 ### Release
@@ -80,7 +80,36 @@ OPS-36, PAY-23, PAY-24 merge ใน train #557 · OPS-39 เพิ่มหล�
 - integration หนัก: GB-33 — จำกัดพร้อมกันตามเครื่อง
 - ไม่ทำ/backlog ของรอบนี้ (พร้อมเหตุผล): history หัวข้อ "รอบ 42 — ผลจริง"
 
+## รอบ 44 — storefront เป็น shadcn/ui (spec 09, ADR-030) (☐ เสนอ 2026-11-26)
+
+ที่มา: owner 2026-11-26 — แทนชั้น UI ของ Medusa ใน storefront ทั้ง 4 ชั้น, อัป Tailwind v4 ก่อน, หน้าตาเปลี่ยนได้แต่คงสี brand (ADR-008) ·
+**เริ่มได้เมื่อ ADR-030 accepted + PR เอกสารนี้ merge** · แต่ละไฟล์มี task เจ้าของเดียว (ตาราง Tasks ของ spec 09) · admin ไม่กระทบ
+
+| Task | spec | งาน (สั้น) | Depends | UI/qa | สถานะ |
+|---|---|---|---|---|---|
+| SFUI-1a | 09 | Tailwind v4 (CSS-first `@theme`) + ชั้นเข้ากันได้ `legacy-medusa.css` + ถอด preset/`tailwindcss-radix`/`autoprefixer` + test ฟอนต์/brand ใหม่ + baseline testid/ข้อความไทย + guard `PENDING` + e2e 390px | PR เอกสารรอบ 44, ADR-030 accepted | ✓ | ☐ |
+| SFUI-1b | 09 | `shadcn init -b radix` (`components.json`, `@/*`, `cn`, token neutral, `--primary`/`--ring` → brand) | SFUI-1a | — | ☐ |
+| SFUI-2 | 09 | shadcn button/input/label/badge/table/checkbox/radio-group/native-select + shim ส่งต่อ (`isLoading`) | SFUI-1b | ✓ | ☐ |
+| SFUI-3a | 09 | modal ที่อยู่ → `Dialog` (ลบ `common/modal`) | SFUI-2 | ✓ | ☐ ∥ |
+| SFUI-3b | 09 | side menu / search drawer / mobile actions → `Sheet` | SFUI-2 | ✓ | ☐ ∥ |
+| SFUI-3c | 09 | cart dropdown → `Popover`, country/address select → `Select`, account-info → `Collapsible` | SFUI-2 | ✓ | ☐ ∥ |
+| SFUI-3d | 09 | ขั้นชำระเงิน → `RadioGroup` + unit 5 ไฟล์เลิก mock headlessui | SFUI-2 | ✓ | ☐ ∥ |
+| SFUI-3e | 09 | ตัวเลือกจัดส่ง + หน้าจ่าย order → `RadioGroup` | SFUI-2 | ✓ | ☐ ∥ |
+| SFUI-4 | 09 | accordion/slider ของ store + แท็บ PDP → shadcn `Accordion`/`Slider` | SFUI-2 | ✓ | ☐ ∥ |
+| SFUI-5a | 09 | ย้าย class/icon/import: common + layout + หน้าคงที่ | SFUI-2 | ✓ | ☐ ∥ |
+| SFUI-5b | 09 | ย้าย class/icon/import: catalog (products/store/home/categories/collections/search) | SFUI-2 | ✓ | ☐ ∥ |
+| SFUI-5c | 09 | ย้าย class/icon/import: checkout + cart + returns | SFUI-2 | ✓ | ☐ ∥ |
+| SFUI-5d | 09 | ย้าย class/icon/import: account + order | SFUI-2 | ✓ | ☐ ∥ |
+| SFUI-5e | 09 | ย้าย class/icon/import: group buy + affiliate + evoucher | SFUI-2 | ✓ | ☐ ∥ |
+| SFUI-6 | 09 | ลบ shim/radio/ชั้นเข้ากันได้/dependency เก่า, guard ว่าง, CLAUDE.md Stack | SFUI-1a..5e ทั้งหมด | ✓ | ☐ |
+
+- ลำดับ: 1a → 1b → 2 → (3a ∥ 3b ∥ 3c ∥ 3d ∥ 3e ∥ 4 ∥ 5a ∥ 5b ∥ 5c ∥ 5d ∥ 5e) → 6
+- **ไฟล์ร่วม** (ตัวที่ merge ทีหลัง sync): `e2e/sfui-legacy.unit.spec.ts` (แต่ละ task ลบ key `PENDING` ของตัวเอง) · `package.json`/lockfile แก้เฉพาะ 1a, 1b, 6 · `globals.css` 1a → 1b → 6
+- ไม่ release `develop → main` ระหว่าง SFUI-2..SFUI-6 merge (สไตล์ผสม) — รอ owner ยืนยัน spec 09 Q2
+
 ## คำถามที่รอ owner
+
+- **รอบ 44**: อนุมัติ ADR-030 (สถานะ proposed) · spec 09 Q1 (browser ขั้นต่ำของ Tailwind v4: Safari 16.4+) · spec 09 Q2 (งด release ระหว่าง SFUI-2..6 และเริ่มก่อน/หลัง go-live)
 
 - **รอบ 43**: ไม่มีคำถามค้าง — คำตัดสิน owner 2026-11-25:
   - ~~Q-R43-ฉ~~ = ก (owner 2026-11-25) แก้เพิ่ม: 3 task (OPS-36, PAY-23, PAY-24) รวมใน v0.3.1 ไม่แยก v0.3.2 — v0.3.1 รอ 3 task นี้ merge ก่อน owner merge `develop → main`;
@@ -130,6 +159,7 @@ OPS-36, PAY-23, PAY-24 merge ใน train #557 · OPS-39 เพิ่มหล�
 | Release v0.3.0 (รอบ 40) | 01–08 | 🚀 | 32 🚀 | รวม CORE-75 #465 |
 | รอบ 41 | 01–08 | 🚀 | 36 🚀 + 1 ✕ | ✕ PAY-13 (ปิดโดย hotfix #468) |
 | รอบ 42 | 01–08 | 🚀 | 21 🚀 | v0.3.1 (#561); ADR-029 |
+| รอบ 44 storefront shadcn/ui | 09 | ☐ | 15 ☐ | ADR-030 proposed — รอ owner อนุมัติ |
 | รอบ 43 | 01, 03, 04, 06–08 | ◐ | 4 🚀 + 1 ☑ + 14 ☐ | 4 🚀 (3 train #557 + OPS-39 #559) ใน v0.3.1; OPS-40 ☑ #562 ก่อน go-live (ไม่อยู่ใน v0.3.1); 14 ตัวหลัง go-live (รวม OPS-41) |
 
 จำนวน task นับจากตารางใน history.md ณ 2026-11-24 และตารางรอบ 43 ด้านบน ณ 2026-11-25 (task ที่อยู่หลาย milestone นับที่ milestone หลักของ spec)

@@ -1,6 +1,9 @@
 # ADR-002 Storefront = Medusa Next.js Starter (ปรับธีม) ไม่ใช่แอป Ant Design ที่สร้างเอง
 
 สถานะ: อนุมัติแล้ว (เจ้าของโปรเจกต์, 2026-10-25)
+— **หมายเหตุ 2026-11-26 (มีผลเมื่อ [ADR-030](ADR-030-storefront-shadcn-ui.md) accepted)**: ชั้นแสดงผลของ starter (`@medusajs/ui-preset`, shim `common/components/ui`,
+`@headlessui/react`, `@medusajs/icons`) ถูกแทนด้วย shadcn/ui (Radix) บน Tailwind v4; ชั้น commerce ของ starter (route, data layer, JS SDK, caching, Stripe Elements) คงเดิม
+และการรับ upstream ต่อไปจำกัดที่ชั้น data/logic
 
 ## บริบท
 ก่อนหน้านี้เจ้าของโปรเจกต์เคยพิจารณาทำ storefront ด้วย Ant Design เอง แต่เป้าหมาย "ไม่สร้างสิ่งที่ Medusa มีอยู่แล้ว"
