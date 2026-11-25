@@ -1,6 +1,8 @@
 "use client"
 
-import { Badge, Heading, Input, Label, Text } from "@modules/common/components/ui"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import React from "react"
 
 import { applyPromotions } from "@lib/data/cart"
@@ -129,33 +131,36 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
 
   return (
     <div className="w-full bg-white flex flex-col">
-      <div className="txt-medium">
+      <div className="text-sm leading-[1.4rem]">
         <form action={(a) => addPromotionCode(a)} className="w-full mb-5">
           <Label className="flex gap-x-1 my-2 items-center">
             <button
               onClick={() => setIsOpen(!isOpen)}
               type="button"
-              className="txt-medium text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
+              className="text-sm leading-[1.4rem] text-primary underline-offset-4 hover:text-primary/80"
               data-testid="add-discount-button"
             >
               เพิ่มโค้ดส่วนลด
             </button>
 
             {/* <Tooltip content="You can add multiple promotion codes">
-              <InformationCircleSolid color="var(--fg-muted)" />
+              <InformationCircleSolid className="text-muted-foreground" />
             </Tooltip> */}
           </Label>
 
           {isOpen && (
             <div className="flex w-full gap-x-2">
-              <Input
-                className="size-full"
-                id="promotion-input"
-                name="code"
-                type="text"
-                autoFocus={false}
-                data-testid="discount-input"
-              />
+              {/* SFUI-5c: คง div ห่อเดิมของ Input ใน shim (ความกว้างช่อง/ปุ่มเท่าเดิม) */}
+              <div className="flex flex-col gap-1">
+                <Input
+                  className="size-full"
+                  id="promotion-input"
+                  name="code"
+                  type="text"
+                  autoFocus={false}
+                  data-testid="discount-input"
+                />
+              </div>
               <SubmitButton
                 variant="secondary"
                 disabled={busy}
@@ -173,9 +178,9 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
         {promotions.length > 0 && (
           <div className="w-full flex items-center">
             <div className="flex flex-col w-full">
-              <Heading className="txt-medium mb-2">
+              <h2 className="font-semibold text-2xl mb-2">
                 โค้ดส่วนลดที่ใช้:
-              </Heading>
+              </h2>
 
               {promotions.map((promotion) => {
                 return (
@@ -184,10 +189,13 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                     className="flex items-center justify-between w-full max-w-full mb-2"
                     data-testid="discount-row"
                   >
-                    <Text className="flex gap-x-1 items-baseline txt-small-plus w-4/5 pr-1">
+                    <p className="flex gap-x-1 items-baseline text-sm font-medium w-4/5 pr-1">
                       <span className="truncate" data-testid="discount-code">
                         <Badge
-                          color={promotion.is_automatic ? "green" : "grey"}
+                          variant={promotion.is_automatic ? "outline" : "secondary"}
+                          className={
+                            promotion.is_automatic ? "bg-green-100 text-green-700" : undefined
+                          }
                         >
                           {promotion.code}
                         </Badge>{" "}
@@ -214,7 +222,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                           </Tooltip>
                         )} */}
                       </span>
-                    </Text>
+                    </p>
                     {!promotion.is_automatic && (
                       <button
                         className="flex items-center disabled:opacity-50 disabled:cursor-not-allowed"

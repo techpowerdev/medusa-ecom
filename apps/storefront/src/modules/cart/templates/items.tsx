@@ -1,6 +1,12 @@
 import repeat from "@lib/util/repeat"
 import { HttpTypes } from "@medusajs/types"
-import { Heading, Table } from "@modules/common/components/ui"
+import {
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 import Item from "@modules/cart/components/item"
 import SkeletonLineItem from "@modules/skeletons/components/skeleton-line-item"
@@ -20,37 +26,38 @@ const ItemsTemplate = ({
   return (
     <div>
       <div className="pb-3 flex items-center">
-        <Heading
-          className="text-[2rem] leading-[2.75rem]"
+        <h2
+          className="font-semibold text-[2rem] leading-[2.75rem]"
           data-testid="cart-title"
         >
           ตะกร้าสินค้า
-        </Heading>
+        </h2>
       </div>
       {/* CORE-47 (กฎข้อ 105b): < small ตารางเป็น block ให้แถวเป็นการ์ด (grid ใน Item) และซ่อนหัวคอลัมน์ — ≥ small ตารางเดิม */}
       <Table className="max-small:block">
-        <Table.Header className="border-t-0 max-small:hidden">
-          <Table.Row
-            className="text-ui-fg-subtle txt-medium-plus"
+        <TableHeader className="border-t-0 max-small:hidden">
+          <TableRow
+            className="text-muted-foreground text-sm leading-[1.4rem] font-medium"
             data-testid="cart-items-header"
           >
-            {/* CORE-42 (กฎข้อ 100a): padding < small ตรงกับ cell ของ Item (≥ small คงเดิม) */}
-            <Table.HeaderCell className="pl-0! pr-2 small:pr-4">
+            {/* CORE-42 (กฎข้อ 100a): padding < small ตรงกับ cell ของ Item (≥ small คงเดิม)
+                SFUI-5c: shadcn TableHead เริ่มที่ px-2 — ใส่ px-4 เดิมของ shim เอง (spec 09 กฎ 21, core-42/47) */}
+            <TableHead className="px-4 pl-0! pr-2 small:pr-4">
               สินค้า
-            </Table.HeaderCell>
-            <Table.HeaderCell className="px-2 small:px-4"></Table.HeaderCell>
-            <Table.HeaderCell className="px-2 small:px-4">
+            </TableHead>
+            <TableHead className="px-2 small:px-4"></TableHead>
+            <TableHead className="px-2 small:px-4">
               จำนวน
-            </Table.HeaderCell>
-            <Table.HeaderCell className="hidden small:table-cell">
+            </TableHead>
+            <TableHead className="px-4 hidden small:table-cell">
               ราคา
-            </Table.HeaderCell>
-            <Table.HeaderCell className="pr-0! text-right">
+            </TableHead>
+            <TableHead className="px-4 pr-0! text-right">
               รวม
-            </Table.HeaderCell>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body className="max-small:block">
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody className="max-small:block">
           {items
             ? items
                 .sort((a, b) => {
@@ -70,7 +77,7 @@ const ItemsTemplate = ({
             : repeat(5).map((i) => {
                 return <SkeletonLineItem key={i} />
               })}
-        </Table.Body>
+        </TableBody>
       </Table>
     </div>
   )

@@ -1,6 +1,7 @@
 "use client"
 
-import { IconBadge, clx } from "@modules/common/components/ui"
+import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 import {
   SelectHTMLAttributes,
   forwardRef,
@@ -38,14 +39,15 @@ const CartItemSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
 
     return (
       <div>
-        <IconBadge
+        <Badge
+          variant="secondary"
           onFocus={() => innerRef.current?.focus()}
           onBlur={() => innerRef.current?.blur()}
-          className={clx(
-            "relative flex items-center txt-compact-small border text-ui-fg-base group",
+          className={cn(
+            "relative flex items-center text-sm leading-5 border text-foreground group",
             className,
             {
-              "text-ui-fg-subtle": isPlaceholder,
+              "text-muted-foreground": isPlaceholder,
             }
           )}
         >
@@ -62,7 +64,7 @@ const CartItemSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
           <span className="absolute flex pointer-events-none justify-end w-8 group-hover:animate-pulse">
             <ChevronDown />
           </span>
-        </IconBadge>
+        </Badge>
       </div>
     )
   }

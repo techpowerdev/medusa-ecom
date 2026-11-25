@@ -1,8 +1,12 @@
 "use client"
 
-import { Button } from "@modules/common/components/ui"
+import { Button } from "@/components/ui/button"
 import React from "react"
 import { useFormStatus } from "react-dom"
+
+// SFUI-5c (spec 09 กฎ 20): คง prop variant/size เดิมของผู้เรียก แล้ว map เป็นของ shadcn
+const VARIANT = { primary: "default", secondary: "outline", transparent: "ghost" } as const
+const SIZE = { small: "sm", medium: "default", large: "lg" } as const
 
 export function SubmitButton({
   children,
@@ -27,12 +31,12 @@ export function SubmitButton({
 
   return (
     <Button
-      size={size}
+      size={SIZE[size]}
       className={className}
       type="submit"
       isLoading={isLoading ?? pending}
       disabled={disabled}
-      variant={variant || "primary"}
+      variant={VARIANT[variant || "primary"]}
       data-testid={dataTestId}
     >
       {children}

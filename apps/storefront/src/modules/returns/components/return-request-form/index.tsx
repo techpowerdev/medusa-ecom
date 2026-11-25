@@ -3,7 +3,7 @@
 import { requestReturn, ReturnRequestState } from "@lib/data/returns"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import NativeSelect from "@modules/common/components/native-select"
-import { Button, Heading, Text } from "@modules/common/components/ui"
+import { Button } from "@/components/ui/button"
 import { useActionState } from "react"
 
 export type ReturnableLine = {
@@ -32,24 +32,24 @@ const ReturnRequestForm = ({ orderId, displayId, lines, reasons }: Props) => {
 
   return (
     <div className="flex flex-col gap-y-6" data-testid="return-request-container">
-      <Heading className="text-2xl-semi" data-testid="return-request-heading">
+      <h2 className="font-semibold text-2xl-semi" data-testid="return-request-heading">
         ขอคืนสินค้า คำสั่งซื้อ #{displayId}
-      </Heading>
+      </h2>
 
       {state.success ? (
         <div className="flex flex-col gap-y-4">
-          <Text className="txt-medium text-ui-fg-base" data-testid="order-return-success">
+          <p className="text-sm leading-[1.4rem] text-foreground" data-testid="order-return-success">
             ส่งคำขอคืนสินค้าเรียบร้อยแล้ว ร้านจะตรวจสอบคำขอและติดต่อกลับ
-          </Text>
+          </p>
           <LocalizedClientLink href={backHref} className="underline" data-testid="back-to-order-button">
             กลับไปหน้ารายละเอียดคำสั่งซื้อ
           </LocalizedClientLink>
         </div>
       ) : !lines.length ? (
         <div className="flex flex-col gap-y-4">
-          <Text className="txt-medium text-ui-fg-subtle" data-testid="return-not-available">
+          <p className="text-sm leading-[1.4rem] text-muted-foreground" data-testid="return-not-available">
             คำสั่งซื้อนี้ไม่มีสินค้าที่ขอคืนได้ในขณะนี้
-          </Text>
+          </p>
           <LocalizedClientLink href={backHref} className="underline" data-testid="back-to-order-button">
             กลับไปหน้ารายละเอียดคำสั่งซื้อ
           </LocalizedClientLink>
@@ -57,26 +57,26 @@ const ReturnRequestForm = ({ orderId, displayId, lines, reasons }: Props) => {
       ) : (
         <form key={JSON.stringify(values)} action={formAction} className="flex flex-col gap-y-4">
           <input type="hidden" name="order_id" value={orderId} />
-          <Text className="txt-medium text-ui-fg-subtle" data-testid="return-request-hint">
+          <p className="text-sm leading-[1.4rem] text-muted-foreground" data-testid="return-request-hint">
             เลือกจำนวนสินค้าที่ต้องการคืนและเหตุผล
-          </Text>
+          </p>
           <ul className="flex flex-col gap-y-4">
             {lines.map((line) => (
               <li
                 key={line.id}
-                className="flex flex-col small:flex-row small:items-center gap-4 border-b border-ui-border-base pb-4"
+                className="flex flex-col small:flex-row small:items-center gap-4 border-b border-border pb-4"
                 data-testid="return-item"
                 data-line-id={line.id}
               >
                 <div className="flex-1">
-                  <Text className="txt-medium-plus" data-testid="return-item-title">
+                  <p className="text-sm leading-[1.4rem] font-medium" data-testid="return-item-title">
                     {line.title}
-                  </Text>
+                  </p>
                   {line.variantTitle && (
-                    <Text className="txt-small text-ui-fg-subtle">{line.variantTitle}</Text>
+                    <p className="text-sm leading-[1.4rem] text-muted-foreground">{line.variantTitle}</p>
                   )}
                 </div>
-                <label className="flex flex-col gap-y-1 txt-small">
+                <label className="flex flex-col gap-y-1 text-sm">
                   <span>จำนวนที่คืน</span>
                   <NativeSelect
                     name={`quantity:${line.id}`}
@@ -92,7 +92,7 @@ const ReturnRequestForm = ({ orderId, displayId, lines, reasons }: Props) => {
                   </NativeSelect>
                 </label>
                 {reasons.length > 0 && (
-                  <label className="flex flex-col gap-y-1 txt-small">
+                  <label className="flex flex-col gap-y-1 text-sm">
                     <span>เหตุผล</span>
                     <NativeSelect
                       name={`reason:${line.id}`}
@@ -114,24 +114,24 @@ const ReturnRequestForm = ({ orderId, displayId, lines, reasons }: Props) => {
           </ul>
           {state.contactStore ? (
             // CORE-71 (กฎข้อ 129): location ไม่มีของ — ลองใหม่ไม่ช่วย ให้ติดต่อร้าน
-            <Text className="txt-medium text-rose-500" data-testid="return-contact-store">
+            <p className="text-sm leading-[1.4rem] text-rose-500" data-testid="return-contact-store">
               {state.error}{" "}
               <LocalizedClientLink href="/contact" className="underline" data-testid="return-contact-store-link">
                 ไปหน้าติดต่อร้าน
               </LocalizedClientLink>
-            </Text>
+            </p>
           ) : (
             state.error && (
-              <Text className="txt-medium text-rose-500" data-testid="return-error">
+              <p className="text-sm leading-[1.4rem] text-rose-500" data-testid="return-error">
                 {state.error}
-              </Text>
+              </p>
             )
           )}
           <div className="flex gap-x-4 items-center">
             <Button type="submit" disabled={isPending} isLoading={isPending} data-testid="return-submit-button">
               ยืนยันขอคืนสินค้า
             </Button>
-            <LocalizedClientLink href={backHref} className="text-ui-fg-subtle" data-testid="back-to-order-button">
+            <LocalizedClientLink href={backHref} className="text-muted-foreground" data-testid="back-to-order-button">
               ยกเลิก
             </LocalizedClientLink>
           </div>

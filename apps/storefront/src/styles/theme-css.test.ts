@@ -178,7 +178,8 @@ describe("legacy-medusa.css — ชั้นเข้ากันได้ขอ
     expect(declsOf(root, ".ring-2")["--tw-ring-shadow"]).toContain("rgb(59 130 246 / 0.5)")
     const rootDecls = declsOf(root, ":root")
     expect(rootDecls["--fg-interactive"]).toBe("rgba(59, 130, 246, 1)")
-    expect(rootDecls["--fg-muted"]).toBe("rgba(113, 113, 122, 1)")
+    // SFUI-5c: --fg-muted ไม่มีผู้ใช้แล้ว (discount-code ใช้ token ของ shadcn) — ลบตาม AC-2
+    expect(rootDecls["--fg-muted"]).toBeUndefined()
   })
 
   it("ขอบเริ่มต้นเป็นสี --color-ui-border-base แบบ preset เดิม (v4 เริ่มต้นเป็น currentColor)", async () => {

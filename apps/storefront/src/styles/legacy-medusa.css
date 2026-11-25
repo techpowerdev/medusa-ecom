@@ -14,7 +14,6 @@
 /* preset ใส่ตัวแปรดิบ (light) ใน :root ด้วย addBase — โค้ดที่อ้าง var(--fg-*) ตรง (prop color ของ icon, interactive-link, not-found, discount-code) */
 :root {
   --fg-interactive: rgba(59, 130, 246, 1);
-  --fg-muted: rgba(113, 113, 122, 1);
 }
 
 /* ring ที่ไม่ระบุสี: v3 = blue-500 ที่ opacity 0.5 (v4 เริ่มต้นเป็น currentColor) — shadcn (SFUI-2) มาแทน */

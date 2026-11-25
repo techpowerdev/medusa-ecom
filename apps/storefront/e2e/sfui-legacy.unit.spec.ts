@@ -147,35 +147,6 @@ const PENDING: Partial<Record<Task, string[]>> = {
     "src/modules/store/components/store-refinements/on-sale-toggle.tsx",
     "src/modules/store/components/store-search-box/index.tsx",
   ],
-  "SFUI-5c": [
-    "src/app/[countryCode]/(checkout)/layout.tsx",
-    "src/app/[countryCode]/(checkout)/not-found.tsx",
-    "src/app/[countryCode]/(main)/cart/not-found.tsx",
-    "src/modules/cart/components/cart-error-notice/index.tsx",
-    "src/modules/cart/components/cart-item-select/index.tsx",
-    "src/modules/cart/components/empty-cart-message/index.tsx",
-    "src/modules/cart/components/flash-code-notice/index.tsx",
-    "src/modules/cart/components/flash-exceeds-remaining/index.tsx",
-    "src/modules/cart/components/item/index.tsx",
-    "src/modules/cart/components/sign-in-prompt/index.tsx",
-    "src/modules/cart/templates/items.tsx",
-    "src/modules/cart/templates/preview.tsx",
-    "src/modules/cart/templates/summary.tsx",
-    "src/modules/checkout/components/addresses/index.tsx",
-    "src/modules/checkout/components/country-select/index.tsx",
-    "src/modules/checkout/components/discount-code/index.tsx",
-    "src/modules/checkout/components/payment-button/index.tsx",
-    "src/modules/checkout/components/payment-test/index.tsx",
-    "src/modules/checkout/components/promptpay-payment/index.tsx",
-    "src/modules/checkout/components/promptpay-payment/order-delayed.tsx",
-    "src/modules/checkout/components/promptpay-payment/qr-panel.tsx",
-    "src/modules/checkout/components/refunded-go-to-cart/index.tsx",
-    "src/modules/checkout/components/review/index.tsx",
-    "src/modules/checkout/components/shipping-address/index.tsx",
-    "src/modules/checkout/components/submit-button/index.tsx",
-    "src/modules/checkout/templates/checkout-summary/index.tsx",
-    "src/modules/returns/components/return-request-form/index.tsx",
-  ],
   "SFUI-5d": [
     "src/modules/account/components/account-nav/index.tsx",
     "src/modules/account/components/add-variant-error/index.tsx",
@@ -280,5 +251,7 @@ test("AC-6: ไฟล์ที่อ้าง var(--fg-*) อยู่ใน PEN
   expect(PENDING["SFUI-5a"]).toEqual(
     expect.arrayContaining(["src/app/not-found.tsx", "src/modules/common/components/interactive-link/index.tsx"])
   )
-  expect(PENDING["SFUI-5c"]).toContain("src/modules/checkout/components/discount-code/index.tsx")
+  // SFUI-5c ย้ายเสร็จ: discount-code ใช้ token ของ shadcn แทน var(--fg-muted)
+  const discountCode = "src/modules/checkout/components/discount-code/index.tsx"
+  expect(hasForbiddenPattern(discountCode, readSource(discountCode)), discountCode).toBe(false)
 })
