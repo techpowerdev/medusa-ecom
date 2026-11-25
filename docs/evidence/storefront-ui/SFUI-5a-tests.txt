@@ -233,3 +233,11 @@ base ของ branch: 6e3f203c (merge feat/SFUI-2-shadcn-base ที่มี 4
   1 failed
   18 passed (14.2s)
 ล้ม 1 ตัวไม่ใช่ของ task นี้: core-50 :171 nav-menu-button ต่าง 1.265625px = ค่าเดิมของ macOS (เท่า base); core-38 ผ่านครบทุกตัวแล้วบน base ใหม่
+
+================ re-review: padding ของตาราง skeleton ตามกฎ 21 ฉบับใหม่ 2026-11-26 ================
+skeleton-cart-item / skeleton-line-item: TableCell เติม p-4 (คง pl-0!/pr-0! เดิม); skeleton-cart-page: TableHead เติม px-4 (คง pl-0!/pr-0!)
+== lint: 0 errors (28 warnings เดิม) | typecheck: ผ่าน
+== test:unit: Test Files 130 passed (130); Tests 2002 passed (2002)
+== test:e2e:unit: 192 passed
+== build prod: ผ่าน (Compiled successfully)
+ไม่รัน e2e browser (skeleton = หน้า loading ตามที่ reviewer ระบุ)
