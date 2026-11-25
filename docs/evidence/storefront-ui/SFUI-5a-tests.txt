@@ -145,3 +145,57 @@ e2e/thai-ui-cart-order.spec.ts
 e2e/thai-ui-checkout.spec.ts
 e2e/thai-ui-pages.spec.ts
 e2e/thai-ui-shell.spec.ts
+
+================ รอบแก้ตาม review (REQUEST CHANGES — หลักฐาน e2e) 2026-11-26 ================
+การแก้: ลบ src/components/ui/native-select.tsx (ไม่มีผู้ใช้ — session หลักตัดสินคง <select> ของ common/native-select);
+  checkbox: เอา transform-none!/text-sm! ออก (input ซ่อนของ Radix อยู่ใน <span> แยกแล้ว rule input ~ label ไม่จับ label) + แก้ comment;
+  nav: ลอง font-medium ตามกฎ 21 แล้ว core-50 แย่ลง (nav-menu-button ต่าง 1.27 → 1.67px, ทุกลิงก์ใน nav กว้างขึ้น) จึงคงน้ำหนัก 400 ตามค่าที่ render จริงบน base/develop และใส่ comment เหตุผล
+== lint: 0 errors (28 warnings เดิม) | typecheck: ผ่าน | build prod: ผ่าน
+== test:unit:  Test Files 130 passed (130)
+ Tests 1998 passed (1998)
+   (ลดลง 1 case จากรอบก่อน = core-84-gb-affiliate-codes static ที่สร้าง case ต่อไฟล์ — components/ui/native-select.tsx ถูกลบ)
+== test:e2e:unit:   192 passed (1.7s)
+== e2e (prod build) ที่ review ขอ + spec ที่อ้าง nav/checkbox:
+  ✓   1 [chromium] › e2e/core-23-profile-order.spec.ts:42:5 › AC-85: ล้างช่องเบอร์แล้วบันทึก → phone ว่าง และแสดง ยังไม่ได้ระบุ (1.8s)
+  ✓   4 [chromium] › e2e/core-23-profile-order.spec.ts:74:5 › AC-86, AC-89: อีเมลอ่านอย่างเดียว และ ยังไม่ได้ระบุ ชิดแนวเดียวกับค่าชื่อ (1.0s)
+  ✓   3 [chromium] › e2e/core-37-copy-button.spec.ts:14:5 › AC-131: แถวรหัสของการ์ด voucher ไม่เยื้องที่ 1280 และข้อความคัดลอกล้มไม่ล้นจอที่ 375 (5.0s)
+  ✓   6 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (375px) (1.5s)
+  ✓   2 [chromium] › e2e/core-22-account-fixes.spec.ts:19:5 › AC-82: title ของหน้า account ที่ล็อกอินแล้วตรงหน้า และหน้า login ยังเป็น เข้าสู่ระบบ (8.5s)
+  ✓   7 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (1280px) (1.6s)
+  ✓   5 [chromium] › e2e/core-23-profile-order.spec.ts:106:5 › AC-87: order ที่ไม่มีอยู่ และ order ของ customer อื่น ตอบ HTTP 404 (6.2s)
+  ✓   8 [chromium] › e2e/core-22-account-fixes.spec.ts:68:5 › AC-83, AC-84: profile เบอร์ว่างไม่แสดง null และกด แก้ไข เบอร์โทรไม่โดน editor อื่นที่ปิดอยู่ (1.1s)
+  ✓  10 [chromium] › e2e/core-23-profile-order.spec.ts:128:5 › AC-88: token หายระหว่างบันทึกเบอร์ → ไม่มี error ดิบของ React และแสดงข้อความไทย (1.1s)
+  ✓  11 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 320×640: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (376ms)
+  ✓  13 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 375×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (347ms)
+  ✓  14 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 639×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (519ms)
+  ✓  15 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1023×800: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (629ms)
+  ✘  16 [chromium] › e2e/core-50-nav-narrow.spec.ts:171:7 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1280×800: ชื่อร้านกึ่งกลาง nav-account-link แสดง ตำแหน่ง/ขนาดเท่า develop (437ms)
+  ✓  12 [chromium] › e2e/core-52-checkout-guards.spec.ts:97:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (1280x800) (3.6s)
+  ✓   9 [chromium] › e2e/core-38-mobile-layout.spec.ts:124:5 › AC-132: checkout — label ของฟอร์มที่อยู่ไม่ทับค่า, สรุปที่อยู่ 375 เรียงแนวตั้งและอีเมลยาวไม่ล้น, 1280 แถวเดียว (6.4s)
+  ✓  18 [chromium] › e2e/core-52-checkout-guards.spec.ts:119:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (1280x800) (2.3s)
+  ✓  17 [chromium] › e2e/evoucher-storefront.spec.ts:16:5 › AC-36: PDP ของ voucher มี evoucher-partner-block ภาษาไทย ส่วนสินค้าปกติไม่มี (3.0s)
+  ✓  20 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 1280x800 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (1280x800) (1.1s)
+  ✘  19 [chromium] › e2e/core-38-mobile-layout.spec.ts:202:5 › AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่าง + billing ต่างกัน → ข้อความอยู่ในกล่องของตัวเองที่ 375/640/1280 (5.0s)
+  ✓  22 [chromium] › e2e/core-52-checkout-guards.spec.ts:177:9 › viewport 1280x800 › AC-147 ใบเสร็จแยก: error แล้วแก้ส่งใหม่ → billing เป็นค่าที่กรอก (1280x800) (3.4s)
+  ✓  21 [chromium] › e2e/evoucher-storefront.spec.ts:40:5 › AC-6 + AC-36: บัตรกำนัลของฉันแสดงเฉพาะ code ของตนเอง พร้อมปุ่มคัดลอก (5.4s)
+  ✓  25 [chromium] › e2e/sfui-5a-common.spec.ts:23:5 › label ลอยของช่องกรอก (common/components/input) มองเห็นได้ทั้งก่อนและหลังกรอก (580ms)
+  ✓  26 [chromium] › e2e/sfui-5a-common.spec.ts:50:5 › 404: ลูกศรของลิงก์กลับหน้าแรกมองเห็นและใช้สีเดียวกับข้อความ (token ของ shadcn) (371ms)
+  ✓  24 [chromium] › e2e/core-52-checkout-guards.spec.ts:224:9 › viewport 1280x800 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (1280x800) (3.3s)
+  ✘  23 [chromium] › e2e/core-38-mobile-layout.spec.ts:247:5 › AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่างอยู่ในกล่องของตัวเองที่ 375/640/1280 (6.1s)
+  ✓  28 [chromium] › e2e/core-52-checkout-guards.spec.ts:259:9 › viewport 1280x800 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (1280x800) (6.4s)
+  ✓  30 [chromium] › e2e/core-52-checkout-guards.spec.ts:97:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (375x812) (2.5s)
+  ✓  29 [chromium] › e2e/thai-ui-checkout.spec.ts:22:5 › AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษาไทย (6.5s)
+  ✓  31 [chromium] › e2e/core-52-checkout-guards.spec.ts:119:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (375x812) (1.9s)
+  ✓  33 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 375x812 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (375x812) (973ms)
+  ✓  32 [chromium] › e2e/thai-ui-shell.spec.ts:10:5 › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai (2.8s)
+  ✓  35 [chromium] › e2e/thai-ui-shell.spec.ts:61:5 › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย (329ms)
+  ✓  34 [chromium] › e2e/core-52-checkout-guards.spec.ts:177:9 › viewport 375x812 › AC-147 ใบเสร็จแยก: error แล้วแก้ส่งใหม่ → billing เป็นค่าที่กรอก (375x812) (1.5s)
+  ✓  37 [chromium] › e2e/core-52-checkout-guards.spec.ts:224:9 › viewport 375x812 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (375x812) (2.2s)
+  ✓  36 [chromium] › e2e/ui-preset-font.spec.ts:9:5 › AC-3: body, h1, h2, p, button, input และ class txt-*/*-webs บนหน้าแรกใช้ Noto Sans Thai ก่อน Inter (2.6s)
+  ✓  38 [chromium] › e2e/core-52-checkout-guards.spec.ts:259:9 › viewport 375x812 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (375x812) (8.0s)
+  ✓  39 [chromium] › e2e/core-52-checkout-guards.spec.ts:299:7 › CORE-58 อักขระที่มองไม่เห็น 1280x800 › AC-157 เขต/อำเภอเป็น U+200B ล้วน → error ไทย ไม่บันทึกลง cart (1.9s)
+  ✓  40 [chromium] › e2e/core-52-checkout-guards.spec.ts:327:7 › CORE-58 อักขระที่มองไม่เห็น 1280x800 › AC-157 cart digital-only: เขต/อำเภอใบเสร็จเป็น U+200B ล้วน → error ไทย ไม่บันทึกลง cart (2.3s)
+  ✓  27 [chromium] › e2e/sfui-mobile-390.spec.ts:20:5 › AC-17: หน้าแรก, store, PDP, cart, checkout, account, orders ที่ 390px ไม่ล้นแนวนอน (35.4s)
+  3 failed
+  37 passed (1.0m)
+ล้ม 3 ตัวไม่ใช่ของ task นี้: core-38 :202/:247 ล้มเหมือนกันบน base 8afaceb5 (กล่องสรุปที่อยู่ของ 5c); core-50 :171 nav-menu-button ต่าง 1.265625px = ค่าเดิมของ macOS (เท่า base)

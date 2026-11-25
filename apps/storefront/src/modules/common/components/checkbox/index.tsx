@@ -23,7 +23,8 @@ const CheckboxWithLabel: React.FC<CheckboxProps> = ({
 }) => {
   return (
     <div className="flex items-center space-x-2 ">
-      {/* ห่อให้ input ซ่อนของ Radix ไม่อยู่ข้าง label (เหมือนโครง shim เดิม — core-38 วัด label เทียบ input พี่น้อง) */}
+      {/* ห่อให้ input ซ่อนของ Radix ไม่เป็นพี่น้องของ label (โครงเดียวกับ shim เดิม): rule `input ~ label` ของ globals.css
+          (label ลอย) จึงไม่จับ label นี้ และ core-38 ที่วัด label เทียบ input พี่น้องไม่นับช่องนี้ */}
       <span className="flex">
         <Checkbox
           id="checkbox"
@@ -34,8 +35,7 @@ const CheckboxWithLabel: React.FC<CheckboxProps> = ({
           data-testid={dataTestId}
         />
       </span>
-      {/* transform-none!/text-sm!: กัน rule `input ~ label` ของ globals.css (label ลอย) จับ input ซ่อนของ Radix */}
-      <Label htmlFor="checkbox" className="transform-none! text-sm!">
+      <Label htmlFor="checkbox" className="text-sm">
         {label}
       </Label>
     </div>

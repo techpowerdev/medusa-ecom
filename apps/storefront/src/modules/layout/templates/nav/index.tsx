@@ -14,6 +14,8 @@ export default async function Nav() {
   return (
     <div className="sticky top-0 inset-x-0 z-50 group">
       <header className="relative h-16 mx-auto border-b duration-200 bg-white border-border">
+        {/* SFUI-5a: เดิม `txt-xsmall-plus … text-small-regular` — ค่าที่ render จริงคือ 12px/20px น้ำหนัก 400 (text-small-regular ชนะ font-weight)
+            จึงไม่ใส่ font-medium ตามกฎ 21: น้ำหนัก 500 ทำให้ปุ่ม/ลิงก์ใน nav กว้างขึ้นจน core-50 (เทียบตำแหน่ง/ขนาดกับ develop ±1px) ล้ม */}
         <nav className="content-container px-4 small:px-6 text-xs leading-5 text-muted-foreground flex items-center justify-between w-full h-full">
           <div className="flex-1 basis-0 h-full flex items-center">
             <div className="h-full">
