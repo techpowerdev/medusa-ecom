@@ -108,10 +108,20 @@ const PII_KEY_VALUE =
 //   หรือที่ปิดผิดที่ (`'\\'` ของ \' ชั้น 1) จึงไม่นับ
 // - จับได้เกินจริง (สตริงถัดไปที่ไม่ใช่ key) ไม่ทำให้หลุด เพราะภายในยังถูก redact; จับได้ไม่ครบ (`]` ไม่บังคับ) = พฤติกรรมเดิมกับส่วนที่เหลือ
 // ความยาว source ต้องไม่เกิน ~20KB (V8 ปิด optimization ของ regex ที่ใหญ่กว่านั้น — วัดได้ช้าลง ~10 เท่าและ backtrack stack ล้นเร็วขึ้น)
+// key ใน quote (re-review #562 — key ที่มี quote อีกชนิด/backslash/\n ข้างใน ต้องปิดถูกที่ ไม่งั้นค่าของมันไม่ถูกจับเป็น field):
+// - quote `"` (JSON escape ทุกชั้นสม่ำเสมอ): group 12 = backslash ของ quote (ชั้น k = 2^k−1 ตัว), 13 = `"` — quote ปิด = ช่วง backslash m·(2B+2)+B ตัว + `"` (แบบ escapedQuoteRun)
+// - quote ' หรือ backtick ของ inspect (group 14 — JSON ไม่ escape ' จึงไม่รู้ชั้น): ปิดที่ quote แรก (ช่วง backslash ใดก็ได้นำหน้า) ที่ตามด้วย `:`/`=>`
+//   เนื้อหาข้าม quote ที่ไม่มี backslash นำไม่ได้ — การสแกนจากแต่ละ quote เปิดหยุดที่ quote ถัดไป (ReDoS: `, 'x\\` ซ้ำ)
+// เนื้อหา ≤ 128 token (ช่วง backslash + อักขระ หรืออักขระเดียว — แตกได้แบบเดียว) จึงสแกนจากแต่ละจุดเริ่มได้จำกัด
+const KEY_EXCLUDED = (quote: string) => `(?!${KEY_NAMES}${quote}\\s*(?::|=>)\\s*(?![\\s\\[]))` // key PII (ยกเว้นค่า array ที่ไม่ผ่านกิ่ง array)
+const KEY_CLOSE = `(?:\\12\\12${BS}${BS})*\\12\\13`
+const KEY_TOKEN = `(?:${BS}+[^${BS}\\r\\n]|[^${BS}\\r\\n])`
 const NON_PII_FIELD =
-  `((?<![A-Za-z0-9_$])(?=${BS}{0,7}["']|[A-Za-z_$])(?<=(?:^|[{,\\n]|${BS}+n)[ \\t]*)` +
-  `(?:(${BS}{0,7}["'])(?!${KEY_NAMES}\\12\\s*(?::|=>)\\s*(?![\\s\\[]))[^${BS}"'\\r\\n]+\\12|(?!${KEY_NAMES}\\s*(?::|=>)\\s*(?![\\s\\[]))[A-Za-z_$][\\w$]*)\\s*(?::|=>)\\s*)` +
-  `(?=["'\`${BS}\\[])(\\[?(?:[\\s,+]+|${BS}+n|\\.\\.\\. \\d+ more items?|(?=(${quotedString(15, INSPECT_ESCAPED_QUOTE_FIELD)}|-?\\d+(?:\\.\\d+)?(?![\\w.])|(?:null|true|false|undefined)(?![\\w$])))\\14(?=\\s*(?:[,\\]}+]|${BS}+n|$)))*\\]?)`
+  `((?<![A-Za-z0-9_$])(?=${BS}{0,7}["'\`]|[A-Za-z_$])(?<=(?:^|[{,\\n]|${BS}+n)[ \\t]*)` +
+  `(?:(${BS}{0,7})(")${KEY_EXCLUDED("\\12\\13")}(?:(?!${KEY_CLOSE})${KEY_TOKEN}){1,128}${KEY_CLOSE}` +
+  `|(['\`])${KEY_EXCLUDED("\\14")}(?:${BS}+[^${BS}\\r\\n]|(?!\\14)[^${BS}\\r\\n]){1,128}?${BS}*\\14(?=\\s*(?::|=>))` +
+  `|${KEY_EXCLUDED("")}[A-Za-z_$][\\w$]*)\\s*(?::|=>)\\s*)` +
+  `(?=["'\`${BS}\\[])(\\[?(?:[\\s,+]+|${BS}+n|\\.\\.\\. \\d+ more items?|(?=(${quotedString(17, INSPECT_ESCAPED_QUOTE_FIELD)}|-?\\d+(?:\\.\\d+)?(?![\\w.])|(?:null|true|false|undefined)(?![\\w$])))\\16(?=\\s*(?:[,\\]}+]|${BS}+n|$)))*\\]?)`
 export const KEY_VALUE = new RegExp(`${PII_KEY_VALUE}|${NON_PII_FIELD}`, "gi")
 const PII_ONLY = new RegExp(PII_KEY_VALUE, "gi")
 // (a) สตริงรูปอีเมล — เริ่ม match ได้เฉพาะต้นช่วงอักขระ local และจำกัดความยาวตาม RFC 5321 (local ≤ 64, label ≤ 63)
@@ -137,31 +147,27 @@ const replacePii = (_match: string, ...groups: unknown[]): string => {
   return `${prefix}${q}${REDACTED}${q}`
 }
 
-/** field ที่ไม่ใช่ PII (group 11 = key, 13 = ค่า) → redact เฉพาะภายในค่า */
+/** field ที่ไม่ใช่ PII (group 11 = key, 15 = ค่า) → redact เฉพาะภายในค่า */
 const replaceKeyValue = (match: string, ...groups: unknown[]): string => {
-  const [field, , fieldValue] = groups.slice(10, 13) as (string | undefined)[]
+  const [field, , , , fieldValue] = groups.slice(10, 15) as (string | undefined)[]
   return field === undefined ? replacePii(match, ...groups) : field + (fieldValue ?? "").replace(PII_ONLY, replacePii)
 }
 
 /**
- * backtrack stack ของ regex ล้น (RangeError — field ที่ไม่ใช่ PII ยาว > ~1.5M ตัวอักษรบางรูป เช่น array ที่คั่นด้วย `\n` ที่ escape)
- * → ใช้เฉพาะกิ่ง key PII (ไม่จับ field ที่ไม่ใช่ PII แบบก่อน OPS-40) แทนการ throw — ข้อความที่ PII_ONLY ก็ล้นยัง throw เหมือนเดิม
+ * re-review #562: backtrack stack ของ regex ล้น (RangeError — ข้อความหลาย MB บางรูป เช่น array ที่คั่นด้วย `\n` ที่ escape ยาว)
+ * → แทนทั้งข้อความด้วย [REDACTED] (เสีย log บรรทัดนั้นแต่ไม่หลุดและไม่ throw — กิ่ง key PII อย่างเดียวไม่มี guard ของ NON_PII_FIELD จึงหลุดกว่า develop)
  */
-const replaceKeyValues = (text: string): string => {
+export function redactPii(text: string): string {
+  let out: string
   try {
-    return text.replace(KEY_VALUE, replaceKeyValue)
+    out = text.replace(KEY_VALUE, replaceKeyValue)
   } catch (error) {
     if (!(error instanceof RangeError)) {
       throw error
     }
-    return text.replace(PII_ONLY, replacePii)
+    return REDACTED
   }
-}
-
-export function redactPii(text: string): string {
-  return replaceKeyValues(text)
-    .replace(EMAIL, REDACTED)
-    .replace(THAI_PHONE, REDACTED)
+  return out.replace(EMAIL, REDACTED).replace(THAI_PHONE, REDACTED)
 }
 
 const PII_KEY_SET = new Set(PII_KEYS)

@@ -764,6 +764,64 @@ describe("redactPii (OPS-40, AC-55)", () => {
     expect(failures.slice(0, 3)).toEqual([])
   })
 
+  // re-review #562 รอบ 2: key ใน quote ที่มี quote อีกชนิด/backslash/escape ข้างใน (inspect `"customer's note"`, `'say "hi"'`, `'a\\b'`, `'a\nb'`)
+  // เคยไม่ถูกจับเป็น field → `, tel:` ในค่าเริ่ม field ปลอมที่กลืน quote เปิดของ phone (ค่าขึ้นต้นด้วย `+` `,` `]` `}` newline) — develop ไม่หลุด
+  const ODD_KEYS = ["customer's note", 'say "hi"', "a\\b", "a\nb", "tab\tkey", "\ud83d"]
+  it.each(ODD_KEYS.flatMap((key) => ["+66 81 234 5678", ",Somchai", "]Somchai", "}Somchai", "\nSomchai"].map((phone) => [key, phone] as const)))(
+    "(re-review #562) key %j ค่า PII %j × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด",
+    (key, phone) => {
+      for (const [, render] of SERIALIZERS) {
+        for (const levels of [0, 1, 2, 3]) {
+          const out = redactPii(wrap(render({ [key]: "call me, tel:", phone, id: CART_ID }), levels))
+          expect(out).not.toMatch(/Somchai|234 5678/)
+          expect(out).toContain(CART_ID)
+        }
+      }
+    }
+  )
+
+  // re-review #562 รอบ 2: fuzz สองทิศ — key ที่มี ' " backslash newline tab surrogate และค่า PII ขึ้นต้นด้วย + , ] } newline
+  const SEED_562B = 0x0b5_63
+  it(`(re-review #562) fuzz ${MARK} key ที่มี quote/escape × ค่า PII ขึ้นต้นด้วยเครื่องหมาย 600 object × serialize 4 แบบ × escape 0–3 ชั้น (seed ${SEED_562B})`, () => {
+    const rand = prng(SEED_562B)
+    const int = (n: number) => Math.floor(rand() * n)
+    const pick = <T,>(items: T[]): T => items[int(items.length)]
+    const chars = [...FUZZ_CHARS, "ส", "-", "t", "\t"]
+    const randomText = (length: number) => Array.from({ length }, () => pick(chars)).join("")
+    const keyChars = ["'", '"', "\\", "\n", "\t", "\ud83d", "a", " ", "-", "ส", ":", ","]
+    const oddKey = () => `${pick(["note", "customer", "x"])}${Array.from({ length: 1 + int(3) }, () => pick(keyChars)).join("")}${pick(["", "k"])}`
+    const openers = [...FUZZ_OPENERS, "call me, tel:", "a, b: ", "a\n  b: ", ", rv: ", "x: ["]
+    const failures: string[] = []
+    for (let i = 0; i < 600; i++) {
+      const obj: Record<string, unknown> = {}
+      const kept: string[] = []
+      for (let n = 0; n < 1 + int(2); n++) {
+        obj[`${oddKey()}${n || ""}`] = rand() < 0.75 ? pick(FUZZ_PREFIX) + randomText(int(4)) + pick(openers) : [randomText(int(4)), pick(openers)]
+        const text = randomText(int(8))
+        obj[pick(FUZZ_PII_KEYS)] = `${pick(["+66 ", ",", "]", "}", "\n", "สม", " "])}${text.slice(0, 3)}${MARK}${text.slice(3)}`
+        for (const [key, value] of KNOWN) {
+          if (rand() < 0.5) {
+            obj[`${key}${n || ""}`] = value
+            kept.push(`${key}${n || ""}`, String(value))
+          }
+        }
+      }
+      const id = `cart_${i.toString(36)}FZ`
+      obj.id = id
+      kept.push(id)
+      for (const [form, render] of SERIALIZERS) {
+        for (const levels of [0, 1, 2, 3]) {
+          const out = redactPii(wrap(render(obj), levels))
+          const lost = kept.filter((value) => !out.includes(value))
+          if (out.includes(MARK) || lost.length) {
+            failures.push(`seed=${SEED_562B} case=${i} ${form} levels=${levels} lost=${JSON.stringify(lost)} input=${JSON.stringify(obj)}`)
+          }
+        }
+      }
+    }
+    expect(failures.slice(0, 3)).toEqual([])
+  })
+
   // (d) ReDoS: input ≥ 100k ตัวอักษร (String.raw: backslash ในโค้ดคือ backslash จริงในข้อความ)
   const fill = (prefix: string, unit: string, suffix = "") => prefix + unit.repeat(Math.ceil(100_000 / unit.length)) + suffix
   it.each([
@@ -782,6 +840,14 @@ describe("redactPii (OPS-40, AC-55)", () => {
     ["field ที่ไม่ใช่ PII + \\r\\n ยาว + 'x'", fill(",a", "\r\n", ": 'x'")],
     ["ช่องว่างยาวก่อน key ที่ไม่ใช่ PII", fill(",", " ", "a: 'x'")],
     ["array ของ field ที่ไม่ใช่ PII + \\n ที่ escape ยาว", fill("{ a: [", String.raw`\n`, "'x'")],
+    // re-review #562 รอบ 2: key ใน quote ที่มี escape/quote อีกชนิด
+    ["key ใน quote + \\' ซ้ำไม่ปิด", fill("{ '", String.raw`\'`)],
+    ["key ใน quote + backslash ยาว", fill(", '", "\\")],
+    ["key ใน quote + quote สลับชนิดยาว", fill(", '", `"'`)],
+    ["key ใน quote ที่ escape 1 ชั้น + \\\\\\\" ซ้ำ", fill(String.raw`{\"`, String.raw`\\\"`)],
+    ["key ใน quote ซ้ำไม่มี :", fill("", `, 'a"b' `)],
+    ["key ใน ' + backslash + อักษรไทยซ้ำ (เดิม ~95ms — สแกน 128 token จากทุก quote)", fill("", String.raw`, 'x\\สม`)],
+    ["key ใน ' + backslash ยาว + quote ซ้ำ", fill("", String.raw`-, 'x\\\\'สม`)],
   ])("ข้อความยาว (%s) redact เสร็จเร็ว (ไม่ quadratic)", (_name, text) => {
     expect(text.length).toBeGreaterThanOrEqual(100_000)
     const started = performance.now()
@@ -789,12 +855,25 @@ describe("redactPii (OPS-40, AC-55)", () => {
     expect(performance.now() - started).toBeLessThan(200)
   })
 
-  // fallback เมื่อ backtrack stack ล้น (จุดล้นขึ้นกับ V8 — assert เฉพาะผล ไม่ assert ว่าล้นจริง; บน Node 22 ปัจจุบัน fixture นี้ล้นที่ KEY_VALUE)
-  it("ข้อความยาวมาก (4M ตัวอักษร) ของ field ที่ไม่ใช่ PII ไม่ throw และยัง redact key PII", () => {
-    const text = `{ name: 'Somchai', a: [${String.raw`\n`.repeat(2_000_000)}'x' ] }`
+  // re-review #562 รอบ 2 (ตัดสินโดย session หลัก): backtrack stack ล้น → แทนทั้งข้อความด้วย [REDACTED] (ไม่ throw ไม่หลุด)
+  // fixture ของ reviewer: กิ่ง key PII อย่างเดียว (fallback เดิม) ไม่มี guard ของ NON_PII_FIELD → company หลุด
+  it("ข้อความยาวมาก (4M ตัวอักษร) ของ field ที่ไม่ใช่ PII ไม่ throw และไม่หลุด", () => {
+    const head = JSON.stringify({ message1: `name:'postal_code:"\\''+`, company: "สมชาย ใจดี" })
+    const text = head.slice(0, -1) + `,"a":[${String.raw`\n`.repeat(2_000_000)}"x"]}`
     let out = ""
     expect(() => (out = redactPii(text))).not.toThrow()
-    expect(out).not.toContain("Somchai")
+    expect(out).not.toContain("สมชาย")
+  })
+
+  it("regex โยน RangeError (backtrack stack ล้น) → ผลเป็น [REDACTED] ทั้งข้อความ (บังคับเข้าทางนี้โดยไม่ขึ้นกับจุดล้นของ V8)", () => {
+    const replace = jest.spyOn(String.prototype, "replace").mockImplementationOnce(() => {
+      throw new RangeError("Maximum call stack size exceeded")
+    })
+    try {
+      expect(redactPii('{"name":"Somchai","id":"cart_1"}')).toBe("[REDACTED]")
+    } finally {
+      replace.mockRestore()
+    }
   })
 })
 

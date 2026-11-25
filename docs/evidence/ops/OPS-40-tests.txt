@@ -304,3 +304,103 @@ ReDoS: ไล่ค้น key 28 รูป (เพิ่ม key ใน quote ท
   flag 35 วัดซ้ำ best-of-3 เชิงเส้นทุกตัว ช้าสุด `สม{\"a\":\", b: "` 6.0/24.1/99.1ms ที่ 25k/100k/400k (develop 0.2/0.9/3.5 — ช้ากว่าแต่เชิงเส้นและต่ำกว่าเกณฑ์ 200ms@100k)
   whitespace ยาว 77 รูป เชิงเส้น ช้าสุด 15.7ms@100k; compile + เรียกครั้งแรก 8ms (source 17,601 ตัวอักษร < 20KB)
   จุดล้น backtrack stack ของ redactPii เท่า develop ทุกรูปที่วัด (fallback PII_ONLY)
+
+## RED รอบ 3 (re-review #562 รอบ 2) บนหัว PR 92ee895f — 33 ล้ม
+# blocker 1: key ใน quote ที่มี quote อีกชนิด/backslash/\n/tab/surrogate × ค่า PII ขึ้นต้นด้วย + , ] } newline = 30 test (ล้มเฉพาะ inspect 240/480 กรณี; develop 0)
+# blocker 2: fixture ของ reviewer (company หลุดทาง fallback PII_ONLY) 1 + บังคับ RangeError ด้วย spy ของ String.prototype.replace (ไม่ขึ้นกับจุดล้นของ V8) 1
+# fuzz สองทิศ key ที่มี quote/escape (seed 0x0b563) 1 · ReDoS key ใน quote ใหม่ 7 กรณีผ่านทั้งก่อนและหลัง
+    ✕ (re-review #562) key "customer's note" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "customer's note" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "customer's note" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "customer's note" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "customer's note" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "say \"hi\"" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "say \"hi\"" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "say \"hi\"" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "say \"hi\"" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "say \"hi\"" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\\b" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\\b" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\\b" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\\b" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\\b" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\nb" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\nb" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\nb" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\nb" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\nb" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "tab\tkey" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "tab\tkey" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "tab\tkey" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "tab\tkey" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "tab\tkey" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "\ud83d" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "\ud83d" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "\ud83d" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "\ud83d" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "\ud83d" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) fuzz PIIMARK key ที่มี quote/escape × ค่า PII ขึ้นต้นด้วยเครื่องหมาย 600 object × serialize 4 แบบ × escape 0–3 ชั้น (seed 46435)
+    ✕ ข้อความยาวมาก (4M ตัวอักษร) ของ field ที่ไม่ใช่ PII ไม่ throw และไม่หลุด
+    ✕ regex โยน RangeError (backtrack stack ล้น) → ผลเป็น [REDACTED] ทั้งข้อความ (บังคับเข้าทางนี้โดยไม่ขึ้นกับจุดล้นของ V8)
+Tests:       33 failed, 427 passed, 460 total
+
+## GREEN รอบ 3
+# key ใน quote `"`: quote ปิด = ช่วง backslash m·(2B+2)+B + `"` ตามชั้น escape (แบบ escapedQuoteRun); key ใน ' หรือ backtick (inspect):
+# ปิดที่ quote แรกที่ตามด้วย `:` (ช่วง backslash ใดก็ได้นำหน้า) และเนื้อหาข้าม quote ที่ไม่มี backslash นำไม่ได้; เนื้อหา ≤ 128 token
+# RangeError (backtrack stack ล้น) → redactPii คืน [REDACTED] ทั้งข้อความ (ตัดสินโดย session หลัก) — ตัด fallback PII_ONLY
+    ✓ (re-review #562) key "customer's note" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "customer's note" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "customer's note" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "customer's note" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "customer's note" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "say \"hi\"" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "say \"hi\"" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "say \"hi\"" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "say \"hi\"" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "say \"hi\"" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\\b" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\\b" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\\b" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\\b" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\\b" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\nb" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\nb" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\nb" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\nb" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\nb" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "tab\tkey" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "tab\tkey" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "tab\tkey" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "tab\tkey" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "tab\tkey" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "\ud83d" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "\ud83d" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "\ud83d" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "\ud83d" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "\ud83d" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) fuzz PIIMARK key ที่มี quote/escape × ค่า PII ขึ้นต้นด้วยเครื่องหมาย 600 object × serialize 4 แบบ × escape 0–3 ชั้น (seed 46435)
+    ✓ ข้อความยาว (key ใน quote + \' ซ้ำไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน quote + backslash ยาว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน quote + quote สลับชนิดยาว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน quote ที่ escape 1 ชั้น + \\\" ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน quote ซ้ำไม่มี :) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน ' + backslash + อักษรไทยซ้ำ (เดิม ~95ms — สแกน 128 token จากทุก quote)) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน ' + backslash ยาว + quote ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาวมาก (4M ตัวอักษร) ของ field ที่ไม่ใช่ PII ไม่ throw และไม่หลุด
+    ✓ regex โยน RangeError (backtrack stack ล้น) → ผลเป็น [REDACTED] ทั้งข้อความ (บังคับเข้าทางนี้โดยไม่ขึ้นกับจุดล้นของ V8)
+Tests:       462 passed, 462 total
+backend test:unit: Test Suites: 133 passed, 133 total; Tests:       2306 passed, 2306 total
+storefront test:e2e:unit: 165 passed; backend typecheck/build: ผ่าน; lint: 0 error (warning 4 รายการเดิมของ OPS-38)
+
+## ตรวจเพิ่มนอก test รอบ 3 — เทียบ develop d5b7c0d7
+ตาราง re-review #562 รอบ 2 (key 6 แบบ × ค่าขึ้นต้น 5 แบบ × serialize 4 × 0–3 ชั้น = 480): develop 0, 92ee895f 240 (inspect ทั้งหมด), หลังแก้ 0
+fixture blocker 2: develop ไม่หลุด (ไม่ throw), 92ee895f หลุด, หลังแก้ = "[REDACTED]" ทั้งข้อความ
+ตารางรอบก่อน: blocker 1 รอบ 1 0/192, (a) × key ที่ไม่ใช่ identifier 0/480, postal_code 0/16; ตาราง AC-55(a) ของ reviewer #560 red 0/80
+fuzz สองทิศ (PII หลุดเพิ่ม / ค่าหายเพิ่ม เทียบ develop):
+  generator รอบ 3 (key มี ' " backslash \n \t surrogate backtick ลงท้าย backslash, ค่า PII ขึ้นต้นด้วย + , ] } newline) seed 1–400 = 3.2M: PR หลุด 0 (develop 691,339) — 0/0
+    (บน 92ee895f seed 1–10: หลุดเพิ่ม 2,293 / หายเพิ่ม 8 — generator จับ blocker ได้)
+  generator รอบ 2 3.2M: PR หลุด 0 (develop 717,490) 0/0 · generator เดิม 3.2M: 0/0 (PR หลุด 10 = PII array 22f เท่าเดิม) · โหมดหนัก 1.6M: 0/0 · stress 240k: 81 = 81
+ReDoS: ไล่ค้น key 36 รูป (เพิ่ม key ใน quote ที่มี \' \" backslash \n backtick) × token 32 ≤ 2 + prefix + สุ่ม 60k = 1,315,716 หน่วย → flag 75 วัดซ้ำเชิงเส้นทุกตัว
+  (อัตรา 400k÷100k ≤ 4.9) ช้าสุด 23ms@100k (`\n  a: [ \\\\\\\"1สม` ซ้ำ)
+  ระหว่างทาง: ฉบับที่ key ใน ' สแกนได้ 128 token ข้าม quote ใช้ ~95ms@100k กับ `, 'x\\สม` ซ้ำ (เชิงเส้นแต่ใกล้เกณฑ์) → ห้ามข้าม quote ที่ไม่มี backslash นำ เหลือ ≤ 23ms; เพิ่มเป็น ReDoS unit
+  whitespace ยาว 77 รูป ช้าสุด 15.6ms@100k; compile + เรียกครั้งแรก 8ms (source 17,885); redactPii ไม่ throw ทั้ง 5 รูป array ยาวที่เคยล้น (วัดถึง 64M ตัวอักษร) (RangeError → [REDACTED])
