@@ -43,3 +43,21 @@ test("AC-15: หัวข้อขั้น checkout คงขนาด 24px/32p
     })
   }
 })
+
+// review SFUI-5c: h1 ของตะกร้าว่าง — develop = 32px/44px semibold (shim ใส่ font-semibold, `.text-3xl-regular` อยู่ @layer components)
+// ไม่พึ่ง utility `text-3xl-regular` (v4 เป็น @utility ที่ตั้ง font-normal ด้วย น้ำหนักจึงขึ้นกับลำดับ CSS)
+test("AC-15: หัวข้อตะกร้าว่างคงขนาด 32px/44px semibold เท่า develop", async ({ page, context, request, baseURL }) => {
+  const admin = await adminHeaders(request)
+  const pk = await publishableKey(request, admin)
+  const customer = await createCustomer(request, pk)
+  await signInAs(context, baseURL!, customer)
+
+  await page.goto(`/${CC}/cart`)
+  const heading = page.getByTestId("empty-cart-message").locator("h1")
+  await expect(heading).toBeVisible()
+  const style = await heading.evaluate((el) => {
+    const s = getComputedStyle(el)
+    return { fontSize: s.fontSize, lineHeight: s.lineHeight, fontWeight: s.fontWeight }
+  })
+  expect(style).toEqual({ fontSize: "32px", lineHeight: "44px", fontWeight: "600" })
+})

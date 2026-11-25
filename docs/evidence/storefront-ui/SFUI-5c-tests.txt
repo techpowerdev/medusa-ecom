@@ -48,3 +48,9 @@ e2e (prod build :8130, backend prod :9130, DB medusa_sfui5c รีเซ็ต�
   sfui-mobile-390 (รันก่อนบน DB สะอาด): 1 passed (35.6s)
   sfui-5c-checkout-heading, core-38-mobile-layout, thai-ui-checkout, core-20-return-request, core-42-cart-voucher-layout,
   core-47-cart-375-long-title, thai-ui-cart-order, core-40-discount-action-race: 14 passed (28.4s), 0 failed
+
+## รอบเพิ่ม (h1 ตะกร้าว่างไม่พึ่ง text-3xl-regular) บนปลาย 4869782b
+Red: เพิ่ม test ใน e2e/sfui-5c-checkout-heading.spec.ts (h1 ของ empty-cart-message = 32px/44px/600) — ก่อนแก้ผ่านอยู่แล้ว (red ไม่เกิด: ลำดับ CSS ให้ font-semibold ชนะ) จึงแก้เพื่อไม่พึ่ง utility เท่านั้น
+แก้: text-3xl-regular → text-[2rem] leading-[2.75rem] font-semibold (text-3xl-regular ยังมีผู้ใช้ใน order/* และนิยามอยู่ globals.css ไม่ใช่ legacy-medusa.css จึงไม่ต้องลบนิยาม)
+typecheck ผ่าน; lint 0 errors (27 warnings เดิม); test:unit 2022/2022 passed (132 files); test:e2e:unit 202 passed; build prod ผ่าน
+e2e (prod :8130/:9130, DB medusa_sfui5c ใหม่, Redis db 13): sfui-5c-checkout-heading, core-52-checkout-guards, core-14-buy-login, core-14g-action-stale-jwt: 20 passed (25.4s), 0 failed
