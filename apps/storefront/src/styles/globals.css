@@ -3,8 +3,12 @@
 @import "./legacy-medusa.css";
 /* SFUI-1b (ADR-030 ข้อ 10): animation ของ shadcn (แทน tailwindcss-animate ที่มากับ preset)
    ไม่ import "shadcn/tailwind.css" ที่ CLI ใส่ให้ — ต้องติดตั้ง package shadcn เป็น dependency (ADR-030: CLI ใช้ผ่าน dlx เท่านั้น)
-   และไม่มี dark mode (กฎ 7) จึงตัด custom variant ของ dark กับ token ชุดมืดที่ CLI สร้างออก */
+   และไม่มี dark mode (กฎ 7) จึงตัด variant dark แบบ class กับ token ชุดมืดที่ CLI สร้างออก (variant dark ของเราอยู่ด้านล่าง — SFUI-2) */
 @import "tw-animate-css";
+
+/* SFUI-2 (Q2): component ของ shadcn มี class dark:* — ผูก variant กับ data-mode="dark" ที่ร้านไม่ตั้ง (<html data-mode="light">)
+   ไม่งั้น Tailwind v4 compile เป็น prefers-color-scheme แล้วเครื่องที่ตั้ง dark mode เห็นสีเพี้ยน; ไม่ใช้ class dark (กฎ 7) */
+@custom-variant dark (&:where([data-mode=dark] *));
 
 /*
   SFUI-1a (spec 09 กฎ 1, 7, 8; ADR-030 ข้อ 1, 7, 8): Tailwind v4 แบบ CSS-first — ค่า theme เดิมจาก tailwind.config.js

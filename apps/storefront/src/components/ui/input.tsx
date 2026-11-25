@@ -1,5 +1,6 @@
 import * as React from "react"
-import { cn } from "cn"
+// SFUI: ใช้ cn ของโปรเจกต์ (รู้จัก utility ขนาดฟอนต์ใน globals.css — Q1 ของ SFUI-2)
+import { cn } from "@/lib/utils"
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (

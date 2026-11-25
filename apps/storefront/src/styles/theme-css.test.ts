@@ -274,8 +274,19 @@ describe("globals.css — token ของ shadcn (AC-4 ขั้น 1b, กฎ 7
     expect(emitted["--color-brand-400"]).toBe("#A3A3A3")
   })
 
-  it("ไม่มี @custom-variant dark และไม่ import shadcn/tailwind.css (ADR-030: CLI ไม่เป็น dependency)", () => {
-    expect(globals).not.toMatch(/@custom-variant\s+dark/)
+  it("ไม่ import shadcn/tailwind.css (ADR-030: CLI ไม่เป็น dependency)", () => {
     expect(globals).not.toMatch(/@import\s+"shadcn\//)
+  })
+
+  // SFUI-2 (session หลักตัดสิน Q2): component ของ CLI มี class `dark:*` — ถ้าไม่มี custom variant Tailwind v4 จะ compile
+  // เป็น @media (prefers-color-scheme: dark) ทำให้เครื่องที่ตั้ง dark mode เห็นสีเพี้ยน; variant ผูกกับ data-mode="dark"
+  // ซึ่งร้านไม่ตั้ง (<html data-mode="light">) และไม่มี selector .dark (กฎ 7)
+  it("@custom-variant dark ผูกกับ [data-mode=dark] — dark:* ไม่ถูก compile เป็น prefers-color-scheme", async () => {
+    expect(globals).toMatch(/@custom-variant\s+dark\s+\(&:where\(\[data-mode=dark\] \*\)\);/)
+    const css = (await compile(["dark:bg-input/30", "dark:aria-invalid:ring-destructive/40"])).toString()
+    expect(css).not.toMatch(/prefers-color-scheme/)
+    expect(css).toMatch(/\[data-mode=dark\]/)
+    // selector .dark (ไม่นับชื่อ class ที่ escape แล้ว เช่น `.dark\:bg-input\/30`)
+    expect(css).not.toMatch(/\.dark(?!\\)\b/)
   })
 })

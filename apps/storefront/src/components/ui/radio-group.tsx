@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { cn } from "cn"
+// SFUI: ใช้ cn ของโปรเจกต์ (รู้จัก utility ขนาดฟอนต์ใน globals.css — Q1 ของ SFUI-2)
+import { cn } from "@/lib/utils"
 import { CircleIcon } from "lucide-react"
 import { RadioGroup as RadioGroupPrimitive } from "radix-ui"
 
