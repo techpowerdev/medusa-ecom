@@ -277,3 +277,35 @@ base: feat/SFUI-2-shadcn-base 4fefec37; backend prod build :9170 (DB medusa_sfui
   ✓  229 [chromium] › e2e/ui-preset-font.spec.ts:9:5 › AC-3: body, h1, h2, p, button, input และ class txt-*/*-webs บนหน้าแรกใช้ Noto Sans Thai ก่อน Inter
   1 failed
   228 passed (6.3m)
+
+====================================================================
+รอบแก้ตาม review (REQUEST CHANGES) — 2026-11-26; backend prod :9180 (DB medusa_sfui5b สร้างใหม่ สะอาด, Redis db 11), storefront prod build :8180
+แก้: thumbnail rounded-large → rounded-lg (10px ตามกฎ 20; develop ได้ 8px), hero h1/h2 font-normal → font-semibold (600 = ค่าที่ render จริงบน develop)
+
+== red: แก้ e2e/sfui-5b-catalog.spec.ts ให้ assert hero 600 + มุม thumbnail 10px แล้วรันกับ build ก่อนแก้โค้ด → ล้ม
+       Error: expect(received).toEqual(expected) // deep equality
+       - Expected  - 1
+       + Received  + 1
+       -   "weight": "600",
+       +   "weight": "400",
+     1 failed
+== sfui-mobile-390 (รันก่อนบน DB สะอาด):  1 passed (35.5s)
+== pnpm --filter storefront lint: 0 errors, 28 warnings (เท่าเดิม)
+== pnpm --filter storefront typecheck: ผ่าน (exit 0)
+== pnpm --filter storefront build (prod): ผ่าน
+== pnpm --filter storefront test:unit:
+ Test Files  128 passed (128)
+      Tests  1997 passed (1997)
+== pnpm --filter storefront test:e2e:unit: 192 passed
+== e2e chromium (prod build, --workers=1) หลังแก้:
+  ✓   1 [chromium] › e2e/core-15-store-search-error.spec.ts:11:5 › AC-54, AC-55: /store/search ตอบ 500 → หยุดยิงซ้ำ แสดง products-error ไทย และกลับมาปกติเมื่อ search ใช้ได้
+  ✓   2 [chromium] › e2e/core-15-store-search-error.spec.ts:62:7 › AC-69: browser locale en-US › ป้ายช่วงราคาใต้ slider แสดง ฿ ไม่มี THB ทั้งก่อนและหลังลาก
+  ✓   3 [chromium] › e2e/sfui-5b-catalog.spec.ts:17:5 › AC-15: หน้าแรก, store, PDP และหน้าค้นหาคงขนาดตัวอักษร/ระยะบรรทัดเดิมหลังย้ายไป shadcn
+  ✓   4 [chromium] › e2e/store-content.spec.ts:46:5 › AC-61, AC-67: ไม่มีข้อความ/ลิงก์ของ starter; hero และ footer เป็นภาษาไทย
+  ✓   5 [chromium] › e2e/store-content.spec.ts:88:5 › AC-61, AC-74: title/description ของหน้า login และ profile ใช้ชื่อร้าน ไม่มีชื่อ starter
+  ✓   6 [chromium] › e2e/thai-ui-pages.spec.ts:13:5 › AC-48: หน้า store และ PDP เป็นภาษาไทย
+  ✓   7 [chromium] › e2e/thai-ui-pages.spec.ts:37:5 › AC-48: หน้า /search เป็นภาษาไทย
+  ✓   8 [chromium] › e2e/thai-ui-pages.spec.ts:53:5 › AC-48: หน้า category และ collection เป็นภาษาไทย
+  ✓   9 [chromium] › e2e/thai-ui-shell.spec.ts:10:5 › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai
+  ✓  10 [chromium] › e2e/thai-ui-shell.spec.ts:61:5 › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย
+  10 passed

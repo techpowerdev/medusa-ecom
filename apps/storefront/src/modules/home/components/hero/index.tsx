@@ -10,13 +10,13 @@ const Hero = () => {
       <div className="absolute inset-0 z-10 flex flex-col justify-center items-center text-center small:p-32 gap-6">
         <span>
           <h1
-            className="text-3xl leading-10 text-foreground font-normal"
+            className="text-3xl leading-10 text-foreground font-semibold"
             data-testid="hero-title"
           >
             {hero.title}
           </h1>
           <h2
-            className="text-3xl leading-10 text-muted-foreground font-normal"
+            className="text-3xl leading-10 text-muted-foreground font-semibold"
             data-testid="hero-subtitle"
           >
             {hero.subtitle}

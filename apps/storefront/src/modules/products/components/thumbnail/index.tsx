@@ -28,7 +28,7 @@ const Thumbnail: React.FC<ThumbnailProps> = ({
   return (
     <div
       className={cn(
-        "relative w-full overflow-hidden p-4 bg-muted shadow-sm rounded-large group-hover:shadow-md transition-shadow ease-in-out duration-150",
+        "relative w-full overflow-hidden p-4 bg-muted shadow-sm rounded-lg group-hover:shadow-md transition-shadow ease-in-out duration-150",
         className,
         {
           "aspect-[11/14]": isFeatured,
