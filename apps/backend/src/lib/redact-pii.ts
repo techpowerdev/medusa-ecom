@@ -50,11 +50,13 @@ const scalarValue = (g: number) =>
   `|(\\\\{7}|\\\\{3}|\\\\)"(?:(?!${escapedQuoteRun(g + 1)})(?:\\\\+[^\\\\]|[^\\\\]))*${escapedQuoteRun(g + 1)}${INSPECT_TAIL}` +
   `|\\d+(?:\\.\\d+)?(?![\\w.])`
 // OPS-39 (กฎข้อ 21b รอบ 43): array แบบแบน (JSON, JSON escape, util.inspect บรรทัดเดียว/หลายบรรทัด/`... n more items`) — redact ทั้ง array
-// สมาชิกจับแบบ atomic (`(?=(x))\4`) จึงแตกได้แบบเดียว ตัวคั่นกับสมาชิกขึ้นต้นด้วยอักขระคนละชุด → linear; array ซ้อน/object ไม่ match (ไม่บังคับ) และไม่กลืนค่าหลัง ]
+// สมาชิกจับแบบ atomic (`(?=(x))\5`) จึงแตกได้แบบเดียว ตัวคั่นกับสมาชิกขึ้นต้นด้วยอักขระคนละชุด และ `]` ไม่บังคับ (review #559):
+// array ที่ไม่มี `]` ถูก redact เท่าที่ parse ได้แล้วจบ match — ถ้าบังคับ `]` ทุก key ที่ตามมาจะล้มและสแกนถึงท้ายข้อความ (O(n²))
+// array ซ้อน/object ใน array ไม่ redact (ไม่บังคับ — กฎ 21b) แต่ส่วนที่เหลือยังถูกตรวจ key ต่อตามปกติ
 const ARRAY_SEPARATOR = "(?:\\s|,|\\\\+n|\\.\\.\\. \\d+ more items?)"
 const KEY_VALUE = new RegExp(
   `((?<![A-Za-z0-9_$])(\\\\{0,7}["']|)(?:${PII_KEYS.join("|")})\\2\\s*(?::|=>)\\s*)` +
-    `(?:(\\[)(?:${ARRAY_SEPARATOR}|(?=(${scalarValue(5)}))\\4)*\\]|${scalarValue(7)})`,
+    `(?:(\\[)((?:${ARRAY_SEPARATOR}|(?=(${scalarValue(6)}))\\5)*)(\\]?)|${scalarValue(9)})`,
   "gi"
 )
 // (a) สตริงรูปอีเมล — เริ่ม match ได้เฉพาะต้นช่วงอักขระ local และจำกัดความยาวตาม RFC 5321 (local ≤ 64, label ≤ 63)
@@ -71,12 +73,14 @@ const THAI_PHONE = /(?<![A-Za-z0-9.])(?:0|\+66)\d{8,9}(?![A-Za-z0-9])/g
 export function redactPii(text: string): string {
   return text
     .replace(KEY_VALUE, (_match, ...groups: (string | undefined)[]) => {
-      const [prefix, , bracket, , itemQuote, itemEscaped, quote, escaped] = groups
-      // array ใช้ quote ของสมาชิกตัวสุดท้าย (JSON ระดับ 0 ยัง parse ได้)
-      const [open, escapedOpen] = bracket ? [itemQuote, itemEscaped] : [quote, escaped]
-      const q = open ?? (escapedOpen === undefined ? "" : `${escapedOpen}"`)
-      const value = `${q}${REDACTED}${q}`
-      return bracket ? `${prefix}[${value}]` : `${prefix}${value}`
+      const [prefix, , bracket, items = "", , , , close, quote, escaped] = groups
+      if (bracket) {
+        // quote ของสมาชิกตัวแรก (JSON ทั้งระดับ 0 และ pretty-print ยัง parse ได้) — สมาชิกตัวเลขล้วน/ว่าง ไม่มี quote
+        const q = /^(?:\s|,|\\+n)*(["'`]|\\+")/.exec(items)?.[1] ?? ""
+        return `${prefix}[${q}${REDACTED}${q}${close}`
+      }
+      const q = quote ?? (escaped === undefined ? "" : `${escaped}"`)
+      return `${prefix}${q}${REDACTED}${q}`
     })
     .replace(EMAIL, REDACTED)
     .replace(THAI_PHONE, REDACTED)

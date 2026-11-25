@@ -347,6 +347,20 @@ describe("redactPii (OPS-39, AC-54)", () => {
     expect(JSON.parse(out)).toEqual({ name: ["[REDACTED]"], city: "[REDACTED]", id: "pay_01X", amount: 1999 })
   })
 
+  // review #559 (nit): quote มาจากสมาชิกตัวแรก — ตัวคั่นหลังสมาชิกตัวสุดท้าย (pretty-print) ไม่ทำให้ quote หาย
+  it("(b) quote ของผลมาจากสมาชิกตัวแรก (JSON pretty-print ยัง parse ได้)", () => {
+    expect(redactPii(inspect({ name: ["Som'chai"], id: CART_ID }))).toBe(`{ name: ["[REDACTED]"], id: '${CART_ID}' }`)
+    const pretty = redactPii(JSON.stringify({ name: ["Somchai", "Jaidee"], id: "pay_01X" }, null, 2))
+    expect(JSON.parse(pretty)).toEqual({ name: ["[REDACTED]"], id: "pay_01X" })
+  })
+
+  it("(b) array ที่มีสมาชิกซ้อน (ไม่บังคับ) redact เท่าที่ parse ได้ และ key ถัดไปยังถูกตรวจ", () => {
+    const out = redactPii(inspect({ name: ["Somchai", { x: 1 }], city: "Bangkok", id: CART_ID }))
+    expect(out).not.toContain("Somchai")
+    expect(out).not.toContain("Bangkok")
+    expect(out).toContain(CART_ID)
+  })
+
   // (c) fuzz: seed คงที่ — ถ้าล้ม ข้อความจะพิมพ์ seed, case และ input (JSON) เพื่อทำซ้ำได้
   const SEED = 0x0b5_39
   const MARK = "PIIMARK"
@@ -420,6 +434,12 @@ describe("redactPii (OPS-39, AC-54)", () => {
     ["key array ซ้ำ", "name: [ ".repeat(13_000)],
     ["key array ซ้ำในสตริง", "name: [ 'name: [ ".repeat(6_000)],
     ["array ไม่ปิดตามด้วย backslash ยาว", "name: [ 'a', " + L(100_000)],
+    // review #559 (blocker): สมาชิกปิดได้แล้วท่อน + ต่อไปจนสุดข้อความ ไม่เจอ ] → ทุก key (in-phase) ล้มและสแกนถึงท้าย
+    ["สมาชิก + ท่อนยาวไม่มี ] (review #559)", fill("", String.raw`name: ["+ \"`)],
+    ["สมาชิก + ท่อนยาวไม่มี ] key city", fill("", String.raw`city: ["+ \"`)],
+    ["สมาชิก + ท่อนยาวไม่มี ] ไม่มีช่องว่าง", fill("", String.raw`name: ["+\"`)],
+    ["สมาชิกสองตัว + ท่อนที่ escape", fill("", String.raw`\"name: [""+`)],
+    ["สมาชิก ' + ท่อนที่ escape 2 ชั้น", fill("", String.raw`\\\"name: ["'+`)],
   ])("ข้อความยาว (%s) redact เสร็จเร็ว (ไม่ quadratic)", (_name, text) => {
     expect(text.length).toBeGreaterThanOrEqual(100_000)
     const started = performance.now()
