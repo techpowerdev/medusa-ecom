@@ -258,3 +258,56 @@ prefers-color-scheme: 0 ครั้ง, [data-mode=dark]: 14 ครั้ง
 # core-50-nav-narrow 1280×800 ล้มค่าเดิม 1.265625px (macOS; baseline Linux) ตั้งแต่ SFUI-1a — ไม่เปลี่ยน
   1 failed
   74 passed (1.9m)
+
+# ---- รอบ 3: แก้ regression จาก triage (core-38 :202/:247, core-42 :85, core-47 :125; หัวข้อ product-rail txt-xlarge) ----
+# shim Table.Head/HeaderCell = px-4, Table.Cell = p-4 (padding เดิม); Text = text-sm leading-[1.4rem] และไม่ใส่ขนาดเริ่มต้นเมื่อผู้เรียกใส่ txt-*/h*-webs
+
+## unit ของ shim (verbose)
+ ✓ src/modules/common/components/ui/index.test.tsx > shim @modules/common/components/ui ส่งต่อไป shadcn > clx คือ cn
+ ✓ src/modules/common/components/ui/index.test.tsx > shim @modules/common/components/ui ส่งต่อไป shadcn > Button render เป็น Button ของ shadcn (data-slot) คง testid และ isLoading เดิม
+ ✓ src/modules/common/components/ui/index.test.tsx > shim @modules/common/components/ui ส่งต่อไป shadcn > buttonClassName map variant/size เดิม → buttonVariants ของ shadcn
+ ✓ src/modules/common/components/ui/index.test.tsx > shim @modules/common/components/ui ส่งต่อไป shadcn > IconButton → Button ghost/icon ของ shadcn
+ ✓ src/modules/common/components/ui/index.test.tsx > shim @modules/common/components/ui ส่งต่อไป shadcn > Badge / IconBadge → Badge ของ shadcn
+ ✓ src/modules/common/components/ui/index.test.tsx > shim @modules/common/components/ui ส่งต่อไป shadcn > Label / Input → shadcn (Input เป็น <input> native ที่คง name และ label เดิม)
+ ✓ src/modules/common/components/ui/index.test.tsx > shim @modules/common/components/ui ส่งต่อไป shadcn > Table.* → Table ของ shadcn
+ ✓ src/modules/common/components/ui/index.test.tsx > shim @modules/common/components/ui ส่งต่อไป shadcn > Table.Head/HeaderCell คง px-4 และ Table.Cell คง p-4 ของ shim เดิม (ผู้เรียกยังทับได้)
+ ✓ src/modules/common/components/ui/index.test.tsx > shim Text — ขนาด/ระยะบรรทัดเท่า txt-medium เดิม และไม่ทับขนาดของผู้เรียก > ค่าเริ่มต้น text-sm + leading-[1.4rem] (= font-size/line-height ของ txt-medium)
+ ✓ src/modules/common/components/ui/index.test.tsx > shim Text — ขนาด/ระยะบรรทัดเท่า txt-medium เดิม และไม่ทับขนาดของผู้เรียก > className ที่มี class ขนาดแบบ preset (txt-*, h*-webs) → ไม่ใส่ขนาด/ระยะบรรทัดเริ่มต้น
+ ✓ src/modules/common/components/ui/index.test.tsx > shim Text — ขนาด/ระยะบรรทัดเท่า txt-medium เดิม และไม่ทับขนาดของผู้เรียก > className ที่มีขนาดของ Tailwind/globals.css → cn ให้ตัวของผู้เรียกชนะ
+
+## pnpm --filter storefront test:unit (Vitest ทั้งหมด)
+ Test Files  128 passed (128)
+      Tests  1997 passed (1997)
+
+## pnpm --filter storefront test:e2e:unit
+  192 passed
+
+## typecheck / lint / build
+tsc --noEmit exit 0
+✖ 28 problems (0 errors, 28 warnings)
+✓ Compiled successfully in 1312ms
+
+## e2e chromium รอบ 3 (prod build, backend :9130 DB medusa_sfui2 Redis db 13, storefront :8130)
+  ✓   2 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (375px)
+  ✓   3 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (1280px)
+  ✓   1 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:85:5 › AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 (จำนวน 1 และ 99 + ส่วนลด) และ layout ที่ 1280 คงเดิม
+  ✓   5 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:242:5 › AC-136b: แถวรหัสของการ์ด voucher ไม่มีช่องว่างเมื่อสถานะว่าง และสถานะคัดลอกล้มอยู่ในแถวใต้ปุ่ม
+  ✓   4 [chromium] › e2e/core-38-mobile-layout.spec.ts:124:5 › AC-132: checkout — label ของฟอร์มที่อยู่ไม่ทับค่า, สรุปที่อยู่ 375 เรียงแนวตั้งและอีเมลยาวไม่ล้น, 1280 แถวเดียว
+  ✓   6 [chromium] › e2e/core-47-cart-375-long-title.spec.ts:125:5 › AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90 ตัวอ่านได้ ยอด 7 หลักไม่ถูกตัด, ≥ 1024 ตารางเดิม, preview ไม่เปลี่ยน
+  ✓   8 [chromium] › e2e/flash-sale-fs14.spec.ts:165:5 › AC-20: /store (search hit) การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง
+  ✓   9 [chromium] › e2e/flash-sale-fs14.spec.ts:188:5 › AC-20: /search?q=<ชื่อ X> การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง
+  ✓   7 [chromium] › e2e/core-38-mobile-layout.spec.ts:202:5 › AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่าง + billing ต่างกัน → ข้อความอยู่ในกล่องของตัวเองที่ 375/640/1280
+  ✓  10 [chromium] › e2e/flash-sale-fs14.spec.ts:203:5 › AC-20: 375×812 ราคา flash อยู่ในกรอบการ์ดบน /store, /search และ PLP
+  ✓  11 [chromium] › e2e/core-38-mobile-layout.spec.ts:247:5 › AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่างอยู่ในกล่องของตัวเองที่ 375/640/1280
+  ✓  13 [chromium] › e2e/sfui-2-brand.spec.ts:8:5 › AC-4 (2): ปุ่ม add-product-button บน PDP มีสีพื้น brand-900 ผ่าน --primary
+  ✓  14 [chromium] › e2e/sfui-mobile-390.spec.ts:20:5 › AC-17: หน้าแรก, store, PDP, cart, checkout, account, orders ที่ 390px ไม่ล้นแนวนอน
+  ✓  15 [chromium] › e2e/thai-ui-cart-order.spec.ts:80:5 › AC-48: หน้า policy ทั้ง 5 เป็นภาษาไทย
+  ✓  16 [chromium] › e2e/thai-ui-cart-order.spec.ts:96:5 › AC-48, AC-78: cart, order confirmed, order detail และรายการ orders เป็นภาษาไทย ไม่มี hydration mismatch
+  ✓  17 [chromium] › e2e/thai-ui-shell.spec.ts:10:5 › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai
+  ✓  18 [chromium] › e2e/thai-ui-shell.spec.ts:61:5 › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย
+  ✓  12 [chromium] › e2e/flash-sale-fs14.spec.ts:251:5 › AC-20: rail หน้าแรก การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง
+  ✓  19 [chromium] › e2e/flash-sale-fs14.spec.ts:285:5 › AC-25: /store ค้นใหม่ → ข้อมูล flash ยิงด้วย variant ของผลค้นล่าสุดเท่านั้น 1 ครั้ง
+  19 passed (1.2m)
+
+## หน้าแรก: computed style ของหัวข้อ product-rail (<Text className="txt-xlarge">) — เดิมก่อนแก้ 14px
+[["txt-xlarge","18px","28.8px"],["txt-xlarge","18px","28.8px"]]

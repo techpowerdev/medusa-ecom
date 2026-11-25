@@ -125,4 +125,69 @@ describe("shim @modules/common/components/ui ส่งต่อไป shadcn", (
     expect(el.querySelectorAll('th[data-slot="table-head"]')).toHaveLength(2)
     expect(slot("td")).toBe("table-cell")
   })
+
+  // triage regression ของ SFUI-2: core-42/core-47 (cell ราคา/รวม ใน cart แคบลง) — padding ของ shim เดิม
+  it("Table.Head/HeaderCell คง px-4 และ Table.Cell คง p-4 ของ shim เดิม (ผู้เรียกยังทับได้)", () => {
+    const el = render(
+      <shim.Table>
+        <shim.Table.Header>
+          <shim.Table.Row>
+            <shim.Table.Head data-testid="h">ก</shim.Table.Head>
+            <shim.Table.HeaderCell data-testid="hc">ข</shim.Table.HeaderCell>
+          </shim.Table.Row>
+        </shim.Table.Header>
+        <shim.Table.Body>
+          <shim.Table.Row>
+            <shim.Table.Cell data-testid="c">ค</shim.Table.Cell>
+            <shim.Table.Cell data-testid="c0" className="p-0">ง</shim.Table.Cell>
+          </shim.Table.Row>
+        </shim.Table.Body>
+      </shim.Table>
+    )
+    const classes = (id: string) => el.querySelector(`[data-testid="${id}"]`)!.className.split(/\s+/)
+    for (const id of ["h", "hc"]) {
+      expect(classes(id)).toContain("px-4")
+      expect(classes(id)).not.toContain("px-2")
+    }
+    expect(classes("c")).toContain("p-4")
+    expect(classes("c")).not.toContain("p-2")
+    expect(classes("c0")).toContain("p-0")
+    expect(classes("c0")).not.toContain("p-4")
+  })
+})
+
+// triage regression ของ SFUI-2: core-38 (กล่องที่อยู่ 375px ล้น 1px) และหัวข้อ product-rail (`txt-xlarge` เล็กลง)
+describe("shim Text — ขนาด/ระยะบรรทัดเท่า txt-medium เดิม และไม่ทับขนาดของผู้เรียก", () => {
+  const classesOf = (ui: ReactElement) => render(ui).querySelector("[data-testid=t]")!.className.split(/\s+/)
+
+  it("ค่าเริ่มต้น text-sm + leading-[1.4rem] (= font-size/line-height ของ txt-medium)", () => {
+    const classes = classesOf(<shim.Text data-testid="t">ก</shim.Text>)
+    expect(classes).toEqual(expect.arrayContaining(["text-sm", "leading-[1.4rem]"]))
+  })
+
+  it("className ที่มี class ขนาดแบบ preset (txt-*, h*-webs) → ไม่ใส่ขนาด/ระยะบรรทัดเริ่มต้น", () => {
+    for (const size of ["txt-xlarge", "txt-compact-small-plus", "small:txt-large", "h2-webs"]) {
+      const classes = classesOf(
+        <shim.Text data-testid="t" className={`${size} text-ui-fg-base`}>
+          ก
+        </shim.Text>
+      )
+      expect(classes, size).toContain(size.split(" ")[0])
+      expect(classes, size).not.toContain("text-sm")
+      expect(classes, size).not.toContain("leading-[1.4rem]")
+    }
+  })
+
+  it("className ที่มีขนาดของ Tailwind/globals.css → cn ให้ตัวของผู้เรียกชนะ", () => {
+    for (const size of ["text-lg", "text-base-regular"]) {
+      const classes = classesOf(
+        <shim.Text data-testid="t" className={size}>
+          ก
+        </shim.Text>
+      )
+      expect(classes, size).toContain(size)
+      expect(classes, size).not.toContain("text-sm")
+      expect(classes, size).not.toContain("leading-[1.4rem]")
+    }
+  })
 })

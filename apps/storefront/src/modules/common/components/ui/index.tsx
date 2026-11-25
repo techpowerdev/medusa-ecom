@@ -20,14 +20,19 @@ import { cn } from "@/lib/utils"
 
 export { cn as clx }
 
-// Text Component — `txt-medium` เดิม → `text-sm` (กฎ 21)
+// Text Component — `txt-medium` เดิม → `text-sm leading-[1.4rem]` (font-size/line-height เท่ากัน — กฎ 21)
 type TextProps = HTMLAttributes<HTMLParagraphElement> & {
   as?: "p" | "span" | "div"
 } & Pick<ComponentProps<"p">, "ref">
 
-export const Text = ({ className, as: Component = "p", ...props }: TextProps) => (
-  <Component className={cn("text-sm", className)} {...props} />
-)
+// class ขนาดแบบ preset ที่ cn ไม่รู้จัก (หายใน SFUI-5x/6 พร้อม shim) — ถ้าผู้เรียกใส่มา ไม่ใส่ขนาดเริ่มต้นทับ
+// (ขนาดของ Tailwind/globals.css เช่น text-lg, text-base-regular ให้ cn merge ตามปกติ)
+const PRESET_SIZE = /(?:^|\s|:)!?(?:txt-|h[1-3]-webs\b)/
+
+export const Text = ({ className, as: Component = "p", ...props }: TextProps) => {
+  const presetSize = PRESET_SIZE.test(className ?? "")
+  return <Component className={cn(!presetSize && "text-sm leading-[1.4rem]", className)} {...props} />
+}
 
 // Heading Component
 type HeadingProps = HTMLAttributes<HTMLHeadingElement> & {
@@ -135,11 +140,12 @@ const TableBody = (props: ComponentProps<typeof ShadcnTableBody>) => (
   <ShadcnTableBody {...props} />
 )
 const TableRow = (props: ComponentProps<typeof ShadcnTableRow>) => <ShadcnTableRow {...props} />
-const TableHead = (props: ComponentProps<typeof ShadcnTableHead>) => (
-  <ShadcnTableHead {...props} />
+// padding เดิมของ shim (shadcn ใช้ px-2/p-2 — cell ราคา/รวมใน cart แคบลง: core-42/core-47)
+const TableHead = ({ className, ...props }: ComponentProps<typeof ShadcnTableHead>) => (
+  <ShadcnTableHead className={cn("px-4", className)} {...props} />
 )
-const TableCell = (props: ComponentProps<typeof ShadcnTableCell>) => (
-  <ShadcnTableCell {...props} />
+const TableCell = ({ className, ...props }: ComponentProps<typeof ShadcnTableCell>) => (
+  <ShadcnTableCell className={cn("p-4", className)} {...props} />
 )
 
 export const Table = Object.assign(TableRoot, {
