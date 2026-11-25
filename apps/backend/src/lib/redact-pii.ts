@@ -52,22 +52,28 @@ const escapedQuoteRun = (g: number) => `(?:\\${g}\\${g}${BS}${BS})*\\${g}"` // n
 // จึงลองทีละชั้น (3, 2, 1) โดยยืนยันชั้นด้วย " ภายในค่า (มีเสมอในกรณีนี้; JSON escape เป็น backslash h−1 ตัว + `"`)
 // ก่อนเจอ " ที่ยืนยันชั้น ' ที่ปิดได้ทำให้กิ่งนั้นล้ม — กิ่งของชั้นที่ไม่ใช่จึงหยุดที่ ' หรือ " ถัดไป; ค่าที่ข้ามขอบโครงสร้าง (GQ)
 // ไม่เข้ากิ่งนี้แต่ตกไปกิ่งทั่วไปแบบเดิม — กิ่งนี้จึงไม่กลืนสิ่งที่ develop ไม่กลืน
-const inspectEscapedQuoteBody = (h: number) => {
+const inspectEscapedQuoteBody = (guard: string) => (h: number) => {
   const pairs = `(?:${BS}{${2 * h}})*`
-  const plain = `(?:${BS}*${GQ}[^${BS}'"]|${pairs}${BS}{${h}}')`
+  const plain = `(?:${BS}*${guard}[^${BS}'"]|${pairs}${BS}{${h}}')`
   const dq = `${pairs}${BS}{${h - 1}}"`
   return `${plain}*${dq}(?:${plain}|${dq})*${pairs}'${NOT_KEY_AFTER}`
 }
-const INSPECT_ESCAPED_QUOTE = `(?:${[8, 4, 2].map(inspectEscapedQuoteBody).join("|")})` // ใช้หลัง ' เปิดเท่านั้น
+const INSPECT_ESCAPED_QUOTE = `(?:${[8, 4, 2].map(inspectEscapedQuoteBody(GQ)).join("|")})` // ใช้หลัง ' เปิดเท่านั้น
+// OPS-40 (กฎข้อ 22b รอบ 43): ค่าเดี่ยวไม่ใช้ guard รูป `<pii-key>:` — เนื้อหาของค่า PII มีข้อความ `city: y` ได้ (เดิมกิ่งนี้ล้มแล้วตกไป `\\.` ที่ปิดผิดที่)
+// ค่าของ key ที่ไม่ใช่ PII ถูกจับเป็น field ทั้งก้อนแล้ว (NON_PII_FIELD) จึงไม่มี `<pii-key>:` ปลอมในค่าอื่นให้กิ่งนี้เริ่มจาก
+const INSPECT_ESCAPED_QUOTE_SCALAR = `(?:${[8, 4, 2].map(inspectEscapedQuoteBody(`(?![\\r\\n]|${FIELD_LINE}|${FIELD_JSON})`)).join("|")})`
+// ค่าของ field ที่ไม่ใช่ PII (NON_PII_FIELD) guard แค่ newline ดิบ: เนื้อหาหน้าตาเหมือนขอบ field (`\n  email: …`, `,\"name\":\"`) ต้องไม่ทำให้ปิดผิดที่
+// (จับเกินไม่ทำให้หลุดเพราะภายในค่ายังถูก redact ด้วย PII_ONLY)
+const INSPECT_ESCAPED_QUOTE_FIELD = `(?:${[8, 4, 2].map(inspectEscapedQuoteBody("(?![\\r\\n])")).join("|")})`
 // g / gq = guard ก่อนอักขระเนื้อหาที่ quote ด้วย " / ' หรือ backtick ("" = แบบเดิมของ develop สำหรับค่าเดี่ยว)
 const inspectSegment = (g: string, gq: string) =>
   `(?:'${INSPECT_ESCAPED_QUOTE}|'(?:${BS}${gq}.|${gq}[^'${BS}])*'|${BS}+"(?:${g}[^"])*"|"(?:${BS}${g}.|${g}[^"${BS}])*"|\`(?:${BS}${gq}.|${gq}[^\`${BS}])*\`)`
 const inspectTail = (g: string, gq: string) => `(?:(?:\\s|${BS}+n)*\\+(?:\\s|${BS}+n)*${inspectSegment(g, gq)})*`
 // ค่าเดี่ยว (แบบเดิมของ develop + กิ่ง \'): group n = quote, n+1 = backslash ของ quote ที่ escape (ESCAPED_OPEN — ลองช่วงยาวก่อน)
-const scalarValue = (n: number) =>
-  `(?:(["'\`])(?:(?<=')${INSPECT_ESCAPED_QUOTE}|(?:${BS}.|(?!\\${n})[^${BS}])*\\${n})` +
-  `|(${BS}{7}|${BS}{3}|${BS})"(?:(?!${escapedQuoteRun(n + 1)})(?:${BS}+[^${BS}]|[^${BS}]))*${escapedQuoteRun(n + 1)})${inspectTail("", "")}` +
-  `|\\d+(?:\\.\\d+)?(?![\\w.])`
+const quotedString = (n: number, escapedQuote = INSPECT_ESCAPED_QUOTE_SCALAR) =>
+  `(["'\`])(?:(?<=')${escapedQuote}|(?:${BS}.|(?!\\${n})[^${BS}])*\\${n})` +
+  `|(${BS}{7}|${BS}{3}|${BS})"(?:(?!${escapedQuoteRun(n + 1)})(?:${BS}+[^${BS}]|[^${BS}]))*${escapedQuoteRun(n + 1)}`
+const scalarValue = (n: number) => `(?:${quotedString(n)})${inspectTail("", "")}|\\d+(?:\\.\\d+)?(?![\\w.])`
 // สมาชิก array: เนื้อหามี guard; สมาชิกที่ escape ชั้น k (quote = backslash B ตัว) ห้ามมี " ที่ backslash น้อยกว่า B (= โครงสร้างของชั้นที่ต่ำกว่า)
 // group n = quote ' หรือ backtick, n+1 = backslash ของ quote ที่ escape
 const itemValue = (n: number) =>
@@ -86,11 +92,23 @@ const ARRAY_SEPARATOR = `(?:\\s|,|${BS}+n|\\.\\.\\. \\d+ more items?)`
 const ITEM_END = `(?=\\s*(?:[,\\]]|${BS}+n|$))`
 // re-review #559 รอบ 4: ใช้หลัง `(?=\[)` เท่านั้น — ถ้าไม่ตรวจ `[` ก่อน `\s*` ท้าย prefix ที่ backtrack ทุกตำแหน่งจะย้อน lookbehind ผ่านช่วง whitespace ทั้งช่วง (O(n²))
 const STRUCTURAL_KEY = `(?<=(?:^|[{,\\[\\n]|${BS}+n)[ \\t]*${BS}{0,7}["']?${KEY_NAMES}${BS}{0,7}["']?\\s*(?::|=>)\\s*)`
-export const KEY_VALUE = new RegExp(
+const PII_KEY_VALUE =
   `((?<![A-Za-z0-9_$])(${BS}{0,7}["']|)${KEY_NAMES}\\2\\s*(?::|=>)\\s*)` +
-    `(?:(?=\\[)${STRUCTURAL_KEY}(\\[)((?:${ARRAY_SEPARATOR}|(?=(${itemValue(6)})${NOT_KEY_AFTER}${ITEM_END})\\5)*)(\\])|${scalarValue(9)})`,
-  "gi"
-)
+  `(?:(?=\\[)${STRUCTURAL_KEY}(\\[)((?:${ARRAY_SEPARATOR}|(?=(${itemValue(6)})${NOT_KEY_AFTER}${ITEM_END})\\5)*)(\\])|${scalarValue(9)})`
+// OPS-40 (กฎข้อ 22a รอบ 43, review #559): ค่าของ key ที่ไม่ใช่ PII ที่ลงท้ายด้วยรูปเปิด key PII (`{ note: "name: '", city: 'Bangkok' }`)
+// เดิม `name: '` ในเนื้อหาเริ่ม match แล้ว quote ปิดของ note กลายเป็น quote เปิดของค่าปลอม → ปิดที่ quote เปิดของ city → "Bangkok" หลุด
+// จึงจับ field ที่ไม่ใช่ PII ที่ตำแหน่งโครงสร้าง (ต้นข้อความ หรือหลัง `{` `,` newline ดิบ/ที่ escape + ช่องว่าง) ทั้งค่า (สตริง/ท่อน `+`/array แบบแบน)
+// แล้ว redact ภายในค่าด้วย PII_ONLY (ข้อความอิสระ `Invalid name: 'x'` ในค่ายังถูก redact เหมือนเดิม) — match ของ key PII ปลอมในค่าจึงไม่ข้ามขอบค่า
+// - key ต้องไม่ใช่ key PII และค่าต้องขึ้นต้นด้วย quote/backslash/`[` (lookahead ก่อน lookbehind ทุกตัว — บทเรียน `(?=\[)` ของ #559)
+// - สมาชิก/ท่อนจับแบบ atomic (`(?=(x))\14`) ตัวคั่นเป็นช่วงอักขระชุดเดียว (`[\s,+]+`) และห้ามตามด้วย `:`/`=>` (สมาชิกปลอมที่เป็น key ถัดไป เช่น JSON `"x","name":`)
+//   หรือ quote/ตัวอักษรติดกัน (สมาชิกที่ปิดผิดที่ เช่น `'\\'` ของ \' ชั้น 1 — สมาชิกถัดไปจะกลายเป็น quote เปิดที่ข้าม field)
+// - จับได้เกินจริง (สตริงถัดไปที่ไม่ใช่ key) ไม่ทำให้หลุด เพราะภายในยังถูก redact; จับได้ไม่ครบ (`]` ไม่บังคับ) = พฤติกรรมเดิมกับส่วนที่เหลือ
+// ความยาว source ต้องไม่เกิน ~20KB (V8 ปิด optimization ของ regex ที่ใหญ่กว่านั้น — วัดได้ช้าลง ~10 เท่าและ backtrack stack ล้นเร็วขึ้น)
+const NON_PII_FIELD =
+  `((?<![A-Za-z0-9_$])(?=(?:${BS}{0,7}["'])?[A-Za-z_$])(?<=(?:^|[{,\\n]|${BS}+n)[ \\t]*)(${BS}{0,7}["']|)(?!${KEY_NAMES}(?![\\w$]))[A-Za-z_$][\\w$]*\\12\\s*(?::|=>)\\s*)` +
+  `(?=["'\`${BS}\\[])(\\[?(?:[\\s,+]+|${BS}+n|\\.\\.\\. \\d+ more items?|(?=(${quotedString(15, INSPECT_ESCAPED_QUOTE_FIELD)}|-?\\d+(?:\\.\\d+)?(?![\\w.])|(?:null|true|false|undefined)(?![\\w$])))\\14(?!\\s*(?::|=>)|${BS}*["'\`]|[\\w$]))*\\]?)`
+export const KEY_VALUE = new RegExp(`${PII_KEY_VALUE}|${NON_PII_FIELD}`, "gi")
+const PII_ONLY = new RegExp(PII_KEY_VALUE, "gi")
 // (a) สตริงรูปอีเมล — เริ่ม match ได้เฉพาะต้นช่วงอักขระ local และจำกัดความยาวตาม RFC 5321 (local ≤ 64, label ≤ 63)
 // กัน backtrack แบบ O(n²) กับช่วงยาวที่ไม่มี `@` (review #473: errorHandler ของ Medusa log `req.path` จาก client ที่ไม่ login)
 // OPS-35: local part มี `'` ได้ (`o'brien@…`) แต่ต้องขึ้นต้นด้วยอักขระอื่น (ไม่กลืน quote เปิดของ util.inspect) — `'` ไม่อยู่ใน lookbehind
@@ -102,18 +120,41 @@ const EMAIL =
 // และไม่อยู่หลัง `.` (ไม่ตัดทศนิยมของจำนวนเงิน เช่น raw_amount `1.0666666667`)
 const THAI_PHONE = /(?<![A-Za-z0-9.])(?:0|\+66)\d{8,9}(?![A-Za-z0-9])/g
 
+/** แทนค่าของ key PII — groups = group 1–10 (ใช้ได้ทั้งกับ KEY_VALUE และ PII_ONLY; อาร์กิวเมนต์หลังจากนั้นของ replace ไม่ใช้) */
+const replacePii = (_match: string, ...groups: unknown[]): string => {
+  const [prefix, , bracket, items = "", , , , , quote, escaped] = groups as (string | undefined)[]
+  if (bracket) {
+    // quote ของสมาชิกตัวแรก (JSON ทั้งระดับ 0 และ pretty-print ยัง parse ได้) — สมาชิกตัวเลขล้วน/ว่าง ไม่มี quote
+    const q = /^(?:\s|,|\\+n)*(["'`]|\\+")/.exec(items)?.[1] ?? ""
+    return `${prefix}[${q}${REDACTED}${q}]`
+  }
+  const q = quote ?? (escaped === undefined ? "" : `${escaped}"`)
+  return `${prefix}${q}${REDACTED}${q}`
+}
+
+/** field ที่ไม่ใช่ PII (group 11 = key, 13 = ค่า) → redact เฉพาะภายในค่า */
+const replaceKeyValue = (match: string, ...groups: unknown[]): string => {
+  const [field, , fieldValue] = groups.slice(10, 13) as (string | undefined)[]
+  return field === undefined ? replacePii(match, ...groups) : field + (fieldValue ?? "").replace(PII_ONLY, replacePii)
+}
+
+/**
+ * backtrack stack ของ regex ล้น (RangeError — field ที่ไม่ใช่ PII ยาว > ~1.5M ตัวอักษรบางรูป เช่น array ที่คั่นด้วย `\n` ที่ escape)
+ * → ใช้เฉพาะกิ่ง key PII (ไม่จับ field ที่ไม่ใช่ PII แบบก่อน OPS-40) แทนการ throw — ข้อความที่ PII_ONLY ก็ล้นยัง throw เหมือนเดิม
+ */
+const replaceKeyValues = (text: string): string => {
+  try {
+    return text.replace(KEY_VALUE, replaceKeyValue)
+  } catch (error) {
+    if (!(error instanceof RangeError)) {
+      throw error
+    }
+    return text.replace(PII_ONLY, replacePii)
+  }
+}
+
 export function redactPii(text: string): string {
-  return text
-    .replace(KEY_VALUE, (_match, ...groups: (string | undefined)[]) => {
-      const [prefix, , bracket, items = "", , , , , quote, escaped] = groups
-      if (bracket) {
-        // quote ของสมาชิกตัวแรก (JSON ทั้งระดับ 0 และ pretty-print ยัง parse ได้) — สมาชิกตัวเลขล้วน/ว่าง ไม่มี quote
-        const q = /^(?:\s|,|\\+n)*(["'`]|\\+")/.exec(items)?.[1] ?? ""
-        return `${prefix}[${q}${REDACTED}${q}]`
-      }
-      const q = quote ?? (escaped === undefined ? "" : `${escaped}"`)
-      return `${prefix}${q}${REDACTED}${q}`
-    })
+  return replaceKeyValues(text)
     .replace(EMAIL, REDACTED)
     .replace(THAI_PHONE, REDACTED)
 }

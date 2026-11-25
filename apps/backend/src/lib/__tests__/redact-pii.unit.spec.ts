@@ -532,6 +532,167 @@ describe("redactPii (OPS-39, AC-54)", () => {
   })
 })
 
+// OPS-40 (spec 07 กฎข้อ 22 รอบ 43, AC-55): ค่าที่ไม่ใช่ PII ลงท้ายด้วยรูปเปิด key PII ค่าเดี่ยว (review #559)
+describe("redactPii (OPS-40, AC-55)", () => {
+  const wrap = (text: string, levels: number): string => {
+    let out = text
+    for (let i = 0; i < levels; i++) {
+      out = JSON.stringify(out)
+    }
+    return out
+  }
+  const SERIALIZERS: [string, (value: object) => string][] = [
+    ["inspect", (value) => inspect(value, { depth: 5 })],
+    ["inspect breakLength 1", (value) => inspect(value, { depth: 5, breakLength: 1 })],
+    ["JSON", (value) => JSON.stringify(value)],
+    ["JSON pretty-print", (value) => JSON.stringify(value, null, 2)],
+  ]
+  const KEPT = ["1999.50", "1042", "req_01ABC", "thb", "total", "display_id", "request_id", "currency_code"]
+
+  // (a) รูปเปิดค่าเดี่ยว 5 แบบ × serialize 4 แบบ × escape 0–3 ชั้น = 80 กรณี
+  const OPENERS = ["name: '", 'name: "', "phone: ", "Name: ", '"name":"']
+  it.each(OPENERS.flatMap((opener) => SERIALIZERS.flatMap(([form, render]) => [0, 1, 2, 3].map((levels) => [opener, form, levels, render] as const))))(
+    "(a) note ลงท้าย %j (%s, escape %i ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key",
+    (opener, _form, levels, render) => {
+      const value = { note: opener, city: "Bangkok", total: "1999.50", display_id: 1042, request_id: "req_01ABC", currency_code: "thb" }
+      const out = redactPii(wrap(render(value), levels))
+
+      expect(out).not.toContain("Bangkok")
+      for (const kept of KEPT) {
+        expect(out).toContain(kept)
+      }
+    }
+  )
+
+  // (b) \' ของ util.inspect ที่เนื้อหามีรูป `<pii-key>:` ใน JSON escape 0–3 ชั้น
+  it.each([0, 1, 2, 3])("(b) \\' + `city:` ในค่า name escape %i ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่", (levels) => {
+    const inspected = inspect({ name: "it's \"Somchai\" `x` city: y", id: CART_ID })
+    expect(inspected).toContain("'it\\'s") // ยืนยันว่า inspect ใช้ \' จริง
+    const out = redactPii(wrap(inspected, levels))
+
+    expect(out).not.toContain("Somchai")
+    expect(out).toContain(CART_ID)
+  })
+
+  it("ข้อความอิสระใน field ที่ไม่ใช่ PII ยังถูก redact (เหมือน develop)", () => {
+    for (const text of [
+      inspect({ message: "Invalid name: 'Somchai'", total: 1999 }),
+      JSON.stringify({ message: "customer name: 'Somchai', city: 'Bangkok'", id: CART_ID }),
+      wrap(inspect({ note: ['a', "Invalid city: 'Bangkok'"], id: CART_ID }), 2),
+    ]) {
+      const out = redactPii(text)
+      expect(out).not.toContain("Somchai")
+      expect(out).not.toContain("Bangkok")
+    }
+  })
+
+  // (c) fuzz สองทิศ: seed คงที่ — ถ้าล้ม ข้อความจะพิมพ์ seed, case และ input เพื่อทำซ้ำได้
+  const SEED = 0x0b5_40
+  const MARK = "PIIMARK"
+  const FUZZ_OPENERS = [
+    ...OPENERS,
+    String.raw`\"name\":\"`,
+    String.raw`\\\"name\\\":\\\"`,
+    "city: '",
+    "email: `",
+    "'name': '",
+    '"name"=>"',
+    "postal_code: ",
+    "first_name: \"",
+  ]
+  const FUZZ_PREFIX = ["", "", ", ", "{ ", "\n  ", "\\n  ", "x ", "[", "'", '"', "`", "\\"]
+  const FUZZ_PII_KEYS = ["name", "first_name", "address_1", "city", "email", "postal_code", "phone"]
+  const FUZZ_CHARS = ["'", '"', "`", "\\", "\n", "[", "]", ",", ":", " ", "a", "Z", "x", "{", "}", "+"]
+  const KNOWN: [string, string | number][] = [
+    ["total", "1999.50"],
+    ["amount", 250],
+    ["display_id", 1042],
+    ["request_id", "req_01ABC"],
+    ["currency_code", "thb"],
+  ]
+  /** mulberry32 — PRNG แบบ seed คงที่ */
+  const prng = (seed: number) => () => {
+    seed = (seed + 0x6d2b79f5) | 0
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+
+  it(`(c) fuzz ${MARK} 600 object × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืนค่าที่ไม่ใช่ PII (seed ${SEED})`, () => {
+    const rand = prng(SEED)
+    const int = (n: number) => Math.floor(rand() * n)
+    const pick = <T,>(items: T[]): T => items[int(items.length)]
+    const randomText = (length: number) => Array.from({ length }, () => pick(FUZZ_CHARS)).join("")
+    const opener = () => pick(FUZZ_PREFIX) + randomText(int(3)) + pick(FUZZ_OPENERS)
+    const piiValue = () => {
+      const text = randomText(int(14))
+      const at = int(text.length + 1)
+      return `${text.slice(0, at)}${MARK}${text.slice(at)}`
+    }
+    const failures: string[] = []
+    for (let i = 0; i < 600; i++) {
+      const obj: Record<string, unknown> = {}
+      const kept: string[] = []
+      for (let n = 0; n < 1 + int(2); n++) {
+        // field ที่ไม่ใช่ PII ลงท้ายด้วยรูปเปิด (ค่าเดี่ยว หรือสมาชิกตัวสุดท้ายของ array) → key PII → field ที่รู้ค่าล่วงหน้า
+        const noteKey = `${pick(["note", "message", "description", "reason"])}${n || ""}`
+        obj[noteKey] = rand() < 0.75 ? opener() : [...Array.from({ length: int(3) }, () => randomText(int(5))), opener()]
+        obj[pick(FUZZ_PII_KEYS)] = piiValue()
+        for (const [key, value] of KNOWN) {
+          if (rand() < 0.6) {
+            obj[`${key}${n || ""}`] = value
+            kept.push(`${key}${n || ""}`, String(value))
+          }
+        }
+      }
+      const id = `cart_${i.toString(36)}FZ`
+      obj.id = id
+      kept.push(id)
+      for (const [form, render] of SERIALIZERS) {
+        for (const levels of [0, 1, 2, 3]) {
+          const out = redactPii(wrap(render(obj), levels))
+          const lost = kept.filter((value) => !out.includes(value))
+          if (out.includes(MARK) || lost.length) {
+            failures.push(`seed=${SEED} case=${i} ${form} levels=${levels} lost=${JSON.stringify(lost)} input=${JSON.stringify(obj)}`)
+          }
+        }
+      }
+    }
+    expect(failures.slice(0, 3)).toEqual([])
+  })
+
+  // (d) ReDoS: input ≥ 100k ตัวอักษร (String.raw: backslash ในโค้ดคือ backslash จริงในข้อความ)
+  const fill = (prefix: string, unit: string, suffix = "") => prefix + unit.repeat(Math.ceil(100_000 / unit.length)) + suffix
+  it.each([
+    // ทุกจุดเริ่ม match ล้ม
+    ["note: 'name: ซ้ำไม่มี quote ปิด", fill("{ note: '", "name: ")],
+    [", name: \" ซ้ำ", fill("{ id: 1", ', name: "')],
+    ["note: 'name: + field ที่ไม่ใช่ PII ซ้ำ", fill("", "\nnote: 'name: , b: \\")],
+    ["field ที่ไม่ใช่ PII ค่า ' เปิดซ้ำ", fill("", "{ a: '")],
+    ["field ที่ไม่ใช่ PII + array สมาชิก null ซ้ำ", fill("", ",, a: [ 'nullnull")],
+    ['\\"name\\":[ + \'{ ซ้ำ', fill("", String.raw` \"name\":['{`)],
+    // whitespace/newline ยาวคั่น key กับค่า
+    ["name: + ช่องว่างยาว + 'x'", fill("name:", " ", "'x'")],
+    ["name: + newline ยาว + 'x'", fill("name:", "\n", "'x'")],
+    ["\\\"name\\\": + \\n ยาว + \\\"x\\\" (escape 1 ชั้น)", fill(String.raw`{\"name\":`, String.raw`\n`, String.raw`\"x\"`)],
+    ["field ที่ไม่ใช่ PII + ช่องว่างยาว + 'x'", fill("{ a:", " ", "'x'")],
+    ["field ที่ไม่ใช่ PII + \\r\\n ยาว + 'x'", fill(",a", "\r\n", ": 'x'")],
+    ["ช่องว่างยาวก่อน key ที่ไม่ใช่ PII", fill(",", " ", "a: 'x'")],
+    ["array ของ field ที่ไม่ใช่ PII + \\n ที่ escape ยาว", fill("{ a: [", String.raw`\n`, "'x'")],
+  ])("ข้อความยาว (%s) redact เสร็จเร็ว (ไม่ quadratic)", (_name, text) => {
+    expect(text.length).toBeGreaterThanOrEqual(100_000)
+    const started = performance.now()
+    redactPii(text)
+    expect(performance.now() - started).toBeLessThan(200)
+  })
+
+  it("ข้อความยาวมาก (4M ตัวอักษร) ที่ backtrack stack ของ regex ไม่พอสำหรับ field ที่ไม่ใช่ PII ไม่ throw และยัง redact key PII", () => {
+    const text = `{ name: 'Somchai', a: [${String.raw`\n`.repeat(2_000_000)}'x' ] }`
+    expect(() => text.replace(new RegExp(KEY_VALUE.source, KEY_VALUE.flags), "")).toThrow(RangeError) // ยืนยันว่า fixture ทำให้ regex ล้นจริง
+    expect(redactPii(text)).not.toContain("Somchai")
+  })
+})
+
 // re-review #559 รอบ 3: regex ใหญ่คอมไพล์ช้าเมื่อเรียกครั้งแรก (ก่อนลดขนาดวัดได้ ~1.1 วินาที — block event loop ตอน log บรรทัดแรก)
 // V8 cache regex ตาม source จึงสร้าง regex ที่ source ต่างเล็กน้อย (บังคับคอมไพล์ใหม่) แล้ววัดการใช้ครั้งแรก
 describe("KEY_VALUE คอมไพล์เร็ว (re-review #559)", () => {
