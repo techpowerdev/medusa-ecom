@@ -15,7 +15,7 @@ const LineItemOptions = ({
     <p
       data-testid={dataTestid}
       data-value={dataValue}
-      className="inline-block text-sm text-muted-foreground w-full overflow-hidden text-ellipsis"
+      className="inline-block text-sm leading-[1.4rem] text-muted-foreground w-full overflow-hidden text-ellipsis"
     >
       ตัวเลือก: {variant?.title}
     </p>

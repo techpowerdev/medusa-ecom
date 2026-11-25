@@ -20,7 +20,7 @@ const InteractiveLink = ({
       onClick={onClick}
       {...props}
     >
-      <p className="text-sm text-primary">{children}</p>
+      <p className="text-sm leading-[1.4rem] text-primary">{children}</p>
       <ArrowUpRight className="size-4 text-primary group-hover:rotate-45 ease-in-out duration-150" />
     </LocalizedClientLink>
   )

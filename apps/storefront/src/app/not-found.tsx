@@ -27,7 +27,7 @@ export default function NotFound() {
         href="/"
         data-testid="not-found-home-link"
       >
-        <p className="text-sm text-primary">กลับไปหน้าแรก</p>
+        <p className="text-sm leading-[1.4rem] text-primary">กลับไปหน้าแรก</p>
         <ArrowUpRight className="size-4 text-primary group-hover:rotate-45 ease-in-out duration-150" />
       </Link>
     </div>

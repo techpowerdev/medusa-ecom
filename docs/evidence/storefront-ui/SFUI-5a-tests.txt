@@ -199,3 +199,37 @@ e2e/thai-ui-shell.spec.ts
   3 failed
   37 passed (1.0m)
 ล้ม 3 ตัวไม่ใช่ของ task นี้: core-38 :202/:247 ล้มเหมือนกันบน base 8afaceb5 (กล่องสรุปที่อยู่ของ 5c); core-50 :171 nav-menu-button ต่าง 1.265625px = ค่าเดิมของ macOS (เท่า base)
+
+================ รอบกฎ 21 ฉบับแก้ (4fefec37: txt-*medium* / <Text> ไม่ใส่ขนาด → text-sm leading-[1.4rem]) 2026-11-26 ================
+เติม leading-[1.4rem]: app/not-found (Text), interactive-link (Text), cart-totals (txt-medium 2 จุด), checkbox label (txt-medium!), line-item-options (Text + txt-medium)
+ไม่เปลี่ยน: input (txt-compact-medium[-plus] → compact = leading-5), filter-radio-group/footer (Text ที่มี txt-*small* อยู่แล้ว), nav (txt-xsmall-plus ไม่ใช่ medium/Text)
+base ของ branch: 6e3f203c (merge feat/SFUI-2-shadcn-base ที่มี 4fefec37)
+== lint: 0 errors (28 warnings เดิม) | typecheck: ผ่าน | build prod: ผ่าน
+== test:unit: Test Files 130 passed (130); Tests 2002 passed (2002)
+== test:e2e:unit: 192 passed
+== e2e prod build — sfui-mobile-390 รันก่อนบน DB สะอาด:
+  ✓  1 [chromium] › e2e/sfui-mobile-390.spec.ts:20:5 › AC-17: หน้าแรก, store, PDP, cart, checkout, account, orders ที่ 390px ไม่ล้นแนวนอน
+  1 passed (36.5s)
+== e2e prod build — core-38, core-50, thai-ui-shell, thai-ui-pages, sfui-5a-common, core-37, ui-preset-font:
+  ✓   2 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (375px)
+  ✓   1 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 320×640: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64
+  ✓   5 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 375×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64
+  ✓   6 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 639×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64
+  ✓   4 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (1280px)
+  ✓   7 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1023×800: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64
+  ✓   3 [chromium] › e2e/core-37-copy-button.spec.ts:14:5 › AC-131: แถวรหัสของการ์ด voucher ไม่เยื้องที่ 1280 และข้อความคัดลอกล้มไม่ล้นจอที่ 375
+  ✘   9 [chromium] › e2e/core-50-nav-narrow.spec.ts:171:7 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1280×800: ชื่อร้านกึ่งกลาง nav-account-link แสดง ตำแหน่ง/ขนาดเท่า develop
+  ✓  10 [chromium] › e2e/sfui-5a-common.spec.ts:23:5 › label ลอยของช่องกรอก (common/components/input) มองเห็นได้ทั้งก่อนและหลังกรอก
+  ✓  11 [chromium] › e2e/sfui-5a-common.spec.ts:50:5 › 404: ลูกศรของลิงก์กลับหน้าแรกมองเห็นและใช้สีเดียวกับข้อความ (token ของ shadcn)
+  ✓  12 [chromium] › e2e/thai-ui-pages.spec.ts:13:5 › AC-48: หน้า store และ PDP เป็นภาษาไทย
+  ✓  14 [chromium] › e2e/thai-ui-pages.spec.ts:37:5 › AC-48: หน้า /search เป็นภาษาไทย
+  ✓  13 [chromium] › e2e/thai-ui-shell.spec.ts:10:5 › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai
+  ✓   8 [chromium] › e2e/core-38-mobile-layout.spec.ts:124:5 › AC-132: checkout — label ของฟอร์มที่อยู่ไม่ทับค่า, สรุปที่อยู่ 375 เรียงแนวตั้งและอีเมลยาวไม่ล้น, 1280 แถวเดียว
+  ✓  16 [chromium] › e2e/thai-ui-shell.spec.ts:61:5 › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย
+  ✓  15 [chromium] › e2e/thai-ui-pages.spec.ts:53:5 › AC-48: หน้า category และ collection เป็นภาษาไทย
+  ✓  18 [chromium] › e2e/ui-preset-font.spec.ts:9:5 › AC-3: body, h1, h2, p, button, input และ class txt-*/*-webs บนหน้าแรกใช้ Noto Sans Thai ก่อน Inter
+  ✓  17 [chromium] › e2e/core-38-mobile-layout.spec.ts:202:5 › AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่าง + billing ต่างกัน → ข้อความอยู่ในกล่องของตัวเองที่ 375/640/1280
+  ✓  19 [chromium] › e2e/core-38-mobile-layout.spec.ts:247:5 › AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่างอยู่ในกล่องของตัวเองที่ 375/640/1280
+  1 failed
+  18 passed (14.2s)
+ล้ม 1 ตัวไม่ใช่ของ task นี้: core-50 :171 nav-menu-button ต่าง 1.265625px = ค่าเดิมของ macOS (เท่า base); core-38 ผ่านครบทุกตัวแล้วบน base ใหม่

@@ -35,7 +35,7 @@ const CheckboxWithLabel: React.FC<CheckboxProps> = ({
           data-testid={dataTestId}
         />
       </span>
-      <Label htmlFor="checkbox" className="text-sm">
+      <Label htmlFor="checkbox" className="text-sm leading-[1.4rem]">
         {label}
       </Label>
     </div>
