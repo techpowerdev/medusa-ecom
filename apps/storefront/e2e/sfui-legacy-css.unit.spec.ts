@@ -11,7 +11,6 @@ const LEGACY_CSS = path.join(SRC, "styles", "legacy-medusa.css")
 // ชื่อที่โค้ดเดิมใช้แต่ @medusajs/ui-preset@2.22.1 ไม่เคยมีสไตล์ (พิมพ์ผิดตั้งแต่ก่อน SFUI — v3 ก็ไม่ generate อะไร)
 // ไม่สร้างนิยามให้ เพื่อไม่ให้หน้าตาเปลี่ยน; task เจ้าของไฟล์ (5x) ลบ class เหล่านี้ตอนย้าย
 const NO_STYLE_IN_PRESET = [
-  "txt-ui-fg-base",
   "text-ui-fg-medium-plus",
   "shadow-borders-interactive",
   "shadow-borders-strong-with-shadow",

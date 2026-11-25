@@ -1,6 +1,6 @@
 "use client"
 
-import { XMarkMini } from "@medusajs/icons"
+import { X } from "lucide-react"
 import { useClearRefinements, useCurrentRefinements } from "react-instantsearch"
 
 import { indexedCurrency, priceAttribute } from "@lib/search-client"
@@ -78,13 +78,13 @@ const CurrentRefinements = ({ currencyCode }: { currencyCode: string }) => {
   return (
     <div className="flex flex-col gap-y-3" data-testid="current-refinements">
       <div className="flex items-center justify-between gap-x-2 pr-6">
-        <span className="txt-compact-small-plus text-ui-fg-subtle">
+        <span className="text-sm leading-5 font-medium text-muted-foreground">
           ตัวกรองที่เลือก
         </span>
         {canClearAll && (
           <button
             onClick={clearAll}
-            className="txt-compact-small-plus text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
+            className="text-sm leading-5 font-medium text-primary underline-offset-4 hover:underline"
             data-testid="clear-refinements"
           >
             ล้างทั้งหมด
@@ -108,11 +108,11 @@ const CurrentRefinements = ({ currencyCode }: { currencyCode: string }) => {
                 onClick={() => refine(refinement)}
                 aria-label={`ลบตัวกรอง ${label}`}
                 title={label}
-                className="border-ui-border-interactive text-ui-fg-base border text-small-regular h-8 max-w-full rounded-rounded px-3 flex items-center gap-x-1.5 transition-colors duration-150 hover:bg-ui-bg-base-hover"
+                className="border-primary text-foreground border text-small-regular h-8 max-w-full rounded-rounded px-3 flex items-center gap-x-1.5 transition-colors duration-150 hover:bg-muted"
                 data-testid="remove-refinement"
               >
                 <span className="truncate">{label}</span>
-                <XMarkMini className="shrink-0 text-ui-fg-muted" />
+                <X aria-hidden="true" className="size-[15px] shrink-0 text-muted-foreground" />
               </button>
             </li>
           )

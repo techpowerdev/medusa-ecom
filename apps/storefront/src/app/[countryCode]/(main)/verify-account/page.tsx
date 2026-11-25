@@ -13,7 +13,7 @@ export default function VerifyAccountPage() {
     <div className="w-full flex justify-center px-8 py-12">
       <Suspense
         fallback={
-          <p className="text-base-regular text-ui-fg-base">
+          <p className="text-base-regular text-foreground">
             กำลังยืนยันอีเมลของคุณ...
           </p>
         }

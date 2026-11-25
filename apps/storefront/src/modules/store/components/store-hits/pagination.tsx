@@ -2,7 +2,7 @@
 
 import { usePagination } from "react-instantsearch"
 
-import { clx } from "@modules/common/components/ui"
+import { cn } from "@/lib/utils"
 
 const SearchPagination = () => {
   const { pages, currentRefinement, nbPages, refine } = usePagination({
@@ -16,8 +16,8 @@ const SearchPagination = () => {
   const renderPage = (page: number) => (
     <button
       key={page}
-      className={clx("txt-xlarge-plus text-ui-fg-muted", {
-        "text-ui-fg-base hover:text-ui-fg-subtle": page === currentRefinement,
+      className={cn("text-lg leading-[1.8rem] font-medium text-muted-foreground", {
+        "text-foreground hover:text-muted-foreground": page === currentRefinement,
       })}
       disabled={page === currentRefinement}
       // CORE-92 (spec 01 กฎข้อ 148c): ป้ายไทยสำหรับ screen reader + บอกหน้าปัจจุบัน แบบ `Pagination` (กฎข้อ 136c)
@@ -33,7 +33,7 @@ const SearchPagination = () => {
     <span
       key={key}
       aria-hidden="true"
-      className="txt-xlarge-plus text-ui-fg-muted items-center cursor-default"
+      className="text-lg leading-[1.8rem] font-medium text-muted-foreground items-center cursor-default"
     >
       ...
     </span>

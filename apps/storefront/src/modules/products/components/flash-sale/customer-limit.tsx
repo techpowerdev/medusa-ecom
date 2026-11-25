@@ -21,7 +21,7 @@ export default function FlashCustomerLimit({
       </p>
       {limit.remaining === 0 && (
         <p
-          className="text-small-regular text-ui-fg-error"
+          className="text-small-regular text-destructive"
           role="alert"
           data-testid="flash-customer-limit-reached"
         >

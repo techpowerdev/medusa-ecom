@@ -52,7 +52,7 @@ export default async function RelatedProducts({
         <span className="text-base-regular text-gray-600 mb-6">
           สินค้าที่เกี่ยวข้อง
         </span>
-        <p className="text-2xl-regular text-ui-fg-base max-w-lg">
+        <p className="text-2xl-regular text-foreground max-w-lg">
           สินค้าเหล่านี้อาจถูกใจคุณ
         </p>
       </div>

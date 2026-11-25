@@ -1,6 +1,6 @@
 "use client"
 
-import { clx } from "@modules/common/components/ui"
+import { cn } from "@/lib/utils"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 export function Pagination({
@@ -35,8 +35,8 @@ export function Pagination({
   ) => (
     <button
       key={p}
-      className={clx("txt-xlarge-plus text-ui-fg-muted", {
-        "text-ui-fg-base hover:text-ui-fg-subtle": isCurrent,
+      className={cn("text-lg leading-[1.8rem] font-medium text-muted-foreground", {
+        "text-foreground hover:text-muted-foreground": isCurrent,
       })}
       disabled={isCurrent}
       // CORE-78 (spec 01 กฎข้อ 136c): ป้ายสำหรับ screen reader เป็นภาษาไทย + บอกหน้าปัจจุบัน
@@ -53,7 +53,7 @@ export function Pagination({
     <span
       key={key}
       aria-hidden="true"
-      className="txt-xlarge-plus text-ui-fg-muted items-center cursor-default"
+      className="text-lg leading-[1.8rem] font-medium text-muted-foreground items-center cursor-default"
     >
       ...
     </span>

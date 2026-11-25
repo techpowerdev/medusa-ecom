@@ -7,7 +7,6 @@ import { useHits, useInstantSearch } from "react-instantsearch"
 import { listVariantIdsByProduct } from "@lib/data/products"
 import useSearchSettled from "@lib/hooks/use-search-settled"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { Text } from "@modules/common/components/ui"
 import {
   CardFlashView,
   useCardFlashPrices,
@@ -64,21 +63,21 @@ const StoreHits = ({ hitsPerPage, currencyCode, regionId }: StoreHitsProps) => {
   return (
     <>
       {status === "error" ? (
-        <Text
-          className="py-16 text-center text-ui-fg-error"
+        <p
+          className="py-16 text-center text-sm leading-[1.4rem] text-destructive"
           data-testid="products-error"
         >
           โหลดรายการสินค้าไม่สำเร็จ
-        </Text>
+        </p>
       ) : showSkeleton ? (
         <SkeletonProductGrid numberOfProducts={hitsPerPage} />
       ) : !items.length ? (
-        <Text
-          className="py-16 text-center text-ui-fg-subtle"
+        <p
+          className="py-16 text-center text-sm leading-[1.4rem] text-muted-foreground"
           data-testid="no-products"
         >
           ไม่พบสินค้าที่ตรงกับตัวกรองนี้
-        </Text>
+        </p>
       ) : (
         <ul
           className="grid grid-cols-2 w-full small:grid-cols-3 medium:grid-cols-4 gap-x-6 gap-y-8"
@@ -94,13 +93,13 @@ const StoreHits = ({ hitsPerPage, currencyCode, regionId }: StoreHitsProps) => {
                   <div data-testid="product-wrapper">
                     <Thumbnail thumbnail={hit.thumbnail} size="full" />
                     {/* qa D-1 #148: ชื่อยาว/ราคา flash คู่ราคาขีดฆ่าบนจอแคบ → ราคาขึ้นบรรทัดใหม่ ไม่ล้นการ์ด */}
-                    <div className="flex flex-wrap txt-compact-medium mt-4 justify-between gap-x-2">
-                      <Text
-                        className="text-ui-fg-subtle min-w-0 break-words"
+                    <div className="flex flex-wrap text-sm leading-5 mt-4 justify-between gap-x-2">
+                      <p
+                        className="text-sm leading-[1.4rem] text-muted-foreground min-w-0 break-words"
                         data-testid="product-title"
                       >
                         {hit.title}
-                      </Text>
+                      </p>
                       <div className="flex items-center gap-x-2">
                         <CardFlashView
                           flash={flashPrices[hit.objectID]}
