@@ -4,9 +4,10 @@ import path from "node:path"
 
 import {
   FORBIDDEN_IMPORT,
+  PRESET_RAW_VAR,
   STOREFRONT,
   filesWithForbiddenPattern,
-  isTestFile,
+  hasForbiddenPattern,
   legacyClassNames,
   legacyNamesOfClass,
   readSource,
@@ -47,7 +48,10 @@ const TASKS: Task[] = [
 ]
 
 const PENDING: Partial<Record<Task, string[]>> = {
-  "SFUI-2": [],
+  // shim ส่งต่อไป shadcn ใน SFUI-2 (`clx` = `cn`, ไม่ import clsx แล้ว) — ลบทั้งโฟลเดอร์ใน SFUI-6
+  "SFUI-2": [
+    "src/modules/common/components/ui/index.tsx",
+  ],
   "SFUI-3a": [
     "src/modules/account/components/address-card/add-address.tsx",
     "src/modules/account/components/address-card/edit-address-modal.tsx",
@@ -220,7 +224,6 @@ const PENDING: Partial<Record<Task, string[]>> = {
   ],
   "SFUI-6": [
     "src/modules/common/components/radio/index.tsx",
-    "src/modules/common/components/ui/index.tsx",
   ],
 }
 
@@ -233,12 +236,7 @@ test("AC-6 (a): ทุกไฟล์ที่มี pattern ต้องห้�
 
 test("AC-6 (b): ทุกไฟล์ใน PENDING ยังมีอยู่และยังมี pattern (ย้ายเสร็จแล้วต้องลบออกจากรายการ)", () => {
   const stale = pendingFiles.filter(
-    (file) =>
-      !fs.existsSync(path.join(STOREFRONT, file)) ||
-      !(
-        FORBIDDEN_IMPORT.test(readSource(file)) ||
-        (!isTestFile(file) && legacyClassNames(file, readSource(file)).length > 0)
-      )
+    (file) => !fs.existsSync(path.join(STOREFRONT, file)) || !hasForbiddenPattern(file, readSource(file))
   )
   expect(stale, "ไฟล์ใน PENDING ที่ไม่มี pattern แล้ว/ไม่มีไฟล์").toEqual([])
 })
@@ -267,4 +265,22 @@ test("AC-6: ตัวจับ class ของ preset แยก variant/importan
   expect(FORBIDDEN_IMPORT.test('import { X } from "@modules/common/components/ui"')).toBe(true)
   expect(FORBIDDEN_IMPORT.test('import X from "@modules/common/components/modal/index"')).toBe(true)
   expect(FORBIDDEN_IMPORT.test('import { cn } from "@/lib/utils"')).toBe(false)
+})
+
+// กฎ 15 (แก้ใน spec 09): ตัวแปรดิบของ preset `var(--fg-*|--bg-*|--border-*)` นับเป็น pattern ต้องห้าม
+// — ไม่งั้นเอาไฟล์ออกจาก PENDING ได้ทั้งที่ยังอ้างตัวแปร แล้ว SFUI-6 ลบ legacy CSS ทำให้สี (เช่น ลูกศร InteractiveLink) หายเงียบ
+test("AC-6: ตัวแปรดิบของ preset var(--fg-*/--bg-*/--border-*) ในไฟล์ที่ไม่ใช่ test นับเป็น pattern ต้องห้าม", () => {
+  expect(hasForbiddenPattern("x.tsx", '<ArrowUpRight color="var(--fg-interactive)" />')).toBe(true)
+  expect(hasForbiddenPattern("x.tsx", 'const s = { color: "var(--bg-subtle)", borderColor: "var(--border-base)" }')).toBe(true)
+  expect(hasForbiddenPattern("x.tsx", 'const f = "var(--font-noto-sans-thai)"')).toBe(false)
+  expect(hasForbiddenPattern("x.tsx", 'const c = "var(--color-ui-fg-base)"')).toBe(false)
+  expect(hasForbiddenPattern("x.test.ts", 'const c = "var(--fg-muted)"')).toBe(false)
+  expect(PRESET_RAW_VAR.test("var(--fg-muted)")).toBe(true)
+})
+
+test("AC-6: ไฟล์ที่อ้าง var(--fg-*) อยู่ใน PENDING ของ task เจ้าของไฟล์", () => {
+  expect(PENDING["SFUI-5a"]).toEqual(
+    expect.arrayContaining(["src/app/not-found.tsx", "src/modules/common/components/interactive-link/index.tsx"])
+  )
+  expect(PENDING["SFUI-5c"]).toContain("src/modules/checkout/components/discount-code/index.tsx")
 })
