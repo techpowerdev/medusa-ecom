@@ -404,3 +404,77 @@ ReDoS: ไล่ค้น key 36 รูป (เพิ่ม key ใน quote ท
   (อัตรา 400k÷100k ≤ 4.9) ช้าสุด 23ms@100k (`\n  a: [ \\\\\\\"1สม` ซ้ำ)
   ระหว่างทาง: ฉบับที่ key ใน ' สแกนได้ 128 token ข้าม quote ใช้ ~95ms@100k กับ `, 'x\\สม` ซ้ำ (เชิงเส้นแต่ใกล้เกณฑ์) → ห้ามข้าม quote ที่ไม่มี backslash นำ เหลือ ≤ 23ms; เพิ่มเป็น ReDoS unit
   whitespace ยาว 77 รูป ช้าสุด 15.6ms@100k; compile + เรียกครั้งแรก 8ms (source 17,885); redactPii ไม่ throw ทั้ง 5 รูป array ยาวที่เคยล้น (วัดถึง 64M ตัวอักษร) (RangeError → [REDACTED])
+
+## RED รอบ 4 (re-review #562 รอบ 3) บนหัว PR e8ce6765 — 16 ล้ม (หัวข้อก่อนหน้าเป็นประวัติของแต่ละรอบ)
+# ข้อ 1: ค่า PII ขึ้นต้นด้วย `+` ถูกกลืน (`+` อยู่ในชุดขอบหลังสมาชิก) — 2 เคสของ reviewer รวมใน 1 test
+# ข้อ 2: key ใน quote ยาวเกิน 128 token ไม่ถูกจับเป็น field แล้ว key PII ถัดไปหลุด — key `x-`+130, `it's`+125, `say "`+200 × ค่า , ] } \n + = 15 test
+#   (แก้ข้อความรอบ 3 ที่ว่า "key > 128 ทำงานเหมือน develop" — ไม่จริง: develop ไม่หลุดในกรณีเหล่านี้)
+# ReDoS key ใน quote ไม่จำกัดความยาว 8 กรณีใหม่ผ่านทั้งก่อนและหลัง
+    ✕ (re-review #562 รอบ 3) ค่า PII ขึ้นต้นด้วย + หลังค่าของ field ที่ไม่ใช่ PII ไม่หลุด
+    ✕ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name "x-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × s
+    ✕ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name "x-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × s
+    ✕ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name "x-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × s
+    ✕ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name "x-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × s
+    ✕ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name "x-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × s
+    ✕ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name "it'saaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × seri
+    ✕ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name "it'saaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × seri
+    ✕ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name "it'saaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × seri
+    ✕ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name "it'saaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × seri
+    ✕ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name "it'saaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × seri
+    ✕ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name "say \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    ✕ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name "say \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    ✕ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name "say \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    ✕ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name "say \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    ✕ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name "say \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+Tests:       16 failed, 470 passed, 486 total
+
+## GREEN รอบ 4
+# ขอบหลังสมาชิก: `,` `]` `}` newline/`\n` ที่ escape/ท้ายข้อความ หรือ ` +` ที่มีช่องว่างนำ (ตามที่ reviewer เสนอ)
+# key ใน quote ไม่จำกัดความยาว: `"` — เนื้อหาข้าม `"` ที่ไม่มี backslash นำไม่ได้และหยุดที่ quote ปิดของชั้นตัวเอง; ' / backtick — หยุดที่ quote ถัดไปที่ไม่มี backslash นำ
+# key ใน quote/identifier ที่ค่าไม่ใช่สตริง/array (object, ตัวเลข) ถูกจับเฉพาะ key (fuzz ของ reviewer: key `"it's: name: '1": {…}` เคยเริ่ม match ใน key แล้วข้ามขอบ)
+# ข้อความใน key ถูก redact ด้วย PII_ONLY แยกจากค่า (เท่ากับที่ develop redact ข้อความใน key)
+    ✓ ค่าของ key ในรูป JS object (util.inspect) และ Ruby hash
+    ✓ (re-review #562 รอบ 3) ค่า PII ขึ้นต้นด้วย + หลังค่าของ field ที่ไม่ใช่ PII ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name ", สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name "]สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name "}สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name "\nสมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name "+สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name ", สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name "]สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name "}สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name "\nสมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name "+สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name ", สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name "]สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name "}สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name "\nสมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name "+สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ ข้อความยาว (key ใน quote + \' ซ้ำไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน quote + backslash ยาว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน quote + quote สลับชนิดยาว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน quote ที่ escape 1 ชั้น + \\\" ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน quote ซ้ำไม่มี :) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน ' + backslash + อักษรไทยซ้ำ (เดิม ~95ms — สแกน 128 token จากทุก quote)) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน ' + backslash ยาว + quote ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน ' ยาว 100k ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน ' ยาว 100k + :) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน " ยาว 100k ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน \" (escape 1 ชั้น) ยาว + \\\" ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน ' + quote " สลับยาว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน " + quote ' สลับยาว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน ' + \' ซ้ำยาว + backslash) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน ' ซ้ำ ไม่มี : (ทุกจุดเริ่มล้ม)) redact เสร็จเร็ว (ไม่ quadratic)
+Tests:       486 passed, 486 total
+backend test:unit: Test Suites: 133 passed, 133 total; Tests:       2330 passed, 2330 total
+storefront test:e2e:unit: 165 passed; backend typecheck/build: ผ่าน; lint: 0 error (warning 4 รายการเดิมของ OPS-38)
+
+## ตรวจเพิ่มนอก test รอบ 4 — เทียบ develop d5b7c0d7
+fuzz ของ reviewer (fz562-keep/fuzz.mts — สำเนา ไม่แก้ของเดิม; 6 serializer × 0–3 ชั้น; "genLeak" = หลุดใน PR โดยที่ develop redact field นั้นได้):
+  e8ce6765 seed 1–2000: id 12 / ext 12 / q 54 / long 1,410 / all 235 หลุดเพิ่มจริง, long หายเพิ่ม 60
+  หลังแก้: id, ext, q, long × seed 1–4000 (96,000 กรณีต่อชุด) และ all × seed 1–20000 (480,000 กรณี) → หลุดเพิ่มจริง 0, ค่าหายเพิ่ม 0 ทุกชุด
+    (PR หลุดรวม 55,777 vs develop 132,504 ใน all — ที่เหลือคือที่ develop หลุดด้วย)
+  ระหว่างทาง: หลังแก้ 2 ข้อแรก ยังหลุดเพิ่ม q 26 / all(4001) 8 จาก key `"it's: name: '1"` ที่ค่าเป็น object → จับ key อย่างเดียว → 0
+fuzz ของผม: generator รอบ 3/รอบ 2/เดิม 3.2M ต่อชุด, โหมดหนัก 1.6M, stress 240k — หลุด/หายเพิ่ม 0/0 ทุกชุด; ตาราง reviewer ทุกรอบ 0
+ReDoS: redos.mts ของ reviewer (26 รูป × 100k/400k/1.6M) เชิงเส้นทุกตัว ช้าสุด 37ms@100k (`สม{\"a\":\", b: "` ซ้ำ, รวม warm-up)
+  ไล่ค้นของผม 1,315,716 หน่วย flag 96 เชิงเส้น (อัตรา ≤ 5.4) ช้าสุด 26.6ms@100k; whitespace ยาว 77 รูป ไม่ถูก flag; compile + เรียกครั้งแรก 15ms (source 17,884)

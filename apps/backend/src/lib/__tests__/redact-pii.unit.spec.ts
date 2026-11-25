@@ -822,6 +822,34 @@ describe("redactPii (OPS-40, AC-55)", () => {
     expect(failures.slice(0, 3)).toEqual([])
   })
 
+  // re-review #562 รอบ 3 (ข้อ 1): ค่า PII ที่ขึ้นต้นด้วย `+` — `+` ติดกันไม่ใช่ขอบหลังสมาชิก (ท่อนต่อของ inspect มีช่องว่างนำเสมอ ` +`)
+  it("(re-review #562 รอบ 3) ค่า PII ขึ้นต้นด้วย + หลังค่าของ field ที่ไม่ใช่ PII ไม่หลุด", () => {
+    for (const [, render] of INSPECTS) {
+      for (const levels of [0, 1, 2, 3]) {
+        expect(redactPii(wrap(render({ note: "a, b:", phone: "+66 81 234 5678", id: CART_ID }), levels))).not.toContain("234 5678")
+      }
+    }
+    const text = JSON.stringify(
+      inspect({ detail: "=>'=>", last_name: "\\\"naXme\\\":\\\"`'+'\",\"x\":\"", message1: ", ", postal_code: "+'x-a': 10110 $" })
+    )
+    expect(redactPii(text)).not.toContain("10110")
+  })
+
+  // re-review #562 รอบ 3 (ข้อ 2): key ใน quote ยาวไม่จำกัด (เดิม ≤ 128 token — key ยาวกว่านั้นไม่ถูกจับเป็น field แล้ว key PII ถัดไปหลุด)
+  it.each(
+    [`x-${"a".repeat(130)}`, `it's${"a".repeat(125)}`, `say "${"a".repeat(200)}"`].flatMap((key) =>
+      [", สมชาย", "]สมชาย", "}สมชาย", "\nสมชาย", "+สมชาย"].map((name) => [key.slice(0, 12), name, key] as const)
+    )
+  )("(re-review #562 รอบ 3) key ยาว %j… ค่า name %j × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด", (_label, name, key) => {
+    for (const [, render] of SERIALIZERS) {
+      for (const levels of [0, 1, 2, 3]) {
+        const out = redactPii(wrap(render({ [key]: "a, b:", name, id: CART_ID }), levels))
+        expect(out).not.toContain("สมชาย")
+        expect(out).toContain(CART_ID)
+      }
+    }
+  })
+
   // (d) ReDoS: input ≥ 100k ตัวอักษร (String.raw: backslash ในโค้ดคือ backslash จริงในข้อความ)
   const fill = (prefix: string, unit: string, suffix = "") => prefix + unit.repeat(Math.ceil(100_000 / unit.length)) + suffix
   it.each([
@@ -848,6 +876,15 @@ describe("redactPii (OPS-40, AC-55)", () => {
     ["key ใน quote ซ้ำไม่มี :", fill("", `, 'a"b' `)],
     ["key ใน ' + backslash + อักษรไทยซ้ำ (เดิม ~95ms — สแกน 128 token จากทุก quote)", fill("", String.raw`, 'x\\สม`)],
     ["key ใน ' + backslash ยาว + quote ซ้ำ", fill("", String.raw`-, 'x\\\\'สม`)],
+    // re-review #562 รอบ 3: key ใน quote ไม่จำกัดความยาว — key ยาว 100k, quote สลับ, backslash ยาว
+    ["key ใน ' ยาว 100k ไม่ปิด", fill("{ '", "a")],
+    ["key ใน ' ยาว 100k + :", fill("{ '", "a", "': 'x'")],
+    ['key ใน " ยาว 100k ไม่ปิด', fill('{ "', "a")],
+    ["key ใน \\\" (escape 1 ชั้น) ยาว + \\\\\\\" ซ้ำ", fill(String.raw`{\"`, String.raw`a\\\"`)],
+    ["key ใน ' + quote \" สลับยาว", fill("{ '", `"a`)],
+    ['key ใน " + quote \' สลับยาว', fill('{ "', `'a`)],
+    ["key ใน ' + \\' ซ้ำยาว + backslash", fill("{ '", String.raw`\'a\\`)],
+    ["key ใน ' ซ้ำ ไม่มี : (ทุกจุดเริ่มล้ม)", fill("", ", 'aaaa' ")],
   ])("ข้อความยาว (%s) redact เสร็จเร็ว (ไม่ quadratic)", (_name, text) => {
     expect(text.length).toBeGreaterThanOrEqual(100_000)
     const started = performance.now()

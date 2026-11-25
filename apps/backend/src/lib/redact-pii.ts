@@ -102,8 +102,9 @@ const PII_KEY_VALUE =
 // - key = identifier หรือข้อความใน quote (escape 0–3 ชั้น — `'x-note'`, `"user-agent"`, `'ชื่อ'`; review #562: key ที่ไม่ใช่ identifier เคยไม่ถูกจับ
 //   แล้ว `, b: ` ในค่าเริ่ม field ปลอมที่กลืน quote เปิดของ key PII ถัดไป) ที่ไม่ใช่ key PII — ยกเว้น key PII ที่ค่าเป็น `[` แต่ไม่ผ่านกิ่ง array
 //   (กฎ 22f: สมาชิกหน้าตาเหมือนขอบ field) ซึ่งถูกจับเป็น field เพื่อไม่ให้ขอบ field ปลอมในสมาชิกกลืน key PII ค่าเดี่ยวถัดไป (เดิมสแกนเข้าไปใน array)
-// - ค่าต้องขึ้นต้นด้วย quote/backslash/`[` (lookahead ก่อน lookbehind ทุกตัว — บทเรียน `(?=\[)` ของ #559)
-// - สมาชิก/ท่อนจับแบบ atomic (`(?=(x))\14`) ตัวคั่นเป็นช่วงอักขระชุดเดียว (`[\s,+]+`) และต้องตามด้วยขอบของค่า (`,` `]` `}` `+` newline ดิบ/ที่ escape
+// - lookahead ก่อน lookbehind ทุกตัว (บทเรียน `(?=\[)` ของ #559); ค่าที่ขึ้นต้นด้วย quote/backslash/`[` ถูกจับด้วย ค่าอื่น (object/ตัวเลข) จับเฉพาะ key
+//   (re-review #562 รอบ 3: ข้อความใน key เช่น `"it's: name: '1": {…}` ห้ามเริ่ม match ที่ข้ามขอบ key) — ข้อความใน key ยัง redact ด้วย PII_ONLY แบบเดิม
+// - สมาชิก/ท่อนจับแบบ atomic (`(?=(x))\16`) ตัวคั่นเป็นช่วงอักขระชุดเดียว (`[\s,+]+`) และต้องตามด้วยขอบของค่า (`,` `]` `}` ` +` ที่มีช่องว่างนำ — `+` ติดกันคือค่าถัดไปที่ขึ้นต้นด้วย `+`, newline ดิบ/ที่ escape
 //   หรือท้ายข้อความ — แบบ ITEM_END) — สมาชิกปลอมที่ quote เปิดคือ quote ปิดของค่าอื่น (`', name: '` ตามด้วย `สมชาย`), ที่เป็น key ถัดไป (`"x","name":`)
 //   หรือที่ปิดผิดที่ (`'\\'` ของ \' ชั้น 1) จึงไม่นับ
 // - จับได้เกินจริง (สตริงถัดไปที่ไม่ใช่ key) ไม่ทำให้หลุด เพราะภายในยังถูก redact; จับได้ไม่ครบ (`]` ไม่บังคับ) = พฤติกรรมเดิมกับส่วนที่เหลือ
@@ -112,16 +113,18 @@ const PII_KEY_VALUE =
 // - quote `"` (JSON escape ทุกชั้นสม่ำเสมอ): group 12 = backslash ของ quote (ชั้น k = 2^k−1 ตัว), 13 = `"` — quote ปิด = ช่วง backslash m·(2B+2)+B ตัว + `"` (แบบ escapedQuoteRun)
 // - quote ' หรือ backtick ของ inspect (group 14 — JSON ไม่ escape ' จึงไม่รู้ชั้น): ปิดที่ quote แรก (ช่วง backslash ใดก็ได้นำหน้า) ที่ตามด้วย `:`/`=>`
 //   เนื้อหาข้าม quote ที่ไม่มี backslash นำไม่ได้ — การสแกนจากแต่ละ quote เปิดหยุดที่ quote ถัดไป (ReDoS: `, 'x\\` ซ้ำ)
-// เนื้อหา ≤ 128 token (ช่วง backslash + อักขระ หรืออักขระเดียว — แตกได้แบบเดียว) จึงสแกนจากแต่ละจุดเริ่มได้จำกัด
+// - quote `"`: เนื้อหาข้าม `"` ที่ไม่มี backslash นำไม่ได้ (ชั้นนอกกว่า) และหยุดที่ quote ปิดของชั้นตัวเอง
+// ไม่จำกัดความยาว key (re-review #562 รอบ 3) — token = ช่วง backslash + อักขระ หรืออักขระเดียว (แตกได้แบบเดียว) และการสแกนจากแต่ละ quote เปิด
+// หยุดที่ quote ถัดไปที่ไม่มี backslash นำ (quote ชนิดเดียวกัน) จึงไม่ซ้อนทับกัน → linear
 const KEY_EXCLUDED = (quote: string) => `(?!${KEY_NAMES}${quote}\\s*(?::|=>)\\s*(?![\\s\\[]))` // key PII (ยกเว้นค่า array ที่ไม่ผ่านกิ่ง array)
 const KEY_CLOSE = `(?:\\12\\12${BS}${BS})*\\12\\13`
-const KEY_TOKEN = `(?:${BS}+[^${BS}\\r\\n]|[^${BS}\\r\\n])`
+const KEY_TOKEN = `(?:${BS}+[^${BS}\\r\\n]|[^${BS}\\r\\n"])`
 const NON_PII_FIELD =
   `((?<![A-Za-z0-9_$])(?=${BS}{0,7}["'\`]|[A-Za-z_$])(?<=(?:^|[{,\\n]|${BS}+n)[ \\t]*)` +
-  `(?:(${BS}{0,7})(")${KEY_EXCLUDED("\\12\\13")}(?:(?!${KEY_CLOSE})${KEY_TOKEN}){1,128}${KEY_CLOSE}` +
-  `|(['\`])${KEY_EXCLUDED("\\14")}(?:${BS}+[^${BS}\\r\\n]|(?!\\14)[^${BS}\\r\\n]){1,128}?${BS}*\\14(?=\\s*(?::|=>))` +
+  `(?:(${BS}{0,7})(")${KEY_EXCLUDED("\\12\\13")}(?:(?!${KEY_CLOSE})${KEY_TOKEN})+${KEY_CLOSE}` +
+  `|(['\`])${KEY_EXCLUDED("\\14")}(?:${BS}+[^${BS}\\r\\n]|(?!\\14)[^${BS}\\r\\n])+?${BS}*\\14(?=\\s*(?::|=>))` +
   `|${KEY_EXCLUDED("")}[A-Za-z_$][\\w$]*)\\s*(?::|=>)\\s*)` +
-  `(?=["'\`${BS}\\[])(\\[?(?:[\\s,+]+|${BS}+n|\\.\\.\\. \\d+ more items?|(?=(${quotedString(17, INSPECT_ESCAPED_QUOTE_FIELD)}|-?\\d+(?:\\.\\d+)?(?![\\w.])|(?:null|true|false|undefined)(?![\\w$])))\\16(?=\\s*(?:[,\\]}+]|${BS}+n|$)))*\\]?)`
+  `(?:(?=["'\`${BS}\\[])(\\[?(?:[\\s,+]+|${BS}+n|\\.\\.\\. \\d+ more items?|(?=(${quotedString(17, INSPECT_ESCAPED_QUOTE_FIELD)}|-?\\d+(?:\\.\\d+)?(?![\\w.])|(?:null|true|false|undefined)(?![\\w$])))\\16(?=\\s*(?:[,\\]}]|${BS}+n|$)|\\s+\\+))*\\]?))?`
 export const KEY_VALUE = new RegExp(`${PII_KEY_VALUE}|${NON_PII_FIELD}`, "gi")
 const PII_ONLY = new RegExp(PII_KEY_VALUE, "gi")
 // (a) สตริงรูปอีเมล — เริ่ม match ได้เฉพาะต้นช่วงอักขระ local และจำกัดความยาวตาม RFC 5321 (local ≤ 64, label ≤ 63)
@@ -147,10 +150,12 @@ const replacePii = (_match: string, ...groups: unknown[]): string => {
   return `${prefix}${q}${REDACTED}${q}`
 }
 
-/** field ที่ไม่ใช่ PII (group 11 = key, 15 = ค่า) → redact เฉพาะภายในค่า */
+/** field ที่ไม่ใช่ PII (group 11 = key, 15 = ค่า ถ้าเป็นสตริง/array) → redact ภายใน key และภายในค่าแยกกัน (match ไม่ข้ามขอบ key/ค่า) */
 const replaceKeyValue = (match: string, ...groups: unknown[]): string => {
   const [field, , , , fieldValue] = groups.slice(10, 15) as (string | undefined)[]
-  return field === undefined ? replacePii(match, ...groups) : field + (fieldValue ?? "").replace(PII_ONLY, replacePii)
+  return field === undefined
+    ? replacePii(match, ...groups)
+    : field.replace(PII_ONLY, replacePii) + (fieldValue ?? "").replace(PII_ONLY, replacePii)
 }
 
 /**
