@@ -1,15 +1,15 @@
 # ROADMAP — milestone, ลำดับ PR, สถานะ
 
-อัปเดตล่าสุด: 2026-11-25 (release v0.3.1 #561 — task ใน v0.3.1 ☑ → 🚀; OPS-40 ◐ #562) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
+อัปเดตล่าสุด: 2026-11-26 (OPS-40 ☑ #562 merge เข้า develop; เพิ่ม OPS-41 หลัง go-live) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
 [`docs/roadmap/history.md`](roadmap/history.md) และ follow-up เก่า (รอบ 13–39) อยู่ที่
 [`docs/roadmap/followups-archive.md`](roadmap/followups-archive.md)
 
 ## สรุปสถานะ (อ่านตรงนี้ก่อน)
 
 - **ตอนนี้**: **release v0.3.1 แล้ว (2026-11-25)** — #561 `develop → main` (merge commit `88bb0b63`, tag `v0.3.1`): รอบ 42 (21 task) +
-  รอบ 43 ส่วน v0.3.1 (OPS-36 #554, PAY-23 #555, PAY-24 #556, OPS-39 #559) เป็น 🚀 · OPS-40 (PII ค่าเดี่ยวจาก review #559) ◐ #562 กำลัง review — ต้องเสร็จก่อน go-live, **ไม่อยู่ใน v0.3.1**
+  รอบ 43 ส่วน v0.3.1 (OPS-36 #554, PAY-23 #555, PAY-24 #556, OPS-39 #559) เป็น 🚀 · OPS-40 (PII ค่าเดี่ยวจาก review #559) ☑ #562 (merge 2026-11-26 — ข้อยกเว้น d1/d2/d3 ของกฎ 22d + กรณีรู้แล้ว `cart_13rjFZ` → OPS-41), **ไม่อยู่ใน v0.3.1**
 - **รอ owner ตัดสิน**: ไม่มีคำถามค้างของรอบ 43 — เหลือเฉพาะเรื่องก่อน go-live (Stripe live, ค่าส่ง, staging)
-- **ขั้นต่อไป**: OPS-40 (#562 review → merge) → go-live (checklist ข้อ 1–16) → **v1.0.0** (ร้านเปิดจริงครั้งแรก)
+- **ขั้นต่อไป**: go-live (checklist ข้อ 1–16) → **v1.0.0** (ร้านเปิดจริงครั้งแรก)
 
 ### Release
 
@@ -19,9 +19,9 @@
 | v0.2.0 | 🚀 | 2026-11-19 | #423 (`e274d387`), tag `v0.2.0` | task ใน milestone/Admin UI ที่ merge หลัง v0.1.0 ถึงรอบ 39 |
 | v0.3.0 | 🚀 | 2026-11-24 | #521 (`47c3e545`), tag `v0.3.0`, [GitHub Release](https://github.com/techpowerdev/medusa-ecom/releases/tag/v0.3.0) | แก้จากการทดสอบ manual (รอบ 40 = 32 task) + รอบ 41 (36 task; PAY-13 ✕) |
 | v0.3.1 | 🚀 | 2026-11-25 | #561 (`88bb0b63`), tag `v0.3.1` | รอบ 42 (21 task 🚀 — history หัวข้อ "รอบ 42 — ผลจริง") + 4 task ก่อน go-live ของรอบ 43 (3 🚀 train #557 + OPS-39 🚀 #559; Q-R43-ฉ = ก แก้เพิ่ม + OPS-39 owner 2026-11-25) |
-| go-live | ☐ | — | — | หลัง v0.3.1 + OPS-40 + Go-live checklist ข้อ 1–16 |
+| go-live | ☐ | — | — | หลัง v0.3.1 + OPS-40 (☑ #562) + Go-live checklist ข้อ 1–16 |
 | v1.0.0 | ☐ | — | — | release แรกที่เปิดร้านจริง: Go-live checklist ครบ + smoke test บน production ผ่าน (Q-R43-จ owner 2026-11-25) |
-| หลัง go-live | ☐ รอ owner สั่ง | — | — | รอบ 43 อีก 13 task |
+| หลัง go-live | ☐ รอ owner สั่ง | — | — | รอบ 43 อีก 14 task (รวม OPS-41) |
 
 ป้าย release ในหัวข้อ M3–M7 ของ history (v0.3.0 … v1.0.0 🎯) เป็นแผนเดิมก่อนรวม release — ไม่ผูกกับเลข release จริงในตารางนี้
 
@@ -52,7 +52,7 @@ OPS-36, PAY-23, PAY-24 merge ใน train #557 · OPS-39 เพิ่มหล�
 
 | Task | spec | งาน (สั้น) | Depends | UI/qa | สถานะ |
 |---|---|---|---|---|---|
-| OPS-40 | 07 | (PII) redact ค่าเดี่ยว: รูปเปิด key PII ในค่าอื่นไม่ทำให้ key ถัดไปหลุด + `\'` ที่มี `<pii-key>:` + fuzz สองทิศ/ReDoS (review #559) | PR เอกสาร OPS-40 | — | ◐ #562 |
+| OPS-40 | 07 | (PII) redact ค่าเดี่ยว: รูปเปิด key PII ในค่าอื่นไม่ทำให้ key ถัดไปหลุด + `\'` ที่มี `<pii-key>:` + fuzz สองทิศ/ReDoS (review #559) | PR เอกสาร OPS-40 | — | ☑ #562 |
 
 ไม่อยู่ใน v0.3.1 (release ไปก่อนแล้ว) · ต้อง merge ก่อน go-live (ข้อ 13) · ∥ งานหลัง go-live ทุกตัว · `redact-pii.ts` ไม่มี task อื่นแตะ
 
@@ -73,6 +73,7 @@ OPS-36, PAY-23, PAY-24 merge ใน train #557 · OPS-39 เพิ่มหล�
 | OPS-38 | 07 | backend lint warning 4 ไฟล์ (ไม่เปลี่ยน id ของ step/workflow) | — | — | ☐ |
 | ADM-49 | 08 | focus หลัง Mark as paid → แถวถัดไป/ปุ่ม Create payout | — | ✓ | ☐ |
 | ADM-50 | 08 | test hygiene admin: static ผูกปุ่ม Save, unit hook, e2e campaign | — | — | ☐ |
+| OPS-41 | 07 | (PII) `redactPii` แบบ parser นับความลึกวงเล็บ/ชั้น escape แทน regex — ปิดข้อยกเว้น d1/d2/d3 ของกฎ 22d + กรณีรู้แล้ว `cart_13rjFZ` (owner 2026-11-26; fixture ที่ `docs/spec/fixtures/OPS-41/`) | OPS-40 ☑ #562, spec/ADR ของ OPS-41 | — | ☐ |
 
 - **ไฟล์ร่วม** (ตัวที่ merge ทีหลัง sync): `docs/ops/production.md` PAY-23 → OPS-37 · `components/common/*` ADM-49 ↔ ADM-50 ·
   static ของ CORE-99 พบจุดใน nav → ให้ CORE-97 แก้ · `ci.yml` OPS-37 เท่านั้น · `cart.ts` CORE-97 เท่านั้น
@@ -103,7 +104,7 @@ OPS-36, PAY-23, PAY-24 merge ใน train #557 · OPS-39 เพิ่มหล�
 | 10 | Postgres prod `LC_CTYPE` ไม่ใช่ `C`/`POSIX` (`check:go-live` ตรวจ) | CORE-75, OPS-33 |
 | 11 | รัน `lowercase-emails.ts` แปลงอีเมลเดิมเป็นตัวเล็ก | CORE-80/81 |
 | 12 | backfill ธง `evoucher_backordered` | EV-25 |
-| 13 | log ของ prod ไม่มี PII (access log ไม่ผ่าน redact — OPS-35; OPS-36 + OPS-39 ของ v0.3.1 ปิดช่องหลัก, `\'` ใน JSON escape และ PII ใน array; **OPS-40 ต้อง merge ก่อน** — รูปเปิด key PII ค่าเดี่ยวในค่าอื่น) | OPS-33, OPS-35, OPS-36, OPS-39, OPS-40 |
+| 13 | log ของ prod ไม่มี PII (access log ไม่ผ่าน redact — OPS-35; OPS-36 + OPS-39 ของ v0.3.1 ปิดช่องหลัก, `\'` ใน JSON escape และ PII ใน array; OPS-40 ☑ #562 — รูปเปิด key PII ค่าเดี่ยวในค่าอื่น; ช่องที่เหลือ → OPS-41 หลัง go-live) | OPS-33, OPS-35, OPS-36, OPS-39, OPS-40 |
 | 14 | วัด p95 `POST /store/search` กับ catalog จริง (> ~10k สินค้าหรือ p95 > 300ms → ADR) | CORE-75 |
 | 15 | endpoint live สมัคร `refund.updated`/`refund.failed` + ทดสอบบัตร `4000 0000 0000 5126` ว่า alert ถึง ops | PAY-21, ADR-029 |
 | 16 | บัญชี Stripe live ยื่น account application ให้เสร็จ (refund พร้อมเพย์ต้องส่งอีเมลขอบัญชีถึงลูกค้า) | PAY-19 (Q-P14/15), ปิดรอบ 42 |
@@ -129,7 +130,7 @@ OPS-36, PAY-23, PAY-24 merge ใน train #557 · OPS-39 เพิ่มหล�
 | Release v0.3.0 (รอบ 40) | 01–08 | 🚀 | 32 🚀 | รวม CORE-75 #465 |
 | รอบ 41 | 01–08 | 🚀 | 36 🚀 + 1 ✕ | ✕ PAY-13 (ปิดโดย hotfix #468) |
 | รอบ 42 | 01–08 | 🚀 | 21 🚀 | v0.3.1 (#561); ADR-029 |
-| รอบ 43 | 01, 03, 04, 06–08 | ◐ | 4 🚀 + 1 ◐ + 13 ☐ | 4 🚀 (3 train #557 + OPS-39 #559) ใน v0.3.1; OPS-40 ◐ #562 ก่อน go-live (ไม่อยู่ใน v0.3.1); 13 ตัวหลัง go-live |
+| รอบ 43 | 01, 03, 04, 06–08 | ◐ | 4 🚀 + 1 ☑ + 14 ☐ | 4 🚀 (3 train #557 + OPS-39 #559) ใน v0.3.1; OPS-40 ☑ #562 ก่อน go-live (ไม่อยู่ใน v0.3.1); 14 ตัวหลัง go-live (รวม OPS-41) |
 
 จำนวน task นับจากตารางใน history.md ณ 2026-11-24 และตารางรอบ 43 ด้านบน ณ 2026-11-25 (task ที่อยู่หลาย milestone นับที่ milestone หลักของ spec)
 
