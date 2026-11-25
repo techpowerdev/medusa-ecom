@@ -1,7 +1,7 @@
 import type { FilterableNotificationProps, MedusaContainer } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules, NotificationStatus } from "@medusajs/framework/utils"
 
-// PAY-20 (spec 06 กฎข้อ 22c–d, ADR-029): แจ้ง ops ทาง log + อีเมล OPS_ALERT_EMAIL แบบ best-effort — ใช้ใน PAY-20 และ PAY-21
+// PAY-20 (spec 06 กฎข้อ 22c–d, ADR-029): แจ้ง ops ทาง log + อีเมล OPS_ALERT_EMAIL แบบ best-effort — ใช้ใน PAY-20, PAY-21 และผู้ส่งเดิม 3 ที่ (PAY-24 กฎข้อ 27)
 // กันส่งซ้ำด้วย idempotency_key ของ Notification module (ไม่เพิ่ม table)
 export type OpsAlert = {
   code: string
@@ -10,6 +10,8 @@ export type OpsAlert = {
   resource_type: string
   resource_id: string
   data: Record<string, unknown>
+  // PAY-24 (spec 06 กฎข้อ 27): ผู้เรียก log บรรทัด error ที่ขึ้นต้นด้วย code เองแล้ว (รูปแบบเดิมของผู้ส่งเดิม) → helper ไม่ log ซ้ำ
+  logged?: boolean
 }
 
 export type OpsAlertResult = "duplicate" | "sent" | "skipped" | "failed"
@@ -18,6 +20,7 @@ const errorMessage = (error: unknown) => (error instanceof Error ? error.message
 
 /**
  * มี notification ของ key นี้ที่ไม่ใช่ failure แล้ว → "duplicate" (ไม่ log/ไม่ส่ง); ไม่งั้น `logger.error` หนึ่งบรรทัดขึ้นต้นด้วย code
+ * (ยกเว้น `logged: true` — ผู้เรียก log เองแล้ว)
  * (แถว failure เดิมถูก soft-delete ก่อนส่งใหม่)
  * แล้วส่งอีเมล — ไม่ตั้ง OPS_ALERT_EMAIL → warn "skipped"; ส่งล้ม → log error "failed" (ไม่ throw)
  */
@@ -38,10 +41,12 @@ export async function sendOpsAlert(
     return "duplicate"
   }
 
-  const fields = Object.entries(alert.data)
-    .map(([key, value]) => `${key}=${value ?? null}`)
-    .join(" ")
-  logger.error(`${alert.code} ${fields}`)
+  if (!alert.logged) {
+    const fields = Object.entries(alert.data)
+      .map(([key, value]) => `${key}=${value ?? null}`)
+      .join(" ")
+    logger.error(`${alert.code} ${fields}`)
+  }
 
   const to = env.OPS_ALERT_EMAIL?.trim()
   if (!to) {

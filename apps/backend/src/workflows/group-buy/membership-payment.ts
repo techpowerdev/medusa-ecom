@@ -16,6 +16,7 @@ import {
   releaseLockStep,
   sendNotificationsStep,
 } from "@medusajs/medusa/core-flows"
+import { sendOpsAlert } from "../../lib/ops-alert"
 import { GROUP_BUY_MODULE } from "../../modules/group_buy"
 import type GroupBuyModuleService from "../../modules/group_buy/service"
 import {
@@ -355,35 +356,28 @@ export const checkMembershipPaymentStep = createStep(
 )
 
 // alert give-up ถึง OPS_ALERT_EMAIL แบบ best-effort: ไม่ตั้ง env → warn แล้วข้าม; ส่งล้ม → log error ไม่ทำให้ job ล้ม
+// PAY-24 (spec 06 กฎข้อ 27): ส่งผ่าน sendOpsAlert (key เดิม) — ส่งล้มแล้ว give-up รอบถัดไปส่งใหม่ได้อีเมลเดียว;
+// บรรทัด GROUP_BUY_PAYMENT_CHECK_GAVE_UP log ใน checkMembershipPaymentStep แล้ว (logged — ไม่ log ซ้ำ)
 // GB-32 กฎข้อ 58 (e): ชื่อตัวแปรตาม step id เดิม (lint step-id-kebab-case) — ไม่เปลี่ยน id ที่ workflow engine เก็บไว้
 export const alertGroupBuyPaymentCheckGaveUpStep = createStep(
   "alert-group-buy-payment-check-gave-up",
   async (result: MembershipPaymentCheckResult, { container }) => {
-    const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
-    const to = process.env.OPS_ALERT_EMAIL?.trim()
-    if (!to) {
-      logger.warn(`${GROUP_BUY_PAYMENT_CHECK_GAVE_UP}: OPS_ALERT_EMAIL is not set — skipping the ops alert email`)
-      return new StepResponse(undefined)
-    }
-    try {
-      await container.resolve(Modules.NOTIFICATION).createNotifications({
-        to,
-        channel: "email",
-        template: EmailTemplates.GROUP_BUY_PAYMENT_CHECK_GAVE_UP,
-        data: {
-          membership_id: result.membership_id,
-          order_id: result.order_id,
-          pay_deadline_at: result.pay_deadline_at,
-          sessions: result.sessions.map((s) => s.session_id).join(", "),
-          error: result.sessions.map((s) => s.error ?? ("status" in s ? s.status : undefined) ?? s.outcome).join("; "),
-        },
-        resource_id: result.order_id ?? undefined,
-        resource_type: "order",
-        idempotency_key: `${EmailTemplates.GROUP_BUY_PAYMENT_CHECK_GAVE_UP}-${result.membership_id}`,
-      })
-    } catch (error) {
-      logger.error(`${GROUP_BUY_PAYMENT_CHECK_GAVE_UP}: OPS_ALERT_EMAIL send failed: ${(error as Error)?.message ?? error}`)
-    }
+    await sendOpsAlert(container, {
+      code: GROUP_BUY_PAYMENT_CHECK_GAVE_UP,
+      template: EmailTemplates.GROUP_BUY_PAYMENT_CHECK_GAVE_UP,
+      idempotency_key: `${EmailTemplates.GROUP_BUY_PAYMENT_CHECK_GAVE_UP}-${result.membership_id}`,
+      resource_type: "order",
+      // give_up มีเฉพาะเมื่อพบ payment session ของ order (checkMembershipPaymentStep) — order_id มีค่าเสมอ
+      resource_id: result.order_id as string,
+      data: {
+        membership_id: result.membership_id,
+        order_id: result.order_id,
+        pay_deadline_at: result.pay_deadline_at,
+        sessions: result.sessions.map((s) => s.session_id).join(", "),
+        error: result.sessions.map((s) => s.error ?? ("status" in s ? s.status : undefined) ?? s.outcome).join("; "),
+      },
+      logged: true,
+    })
     return new StepResponse(undefined)
   }
 )

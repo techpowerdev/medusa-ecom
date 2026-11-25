@@ -193,6 +193,40 @@ medusaIntegrationTestRunner({
         expect(errorLog.mock.calls.some(([msg]) => /OPS_ALERT_EMAIL.*resend down/.test(String(msg)))).toBe(true)
         await expectNothingCreated()
       })
+
+      // PAY-24 (spec 06 กฎข้อ 27, AC-37): ใช้ sendOpsAlert — key `payment-webhook-session-not-found:<payment_intent>`
+      it("Stripe delivers the orphan event twice for the same PaymentIntent → one email (idempotency key per PI)", async () => {
+        await run(getContainer(), webhookEvent("payment_intent.succeeded", "payses_missing"))
+        await run(getContainer(), webhookEvent("payment_intent.amount_capturable_updated", "payses_missing", true))
+
+        const emails = await opsEmails()
+        expect(emails).toHaveLength(1)
+        expect((emails[0] as { idempotency_key?: string }).idempotency_key).toEqual(
+          `payment-webhook-session-not-found:${INTENT_ID}`
+        )
+        expect(emails[0]).toEqual(expect.objectContaining({ resource_type: "payment_intent", resource_id: INTENT_ID }))
+        expect(emails[0].data).toEqual(
+          expect.objectContaining({ provider: PROVIDER, session_id: "payses_missing", amount: "500", payment_intent: INTENT_ID })
+        )
+      })
+
+      it("the email provider fails once → the next event sends exactly one successful email, a third sends nothing", async () => {
+        // ล้มที่ระดับ provider ของ Notification module (ไม่ใช่ createNotifications) → เกิดแถว notification `failure` จริง (แบบ PAY-20)
+        const send = jest
+          .spyOn((getContainer().resolve(Modules.NOTIFICATION) as any).notificationProviderService_, "send")
+          .mockRejectedValueOnce(new Error("resend down"))
+
+        for (let i = 0; i < 3; i++) {
+          await expect(run(getContainer(), webhookEvent("payment_intent.succeeded", "payses_missing"))).resolves.toBeUndefined()
+        }
+
+        expect(send).toHaveBeenCalledTimes(2)
+        const emails = await opsEmails()
+        expect(emails.filter((e) => e.status !== "failure")).toHaveLength(1)
+        expect(emails).toHaveLength(1)
+        expect(emails[0].status).toEqual("success")
+        expect(errorLog.mock.calls.filter(([msg]) => /OPS_ALERT_EMAIL send failed/.test(String(msg)))).toHaveLength(1)
+      })
     })
   },
 })

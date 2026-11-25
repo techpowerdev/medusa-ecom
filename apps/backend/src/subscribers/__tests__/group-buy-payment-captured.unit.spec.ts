@@ -18,7 +18,8 @@ describe("groupBuyPaymentCapturedHandler — re-read fails", () => {
     [ContainerRegistrationKeys.LOGGER]: logger,
     [ContainerRegistrationKeys.QUERY]: { graph },
     [GROUP_BUY_MODULE]: { listGroupBuyMemberships: jest.fn().mockResolvedValue([{ id: "gbmem_1" }]) },
-    [Modules.NOTIFICATION]: { createNotifications },
+    // PAY-24: alert ส่งผ่าน sendOpsAlert ซึ่งอ่าน notification ของ key ก่อน (ยังไม่มี → ส่ง)
+    [Modules.NOTIFICATION]: { createNotifications, listNotifications: jest.fn().mockResolvedValue([]) },
   }
   const container = { resolve: (key: string) => services[key] }
   const handle = () =>

@@ -591,7 +591,7 @@ Out of scope: จำเหตุของการคืนเงินข้า
   ทุกแขนง 401/403 ไม่เรียก `setCartCookie`; `succeeded` + 401 → `?notice=payment_received` และ login ไป `/th/account/orders` (unit ของ helper CORE-95)
 - AC-36 (PAY-23, กฎข้อ 26) integration `stripe-refund-webhook.spec.ts`: data ของ notification มี `source: "stripe"` (ล้มบน develop); mock locking throw → ไม่มี log บรรทัดใดขึ้นต้น `STRIPE_REFUND_FAILED`;
   `refund-failure-scan.spec.ts`: refund ล้มของ order ที่ยกเลิก → data `order_id` = id ของ order; แถวที่ใหม่ที่สุดในชุด 201 แถวถูกตรวจ และ unit runbook ตรงประโยคใหม่
-- AC-37 (PAY-24, กฎข้อ 27) static: สามไฟล์ไม่มี `process.env.OPS_ALERT_EMAIL`/`createNotifications` ตรง (ใช้ `sendOpsAlert`); test เดิมของ PAY-6b, GB-20b, GB-23 ผ่านโดยไม่แก้ค่าที่คาด;
+- ☑ AC-37 (PAY-24, กฎข้อ 27) static: สามไฟล์ไม่มี `process.env.OPS_ALERT_EMAIL`/`createNotifications` ตรง (ใช้ `sendOpsAlert`); test เดิมของ PAY-6b, GB-20b, GB-23 ผ่านโดยไม่แก้ค่าที่คาด;
   webhook orphan ของ PI เดียวกันมา 2 ครั้ง → notification 1 รายการ; mock notification provider ล้มครั้งแรกแล้วสำเร็จ → แถวที่ไม่ใช่ failure = 1 และรอบที่สามไม่ส่งเพิ่ม
 - AC-38 (PAY-25, กฎข้อ 28) unit Vitest: `openQr` เมื่อ Stripe คืน error ภาษาอังกฤษ → message เป็นอักษรไทย (ล้มบน develop); `PayButtons` (route mock แบบ AC-30) error `card_declined` → ข้อความที่มองเห็นเป็นไทย ไม่มีข้อความของ Stripe
 ### Test plan (รอบ 43)
@@ -603,8 +603,8 @@ Out of scope: จำเหตุของการคืนเงินข้า
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
 | PAY-22 | (หลัง go-live) `/api/payment-return`: ตัวพิมพ์ของ `redirect_status`, failed + 401 → `step=payment`, notice `payment_received` เมื่อ `succeeded` (กฎข้อ 25) | `app/api/payment-return/route.ts` (+ test), `lib/util/login-notice.ts` | ~20 LOC + ~80 LOC test | AC-35 | PR เอกสารปิดรอบ 42 (Q-P21 = ก ☑) | — |
-| PAY-23 | (v0.3.1 ก่อน go-live; เงิน) alert คืนเงิน: `source`, prefix ของ log, เรียงใหม่ก่อน, test `order_id` (กฎข้อ 26) | `src/subscribers/stripe-refund-webhook.ts`, `src/jobs/refund-failure-scan.ts`, `docs/ops/production.md`, test | ~15 LOC + ~80 LOC test | AC-36 | PR เอกสารปิดรอบ 42 (Q-P23 = ก ☑) | `production.md` (OPS-37 — ตัวหลัง sync) |
-| PAY-24 | (v0.3.1 ก่อน go-live; เงิน) ย้ายผู้ส่ง `OPS_ALERT_EMAIL` 3 ที่มาใช้ `sendOpsAlert` (กฎข้อ 27) | ไฟล์ในกฎข้อ 27, test | ~−30 LOC + ~80 LOC test | AC-37 | PR เอกสารปิดรอบ 42 | `membership-payment.ts` (GB-33 แตะเฉพาะ test — ไม่ชน) |
+| PAY-23 | ☑ #555 — (v0.3.1 ก่อน go-live; เงิน) alert คืนเงิน: `source`, prefix ของ log, เรียงใหม่ก่อน, test `order_id` (กฎข้อ 26) | `src/subscribers/stripe-refund-webhook.ts`, `src/jobs/refund-failure-scan.ts`, `docs/ops/production.md`, test | ~15 LOC + ~80 LOC test | AC-36 | PR เอกสารปิดรอบ 42 (Q-P23 = ก ☑) | `production.md` (OPS-37 — ตัวหลัง sync) |
+| PAY-24 | ☑ #556 — (v0.3.1 ก่อน go-live; เงิน) ย้ายผู้ส่ง `OPS_ALERT_EMAIL` 3 ที่มาใช้ `sendOpsAlert` (กฎข้อ 27) | ไฟล์ในกฎข้อ 27, test | ~−30 LOC + ~80 LOC test | AC-37 | PR เอกสารปิดรอบ 42 | `membership-payment.ts` (GB-33 แตะเฉพาะ test — ไม่ชน) |
 | PAY-25 | (หลัง go-live) ข้อความไทยของ error Stripe ตอนเปิด QR และหน้าจ่าย order (กฎข้อ 28); qa | ไฟล์ในกฎข้อ 28 (+ test) | ~10 LOC + ~60 LOC test | AC-38 | PR เอกสารปิดรอบ 42 | — |
 
 ลำดับ: ทั้งสี่ตัวขนานกันได้ (∥) — v0.3.1 ก่อน go-live: PAY-23 ∥ PAY-24 (owner สั่งแล้ว 2026-11-25); PAY-22, PAY-25 หลัง go-live (☐ รอ owner สั่ง)

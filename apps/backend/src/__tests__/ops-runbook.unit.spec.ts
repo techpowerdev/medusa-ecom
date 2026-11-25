@@ -279,6 +279,18 @@ describe("AC-33f runbook คืนเงินล้ม/ค้าง (ADR-029)",
   })
 })
 
+// PAY-23: spec 06 AC-36 (กฎข้อ 26c, Q-P23 = ก) — job เรียงใหม่ก่อน runbook ต้องไม่บอกว่าตรวจแถวเก่าก่อน
+describe("AC-36 runbook REFUND_SCAN_TRUNCATED เรียงใหม่ก่อน (ADR-029)", () => {
+  const body = section(readFileSync(path.join(repoRoot, "docs/ops/production.md"), "utf8"), "คืนเงินล้ม/ค้าง (ADR-029)") ?? ""
+
+  it("ระบุว่า job ตรวจ 200 แถวที่ใหม่ที่สุด และแถวเก่าที่หลุดต้องตรวจด้วยมือ", () => {
+    expect(body).toContain("REFUND_SCAN_TRUNCATED")
+    expect(body).toContain("200 แถวที่ใหม่ที่สุด")
+    expect(body).not.toContain("เก่าที่สุด")
+    expect(body).not.toContain("แถวที่ใหม่กว่าจะไม่ถูกตรวจ")
+  })
+})
+
 // PAY-21: spec 06 AC-34d (กฎข้อ 23e, ADR-029 ข) — event refund ของ Stripe, runbook STRIPE_REFUND_FAILED, go-live checklist
 describe("AC-34d Stripe refund webhook (ADR-029 ข)", () => {
   const doc = readFileSync(path.join(repoRoot, "docs/ops/production.md"), "utf8")

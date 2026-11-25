@@ -421,6 +421,39 @@ medusaIntegrationTestRunner({
       await expectOpsAlert(member, "membership_cancelled")
     })
 
+    // PAY-24 (spec 06 กฎข้อ 27, AC-37): alert ผ่าน sendOpsAlert — ส่งล้มที่ provider ของ Notification module แล้ว event ถัดไปส่งใหม่ได้อีเมลเดียว
+    it("orphan alert email fails at the notification provider once → re-emit sends exactly one success email, a third emit sends nothing", async () => {
+      const { joined } = await succeededGroup(1)
+      const [member] = joined
+      const providers = (getContainer().resolve(Modules.NOTIFICATION) as any).notificationProviderService_
+      const realSend = providers.send.bind(providers)
+      let failed = false
+      const send = jest.spyOn(providers, "send").mockImplementation((async (provider: unknown, n: { template?: string }) => {
+        if (n?.template === "group-buy-paid-without-order" && !failed) {
+          failed = true
+          throw new Error("resend down")
+        }
+        return realSend(provider, n)
+      }) as any)
+      try {
+        const pending = { ...member, cancelFirst: true }
+        const session = await pay(pending, ["payment.captured"])
+        expect(failed).toBe(true)
+        await reemitCaptured(session.id)
+        await reemitCaptured(session.id)
+
+        const alertSends = send.mock.calls.filter(([, n]) => (n as { template?: string })?.template === "group-buy-paid-without-order")
+        expect(alertSends).toHaveLength(2)
+        await expectOpsAlert(member, "membership_cancelled")
+        const [alert] = await getContainer()
+          .resolve(Modules.NOTIFICATION)
+          .listNotifications({ template: "group-buy-paid-without-order", resource_id: member.order_id })
+        expect(alert.status).toEqual("success")
+      } finally {
+        send.mockRestore()
+      }
+    })
+
     it("AC-10: pay_within_hours=1 — after the deadline the job cancels the unpaid member's order with a 'payment expired' email; the paid member is untouched", async () => {
       const { group, joined } = await succeededGroup(2, { pay_within_hours: 1 })
       const [paid, unpaid] = joined
