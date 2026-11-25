@@ -7,14 +7,24 @@ import {
 import useToggleState from "@lib/hooks/use-toggle-state"
 import { withActionFallback } from "@lib/util/action-fallback"
 import { submitWithoutReset } from "@lib/util/submit-without-reset"
-import { PencilSquare as Edit, Trash } from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
 import CountrySelect from "@modules/checkout/components/country-select"
 import Input from "@modules/common/components/input"
-import Modal from "@modules/common/components/modal"
-import { Button, Heading, Text, clx } from "@modules/common/components/ui"
 import Spinner from "@modules/common/icons/spinner"
+import { SquarePen, Trash2, X } from "lucide-react"
 import React, { useActionState, useEffect, useState } from "react"
+
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { cn } from "@/lib/utils"
 
 type EditAddressProps = {
   region: HttpTypes.StoreRegion
@@ -66,9 +76,10 @@ const EditAddress: React.FC<EditAddressProps> = ({
   }
 
   return (
-    <>
+    // SFUI-3a (spec 09 กฎ 4, 11): modal ที่อยู่ → Dialog ของ shadcn (Radix) — ปุ่มแก้ไขเป็น DialogTrigger (focus กลับเมื่อปิด)
+    <Dialog open={state} onOpenChange={(next) => (next ? open() : close())}>
       <div
-        className={clx(
+        className={cn(
           "border rounded-rounded p-5 min-h-[220px] h-full w-full flex flex-col justify-between transition-colors",
           {
             "border-gray-900": isActive,
@@ -77,21 +88,18 @@ const EditAddress: React.FC<EditAddressProps> = ({
         data-testid="address-container"
       >
         <div className="flex flex-col">
-          <Heading
-            className="text-left text-base-semi"
-            data-testid="address-name"
-          >
+          <h2 className="text-left text-base-semi" data-testid="address-name">
             {address.first_name} {address.last_name}
-          </Heading>
+          </h2>
           {address.company && (
-            <Text
-              className="txt-compact-small text-ui-fg-base"
+            <p
+              className="text-sm leading-5 text-foreground"
               data-testid="address-company"
             >
               {address.company}
-            </Text>
+            </p>
           )}
-          <Text className="flex flex-col text-left text-base-regular mt-2">
+          <p className="flex flex-col text-left text-base-regular mt-2">
             <span data-testid="address-address">
               {address.address_1}
               {address.address_2 && <span>, {address.address_2}</span>}
@@ -103,119 +111,131 @@ const EditAddress: React.FC<EditAddressProps> = ({
               {address.province && `${address.province}, `}
               {address.country_code?.toUpperCase()}
             </span>
-          </Text>
+          </p>
         </div>
         <div className="flex items-center gap-x-4">
+          <DialogTrigger asChild>
+            <button
+              className="text-small-regular text-foreground flex items-center gap-x-2"
+              data-testid="address-edit-button"
+            >
+              <SquarePen className="size-4" />
+              แก้ไข
+            </button>
+          </DialogTrigger>
           <button
-            className="text-small-regular text-ui-fg-base flex items-center gap-x-2"
-            onClick={open}
-            data-testid="address-edit-button"
-          >
-            <Edit />
-            แก้ไข
-          </button>
-          <button
-            className="text-small-regular text-ui-fg-base flex items-center gap-x-2"
+            className="text-small-regular text-foreground flex items-center gap-x-2"
             onClick={removeAddress}
             data-testid="address-delete-button"
           >
-            {removing ? <Spinner /> : <Trash />}
+            {removing ? <Spinner /> : <Trash2 className="size-4" />}
             ลบ
           </button>
         </div>
       </div>
 
-      <Modal isOpen={state} close={close} data-testid="edit-address-modal">
-        <Modal.Title>
-          <Heading className="mb-2">แก้ไขที่อยู่</Heading>
-        </Modal.Title>
+      <DialogContent
+        showCloseButton={false}
+        className="max-h-[90vh] overflow-y-auto sm:max-w-xl"
+        data-testid="edit-address-modal"
+      >
+        <div className="flex items-center justify-between">
+          <DialogTitle className="text-2xl font-semibold">แก้ไขที่อยู่</DialogTitle>
+          <DialogClose
+            className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+            aria-label="ปิด"
+            data-testid="close-modal-button"
+          >
+            <X className="size-5" />
+          </DialogClose>
+        </div>
+        <DialogDescription className="sr-only">
+          แก้ไขข้อมูลที่อยู่แล้วกดบันทึก
+        </DialogDescription>
         <form onSubmit={onSubmit}>
           <input type="hidden" name="addressId" value={address.id} />
-          <Modal.Body>
-            <div className="grid grid-cols-1 gap-y-2">
-              <div className="grid grid-cols-2 gap-x-2">
-                <Input
-                  label="ชื่อ"
-                  name="first_name"
-                  required
-                  autoComplete="given-name"
-                  defaultValue={address.first_name || undefined}
-                  data-testid="first-name-input"
-                />
-                <Input
-                  label="นามสกุล"
-                  name="last_name"
-                  required
-                  autoComplete="family-name"
-                  defaultValue={address.last_name || undefined}
-                  data-testid="last-name-input"
-                />
-              </div>
+          <div className="grid grid-cols-1 gap-y-2">
+            <div className="grid grid-cols-2 gap-x-2">
               <Input
-                label="บริษัท"
-                name="company"
-                autoComplete="organization"
-                defaultValue={address.company || undefined}
-                data-testid="company-input"
-              />
-              <Input
-                label="ที่อยู่"
-                name="address_1"
+                label="ชื่อ"
+                name="first_name"
                 required
-                autoComplete="address-line1"
-                defaultValue={address.address_1 || undefined}
-                data-testid="address-1-input"
+                autoComplete="given-name"
+                defaultValue={address.first_name || undefined}
+                data-testid="first-name-input"
               />
               <Input
-                label="อาคาร ห้อง ฯลฯ"
-                name="address_2"
-                autoComplete="address-line2"
-                defaultValue={address.address_2 || undefined}
-                data-testid="address-2-input"
-              />
-              <div className="grid grid-cols-[144px_1fr] gap-x-2">
-                <Input
-                  label="รหัสไปรษณีย์"
-                  name="postal_code"
-                  required
-                  autoComplete="postal-code"
-                  defaultValue={address.postal_code || undefined}
-                  data-testid="postal-code-input"
-                />
-                <Input
-                  label="เขต/อำเภอ"
-                  name="city"
-                  required
-                  autoComplete="locality"
-                  defaultValue={address.city || undefined}
-                  data-testid="city-input"
-                />
-              </div>
-              <Input
-                label="จังหวัด"
-                name="province"
-                autoComplete="address-level1"
-                defaultValue={address.province || undefined}
-                data-testid="state-input"
-              />
-              <CountrySelect
-                name="country_code"
-                region={region}
+                label="นามสกุล"
+                name="last_name"
                 required
-                autoComplete="country"
-                defaultValue={address.country_code || undefined}
-                data-testid="country-select"
-              />
-              <Input
-                label="เบอร์โทรศัพท์"
-                name="phone"
-                autoComplete="phone"
-                defaultValue={address.phone || undefined}
-                data-testid="phone-input"
+                autoComplete="family-name"
+                defaultValue={address.last_name || undefined}
+                data-testid="last-name-input"
               />
             </div>
-          </Modal.Body>
-          {/* CORE-23c: Modal.Body เป็น flex แถว — error อยู่ใต้ฟอร์มไม่ใช่ข้างช่อง */}
+            <Input
+              label="บริษัท"
+              name="company"
+              autoComplete="organization"
+              defaultValue={address.company || undefined}
+              data-testid="company-input"
+            />
+            <Input
+              label="ที่อยู่"
+              name="address_1"
+              required
+              autoComplete="address-line1"
+              defaultValue={address.address_1 || undefined}
+              data-testid="address-1-input"
+            />
+            <Input
+              label="อาคาร ห้อง ฯลฯ"
+              name="address_2"
+              autoComplete="address-line2"
+              defaultValue={address.address_2 || undefined}
+              data-testid="address-2-input"
+            />
+            <div className="grid grid-cols-[144px_1fr] gap-x-2">
+              <Input
+                label="รหัสไปรษณีย์"
+                name="postal_code"
+                required
+                autoComplete="postal-code"
+                defaultValue={address.postal_code || undefined}
+                data-testid="postal-code-input"
+              />
+              <Input
+                label="เขต/อำเภอ"
+                name="city"
+                required
+                autoComplete="locality"
+                defaultValue={address.city || undefined}
+                data-testid="city-input"
+              />
+            </div>
+            <Input
+              label="จังหวัด"
+              name="province"
+              autoComplete="address-level1"
+              defaultValue={address.province || undefined}
+              data-testid="state-input"
+            />
+            <CountrySelect
+              name="country_code"
+              region={region}
+              required
+              autoComplete="country"
+              defaultValue={address.country_code || undefined}
+              data-testid="country-select"
+            />
+            <Input
+              label="เบอร์โทรศัพท์"
+              name="phone"
+              autoComplete="phone"
+              defaultValue={address.phone || undefined}
+              data-testid="phone-input"
+            />
+          </div>
           {formState.error && (
             <div
               className="text-rose-500 text-small-regular py-2"
@@ -224,25 +244,23 @@ const EditAddress: React.FC<EditAddressProps> = ({
               {formState.error}
             </div>
           )}
-          <Modal.Footer>
-            <div className="flex gap-3 mt-6">
-              <Button
-                type="reset"
-                variant="secondary"
-                onClick={close}
-                className="h-10"
-                data-testid="cancel-button"
-              >
-                ยกเลิก
-              </Button>
-              <Button type="submit" isLoading={isPending} data-testid="save-button">
-                บันทึก
-              </Button>
-            </div>
-          </Modal.Footer>
+          <DialogFooter className="mt-6">
+            <Button
+              type="reset"
+              variant="outline"
+              onClick={close}
+              className="h-10"
+              data-testid="cancel-button"
+            >
+              ยกเลิก
+            </Button>
+            <Button type="submit" isLoading={isPending} data-testid="save-button">
+              บันทึก
+            </Button>
+          </DialogFooter>
         </form>
-      </Modal>
-    </>
+      </DialogContent>
+    </Dialog>
   )
 }
 
