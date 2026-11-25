@@ -43,7 +43,7 @@ none
    `text-3xl` = 2rem, keyframes/animation `ring`, `fade-in-right`, `fade-in-top`, `fade-out-top`, `accordion-*`, `enter`, `leave`, `slide-in`) ย้ายเป็น `@theme` ชื่อ class เดิมใช้ได้;
    class เดิมใน `globals.css` ที่ถูก `@apply` (`text-xsmall-regular` … `text-3xl-semi`) เป็น `@utility`
 2. `components.json` ตาม ADR-030 ข้อ 2 (style `new-york`, ติดตั้งด้วย `pnpm dlx shadcn@4.23.1 init -b radix`, `tailwind.config: ""`, `baseColor: "neutral"`, `iconLibrary: "lucide"`,
-   aliases `@/components`, `@/components/ui`, `@/lib/utils`, `@/lib`, `@/hooks`); `tsconfig.json` มี `"@/*": ["*"]`; `src/lib/utils.ts` = `export { cn } from "cn"`
+   aliases `@/components`, `@/components/ui`, `@/lib/utils`, `@/lib`, `@/hooks`); `tsconfig.json` มี `"@/*": ["*"]`; `src/lib/utils.ts` export `cn` ที่สร้างด้วย `createCn` จาก `cn/config` โดย extend classGroups `font-size` ด้วย utility ขนาดฟอนต์ `text-*` ของ `globals.css` (`FONT_SIZE_UTILITIES`) — กัน tailwind-merge ตัด `text-xl-semi` ฯลฯ เมื่อคู่กับ `text-ui-fg-*` (ตัดสิน 2026-11-26 ระหว่าง SFUI-2); component ใน `src/components/ui/*` import `cn` จาก `@/lib/utils` เท่านั้น
 3. component ของ shadcn เพิ่มด้วย `pnpm dlx shadcn@4.23.1 add <name>` ลง `src/components/ui/` เท่านั้น และเฉพาะตัวที่ task ระบุ (ตาราง Tasks); แก้ไฟล์ที่ CLI สร้างได้เท่าที่จำเป็น
    พร้อม comment `// SFUI: <เหตุผล>`; ห้ามสร้างไฟล์ใน `src/components/ui/` ที่ไม่มาจาก registry ของ shadcn; task 2–5 ห้ามแก้ `package.json`/`pnpm-lock.yaml`
    (component ต้องการ dependency ใหม่ → หยุดรายงาน planner)
@@ -67,7 +67,7 @@ none
    `Trash`→`Trash2`, `Spinner`/`Loader`→`LoaderCircle` + `animate-spin`, `ExclamationCircleSolid`→`CircleAlert`, `EllipseMiniSolid`→`Circle` (`fill-current size-2`),
    `CreditCard`→`CreditCard`, `Scan`→`QrCode`, `ArrowRightOnRectangle`→`LogOut`; ปุ่มที่มีแต่ icon ต้องมีชื่อที่เข้าถึงได้เป็นภาษาไทยไม่น้อยกว่าเดิม
 7. token (ADR-030 ข้อ 7): `@theme` มี `--color-brand` และ `--color-brand-50..900` ค่า hex เดิม (`DEFAULT #525252`, 50 `#FAFAFA` … 900 `#171717`) และ `--color-grey-0..90` เดิม;
-   `:root` มี `--primary: var(--color-brand-900)`, `--primary-foreground: var(--color-brand-50)`, `--ring: var(--color-brand-400)`; token อื่นตาม `neutral`; ไม่มี selector `.dark`;
+   `:root` มี `--primary: var(--color-brand-900)`, `--primary-foreground: var(--color-brand-50)`, `--ring: var(--color-brand-400)`; token อื่นตาม `neutral`; ไม่มี selector `.dark`; `@custom-variant dark (&:where([data-mode=dark] *))` เพื่อไม่ให้ `dark:` ของ component shadcn ทำงานตาม `prefers-color-scheme` (ตัดสิน 2026-11-26 ระหว่าง SFUI-2);
    โค้ดใหม่ไม่ใช้สี hex แบบ arbitrary (`[#…]`) ใน `className`
 8. ฟอนต์: `--font-sans` ขึ้นต้นด้วย `var(--font-noto-sans-thai)`; `body` ใช้ `font-sans`; `src/app/layout.tsx` ยังโหลด `Noto_Sans_Thai` (`variable: "--font-noto-sans-thai"`) — แทนกฎ 14 ของ spec 01 (CORE-8)
 9. `data-testid` ทุกค่าใน baseline (`e2e/support/sfui-baseline.json`, SFUI-1a) ต้องยังอยู่ใน `src/` และอยู่บน element ที่ e2e ใช้งานจริง:
@@ -135,7 +135,7 @@ none
   SFUI-2 ส่งต่อไป shadcn แล้ว pattern ในไฟล์นี้หาย → ลบ key `SFUI-2` ออก (การลบไฟล์ shim ใน SFUI-6 ยังถูกบังคับผ่านไฟล์ผู้ใช้ที่ import `@modules/common/components/ui` ซึ่งอยู่ใต้ key ของ 3x/4/5x
   และ AC-16); หลัง SFUI-6 ไฟล์นี้เหลือเฉพาะการตรวจ (a) กับรายการว่าง
   — reviewer ตรวจ (ไม่ใช่ static): task ที่จะ merge ลบ key ของตัวเองออกจาก `PENDING` ครบ และไม่ลบ key ของ task อื่น
-- AC-7 (SFUI-1b, กฎ 2) static: `components.json` มีค่าตามกฎ 2 ทุก field; `tsconfig.json` มี `@/*`; `src/lib/utils.ts` export `cn`; `vitest.config.mts` มี alias `"@"` → `src` และ `include` ครอบ `src/**/*.test.ts` + `src/**/*.test.tsx`;
+- AC-7 (SFUI-1b, กฎ 2) static: `components.json` มีค่าตามกฎ 2 ทุก field; `tsconfig.json` มี `@/*`; `src/lib/utils.ts` export `cn` (สร้างด้วย `createCn` ตามกฎ 2 และทุก utility ขนาดฟอนต์ใน `globals.css` อยู่ใน `FONT_SIZE_UTILITIES`); `vitest.config.mts` มี alias `"@"` → `src` และ `include` ครอบ `src/**/*.test.ts` + `src/**/*.test.tsx`;
   unit `src/lib/utils.test.ts` ที่ `import { cn } from "@/lib/utils"` (ผ่าน alias ไม่ใช่ path สัมพัทธ์) ผ่าน: `cn("px-2", "px-4") === "px-4"`
 - AC-8 (SFUI-2, กฎ 3, 14, 20) unit (jsdom) `src/components/ui/button.test.tsx` — ต้อง**ถูกรันจริง** (ปรากฏในผล `pnpm --filter storefront test:unit` ของ PR; include `*.test.tsx` จาก SFUI-1b) — ของ `src/components/ui/button.tsx`: `isLoading` → ปุ่ม disabled และข้อความมีอักษรไทย; `buttonVariants({ variant: "outline", size: "sm" })` คืน string;
   shim `Button`/`Badge`/`Label`/`Input`/`Table`/`IconButton`/`buttonClassName`/`clx` ส่งต่อไป shadcn (`Button` ที่ render มี `data-slot="button"`); e2e AC-4 ข้อ (2);
