@@ -1,359 +1,146 @@
-import clsx from "clsx"
+import type { ComponentProps, HTMLAttributes, InputHTMLAttributes } from "react"
+
+import { Badge as ShadcnBadge } from "@/components/ui/badge"
+import { Button as ShadcnButton, buttonVariants } from "@/components/ui/button"
+import { Input as ShadcnInput } from "@/components/ui/input"
+import { Label as ShadcnLabel } from "@/components/ui/label"
 import {
-  ButtonHTMLAttributes,
-  forwardRef,
-  HTMLAttributes,
-  InputHTMLAttributes,
-  LabelHTMLAttributes,
-  TableHTMLAttributes,
-  TdHTMLAttributes,
-  ThHTMLAttributes,
-} from "react"
+  Table as ShadcnTable,
+  TableBody as ShadcnTableBody,
+  TableCell as ShadcnTableCell,
+  TableHead as ShadcnTableHead,
+  TableHeader as ShadcnTableHeader,
+  TableRow as ShadcnTableRow,
+} from "@/components/ui/table"
+import { cn } from "@/lib/utils"
 
-// TODO: Add Toaster component back when needed for notifications
+// SFUI-2 (spec 09 กฎ 20, ADR-030): shim ชั่วคราวที่คง API เดิมของ starter แต่ส่งต่อไป primitive ของ shadcn
+// (`src/components/ui/*`) — ไฟล์ผู้ใช้ย้ายไป import shadcn ตรงใน SFUI-3x/4/5x แล้วลบทั้งโฟลเดอร์ใน SFUI-6
+// React 19: ref เป็น prop ธรรมดา จึงไม่ต้องใช้ forwardRef
 
-// Re-export clsx as clx for compatibility
-export { clsx as clx }
+export { cn as clx }
 
-// Text Component
+// Text Component — `txt-medium` เดิม → `text-sm` (กฎ 21)
 type TextProps = HTMLAttributes<HTMLParagraphElement> & {
   as?: "p" | "span" | "div"
-}
+} & Pick<ComponentProps<"p">, "ref">
 
-export const Text = forwardRef<HTMLParagraphElement, TextProps>(
-  ({ className, as: Component = "p", children, ...props }, ref) => {
-    return (
-      <Component ref={ref} className={clsx("txt-medium", className)} {...props}>
-        {children}
-      </Component>
-    )
-  }
+export const Text = ({ className, as: Component = "p", ...props }: TextProps) => (
+  <Component className={cn("text-sm", className)} {...props} />
 )
-Text.displayName = "Text"
 
 // Heading Component
 type HeadingProps = HTMLAttributes<HTMLHeadingElement> & {
   level?: "h1" | "h2" | "h3"
-}
+} & Pick<ComponentProps<"h2">, "ref">
 
-export const Heading = forwardRef<HTMLHeadingElement, HeadingProps>(
-  ({ className, level: Component = "h2", children, ...props }, ref) => {
-    return (
-      <Component
-        ref={ref}
-        className={clsx(
-          "font-semibold",
-          Component === "h1" && "text-3xl",
-          Component === "h2" && "text-2xl",
-          Component === "h3" && "text-xl",
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </Component>
-    )
-  }
+export const Heading = ({ className, level: Component = "h2", ...props }: HeadingProps) => (
+  <Component
+    className={cn(
+      "font-semibold",
+      Component === "h1" && "text-3xl",
+      Component === "h2" && "text-2xl",
+      Component === "h3" && "text-xl",
+      className
+    )}
+    {...props}
+  />
 )
-Heading.displayName = "Heading"
 
-// Button Component
+// Button Component — variant/size เดิม → ของ shadcn (กฎ 20)
 type ButtonStyle = {
   variant?: "primary" | "secondary" | "transparent"
   size?: "small" | "medium" | "large"
 }
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
-  ButtonStyle & {
-    isLoading?: boolean
-  }
+const VARIANT = { primary: "default", secondary: "outline", transparent: "ghost" } as const
+const SIZE = { small: "sm", medium: "default", large: "lg" } as const
+
+type ButtonProps = Omit<ComponentProps<typeof ShadcnButton>, "variant" | "size"> & ButtonStyle
 
 // CORE-90 (spec 01 กฎข้อ 146b): className ของปุ่ม ใช้กับลิงก์ที่หน้าตาเป็นปุ่มได้โดยไม่ซ้อน <button> ใน <a>
 export const buttonClassName = (
   { variant = "primary", size = "medium" }: ButtonStyle = {},
   className?: string
-) =>
-  clsx(
-    "inline-flex gap-2 items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-    variant === "primary" && "bg-black text-white hover:bg-gray-800",
-    variant === "secondary" &&
-      "bg-white text-black border border-gray-200 hover:bg-gray-50",
-    variant === "transparent" && "bg-transparent hover:bg-gray-100",
-    size === "small" && "h-8 px-3 text-sm",
-    size === "medium" && "h-10 px-4",
-    size === "large" && "h-12 px-6 text-lg",
-    className
-  )
+) => cn(buttonVariants({ variant: VARIANT[variant], size: SIZE[size] }), className)
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  (
-    {
-      className,
-      variant = "primary",
-      size = "medium",
-      isLoading,
-      disabled,
-      children,
-      ...props
-    },
-    ref
-  ) => {
-    return (
-      <button
-        ref={ref}
-        disabled={disabled || isLoading}
-        className={buttonClassName({ variant, size }, className)}
-        {...props}
-      >
-        {isLoading ? "กำลังดำเนินการ..." : children}
-      </button>
-    )
-  }
+export const Button = ({ variant = "primary", size = "medium", ...props }: ButtonProps) => (
+  <ShadcnButton variant={VARIANT[variant]} size={SIZE[size]} {...props} />
 )
-Button.displayName = "Button"
 
 // Container Component
-type ContainerProps = HTMLAttributes<HTMLDivElement>
+type ContainerProps = ComponentProps<"div">
 
-export const Container = forwardRef<HTMLDivElement, ContainerProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <div
-        ref={ref}
-        className={clsx("bg-white rounded-lg p-4", className)}
-        {...props}
-      >
-        {children}
-      </div>
-    )
-  }
+export const Container = ({ className, ...props }: ContainerProps) => (
+  <div className={cn("rounded-lg bg-card p-4", className)} {...props} />
 )
-Container.displayName = "Container"
 
-// Badge Component
-type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
-  color?: "green" | "red" | "blue" | "orange" | "grey" | "purple"
+// Badge Component — grey → secondary, red → destructive, สีอื่น → outline + สีพื้น/ตัวอักษรเดิม (กฎ 20)
+type BadgeColor = "green" | "red" | "blue" | "orange" | "grey" | "purple"
+type BadgeProps = Omit<ComponentProps<typeof ShadcnBadge>, "variant" | "color"> & {
+  color?: BadgeColor
 }
 
-export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
-  ({ className, color = "grey", children, ...props }, ref) => {
-    return (
-      <span
-        ref={ref}
-        className={clsx(
-          "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium",
-          color === "green" && "bg-green-100 text-green-700",
-          color === "red" && "bg-red-100 text-red-700",
-          color === "blue" && "bg-blue-100 text-blue-700",
-          color === "orange" && "bg-orange-100 text-orange-700",
-          color === "grey" && "bg-gray-100 text-gray-700",
-          color === "purple" && "bg-purple-100 text-purple-700",
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </span>
-    )
-  }
+const BADGE_TINT: Partial<Record<BadgeColor, string>> = {
+  green: "bg-green-100 text-green-700",
+  blue: "bg-blue-100 text-blue-700",
+  orange: "bg-orange-100 text-orange-700",
+  purple: "bg-purple-100 text-purple-700",
+}
+
+export const Badge = ({ className, color = "grey", ...props }: BadgeProps) => (
+  <ShadcnBadge
+    variant={color === "grey" ? "secondary" : color === "red" ? "destructive" : "outline"}
+    className={cn(BADGE_TINT[color], className)}
+    {...props}
+  />
 )
-Badge.displayName = "Badge"
 
 // IconBadge Component
-type IconBadgeProps = HTMLAttributes<HTMLSpanElement>
+type IconBadgeProps = Omit<ComponentProps<typeof ShadcnBadge>, "variant">
 
-export const IconBadge = forwardRef<HTMLSpanElement, IconBadgeProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <span
-        ref={ref}
-        className={clsx(
-          "inline-flex items-center justify-center rounded-full bg-gray-100 p-1",
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </span>
-    )
-  }
+export const IconBadge = (props: IconBadgeProps) => (
+  <ShadcnBadge variant="secondary" {...props} />
 )
-IconBadge.displayName = "IconBadge"
 
 // IconButton Component
-type IconButtonProps = ButtonHTMLAttributes<HTMLButtonElement>
+type IconButtonProps = Omit<ComponentProps<typeof ShadcnButton>, "variant" | "size">
 
-export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <button
-        ref={ref}
-        className={clsx(
-          "inline-flex items-center justify-center rounded-md p-2 hover:bg-gray-100 transition-colors focus-visible:outline-hidden focus-visible:ring-2",
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </button>
-    )
-  }
+export const IconButton = (props: IconButtonProps) => (
+  <ShadcnButton variant="ghost" size="icon" {...props} />
 )
-IconButton.displayName = "IconButton"
 
 // Label Component
-type LabelProps = LabelHTMLAttributes<HTMLLabelElement>
+export const Label = ShadcnLabel
 
-export const Label = forwardRef<HTMLLabelElement, LabelProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <label
-        ref={ref}
-        className={clsx("text-sm font-medium", className)}
-        {...props}
-      >
-        {children}
-      </label>
-    )
-  }
-)
-Label.displayName = "Label"
-
-// Input Component
-type InputProps = InputHTMLAttributes<HTMLInputElement> & {
+// Input Component — คง prop `label` เดิม (ห่อด้วย div + Label เหมือนเดิม)
+type InputProps = ComponentProps<typeof ShadcnInput> & {
   label?: string
 }
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, ...props }, ref) => {
-    return (
-      <div className="flex flex-col gap-1">
-        {label && <Label>{label}</Label>}
-        <input
-          ref={ref}
-          className={clsx(
-            "flex h-10 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-hidden focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-            className
-          )}
-          {...props}
-        />
-      </div>
-    )
-  }
+export const Input = ({ label, ...props }: InputProps) => (
+  <div className="flex flex-col gap-1">
+    {label && <ShadcnLabel>{label}</ShadcnLabel>}
+    <ShadcnInput {...props} />
+  </div>
 )
-Input.displayName = "Input"
 
-// Table Components
-type TableProps = TableHTMLAttributes<HTMLTableElement>
-
-const TableRoot = forwardRef<HTMLTableElement, TableProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <table
-        ref={ref}
-        className={clsx("w-full caption-bottom text-sm", className)}
-        {...props}
-      >
-        {children}
-      </table>
-    )
-  }
+// Table Components — ห่อเป็น component ของไฟล์นี้ก่อน Object.assign
+// (table.tsx เป็น "use client": import จาก server component ได้ client reference ที่ห้าม assign property)
+const TableRoot = (props: ComponentProps<typeof ShadcnTable>) => <ShadcnTable {...props} />
+const TableHeader = (props: ComponentProps<typeof ShadcnTableHeader>) => (
+  <ShadcnTableHeader {...props} />
 )
-TableRoot.displayName = "Table"
-
-type TableHeaderProps = HTMLAttributes<HTMLTableSectionElement>
-
-const TableHeader = forwardRef<HTMLTableSectionElement, TableHeaderProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <thead
-        ref={ref}
-        className={clsx("[&_tr]:border-b", className)}
-        {...props}
-      >
-        {children}
-      </thead>
-    )
-  }
+const TableBody = (props: ComponentProps<typeof ShadcnTableBody>) => (
+  <ShadcnTableBody {...props} />
 )
-TableHeader.displayName = "TableHeader"
-
-type TableBodyProps = HTMLAttributes<HTMLTableSectionElement>
-
-const TableBody = forwardRef<HTMLTableSectionElement, TableBodyProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <tbody
-        ref={ref}
-        className={clsx("[&_tr:last-child]:border-0", className)}
-        {...props}
-      >
-        {children}
-      </tbody>
-    )
-  }
+const TableRow = (props: ComponentProps<typeof ShadcnTableRow>) => <ShadcnTableRow {...props} />
+const TableHead = (props: ComponentProps<typeof ShadcnTableHead>) => (
+  <ShadcnTableHead {...props} />
 )
-TableBody.displayName = "TableBody"
-
-type TableRowProps = HTMLAttributes<HTMLTableRowElement>
-
-const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <tr
-        ref={ref}
-        className={clsx(
-          "border-b transition-colors hover:bg-gray-50",
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </tr>
-    )
-  }
+const TableCell = (props: ComponentProps<typeof ShadcnTableCell>) => (
+  <ShadcnTableCell {...props} />
 )
-TableRow.displayName = "TableRow"
-
-type TableHeadProps = ThHTMLAttributes<HTMLTableCellElement>
-
-const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <th
-        ref={ref}
-        className={clsx(
-          "h-12 px-4 text-left align-middle font-medium text-gray-500 [&:has([role=checkbox])]:pr-0",
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </th>
-    )
-  }
-)
-TableHead.displayName = "TableHead"
-
-type TableCellProps = TdHTMLAttributes<HTMLTableCellElement>
-
-const TableCell = forwardRef<HTMLTableCellElement, TableCellProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <td
-        ref={ref}
-        className={clsx(
-          "p-4 align-middle [&:has([role=checkbox])]:pr-0",
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </td>
-    )
-  }
-)
-TableCell.displayName = "TableCell"
 
 export const Table = Object.assign(TableRoot, {
   Header: TableHeader,
@@ -364,75 +151,49 @@ export const Table = Object.assign(TableRoot, {
   Cell: TableCell,
 })
 
-// RadioGroup Components
-type RadioGroupProps = HTMLAttributes<HTMLDivElement>
+// RadioGroup / Checkbox — คงเป็น <input> native ตามเดิม (ผู้ใช้ย้ายไป RadioGroup/Checkbox ของ shadcn ตรงใน SFUI-5a — กฎ 20)
+type RadioGroupProps = ComponentProps<"div">
 
-const RadioGroupRoot = forwardRef<HTMLDivElement, RadioGroupProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <div
-        ref={ref}
-        className={clsx("flex flex-col gap-2", className)}
-        {...props}
-      >
-        {children}
-      </div>
-    )
-  }
+const RadioGroupRoot = ({ className, ...props }: RadioGroupProps) => (
+  <div className={cn("flex flex-col gap-2", className)} {...props} />
 )
-RadioGroupRoot.displayName = "RadioGroup"
 
-type RadioGroupItemProps = InputHTMLAttributes<HTMLInputElement> & {
+type RadioGroupItemProps = ComponentProps<"input"> & {
   label?: string
 }
 
-const RadioGroupItem = forwardRef<HTMLInputElement, RadioGroupItemProps>(
-  ({ className, label, id, ...props }, ref) => {
-    return (
-      <div className="flex items-center gap-2">
-        <input
-          ref={ref}
-          type="radio"
-          id={id}
-          className={clsx(
-            "h-4 w-4 border-gray-300 text-gray-900 focus:ring-gray-900",
-            className
-          )}
-          {...props}
-        />
-        {label && <Label htmlFor={id}>{label}</Label>}
-      </div>
-    )
-  }
+const RadioGroupItem = ({ className, label, id, ...props }: RadioGroupItemProps) => (
+  <div className="flex items-center gap-2">
+    <input
+      type="radio"
+      id={id}
+      className={cn("h-4 w-4 border-gray-300 text-gray-900 focus:ring-gray-900", className)}
+      {...props}
+    />
+    {label && <ShadcnLabel htmlFor={id}>{label}</ShadcnLabel>}
+  </div>
 )
-RadioGroupItem.displayName = "RadioGroupItem"
 
 export const RadioGroup = Object.assign(RadioGroupRoot, {
   Item: RadioGroupItem,
 })
 
-// Checkbox Component
-type CheckboxProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
-  label?: string
-}
-
-export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
-  ({ className, label, id, ...props }, ref) => {
-    return (
-      <div className="flex items-center gap-2">
-        <input
-          ref={ref}
-          type="checkbox"
-          id={id}
-          className={clsx(
-            "h-4 w-4 rounded-sm border-gray-300 text-gray-900 focus:ring-gray-900",
-            className
-          )}
-          {...props}
-        />
-        {label && <Label htmlFor={id}>{label}</Label>}
-      </div>
-    )
+type CheckboxProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> &
+  Pick<ComponentProps<"input">, "ref"> & {
+    label?: string
   }
+
+export const Checkbox = ({ className, label, id, ...props }: CheckboxProps) => (
+  <div className="flex items-center gap-2">
+    <input
+      type="checkbox"
+      id={id}
+      className={cn(
+        "h-4 w-4 rounded-sm border-gray-300 text-gray-900 focus:ring-gray-900",
+        className
+      )}
+      {...props}
+    />
+    {label && <ShadcnLabel htmlFor={id}>{label}</ShadcnLabel>}
+  </div>
 )
-Checkbox.displayName = "Checkbox"

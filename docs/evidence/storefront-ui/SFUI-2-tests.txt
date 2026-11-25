@@ -1,0 +1,147 @@
+# SFUI-2 — ผล test ในเครื่อง (2026-11-26, Node v22.23.3, pnpm 12.15.0, macOS)
+# spec: docs/spec/09-storefront-shadcn-ui.md (กฎ 3, 14, 20; AC-4 ข้อ 2, AC-6 key SFUI-2, AC-8), ADR-030 ข้อ 3, 7
+# shadcn: pnpm dlx shadcn@4.23.1 add button input label badge table checkbox radio-group native-select (ไม่แก้ package.json/lockfile/globals.css)
+
+## pnpm --filter storefront test:unit — button.test.tsx + shim index.test.tsx (verbose)
+ ✓ src/modules/common/components/ui/index.test.tsx > shim @modules/common/components/ui ส่งต่อไป shadcn > clx คือ cn 18ms
+ ✓ src/modules/common/components/ui/index.test.tsx > shim @modules/common/components/ui ส่งต่อไป shadcn > Button render เป็น Button ของ shadcn (data-slot) คง testid และ isLoading เดิม 24ms
+ ✓ src/modules/common/components/ui/index.test.tsx > shim @modules/common/components/ui ส่งต่อไป shadcn > buttonClassName map variant/size เดิม → buttonVariants ของ shadcn 2ms
+ ✓ src/modules/common/components/ui/index.test.tsx > shim @modules/common/components/ui ส่งต่อไป shadcn > IconButton → Button ghost/icon ของ shadcn 4ms
+ ✓ src/modules/common/components/ui/index.test.tsx > shim @modules/common/components/ui ส่งต่อไป shadcn > Badge / IconBadge → Badge ของ shadcn 5ms
+ ✓ src/modules/common/components/ui/index.test.tsx > shim @modules/common/components/ui ส่งต่อไป shadcn > Label / Input → shadcn (Input เป็น <input> native ที่คง name และ label เดิม) 8ms
+ ✓ src/modules/common/components/ui/index.test.tsx > shim @modules/common/components/ui ส่งต่อไป shadcn > Table.* → Table ของ shadcn 11ms
+ ✓ src/components/ui/button.test.tsx > Button ของ shadcn (src/components/ui/button.tsx) > isLoading → ปุ่ม disabled และแสดงข้อความภาษาไทยแทน children 76ms
+ ✓ src/components/ui/button.test.tsx > Button ของ shadcn (src/components/ui/button.tsx) > ไม่ loading → แสดง children และกดได้ 2ms
+ ✓ src/components/ui/button.test.tsx > Button ของ shadcn (src/components/ui/button.tsx) > isLoading ร่วมกับ disabled={false} ยังคง disabled 14ms
+ ✓ src/components/ui/button.test.tsx > Button ของ shadcn (src/components/ui/button.tsx) > buttonVariants({ variant: "outline", size: "sm" }) คืน string ที่ไม่ว่าง 1ms
+
+## pnpm --filter storefront test:unit (Vitest ทั้งหมด)
+ Test Files  128 passed (128)
+      Tests  1989 passed (1989)
+
+## pnpm --filter storefront test:e2e:unit (project unit ทั้งหมด) — เฉพาะ SFUI / core-90 / evidence-budget + สรุป
+  ✓   21 [unit] › e2e/core-90-link-button.unit.spec.ts:44:5 › AC-187: ไม่มี <Button เป็นลูกตรงของ LocalizedClientLink ใน src/modules/** (11ms)
+  ✓   25 [unit] › e2e/core-90-link-button.unit.spec.ts:58:7 › AC-187: จับรูปซ้อน <LocalizedClientLink href="/cart"> <Button>ไป</Button> </Loc (1ms)
+  ✓   27 [unit] › e2e/core-90-link-button.unit.spec.ts:58:7 › AC-187: จับรูปซ้อน <LocalizedClientLink href={`/a/${id}`} data-testid="x"><Butt (1ms)
+  ✓   31 [unit] › e2e/core-90-link-button.unit.spec.ts:58:7 › AC-187: จับรูปซ้อน <LocalizedClientLink href="/" onClick={() => a > b} passHref (0ms)
+  ✓   33 [unit] › e2e/core-90-link-button.unit.spec.ts:63:5 › AC-187: ไม่จับลิงก์ที่ใช้ className ของปุ่ม หรือ Button ที่ไม่ใช่ลูกตรง (0ms)
+  ✓   29 [unit] › e2e/evidence-budget.unit.spec.ts:9:5 › โฟลเดอร์ evidence ทุก feature/task อยู่ตาม convention และอยู่ในงบ (39ms)
+  ✓   55 [unit] › e2e/sfui-deps.unit.spec.ts:16:5 › AC-1 (1a): tailwindcss และ @tailwindcss/postcss เป็น 4.3.5 แบบ exact ใน devDependencies (9ms)
+  ✓   57 [unit] › e2e/sfui-baseline.unit.spec.ts:19:5 › AC-5: baseline ไม่ว่าง (กันผ่านแบบว่างเปล่า) (3ms)
+  ✓   58 [unit] › e2e/sfui-deps.unit.spec.ts:23:5 › AC-1 (1a): ไม่มี @medusajs/ui-preset, tailwindcss-radix, autoprefixer (1ms)
+  ✓   59 [unit] › e2e/sfui-baseline.unit.spec.ts:24:5 › AC-5: data-testid ทุกค่าใน baseline ยังอยู่ใน src/** (57ms)
+  ✓   60 [unit] › e2e/sfui-deps.unit.spec.ts:29:5 › AC-1 (กฎ 1): ไม่มีไฟล์ tailwind.config.* และ postcss config มี plugin เดียวคือ @tailwindcss/postcss (85ms)
+  ✓   61 [unit] › e2e/sfui-baseline.unit.spec.ts:28:5 › AC-5: ข้อความไทยทุกค่าใน baseline ยังอยู่ใน src/** (42ms)
+  ✓   63 [unit] › e2e/sfui-deps.unit.spec.ts:40:5 › AC-1 (กฎ 1): globals.css ขึ้นต้นด้วย @import "tailwindcss" (ไม่นับ comment) (1ms)
+  ✓   64 [unit] › e2e/sfui-legacy-css.unit.spec.ts:44:5 › AC-2: มีไฟล์ legacy-medusa.css และ globals.css import ไฟล์นี้ (1ms)
+  ✓   66 [unit] › e2e/sfui-deps.unit.spec.ts:47:5 › AC-1 (1b): dependency ของ shadcn pin exact ตาม ADR-030 ข้อ 10 (2ms)
+  ✓   65 [unit] › e2e/sfui-baseline.unit.spec.ts:33:5 › AC-5: ตัวดึง testid รองรับ JSX, {"…"}, template literal, ternary และ object key (5ms)
+  ✓   67 [unit] › e2e/sfui-legacy-css.unit.spec.ts:51:5 › AC-2: ทุก class ของ preset ที่ใช้ใน src/** มีนิยามใน legacy-medusa.css (1ms)
+  ✓   69 [unit] › e2e/sfui-legacy-css.unit.spec.ts:63:5 › AC-2: legacy-medusa.css ไม่มีชื่อที่ไม่ถูกใช้ใน src/** (1ms)
+  ✓   68 [unit] › e2e/sfui-baseline.unit.spec.ts:53:5 › AC-5: ตัวดึงข้อความไทยเก็บสตริงและข้อความ JSX ที่มีอักษรไทย ไม่เก็บ comment/ละติน (1ms)
+  ✓   70 [unit] › e2e/sfui-shadcn-init.unit.spec.ts:19:5 › AC-7: components.json มีค่าตามกฎ 2 ทุก field (4ms)
+  ✓   71 [unit] › e2e/sfui-legacy-css.unit.spec.ts:76:5 › AC-2: ชื่อใน NO_STYLE_IN_PRESET ยังถูกใช้จริง (ลบออกเมื่อ task เจ้าของไฟล์ย้ายเสร็จ) (1ms)
+  ✓   72 [unit] › e2e/sfui-shadcn-init.unit.spec.ts:43:5 › AC-7: tsconfig.json มี "@/*": ["*"] บน baseUrl src และคง alias เดิม (5ms)
+  ✓   74 [unit] › e2e/sfui-legacy-css.unit.spec.ts:80:5 › AC-2: map class → นิยามที่ต้องมี (1ms)
+  ✓   76 [unit] › e2e/sfui-shadcn-init.unit.spec.ts:53:5 › AC-7: src/lib/utils.ts export cn จาก package cn (1ms)
+  ✓   78 [unit] › e2e/sfui-shadcn-init.unit.spec.ts:68:5 › AC-7: vitest.config.mts มี alias "@" → src และ include ครอบ src/**/*.test.ts + src/**/*.test.tsx (1ms)
+  ✓   77 [unit] › e2e/sfui-legacy-css.unit.spec.ts:116:5 › AC-2: ทุก var(--…) ที่ src/** อ้างตรงมีนิยามใน src/styles/*.css (ยกเว้นของ Tailwind/next/font/Radix) (16ms)
+  ✓   83 [unit] › e2e/sfui-legacy-css.unit.spec.ts:124:5 › AC-2: ตัวแปรดิบใน :root ของ legacy-medusa.css ถูกอ้างจริงทุกตัว (ไม่มีชื่อที่ไม่ถูกใช้) (12ms)
+  ✓   62 [unit] › e2e/sfui-legacy.unit.spec.ts:230:5 › AC-6 (a): ทุกไฟล์ที่มี pattern ต้องห้ามอยู่ใน PENDING ของ task ใด task หนึ่ง (129ms)
+  ✓   95 [unit] › e2e/sfui-legacy.unit.spec.ts:235:5 › AC-6 (b): ทุกไฟล์ใน PENDING ยังมีอยู่และยังมี pattern (ย้ายเสร็จแล้วต้องลบออกจากรายการ) (13ms)
+  ✓  104 [unit] › e2e/sfui-legacy.unit.spec.ts:242:5 › AC-6 (c): key ของ PENDING เป็น task ที่ยังไม่ merge เท่านั้น และไม่มีไฟล์ซ้ำข้าม task (1ms)
+  ✓  108 [unit] › e2e/sfui-legacy.unit.spec.ts:248:5 › AC-6: ตัวจับ class ของ preset แยก variant/important/opacity และไม่นับ class ของ Tailwind ปกติ (2ms)
+  ✓  113 [unit] › e2e/sfui-legacy.unit.spec.ts:270:5 › AC-6: ตัวแปรดิบของ preset var(--fg-*/--bg-*/--border-*) ในไฟล์ที่ไม่ใช่ test นับเป็น pattern ต้องห้าม (1ms)
+  ✓  116 [unit] › e2e/sfui-legacy.unit.spec.ts:279:5 › AC-6: ไฟล์ที่อ้าง var(--fg-*) อยู่ใน PENDING ของ task เจ้าของไฟล์ (0ms)
+  192 passed (1.4s)
+
+## pnpm --filter storefront typecheck
+tsc --noEmit exit 0
+
+## pnpm --filter storefront lint (0 errors; warning 28 รายการเป็นของเดิม ไม่มีไฟล์ของ task นี้)
+
+
+## pnpm --filter storefront build (next build, production)
+✓ Compiled successfully in 4.7s
+
+## e2e chromium (backend :9130 DB medusa_sfui2 Redis db 13, storefront next start :8130, ไม่มี Stripe key จริง)
+  ✓   2 [chromium] › e2e/core-14-buy-login.spec.ts:39:5 › AC-41: /buy ไม่มี session → login พร้อม return URL ไม่สร้าง cart; ล็อกอินแล้ว → checkout ด้วย cart ของลูกค้า
+  ✓   3 [chromium] › e2e/core-14-buy-login.spec.ts:103:5 › AC-42, AC-56: UCP, cart/resume และหน้า order transfer → 404
+  ✓   1 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:69:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th)
+  ✓   4 [chromium] › e2e/core-14-buy-login.spec.ts:126:5 › AC-43: ไม่มี session แต่มี cookie cart ค้าง → หน้า cart ว่าง ไม่มี 5xx และ cookie ถูกล้าง
+  ✓   5 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:69:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/store)
+  ✓   7 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:69:7 › AC-62: ลบ line ใน cart dropdown → ตัวนับใน nav เป็น 1 โดยไม่ reload (/th/products/t-shirt)
+  ✓   8 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:149:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th)
+  ✓   6 [chromium] › e2e/core-27-add-to-cart-guard.spec.ts:80:9 › desktop 1280px › AC-119: click() add-product-button สองครั้งติดกัน → addToCart 1 ครั้ง quantity 1; คลิกอีกครั้งหลังจบ → 2
+  ✓   9 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:149:7 › AC-62 (root cause): หลัง event medusa:cart-updated ตัวนับอ่าน cart ล่าสุดจาก backend ไม่ใช่ data cache ของ Next (/th/products/t-shirt)
+  ✓  10 [chromium] › e2e/core-27-add-to-cart-guard.spec.ts:80:9 › มือถือ 375×812 › AC-119: click() mobile-cart-button สองครั้งติดกัน → addToCart 1 ครั้ง quantity 1; คลิกอีกครั้งหลังจบ → 2
+  ✓  12 [chromium] › e2e/core-37-copy-button.spec.ts:14:5 › AC-131: แถวรหัสของการ์ด voucher ไม่เยื้องที่ 1280 และข้อความคัดลอกล้มไม่ล้นจอที่ 375
+  ✓  11 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:189:7 › AC-62 (UI flow, D-1): เพิ่ม S+M บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 1
+  ✓  14 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:189:7 › AC-62 (UI flow, D-1): เพิ่ม S บน PDP แล้วลบ line หนึ่งใน dropdown โดยไม่ navigate → 0
+  ✓  15 [chromium] › e2e/core-19a-nav-cart-search.spec.ts:214:7 › viewport 375×812 › AC-63: search drawer + ข้อความ 200 ตัวอักษรไม่มีช่องว่าง ไม่ล้นจอ/ไม่ล้น drawer
+  ✓  16 [chromium] › e2e/core-90-auth-toggle.spec.ts:11:5 › AC-187: 375px ปุ่มสลับ login ↔ register สูง ≥ 44px และไม่มี register-button บนหน้า login
+  ✓  13 [chromium] › e2e/core-68-orders-pagination.spec.ts:22:5 › AC-167: ลูกค้า 12 order → หน้า 1 มี 10 แถว, หน้า 2 มี 2 แถว (เก่าสุดอยู่หน้า 2), หน้าเกิน → หน้าสุดท้าย
+  ✓  17 [chromium] › e2e/core-68-orders-pagination.spec.ts:96:5 › AC-167: order ≤ 10 ใบ → ไม่แสดง orders-pagination
+  ✓   2 [chromium] › e2e/core-23c-account-forms.spec.ts:61:7 › AC-112 › เพิ่มที่อยู่ล้ม (500) → ค่าที่พิมพ์ยังอยู่และ error ไทย
+  ✓   3 [chromium] › e2e/core-23c-account-forms.spec.ts:95:7 › AC-112 › แก้ที่อยู่ล้ม (500) → ค่าที่พิมพ์ยังอยู่และ error ไทย
+  ✓   1 [chromium] › e2e/core-22-account-fixes.spec.ts:19:5 › AC-82: title ของหน้า account ที่ล็อกอินแล้วตรงหน้า และหน้า login ยังเป็น เข้าสู่ระบบ
+  ✓   5 [chromium] › e2e/core-22-account-fixes.spec.ts:68:5 › AC-83, AC-84: profile เบอร์ว่างไม่แสดง null และกด แก้ไข เบอร์โทรไม่โดน editor อื่นที่ปิดอยู่
+  ✓   4 [chromium] › e2e/core-23c-account-forms.spec.ts:140:7 › AC-112 › ที่อยู่ใบเสร็จ: action ล้มระดับ network → ยังเห็นฟอร์มพร้อม error ไทย
+  ✓   7 [chromium] › e2e/core-23c-account-forms.spec.ts:183:7 › AC-112 › กดแก้ไขแล้วพิมพ์ทันที → input มีค่าที่พิมพ์
+  ✓   8 [chromium] › e2e/core-23c-account-forms.spec.ts:202:7 › AC-112 › /th/account ไม่มี 404 ใต้ /th/ และลิงก์บริการลูกค้าชี้ /contact
+  ✓   6 [chromium] › e2e/core-24-pdp-quantity.spec.ts:33:5 › AC-94: (JS) เลือก 3 ใน product-quantity-select แล้วกดเพิ่มลง cart → cart มี line qty 3
+  ✓   9 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:149:5 › AC-117: dropdown แสดง item_total หลังส่วนลด flash ป้าย 'รวม VAT' และแถว cart-totals รวมได้ยอดสุทธิ
+  ✓  10 [chromium] › e2e/core-24-pdp-quantity.spec.ts:70:7 › ปิด JavaScript › AC-94: (no-JS, ไม่ล็อกอิน) เลือก 2 แล้ว submit และ login → cart มี qty 2
+  ✓  12 [chromium] › e2e/core-24-pdp-quantity.spec.ts:101:5 › qa D-1: (JS) เลือกจำนวนเกิน stock → add-to-cart-error ภาษาไทย ปุ่มและตัวเลือกจำนวนใช้ต่อได้
+  ✓  13 [chromium] › e2e/core-4g-checkout-polish.spec.ts:73:5 › AC-99: โค้ดหมดอายุแสดง promotion-error ไทย, dropdown ที่อยู่ที่มี field ว่าง, ความสูง CountrySelect
+  ✓  14 [chromium] › e2e/core-4j-checkout-discount-address.spec.ts:53:5 › AC-111: โค้ดมีช่องว่างหัวท้ายใช้ได้ และค่าที่พิมพ์ในฟอร์มที่อยู่ไม่หายหลังใส่โค้ด
+  ✓  15 [chromium] › e2e/core-4j-checkout-discount-address.spec.ts:110:5 › AC-111: หลัง document.fonts.ready billing-country-code-select สูงเท่า input ข้างเคียง (±1px)
+  ✓  16 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 320×640: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64
+  ✓  17 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 375×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64
+  ✓  18 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 639×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64
+  ✓  19 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1023×800: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64
+  ✘  20 [chromium] › e2e/core-50-nav-narrow.spec.ts:171:7 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1280×800: ชื่อร้านกึ่งกลาง nav-account-link แสดง ตำแหน่ง/ขนาดเท่า develop
+  ✓  21 [chromium] › e2e/core-52-checkout-guards.spec.ts:97:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (1280x800)
+  ✓  22 [chromium] › e2e/core-52-checkout-guards.spec.ts:119:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (1280x800)
+  ✓  23 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 1280x800 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (1280x800)
+  ✓  24 [chromium] › e2e/core-52-checkout-guards.spec.ts:177:9 › viewport 1280x800 › AC-147 ใบเสร็จแยก: error แล้วแก้ส่งใหม่ → billing เป็นค่าที่กรอก (1280x800)
+  ✓  11 [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:204:5 › AC-117: กดเพิ่มบน PDP แล้ว mouse ค้างใต้ panel → dropdown หายภายใน 6 วินาที กดซ้ำด้วย click() ได้ และชี้ nav-cart-link ยังเปิดค้าง
+  ✓  25 [chromium] › e2e/core-52-checkout-guards.spec.ts:224:9 › viewport 1280x800 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (1280x800)
+  ✓  26 [chromium] › e2e/core-57-cart-totals.spec.ts:62:5 › AC-156: ค่าจัดส่งใน cart-totals = ราคา option ที่เลือก และแถวรวม VAT รวมได้ยอดสุทธิ ที่ /th/cart และขั้น review
+  ✓  27 [chromium] › e2e/core-52-checkout-guards.spec.ts:259:9 › viewport 1280x800 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (1280x800)
+  ✓  28 [chromium] › e2e/core-63-address-invisible.spec.ts:43:7 › AC-162 › เพิ่มที่อยู่: เขต/อำเภอเป็น U+200B ล้วน → error ไทย ไม่บันทึก; แก้เป็นค่าจริง → บันทึก
+  ✓  29 [chromium] › e2e/core-52-checkout-guards.spec.ts:97:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (375x812)
+  ✓  31 [chromium] › e2e/core-52-checkout-guards.spec.ts:119:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (375x812)
+  ✓  32 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 375x812 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (375x812)
+  ✓  33 [chromium] › e2e/core-52-checkout-guards.spec.ts:177:9 › viewport 375x812 › AC-147 ใบเสร็จแยก: error แล้วแก้ส่งใหม่ → billing เป็นค่าที่กรอก (375x812)
+  ✓  34 [chromium] › e2e/core-52-checkout-guards.spec.ts:224:9 › viewport 375x812 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (375x812)
+  ✓  30 [chromium] › e2e/core-65-order-item-unit-price.spec.ts:75:5 › AC-164 (a)–(d): แถวสินค้าของ order — qty 1 ไม่มีราคาต่อหน่วย, qty 2 คงต่อหน่วย + รวม ที่ 1280 และ 375
+  ✓  35 [chromium] › e2e/core-52-checkout-guards.spec.ts:259:9 › viewport 375x812 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (375x812)
+  ✓  37 [chromium] › e2e/core-52-checkout-guards.spec.ts:299:7 › CORE-58 อักขระที่มองไม่เห็น 1280x800 › AC-157 เขต/อำเภอเป็น U+200B ล้วน → error ไทย ไม่บันทึกลง cart
+  ✓  38 [chromium] › e2e/core-52-checkout-guards.spec.ts:327:7 › CORE-58 อักขระที่มองไม่เห็น 1280x800 › AC-157 cart digital-only: เขต/อำเภอใบเสร็จเป็น U+200B ล้วน → error ไทย ไม่บันทึกลง cart
+  ✓  36 [chromium] › e2e/core-67-sale-price-strikethrough.spec.ts:110:5 › AC-166b: price list แบบ sale แสดงราคาเดิม (compare_at_unit_price) ขีดฆ่าใน /cart, preview และ order-completed ไม่ซ้อนกับ promotion
+  ✓  39 [chromium] › e2e/core-store.spec.ts:20:5 › AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart
+  ✓  40 [chromium] › e2e/flash-sale-fs19.spec.ts:129:5 › AC-26: route ของ flash หน่วง 3 วินาที → mobile-cart-button รอ (aria-busy + disabled) แล้วกดได้หลังตอบ
+  ✓  42 [chromium] › e2e/flash-sale-fs19.spec.ts:171:5 › AC-26: route ของ flash ตอบ 500 → mobile-cart-button กดได้ภายใน 5 วินาที
+  ✓  43 [chromium] › e2e/flash-sale-fs19.spec.ts:194:5 › AC-26: เลื่อนให้ปุ่มหลักอยู่กลางจอแบบไม่ smooth → แถบล่างซ่อนภายใน 100ms และไม่มี frame ที่จางทับปุ่มหลัก
+  ✓  41 [chromium] › e2e/core-store.spec.ts:60:5 › AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture → shipped email → My orders
+  ✓  45 [chromium] › e2e/core-store.spec.ts:170:5 › AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที
+  ✓  44 [chromium] › e2e/sfui-2-brand.spec.ts:8:5 › AC-4 (2): ปุ่ม add-product-button บน PDP มีสีพื้น brand-900 ผ่าน --primary
+  ✓  47 [chromium] › e2e/thai-ui-account.spec.ts:16:5 › AC-48: หน้า login และ register เป็นภาษาไทย
+  ✓  48 [chromium] › e2e/thai-ui-account.spec.ts:30:5 › AC-48: หน้า account ของลูกค้าที่ login แล้วเป็นภาษาไทย
+  ✓  49 [chromium] › e2e/thai-ui-account.spec.ts:68:5 › AC-48: หน้า verify-account (ลิงก์ไม่มี token) เป็นภาษาไทย
+  ✓  50 [chromium] › e2e/thai-ui-cart-order.spec.ts:80:5 › AC-48: หน้า policy ทั้ง 5 เป็นภาษาไทย
+  ✓  51 [chromium] › e2e/thai-ui-cart-order.spec.ts:96:5 › AC-48, AC-78: cart, order confirmed, order detail และรายการ orders เป็นภาษาไทย ไม่มี hydration mismatch
+  ✓  52 [chromium] › e2e/thai-ui-checkout.spec.ts:22:5 › AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษาไทย
+  ✓  53 [chromium] › e2e/thai-ui-pages.spec.ts:13:5 › AC-48: หน้า store และ PDP เป็นภาษาไทย
+  ✓  54 [chromium] › e2e/thai-ui-pages.spec.ts:37:5 › AC-48: หน้า /search เป็นภาษาไทย
+  ✓  55 [chromium] › e2e/thai-ui-pages.spec.ts:53:5 › AC-48: หน้า category และ collection เป็นภาษาไทย
+  ✓  56 [chromium] › e2e/thai-ui-shell.spec.ts:10:5 › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai
+  ✓  57 [chromium] › e2e/thai-ui-shell.spec.ts:61:5 › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย
+  ✓  58 [chromium] › e2e/ui-preset-font.spec.ts:9:5 › AC-3: body, h1, h2, p, button, input และ class txt-*/*-webs บนหน้าแรกใช้ Noto Sans Thai ก่อน Inter
+  ✓  46 [chromium] › e2e/sfui-mobile-390.spec.ts:20:5 › AC-17: หน้าแรก, store, PDP, cart, checkout, account, orders ที่ 390px ไม่ล้นแนวนอน
+    core-50 1280 nav-menu-button width diff = 1.265625
+# core-50-nav-narrow 1280×800 ล้มด้วยค่าเดิม 1.265625px (macOS font metric; baseline Linux) ตั้งแต่ SFUI-1a — ไม่เปลี่ยนจาก 1a/1b
+  17 passed (31.1s)
+  1 failed
+  57 passed (1.4m)
