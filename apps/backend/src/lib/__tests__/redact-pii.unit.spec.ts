@@ -282,6 +282,152 @@ describe("redactPii (OPS-33, AC-48a)", () => {
   })
 })
 
+// OPS-39 (spec 07 กฎข้อ 21 รอบ 43, AC-54): ช่องที่เหลือหลัง OPS-36 (review #554)
+describe("redactPii (OPS-39, AC-54)", () => {
+  /** ห่อสตริงด้วย JSON.stringify ซ้ำ `levels` ชั้น (escape ซ้อน) */
+  const wrap = (text: string, levels: number): string => {
+    let out = text
+    for (let i = 0; i < levels; i++) {
+      out = JSON.stringify(out)
+    }
+    return out
+  }
+
+  // (a) util.inspect quote ด้วย ' และ escape ' ภายในเป็น \' เมื่อสตริงมีครบทั้ง ', " และ backtick
+  it.each([0, 1, 2, 3])("(a) \\' ของ util.inspect ใน JSON escape %i ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่", (levels) => {
+    const inspected = inspect({ name: "it's \"Somchai\" `x`", id: "cart_01ABC" })
+    expect(inspected).toContain("'it\\'s") // ยืนยันว่า inspect ใช้ \' จริง
+    const out = redactPii(wrap(inspected, levels))
+
+    expect(out).not.toContain("Somchai")
+    expect(out).toContain("cart_01ABC")
+  })
+
+  // guard: ค่าที่ลงท้ายด้วย backslash จริงต้องปิดตรงตำแหน่งจริง (ไม่ตีความเป็น \' ของชั้นอื่นจน city หลุด)
+  it.each([0, 1, 2, 3])("(a) guard: ค่าลงท้าย backslash ตามด้วย city ใน escape %i ชั้น → ไม่มี Bangkok", (levels) => {
+    const out = redactPii(wrap(inspect({ name: "a\\", city: "Bangkok", id: CART_ID }), levels))
+
+    expect(out).not.toContain("Bangkok")
+    expect(out).toContain(CART_ID)
+  })
+
+  // (b) ค่าของ key PII ที่เป็น array แบบแบน
+  const arrayInputs: [string, string][] = [
+    ["inspect บรรทัดเดียว", inspect({ name: ["Somchai", "Jaidee"], postal_code: [10110], id: "pay_01X" })],
+    ["inspect หลายบรรทัด (breakLength 1)", inspect({ name: ["Somchai", "Jaidee"], postal_code: [10110], id: "pay_01X" }, { breakLength: 1 })],
+    ["JSON", JSON.stringify({ name: ["Somchai"], city: "Bangkok", id: "pay_01X" })],
+    [
+      "inspect array ยาว (> 6 สมาชิก) และสมาชิกหลายท่อน",
+      inspect({
+        name: ["Somchai", "Jaidee", "a", "b", "c", "d", "e", "f"],
+        address_1: [`${"x".repeat(80)}\nSomchai it's\nJaidee`, "Bangkok"],
+        id: "pay_01X",
+      }),
+    ],
+  ]
+  it.each(arrayInputs.flatMap(([name, text]) => [0, 1, 2, 3].map((levels) => [name, levels, text] as const)))(
+    "(b) array ใต้ key PII (%s) escape %i ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่",
+    (_name, levels, text) => {
+      const out = redactPii(wrap(text, levels))
+
+      for (const pii of ["Somchai", "Jaidee", "10110", "Bangkok"]) {
+        expect(out).not.toContain(pii)
+      }
+      expect(out).toContain("pay_01X")
+    }
+  )
+
+  it("(b) inspect หลายบรรทัดของ array ยาวถูกตัดจริง (กัน fixture เปลี่ยนรูป)", () => {
+    expect(arrayInputs[1][1]).toContain("name: [\n")
+    expect(arrayInputs[3][1]).toContain("' +\n")
+  })
+
+  it("(b) JSON array ระดับ 0 ยัง parse ได้ และ key ถัดไปถูก redact ตามปกติ", () => {
+    const out = redactPii(JSON.stringify({ name: ["Somchai", "Jaidee"], city: "Bangkok", id: "pay_01X", amount: 1999 }))
+    expect(JSON.parse(out)).toEqual({ name: ["[REDACTED]"], city: "[REDACTED]", id: "pay_01X", amount: 1999 })
+  })
+
+  // (c) fuzz: seed คงที่ — ถ้าล้ม ข้อความจะพิมพ์ seed, case และ input (JSON) เพื่อทำซ้ำได้
+  const SEED = 0x0b5_39
+  const MARK = "PIIMARK"
+  const FUZZ_KEYS = ["name", "first_name", "address_1", "city", "email", "postal_code"]
+  const FUZZ_CHARS = ["'", '"', "`", "\\", "\n", "[", "]", ",", ":", " ", "a", "Z", "x"]
+  /** mulberry32 — PRNG แบบ seed คงที่ */
+  const prng = (seed: number) => () => {
+    seed = (seed + 0x6d2b79f5) | 0
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+
+  it(`(c) fuzz ${MARK} 600 object × escape 0–3 ชั้น ไม่หลุด (seed ${SEED})`, () => {
+    const rand = prng(SEED)
+    const int = (n: number) => Math.floor(rand() * n)
+    const randomString = (long: boolean) => {
+      const length = long ? 90 + int(40) : int(12)
+      let text = ""
+      for (let i = 0; i < length; i++) {
+        text += FUZZ_CHARS[int(FUZZ_CHARS.length)]
+      }
+      const at = int(text.length + 1)
+      // สตริงยาวต้องมี \n เพื่อให้ inspect ตัดเป็นหลายท่อน
+      return `${text.slice(0, at)}${MARK}${text.slice(at)}${long ? "\nend" : ""}`
+    }
+    const failures: string[] = []
+    let multiLineArrays = 0
+    let multiSegments = 0
+    for (let i = 0; i < 600; i++) {
+      const id = `cart_${i.toString(36)}FZ`
+      const obj: Record<string, unknown> = {}
+      for (const key of FUZZ_KEYS.filter(() => rand() < 0.4).concat(FUZZ_KEYS[i % FUZZ_KEYS.length])) {
+        // บังคับให้มี array ยาว (> 6 สมาชิก) ทุก 5 case และสตริงยาวที่มี \n ทุก 3 case
+        const longArray = i % 5 === 0
+        obj[key] =
+          longArray || rand() < 0.4
+            ? Array.from({ length: longArray ? 7 + int(6) : 1 + int(4) }, () => randomString(i % 3 === 0 && rand() < 0.3))
+            : randomString(i % 3 === 0)
+      }
+      obj.id = id
+      const inspected = inspect(obj)
+      if (/: \[\n/.test(inspected)) multiLineArrays++
+      if (/' \+\n|" \+\n|` \+\n/.test(inspected)) multiSegments++
+      for (const levels of [0, 1, 2, 3]) {
+        const out = redactPii(wrap(inspected, levels))
+        if (out.includes(MARK) || !out.includes(id)) {
+          failures.push(`seed=${SEED} case=${i} levels=${levels} input=${JSON.stringify(obj)} out=${JSON.stringify(out)}`)
+        }
+      }
+    }
+    expect(failures.slice(0, 3)).toEqual([])
+    expect(multiLineArrays).toBeGreaterThan(50)
+    expect(multiSegments).toBeGreaterThan(50)
+  })
+
+  // (d) ReDoS: input ≥ 100k ตัวอักษร — ทุกตัวอย่างเป็น "ข้อความดิบ" (String.raw: backslash ในโค้ดคือ backslash จริงในข้อความ)
+  const L = (n: number) => "\\".repeat(n)
+  /** prefix + unit ซ้ำจนยาว ≥ 100k ตัวอักษร */
+  const fill = (prefix: string, unit: string) => prefix + unit.repeat(Math.ceil(100_000 / unit.length))
+  it.each([
+    ["name: ' + \\' ซ้ำไม่มี quote ปิด", String.raw`name: '` + String.raw`\'`.repeat(50_000)],
+    ["name: [ + 'a', ซ้ำไม่มี ]", String.raw`name: [ ` + String.raw`'a', `.repeat(20_000)],
+    ["\\\"name\\\":[ + \\\\\\\"a\\\\\\\", ซ้ำ", String.raw`\"name\":[` + String.raw`\\\"a\\\",`.repeat(12_000)],
+    // กิ่งใหม่ทุกกิ่ง: \' ของ inspect ชั้น 1–3 ไม่ปิด, array ของตัวเลข/ท่อน + /สมาชิกที่ escape, array ซ้อนกันไม่ปิด
+    ...[1, 2, 3].map((k) => [`\\' ชั้น ${k} ไม่ปิด`, fill("name: 'x", `${L(2 ** k)}'${L(2 ** k - 1)}"`)] as [string, string]),
+    ...[1, 2, 3].map((k) => [`array ของสมาชิก \\' ชั้น ${k} ไม่มี ]`, fill("name: [ ", `'${L(2 ** k)}'${L(2 ** k - 1)}"', `)] as [string, string]),
+    ["array ตัวเลขไม่มี ]", "name: [" + "1,".repeat(50_000)],
+    ["array ท่อน + ไม่มี ]", "name: [ " + "'a' + ".repeat(17_000)],
+    ["array หลายบรรทัดที่ escape ไม่มี ]", String.raw`\"name\": [\n` + String.raw`    'a',\n`.repeat(10_000)],
+    ["key array ซ้ำ", "name: [ ".repeat(13_000)],
+    ["key array ซ้ำในสตริง", "name: [ 'name: [ ".repeat(6_000)],
+    ["array ไม่ปิดตามด้วย backslash ยาว", "name: [ 'a', " + L(100_000)],
+  ])("ข้อความยาว (%s) redact เสร็จเร็ว (ไม่ quadratic)", (_name, text) => {
+    expect(text.length).toBeGreaterThanOrEqual(100_000)
+    const started = performance.now()
+    redactPii(text)
+    expect(performance.now() - started).toBeLessThan(200)
+  })
+})
+
 describe("redactValue (review #473)", () => {
   it("key ไม่สนตัวพิมพ์ และตัวเลขใต้ key PII", () => {
     expect(redactValue({ Email: "a", postal_code: 10110, phone: 812345678, quantity: 2 })).toEqual({
@@ -303,6 +449,12 @@ describe("redactValue (review #473)", () => {
       extra: { email: "[REDACTED]", id: CART_ID },
     })
     expect(err.message).toBe("buyer somchai.jaidee@example.co.th")
+  })
+
+  // OPS-39 (AC-54b): array ใต้ key PII — ทุกสมาชิกที่เป็น string/ตัวเลข
+  it("array ใต้ key PII ทุกสมาชิกเป็น [REDACTED] (OPS-39)", () => {
+    expect(redactValue({ name: ["Somchai", 1] })).toEqual({ name: ["[REDACTED]", "[REDACTED]"] })
+    expect(redactValue({ tags: ["vip", 1], address: { line1: ["99/1"] } })).toEqual({ tags: ["vip", 1], address: { line1: ["[REDACTED]"] } })
   })
 })
 

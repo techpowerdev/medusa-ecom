@@ -1,0 +1,129 @@
+# OPS-39 — redact-pii (spec 07 กฎข้อ 21 รอบ 43, AC-54)
+# คำสั่ง: cd apps/backend && TEST_TYPE=unit NODE_OPTIONS=--experimental-vm-modules jest src/lib/__tests__/redact-pii.unit.spec.ts
+
+## RED (test ใหม่บนโค้ด develop 62b868a1) — 22 ล้ม
+# (a) ชั้น 0 และ guard ค่าลงท้าย backslash 0–3 ชั้นผ่านทั้งก่อนและหลัง; ReDoS 14 กรณีใหม่ผ่านทั้งก่อนและหลัง (กิ่งใหม่ยังไม่มีบน develop)
+    ✕ (a) \' ของ util.inspect ใน JSON escape 1 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✕ (a) \' ของ util.inspect ใน JSON escape 2 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✕ (a) \' ของ util.inspect ใน JSON escape 3 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✕ (b) array ใต้ key PII (inspect บรรทัดเดียว) escape 0 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (inspect บรรทัดเดียว) escape 1 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (inspect บรรทัดเดียว) escape 2 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (inspect บรรทัดเดียว) escape 3 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (inspect หลายบรรทัด (breakLength 1)) escape 0 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (inspect หลายบรรทัด (breakLength 1)) escape 1 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่ (1 ms)
+    ✕ (b) array ใต้ key PII (inspect หลายบรรทัด (breakLength 1)) escape 2 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่ (1 ms)
+    ✕ (b) array ใต้ key PII (inspect หลายบรรทัด (breakLength 1)) escape 3 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (JSON) escape 0 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (JSON) escape 1 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (JSON) escape 2 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (JSON) escape 3 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (inspect array ยาว (> 6 สมาชิก) และสมาชิกหลายท่อน) escape 0 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่ (1 ms)
+    ✕ (b) array ใต้ key PII (inspect array ยาว (> 6 สมาชิก) และสมาชิกหลายท่อน) escape 1 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (inspect array ยาว (> 6 สมาชิก) และสมาชิกหลายท่อน) escape 2 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) array ใต้ key PII (inspect array ยาว (> 6 สมาชิก) และสมาชิกหลายท่อน) escape 3 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✕ (b) JSON array ระดับ 0 ยัง parse ได้ และ key ถัดไปถูก redact ตามปกติ (1 ms)
+    ✕ (c) fuzz PIIMARK 600 object × escape 0–3 ชั้น ไม่หลุด (seed 46393) (85 ms)
+    ✕ array ใต้ key PII ทุกสมาชิกเป็น [REDACTED] (OPS-39)
+Tests:       22 failed, 67 passed, 89 total
+
+## GREEN (หลังแก้)
+    ✓ บรรทัด recreate a payment session → ไม่มีชื่อ/อีเมล/เบอร์/ที่อยู่เหลือ แต่ id ยังอยู่ครบ (2 ms)
+    ✓ อีเมลทุกที่ในข้อความ (ไม่ต้องมี key)
+    ✓ ค่าของ key ในรูป JS object (util.inspect) และ Ruby hash
+    ✓ key ที่ลงท้ายเหมือนกันแต่ไม่อยู่ในรายการไม่ถูกแตะ
+    ✓ เบอร์โทรไทยที่มีขอบเขต (0812345678) (2 ms)
+    ✓ เบอร์โทรไทยที่มีขอบเขต (021234567)
+    ✓ เบอร์โทรไทยที่มีขอบเขต (+66812345678)
+    ✓ เบอร์โทรไทยที่มีขอบเขต (ต้นสตริง)
+    ✓ เลขกลาง ULID/id และตัวเลขที่ไม่ใช่เบอร์ไม่ถูกตัด
+    ✓ ทศนิยมยาวและชื่อไฟล์ที่มี @ ไม่ถูกตัด
+    ✓ key PII ไม่สนตัวพิมพ์ และค่าที่เป็นตัวเลขใต้ key PII ถูก redact
+    ✓ ค่าในเครื่องหมาย backtick ของ util.inspect (สตริงที่มีทั้ง ' และ ")
+    ✓ JSON ที่ escape ซ้อน (JSON อยู่ในสตริงของ JSON อีกชั้น)
+    ✓ ค่า email ลงท้ายด้วย backslash ใน JSON escape ซ้อน ไม่ทำให้ city ถัดไปหลุด (เคส review #536) (1 ms)
+    ✓ escape 0 ชั้น: ค่าที่ลงท้าย/มี backslash และ quote ถูก redact ครบ ทุก key ถัดไปด้วย
+    ✓ escape 1 ชั้น: ค่าที่ลงท้าย/มี backslash และ quote ถูก redact ครบ ทุก key ถัดไปด้วย
+    ✓ escape 2 ชั้น: ค่าที่ลงท้าย/มี backslash และ quote ถูก redact ครบ ทุก key ถัดไปด้วย
+    ✓ escape 3 ชั้น: ค่าที่ลงท้าย/มี backslash และ quote ถูก redact ครบ ทุก key ถัดไปด้วย
+    ✓ escape ≥ 4 ชั้นไม่ redact ค่าของ key (ยอมรับตามกฎข้อ 18b รอบ 43) และไม่ทำให้ข้อความเสีย
+    ✓ สตริงหลายท่อนของ util.inspect (address_1 ที่มี \n) ถูก redact ทุกท่อน (2 ms)
+    ✓ สตริงหลายท่อนของ util.inspect ใน JSON escape 1 ชั้น ถูก redact ทุกท่อน
+    ✓ สตริงหลายท่อนของ util.inspect ใน JSON escape 2 ชั้น ถูก redact ทุกท่อน
+    ✓ สตริงหลายท่อนของ util.inspect ใน JSON escape 3 ชั้น ถูก redact ทุกท่อน (1 ms)
+    ✓ อีเมลที่ local part มี ' (ข้อความธรรมดา) ไม่เหลือ o'
+    ✓ อีเมลที่ local part มี ' (ใน quote เดี่ยว) ไม่เหลือ o'
+    ✓ อีเมลที่ local part มี ' (ใน quote คู่) ไม่เหลือ o'
+    ✓ ข้อความยาว (a ติดกัน 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (404 ของ id ยาว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (จุดและขีดติดกัน 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (a' ติดกัน 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (9 ms)
+    ✓ ข้อความยาว (backslash 100k ตัว) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาว (escape quote ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาว (escape quote ภายในค่า ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาวที่มี key PII (escape 3 ชั้น ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาวที่มี key PII (escape 3 ชั้น quote ภายในยาว) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาวที่มี key PII (สตริงหลายท่อนไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาวที่มี key PII (key PII ซ้ำไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาวที่มี key PII (ช่วง backslash ยาวหลังค่า) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาวที่มี key PII (ท่อน escape ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาวที่มี key PII (ท่อน escape ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาวที่มี key PII (escaped newline ยาวไม่มี +) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ (a) \' ของ util.inspect ใน JSON escape 0 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่ (1 ms)
+    ✓ (a) \' ของ util.inspect ใน JSON escape 1 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✓ (a) \' ของ util.inspect ใน JSON escape 2 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✓ (a) \' ของ util.inspect ใน JSON escape 3 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✓ (a) guard: ค่าลงท้าย backslash ตามด้วย city ใน escape 0 ชั้น → ไม่มี Bangkok
+    ✓ (a) guard: ค่าลงท้าย backslash ตามด้วย city ใน escape 1 ชั้น → ไม่มี Bangkok
+    ✓ (a) guard: ค่าลงท้าย backslash ตามด้วย city ใน escape 2 ชั้น → ไม่มี Bangkok
+    ✓ (a) guard: ค่าลงท้าย backslash ตามด้วย city ใน escape 3 ชั้น → ไม่มี Bangkok
+    ✓ (b) array ใต้ key PII (inspect บรรทัดเดียว) escape 0 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (inspect บรรทัดเดียว) escape 1 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (inspect บรรทัดเดียว) escape 2 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (inspect บรรทัดเดียว) escape 3 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (inspect หลายบรรทัด (breakLength 1)) escape 0 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (inspect หลายบรรทัด (breakLength 1)) escape 1 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (inspect หลายบรรทัด (breakLength 1)) escape 2 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่ (1 ms)
+    ✓ (b) array ใต้ key PII (inspect หลายบรรทัด (breakLength 1)) escape 3 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (JSON) escape 0 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (JSON) escape 1 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (JSON) escape 2 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (JSON) escape 3 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่ (1 ms)
+    ✓ (b) array ใต้ key PII (inspect array ยาว (> 6 สมาชิก) และสมาชิกหลายท่อน) escape 0 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (inspect array ยาว (> 6 สมาชิก) และสมาชิกหลายท่อน) escape 1 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (inspect array ยาว (> 6 สมาชิก) และสมาชิกหลายท่อน) escape 2 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) array ใต้ key PII (inspect array ยาว (> 6 สมาชิก) และสมาชิกหลายท่อน) escape 3 ชั้น → ไม่มีสมาชิกเหลือ และ id ยังอยู่
+    ✓ (b) inspect หลายบรรทัดของ array ยาวถูกตัดจริง (กัน fixture เปลี่ยนรูป)
+    ✓ (b) JSON array ระดับ 0 ยัง parse ได้ และ key ถัดไปถูก redact ตามปกติ
+    ✓ (c) fuzz PIIMARK 600 object × escape 0–3 ชั้น ไม่หลุด (seed 46393) (71 ms)
+    ✓ ข้อความยาว (name: ' + \' ซ้ำไม่มี quote ปิด) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (name: [ + 'a', ซ้ำไม่มี ]) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาว (\"name\":[ + \\\"a\\\", ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาว (\' ชั้น 1 ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาว (\' ชั้น 2 ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาว (\' ชั้น 3 ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic) (4 ms)
+    ✓ ข้อความยาว (array ของสมาชิก \' ชั้น 1 ไม่มี ]) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาว (array ของสมาชิก \' ชั้น 2 ไม่มี ]) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาว (array ของสมาชิก \' ชั้น 3 ไม่มี ]) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาว (array ตัวเลขไม่มี ]) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาว (array ท่อน + ไม่มี ]) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาว (array หลายบรรทัดที่ escape ไม่มี ]) redact เสร็จเร็ว (ไม่ quadratic) (2 ms)
+    ✓ ข้อความยาว (key array ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic) (1 ms)
+    ✓ ข้อความยาว (key array ซ้ำในสตริง) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ ข้อความยาว (array ไม่ปิดตามด้วย backslash ยาว) redact เสร็จเร็ว (ไม่ quadratic) (3 ms)
+    ✓ key ไม่สนตัวพิมพ์ และตัวเลขใต้ key PII
+    ✓ Error และ Map ที่ส่งเป็น meta ถูก redact (ไม่หลุดเป็นค่าเดิม) (7 ms)
+    ✓ array ใต้ key PII ทุกสมาชิกเป็น [REDACTED] (OPS-39)
+    ✓ message, stack/cause และ field อื่นของ log ไม่มี PII แต่มี worker_mode, level และ id ครบ (3 ms)
+    ✓ ไม่แก้ object ของผู้เรียก (redact บนสำเนา)
+    ✓ AC-48c development → undefined (Medusa ใช้ logger เดิมซึ่งไม่ redact)
+Tests:       89 passed, 89 total
+
+## ชุดอื่น
+backend test:unit: Test Suites: 133 passed, 133 total; Tests: 1933 passed, 1933 total
+storefront test:e2e:unit: 165 passed
+backend typecheck: ผ่าน; backend lint: 0 error (warning 4 รายการเดิมของ OPS-38/json-logger ไม่ได้แตะ); backend build: ผ่าน
+
+## ตรวจเพิ่มนอก test (scratchpad ไม่ commit)
+fuzz 40 seed × 500 object × (inspect, JSON, 'Invalid string: '+inspect) × escape 0–3 ชั้น = 240,000 กรณี (object ซ้อน, breakLength 1/80, array 1–12 สมาชิก): หลุด 0, id cart_ และ amount 1999 อยู่ครบ
+ReDoS 31 แบบ (รวมกิ่งใหม่ทุกกิ่ง): 100k ตัวอักษร ≤ 6.4ms, 400k→1.6M เวลาเพิ่ม ~4 เท่า (linear)
