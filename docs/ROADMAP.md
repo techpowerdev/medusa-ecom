@@ -61,7 +61,7 @@ OPS-36, PAY-23, PAY-24 merge ใน train #557 · OPS-39 เพิ่มหล�
 | Task | spec | งาน (สั้น) | Depends | UI/qa | สถานะ |
 |---|---|---|---|---|---|
 | CORE-96 | 01 | สรุปขั้น payment ไม่ตัดคำทุกความกว้าง + บัตรของขวัญ + `renewedFrom` | — | ✓ | ☐ |
-| CORE-97 | 01 | nav ตะกร้า: ลิงก์ไม่ซ้อนปุ่ม, ป้ายไม่ค้างหลัง logout, backend ล่มไม่บอก (0) | — | ✓ | ☐ |
+| CORE-97 | 01 | nav ตะกร้า: ลิงก์ไม่ซ้อนปุ่ม, ป้ายไม่ค้างหลัง logout, backend ล่มไม่บอก (0) — ⚠️ ชน SFUI-3c (`cart-dropdown` → Radix `Popover`); ตัวที่ merge ทีหลังต้องเขียน static check ของ AC-194 ใหม่ให้อ้าง `PopoverTrigger` แทน `PopoverButton` | — | ✓ | ☐ |
 | CORE-98 | 01 | overview GB-8 ล้ม/`<ul>` ว่าง + a11y `SearchPagination` + จำนวน toggle ลดราคา | — | ✓ | ☐ |
 | CORE-99 | 01 | a11y ลิงก์/ปุ่ม: static ครอบทุกรูป, "." ปุ่มสลับ, testid `cart-sign-in-link` | — | ✓ | ☐ |
 | CORE-100 | 01 | hygiene storefront: purity 3 ไฟล์, coverage/`COMPARE`, e2e chip, unit กฎ 151e | — | — | ☐ |
