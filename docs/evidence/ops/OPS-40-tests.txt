@@ -478,3 +478,105 @@ fuzz ของ reviewer (fz562-keep/fuzz.mts — สำเนา ไม่แก
 fuzz ของผม: generator รอบ 3/รอบ 2/เดิม 3.2M ต่อชุด, โหมดหนัก 1.6M, stress 240k — หลุด/หายเพิ่ม 0/0 ทุกชุด; ตาราง reviewer ทุกรอบ 0
 ReDoS: redos.mts ของ reviewer (26 รูป × 100k/400k/1.6M) เชิงเส้นทุกตัว ช้าสุด 37ms@100k (`สม{\"a\":\", b: "` ซ้ำ, รวม warm-up)
   ไล่ค้นของผม 1,315,716 หน่วย flag 96 เชิงเส้น (อัตรา ≤ 5.4) ช้าสุด 26.6ms@100k; whitespace ยาว 77 รูป ไม่ถูก flag; compile + เรียกครั้งแรก 15ms (source 17,884)
+
+## รอบ 5–6 (re-review #562 รอบ 4–5; owner ตัดสิน 2026-11-25 สองครั้ง — เกณฑ์สองทิศมีข้อยกเว้น (d1)/(d2) ของกฎข้อ 22d)
+# แก้: ค่าของ field รับ array ซ้อน (`[` `]` เป็นตัวคั่น) และ key ว่าง; สมาชิก array ที่ไม่มี key (สตริงหลัง Map/object ใน array) จับเป็น field ที่ตำแหน่งสมาชิก;
+# key ใน ' ปิดตามชั้นที่อ่านได้ (newline ดิบ = ชั้น 0: backslash 2m ตัว; newline ที่ escape N ตัว: backslash 4N·m ตัว; บรรทัดเดียวกัน: ไม่มี backslash นำ),
+# key หลายท่อน (Map key ที่มี newline) และตำแหน่งของ key/สมาชิกต้องตามจุดจบของค่าก่อนหน้า; สมาชิกของ field ห้ามมี newline ดิบ
+
+## RED บนหัว PR 4942a265 — 10 ล้ม (test ใหม่รอบ 4–6)
+    ✕ (re-review #562 รอบ 4) array ซ้อน × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562 รอบ 4) object key ว่าง × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562 รอบ 4) object key ว่าง ค่า ,  × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562 รอบ 4) array ของ Map/null-prototype แล้วสมาชิก backslash × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562 รอบ 5) key "`\"'x': [" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืน total
+    ✕ (re-review #562 รอบ 5) key "`\"'x': [," × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืน total
+    ✕ (re-review #562 รอบ 5) key ที่มี \' + `:` กลาง key (cart_6vjFZ) escape 0 ชั้น — last_name ไม่หลุด
+    ✕ (re-review #562 รอบ 5) key ที่มี \' + `:` กลาง key (cart_6vjFZ) escape 1 ชั้น — last_name ไม่หลุด
+    ✕ (re-review #562 รอบ 5) key ที่มี \' + `:` กลาง key (cart_6vjFZ) escape 2 ชั้น — last_name ไม่หลุด
+    ✕ (re-review #562 รอบ 5) key ที่มี \' + `:` กลาง key (cart_6vjFZ) escape 3 ชั้น — last_name ไม่หลุด
+Tests:       10 failed, 500 passed, 510 total
+# บน WIP รอบ 5 (ที่รายงานไว้ ไม่ได้ push) — 6 ล้ม (key ที่มี ' " backtick ครบ 2 + cart_6vjFZ 4); test Map key หลายท่อน 2 ข้อ red บนฉบับระหว่างทางที่มี guard newline ดิบ
+Tests:       6 failed, 504 passed, 510 total
+
+## GREEN
+    ✓ (re-review #562 รอบ 4) array ซ้อน × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 4) object key ว่าง × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 4) object key ว่าง ค่า ,  × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 4) array ซ้อน 3 ชั้นของ object × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 4) array ของ Map/null-prototype แล้วสมาชิก backslash × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 4) Map key ที่มี \n + เยื้อง + key × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 5) key "`\"'x': [" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืน total
+    ✓ (re-review #562 รอบ 5) key "`\"'x': [" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืน total
+    ✓ (re-review #562 รอบ 5) key "a`\"'b': [" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืน total
+    ✓ (re-review #562 รอบ 5) key "`\"'x': [," × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืน total
+    ✓ (re-review #562 รอบ 5) key "\"name\":\"':company: `x" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืน total
+    ✓ (re-review #562 รอบ 5) key ที่มี \' + `:` กลาง key (cart_6vjFZ) escape 0 ชั้น — last_name ไม่หลุด
+    ✓ (re-review #562 รอบ 5) key ที่มี \' + `:` กลาง key (cart_6vjFZ) escape 1 ชั้น — last_name ไม่หลุด
+    ✓ (re-review #562 รอบ 5) key ที่มี \' + `:` กลาง key (cart_6vjFZ) escape 2 ชั้น — last_name ไม่หลุด
+    ✓ (re-review #562 รอบ 5) key ที่มี \' + `:` กลาง key (cart_6vjFZ) escape 3 ชั้น — last_name ไม่หลุด
+    ✓ (re-review #562 รอบ 6) Map key หลายท่อน — 0
+    ✓ (re-review #562 รอบ 6) Map key หลายท่อน — 1
+Tests:       510 passed, 510 total
+backend test:unit: Test Suites: 133 passed, 133 total; Tests:       2354 passed, 2354 total
+storefront test:e2e:unit: 165 passed; backend typecheck/build: ผ่าน; lint: 0 error (warning 4 รายการเดิมของ OPS-38)
+
+## จำแนกทุกกรณีที่ PR แย่กว่า develop d5b7c0d7 (PII หลุดเพิ่ม / id-จำนวนเงิน-key หายเพิ่ม)
+# สคริปต์: สำเนา cls-OPS40.mts ของ reviewer → cls2-OPS40.mts (scratchpad fz-OPS40c — ไม่ commit) แก้ group ของค่า 15 → 18 และเพิ่ม
+#   หมวด EXEMPT4_inline_bs_key = (d2): counterfactual แทน \ ' " ` ในชื่อ key ที่ quote ด้วย ' บนบรรทัดเดียวกัน (หลัง `{ `/`, `/`=>`) ด้วย a แล้ว PR ไม่แย่กว่า develop ที่ X
+#   (แยกจากหมวดเดิม EXEMPT_* = (d1)), โหมด K = generator ของ keyq-OPS40.mts, โหมด F = generator fuzz รอบ 3 ของ builder
+| ชุด | render | PR แย่กว่า: หลุด / หาย | (d1) | (d2) | ไม่เข้าข้อยกเว้น |
+|---|---|---|---|---|---|
+| fz_nokm id 1–20000 | 480,000 | 64 / 0 | 24 | 40 | **0** |
+| fz_nokm ext 1–20000 | 480,000 | 64 / 0 | 24 | 40 | **0** |
+| fz_nokm q 1–20000 | 480,000 | 88 / 0 | 12 | 76 | **0** |
+| fuzz.mts all 1–32000 | 768,000 | 107 / 116 | 32 | 191 | **0** |
+| fz_nokm long 1–20000 | 480,000 | 64 / 0 | 24 | 40 | **0** |
+| fz_nokm all 1–20000 | 480,000 | 80 / 24 | 24 | 80 | **0** |
+| keyq 1–20000 | 240,000 | 67 / 0 | 0 | 67 | **0** |
+| object ซ้อน (B) 1–200 | 2,000,000 | 0 / 0 | 0 | 0 | **0** |
+| fuzz รอบ 3 ของ builder 1–400 | 3,200,000 | 277 / 0 | 0 | 277 | **0** |
+fuzz อื่นของ builder (นับดิบ, ไม่มีกรณี PR แย่กว่า): generator รอบ 2 3.2M 0/0 · เดิม 3.2M 0/0 · โหมดหนัก 1.6M 0/0 · stress 240k 81 = 81 · object ซ้อน 2M 0/0
+ตาราง reviewer ทุกรอบ 0 (blocker 1 0/192, (a) × key ที่ไม่ใช่ identifier 0/480, postal_code 0/16, รอบ 2 0/480, AC-55(a) 0/80)
+
+## ReDoS (เวลา ms ที่ 100k / 400k / 1.6M — เส้นตรงทุกตัว)
+  "":                  1.6 / 6.3 / 24.7
+  "\"k\":" rep lv1             4.9 / 20.8 / 90.0  dev100k 0.9
+  ', "name" ws [               2.2 / 8.5 / 33.8  dev100k 1.2
+  ', '<127 a>' : rep           3.6 / 14.9 / 55.2  dev100k 0.8
+  ', '<127 a>' no colon        3.1 / 10.3 / 41.3  dev100k 0.8
+  ', '<200 a>' unclosed rep    3.8 / 15.0 / 61.4  dev100k 0.8
+  ', '\'\'\'...                1.9 / 7.5 / 29.7  dev100k 1.2
+  ', 'k' rep no colon          2.2 / 8.7 / 34.1  dev100k 0.9
+  ', 'name' : [ rep            2.8 / 11.0 / 45.9  dev100k 1.9
+  ', 'x\' rep                  10.2 / 8.5 / 33.9  dev100k 8.1
+  ', 'x\\'                     9.7 / 11.1 / 45.7  dev100k 0.9
+  ', 'x\\สม rep                10.3 / 7.7 / 30.9  dev100k 8.4
+  ', `x rep                    11.9 / 51.4 / 191.0  dev100k 0.8
+  ', `x`: rep                  2.0 / 8.1 / 32.5  dev100k 0.9
+  , '':                2.1 / 8.5 / 33.6
+  [ ws then name       1.6 / 6.8 / 24.8
+  \" key with \\ rep           6.5 / 26.3 / 104.4  dev100k 2.9
+  \" unclosed key              2.5 / 11.5 / 43.9  dev100k 0.6
+  \n + indent ws       1.6 / 6.1 / 24.0
+  backtick in backtick         4.0 / 18.4 / 78.7  dev100k 0.9
+  builder slowest              35.5 / 117.7 / 488.0  dev100k 0.9
+  emoji keys                   1.6 / 6.4 / 25.4  dev100k 0.6
+  empty key            1.6 / 6.5 / 26.3
+  fake pii in value            5.4 / 12.2 / 60.9  dev100k 9.8
+  field + [            8.3 / 3.8 / 15.4
+  field + [ sp         0.9 / 3.7 / 13.9
+  field + [[ 'x',      1.8 / 7.4 / 29.0
+  field + ]            0.9 / 3.9 / 15.2
+  field array unclosed         2.4 / 9.1 / 37.5  dev100k 1.0
+  import+first call 12.2 ms
+  key \' : rep         2.0 / 7.9 / 31.4
+  key `"\' rep         1.6 / 6.7 / 26.3
+  key quote + ws + :           1.7 / 6.7 / 25.1  dev100k 0.8
+  key quote then ws no colon   1.7 / 6.9 / 27.0  dev100k 0.8
+  lv3 key rep                  3.4 / 14.5 / 65.4  dev100k 1.8
+  many short fields + pii      5.4 / 19.3 / 88.8  dev100k 1.9
+  surrogate                    13.6 / 59.6 / 247.1  dev100k 0.8
+  thai field rep               3.0 / 12.3 / 59.1  dev100k 0.7
+ไล่ค้นของ builder 1,315,716 หน่วย: flag 89 วัดซ้ำเชิงเส้น (อัตรา 400k÷100k ≤ 4.8) ช้าสุด 54.9ms@100k; whitespace ยาว 77 รูป ไม่ถูก flag ช้าสุด 15.7ms@100k
+compile + เรียกครั้งแรก 15ms (source 18,831 ตัวอักษร < 20KB)

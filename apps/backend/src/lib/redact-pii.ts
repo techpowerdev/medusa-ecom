@@ -70,9 +70,11 @@ const inspectSegment = (g: string, gq: string) =>
   `(?:'${INSPECT_ESCAPED_QUOTE}|'(?:${BS}${gq}.|${gq}[^'${BS}])*'|${BS}+"(?:${g}[^"])*"|"(?:${BS}${g}.|${g}[^"${BS}])*"|\`(?:${BS}${gq}.|${gq}[^\`${BS}])*\`)`
 const inspectTail = (g: string, gq: string) => `(?:(?:\\s|${BS}+n)*\\+(?:\\s|${BS}+n)*${inspectSegment(g, gq)})*`
 // ค่าเดี่ยว (แบบเดิมของ develop + กิ่ง \'): group n = quote, n+1 = backslash ของ quote ที่ escape (ESCAPED_OPEN — ลองช่วงยาวก่อน)
-const quotedString = (n: number, escapedQuote = INSPECT_ESCAPED_QUOTE_SCALAR) =>
-  `(["'\`])(?:(?<=')${escapedQuote}|(?:${BS}.|(?!\\${n})[^${BS}])*\\${n})` +
-  `|(${BS}{7}|${BS}{3}|${BS})"(?:(?!${escapedQuoteRun(n + 1)})(?:${BS}+[^${BS}]|[^${BS}]))*${escapedQuoteRun(n + 1)}`
+// nl = อักขระเพิ่มที่เนื้อหาห้ามมี ("" = แบบเดิมของ develop สำหรับค่า PII; สมาชิกของ field ที่ไม่ใช่ PII ห้ามมี newline ดิบ — สตริงของ inspect/JSON
+// ไม่มี newline ดิบ; re-review #562 รอบ 6: สมาชิกปลอม `'{"\n  },\n  last_name: '` ข้ามบรรทัดแล้วกลืน quote เปิดของ key PII)
+const quotedString = (n: number, escapedQuote = INSPECT_ESCAPED_QUOTE_SCALAR, nl = "") =>
+  `(["'\`])(?:(?<=')${escapedQuote}|(?:${BS}${nl ? `[^${nl}]` : "."}|(?!\\${n})[^${BS}${nl}])*\\${n})` +
+  `|(${BS}{7}|${BS}{3}|${BS})"(?:(?!${escapedQuoteRun(n + 1)})(?:${BS}+[^${BS}${nl}]|[^${BS}${nl}]))*${escapedQuoteRun(n + 1)}`
 const scalarValue = (n: number) => `(?:${quotedString(n)})${inspectTail("", "")}|\\d+(?:\\.\\d+)?(?![\\w.])`
 // สมาชิก array: เนื้อหามี guard; สมาชิกที่ escape ชั้น k (quote = backslash B ตัว) ห้ามมี " ที่ backslash น้อยกว่า B (= โครงสร้างของชั้นที่ต่ำกว่า)
 // group n = quote ' หรือ backtick, n+1 = backslash ของ quote ที่ escape
@@ -97,7 +99,7 @@ const PII_KEY_VALUE =
   `(?:(?=\\[)${STRUCTURAL_KEY}(\\[)((?:${ARRAY_SEPARATOR}|(?=(${itemValue(6)})${NOT_KEY_AFTER}${ITEM_END})\\5)*)(\\])|${scalarValue(9)})`
 // OPS-40 (กฎข้อ 22a รอบ 43, review #559): ค่าของ key ที่ไม่ใช่ PII ที่ลงท้ายด้วยรูปเปิด key PII (`{ note: "name: '", city: 'Bangkok' }`)
 // เดิม `name: '` ในเนื้อหาเริ่ม match แล้ว quote ปิดของ note กลายเป็น quote เปิดของค่าปลอม → ปิดที่ quote เปิดของ city → "Bangkok" หลุด
-// จึงจับ field ที่ไม่ใช่ PII ที่ตำแหน่งโครงสร้าง (ต้นข้อความ หรือหลัง `{` `,` newline ดิบ/ที่ escape + ช่องว่าง) ทั้งค่า (สตริง/ท่อน `+`/array แบบแบน)
+// จึงจับ field ที่ไม่ใช่ PII ที่ตำแหน่งโครงสร้าง (ต้นข้อความ หรือหลัง `{` `,` newline ดิบ/ที่ escape + ช่องว่าง) ทั้งค่า (สตริง/ท่อน `+`/array แบนหรือซ้อน — `[` `]` เป็นตัวคั่น, re-review #562 รอบ 4)
 // แล้ว redact ภายในค่าด้วย PII_ONLY (ข้อความอิสระ `Invalid name: 'x'` ในค่ายังถูก redact เหมือนเดิม) — match ของ key PII ปลอมในค่าจึงไม่ข้ามขอบค่า
 // - key = identifier หรือข้อความใน quote (escape 0–3 ชั้น — `'x-note'`, `"user-agent"`, `'ชื่อ'`; review #562: key ที่ไม่ใช่ identifier เคยไม่ถูกจับ
 //   แล้ว `, b: ` ในค่าเริ่ม field ปลอมที่กลืน quote เปิดของ key PII ถัดไป) ที่ไม่ใช่ key PII — ยกเว้น key PII ที่ค่าเป็น `[` แต่ไม่ผ่านกิ่ง array
@@ -111,20 +113,47 @@ const PII_KEY_VALUE =
 // ความยาว source ต้องไม่เกิน ~20KB (V8 ปิด optimization ของ regex ที่ใหญ่กว่านั้น — วัดได้ช้าลง ~10 เท่าและ backtrack stack ล้นเร็วขึ้น)
 // key ใน quote (re-review #562 — key ที่มี quote อีกชนิด/backslash/\n ข้างใน ต้องปิดถูกที่ ไม่งั้นค่าของมันไม่ถูกจับเป็น field):
 // - quote `"` (JSON escape ทุกชั้นสม่ำเสมอ): group 12 = backslash ของ quote (ชั้น k = 2^k−1 ตัว), 13 = `"` — quote ปิด = ช่วง backslash m·(2B+2)+B ตัว + `"` (แบบ escapedQuoteRun)
-// - quote ' หรือ backtick ของ inspect (group 14 — JSON ไม่ escape ' จึงไม่รู้ชั้น): ปิดที่ quote แรก (ช่วง backslash ใดก็ได้นำหน้า) ที่ตามด้วย `:`/`=>`
+// - quote ' หรือ backtick ของ inspect (group 15/16/17 — JSON ไม่ escape ' จึงไม่รู้ชั้น): ปิดที่ quote แรกที่ไม่มี backslash นำและตามด้วย `:`/`=>`
+//   (re-review #562 รอบ 5: ช่วง backslash หน้า quote ที่ 2^k(2m+1) ตัวคือ \' ส่วน 2^(k+1)·m ตัวคือ backslash จริงท้าย key — ต้องรู้ชั้น k
+//   key ที่ขึ้นบรรทัดใหม่ อ่านชั้นจาก newline นำหน้า: newline ดิบ = ชั้น 0 (quote ปิดมี backslash 2m ตัว — group 16); ชั้น k ≥ 1 newline เป็น
+//   backslash N = 2^(k−1) ตัว + n (group 14) และ quote ปิดมี backslash 2^(k+1)·m = 4N·m ตัว (group 15)
+//   key ใน ' ต้องอยู่หลัง `{`/`,` + newline + เยื้อง หรือหลัง `{ ` / `, ` ที่ตามจุดจบของค่าก่อนหน้า (quote ที่มี backslash นำเป็นจำนวนคู่ — ค่าที่ลงท้ายด้วย
+//   backslash จริงของชั้น 0 — หรือ `"`, `]` `)` `}` ตัวอักษร/ตัวเลข; inspect เขียนแบบนี้เสมอ — re-review #562 รอบ 5)
+//   key ในบรรทัดเดียวกัน (หลัง `{ ` `, `) ไม่รู้ชั้น → quote ปิดต้องไม่มี backslash นำ (key ที่ลงท้ายด้วย backslash ไม่ถูกจับ = ทำงานแบบ develop)
+//   ช่องที่เหลือของ key กลุ่มนี้ = ข้อยกเว้น (d2) ของกฎข้อ 22d รอบ 43 (owner 2026-11-25) — ปิดจริงใน OPS-41 (parser ที่นับชั้น escape)
+//   เดิมยอม backslash ใดก็ได้จึงปิดผิดที่ตรง `\':` กลาง key ที่มี ' " backtick ครบ แล้วค่าของ field กลืน key PII ถัดไป)
 //   เนื้อหาข้าม quote ที่ไม่มี backslash นำไม่ได้ — การสแกนจากแต่ละ quote เปิดหยุดที่ quote ถัดไป (ReDoS: `, 'x\\` ซ้ำ)
 // - quote `"`: เนื้อหาข้าม `"` ที่ไม่มี backslash นำไม่ได้ (ชั้นนอกกว่า) และหยุดที่ quote ปิดของชั้นตัวเอง
-// ไม่จำกัดความยาว key (re-review #562 รอบ 3) — token = ช่วง backslash + อักขระ หรืออักขระเดียว (แตกได้แบบเดียว) และการสแกนจากแต่ละ quote เปิด
+// ไม่จำกัดความยาว key และรับ key ว่าง `''` (re-review #562 รอบ 3–4) — token = ช่วง backslash + อักขระ หรืออักขระเดียว (แตกได้แบบเดียว) และการสแกนจากแต่ละ quote เปิด
 // หยุดที่ quote ถัดไปที่ไม่มี backslash นำ (quote ชนิดเดียวกัน) จึงไม่ซ้อนทับกัน → linear
+// - สมาชิกของ array ที่ไม่มี key (re-review #562 รอบ 4 — fuzz object ซ้อน/Map ของ builder): สตริงหลัง Map/object ใน array ที่ค่าของ field จับไม่ถึง
+//   จับเป็น field ไม่มี key ได้ที่ตำแหน่งสมาชิก — `"` หลัง `[` `,` newline; ' หรือ backtick หลัง `[ ` หรือ `, ` ที่ตามหลังจุดจบของสมาชิกก่อนหน้า
+//   (เงื่อนไขจุดจบเดียวกับ key ด้านบน — re-review #562 รอบ 5: `\', '` ใน key เคยเริ่มสมาชิกปลอม) หรือ `,`/`[` + newline + เยื้อง
+//   (`\n ` ในสตริงที่ไม่ได้ตามหลัง `,`/`[` เคยเริ่มสมาชิกปลอม)
+//   key ห้ามอยู่หลัง `[` (`'[`'` ในค่าเคยเริ่ม key ปลอมที่ข้ามบรรทัด)
 const KEY_EXCLUDED = (quote: string) => `(?!${KEY_NAMES}${quote}\\s*(?::|=>)\\s*(?![\\s\\[]))` // key PII (ยกเว้นค่า array ที่ไม่ผ่านกิ่ง array)
+// key ใน ' ห้ามข้ามบรรทัดของโครงสร้างที่ escape (`\n` + เยื้อง + `]` `}` — บรรทัดปิด array/object) — re-review #562 รอบ 4: สมาชิก `'\\\\'` ในชั้น 2
+// (backslash จริง = \' ของชั้น 3) เคยถูกอ่านเป็น key ที่ข้ามบรรทัด `\n  ],\n  postal_code: '` แล้วกลืน quote เปิดของค่า PII
+// และ \' ที่ตามด้วย `,` `]` `}` ไม่นับเป็นเนื้อหา (คือ quote ปิดของสมาชิก `'\\\\'` ในชั้นที่ไม่รู้ — ไม่ใช่ key)
+const KEY_LINE_GUARD = `(?!${BS}+n[ \\t]*[\\]}])`
 const KEY_CLOSE = `(?:\\12\\12${BS}${BS})*\\12\\13`
 const KEY_TOKEN = `(?:${BS}+[^${BS}\\r\\n]|[^${BS}\\r\\n"])`
+// เนื้อหาของ key ใน ' หรือ backtick: token = ช่วง backslash + อักขระ หรืออักขระเดียว — ห้ามข้ามบรรทัดปิดที่ escape และห้ามข้าม quote ที่ไม่มี backslash นำ
+// key หลายท่อน (Map key ที่มี newline — inspect เขียน `'…\n' +\n  '…' =>`): quote ปิด + `+` + quote เปิดเป็นเนื้อหา (re-review #562 รอบ 6)
+// close = quote ปิดตามชั้นที่อ่านได้ (ช่วง backslash + quote ที่ไม่ใช่ quote ปิดเป็นเนื้อหา); close = "" → key ที่ไม่รู้ชั้น (inline):
+// \' ที่ตามด้วย `,` `]` `}` `:` `=>` อาจเป็น quote ปิดของสมาชิก/ของ key ที่ลงท้ายด้วย backslash จึงห้ามข้าม (ไม่จับเป็น field)
+const SQ_KEY_CONTENT = (q: string, close = "") =>
+  `(?:${q}(?:\\s|${BS}+n)*\\+(?:\\s|${BS}+n)*${q}|${KEY_LINE_GUARD}(?:${BS}+[^${BS}\\r\\n'\`]|${close ? `(?!${close})${BS}+['\`]` : `${BS}+['\`](?!\\s*(?:[,\\]}:]|=>))`}|(?!${q})[^${BS}\\r\\n]))*?`
+const SQ_CLOSE_ESC = `(?:\\14\\14\\14\\14)*\\15` // ชั้น k ≥ 1: newline นำหน้า = backslash N ตัว + n, quote ปิดมี backslash 4N·m ตัว
+const SQ_CLOSE_RAW = `(?:${BS}${BS})*\\16` // ชั้น 0: newline ดิบนำหน้า, quote ปิดมี backslash 2m ตัว
 const NON_PII_FIELD =
-  `((?<![A-Za-z0-9_$])(?=${BS}{0,7}["'\`]|[A-Za-z_$])(?<=(?:^|[{,\\n]|${BS}+n)[ \\t]*)` +
-  `(?:(${BS}{0,7})(")${KEY_EXCLUDED("\\12\\13")}(?:(?!${KEY_CLOSE})${KEY_TOKEN})+${KEY_CLOSE}` +
-  `|(['\`])${KEY_EXCLUDED("\\14")}(?:${BS}+[^${BS}\\r\\n]|(?!\\14)[^${BS}\\r\\n])+?${BS}*\\14(?=\\s*(?::|=>))` +
-  `|${KEY_EXCLUDED("")}[A-Za-z_$][\\w$]*)\\s*(?::|=>)\\s*)` +
-  `(?:(?=["'\`${BS}\\[])(\\[?(?:[\\s,+]+|${BS}+n|\\.\\.\\. \\d+ more items?|(?=(${quotedString(17, INSPECT_ESCAPED_QUOTE_FIELD)}|-?\\d+(?:\\.\\d+)?(?![\\w.])|(?:null|true|false|undefined)(?![\\w$])))\\16(?=\\s*(?:[,\\]}]|${BS}+n|$)|\\s+\\+))*\\]?))?`
+  `((?<![A-Za-z0-9_$])(?=${BS}{0,7}["'\`]|[A-Za-z_$])(?<=(?:^|[{,\\[\\n]|${BS}+n)[ \\t]*)` +
+  `(?:(?<!\\[[ \\t]*)(?:(${BS}{0,7})(")${KEY_EXCLUDED("\\12\\13")}(?:(?!${KEY_CLOSE})${KEY_TOKEN})*${KEY_CLOSE}` +
+  `|(?<=[{,](${BS}+)n[ \\t]*)(['\`])${KEY_EXCLUDED("\\15")}${SQ_KEY_CONTENT("\\15", SQ_CLOSE_ESC)}${SQ_CLOSE_ESC}(?=\\s*(?::|=>))` +
+  `|(?<=[{,]\\n[ \\t]*)(['\`])${KEY_EXCLUDED("\\16")}${SQ_KEY_CONTENT("\\16", SQ_CLOSE_RAW)}${SQ_CLOSE_RAW}(?=\\s*(?::|=>))` +
+  `|(?<=(?:\\{|(?:(?<![^${BS}]${BS}(?:${BS}${BS})*)['\`]|"|[\\])}\\w]),) )(['\`])${KEY_EXCLUDED("\\17")}${SQ_KEY_CONTENT("\\17")}(?<!${BS})\\17(?=\\s*(?::|=>))` +
+  `|${KEY_EXCLUDED("")}[A-Za-z_$][\\w$]*)\\s*(?::|=>)\\s*|(?=${BS}*")(?<=[,\\[](?:\\n|${BS}+n)?[ \\t]*)|(?=['\`])(?<=(?:\\[|(?:(?<![^${BS}]${BS}(?:${BS}${BS})*)['\`]|"|[\\])}\\w]),) |[,\\[](?:\\n|${BS}+n)[ \\t]+)))` +
+  `(?:(?=["'\`${BS}\\[])((?:[\\s,+\\[\\]]+|${BS}+n|\\.\\.\\. \\d+ more items?|(?=(${quotedString(20, INSPECT_ESCAPED_QUOTE_FIELD, "\\r\\n")}|-?\\d+(?:\\.\\d+)?(?![\\w.])|(?:null|true|false|undefined)(?![\\w$])))\\19(?=\\s*(?:[,\\]}]|${BS}+n|$)|\\s+\\+))*))?`
 export const KEY_VALUE = new RegExp(`${PII_KEY_VALUE}|${NON_PII_FIELD}`, "gi")
 const PII_ONLY = new RegExp(PII_KEY_VALUE, "gi")
 // (a) สตริงรูปอีเมล — เริ่ม match ได้เฉพาะต้นช่วงอักขระ local และจำกัดความยาวตาม RFC 5321 (local ≤ 64, label ≤ 63)
@@ -150,9 +179,9 @@ const replacePii = (_match: string, ...groups: unknown[]): string => {
   return `${prefix}${q}${REDACTED}${q}`
 }
 
-/** field ที่ไม่ใช่ PII (group 11 = key, 15 = ค่า ถ้าเป็นสตริง/array) → redact ภายใน key และภายในค่าแยกกัน (match ไม่ข้ามขอบ key/ค่า) */
+/** field ที่ไม่ใช่ PII (group 11 = key, 18 = ค่า ถ้าเป็นสตริง/array) → redact ภายใน key และภายในค่าแยกกัน (match ไม่ข้ามขอบ key/ค่า) */
 const replaceKeyValue = (match: string, ...groups: unknown[]): string => {
-  const [field, , , , fieldValue] = groups.slice(10, 15) as (string | undefined)[]
+  const [field, , , , , , , fieldValue] = groups.slice(10, 18) as (string | undefined)[]
   return field === undefined
     ? replacePii(match, ...groups)
     : field.replace(PII_ONLY, replacePii) + (fieldValue ?? "").replace(PII_ONLY, replacePii)

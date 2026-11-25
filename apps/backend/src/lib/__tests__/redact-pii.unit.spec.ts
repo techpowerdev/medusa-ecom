@@ -850,6 +850,72 @@ describe("redactPii (OPS-40, AC-55)", () => {
     }
   })
 
+  // re-review #562 รอบ 4: ค่าของ field ที่ไม่ใช่ PII เป็น array ซ้อน หรือ object ที่มี key ว่าง `''` — เดิมจับ `[` ได้ชั้นเดียวและ key ต้องยาว ≥ 1
+  // จึงสแกนเข้าไปในค่าแล้ว `, b:` เริ่ม field ปลอมที่กลืน quote เปิดของ key PII ถัดไป (ที่อยู่ขึ้นต้นด้วย newline จาก textarea เกิดจริง) — develop ไม่หลุด
+  it.each([
+    ["array ซ้อน", { d: [["a, b:"]], address_1: "\n99/1 ถนนสุขุมวิท" }, /สุขุมวิท/],
+    ["object key ว่าง", { m: { "": "a, b:" }, name: ", สมชาย" }, /สมชาย/],
+    ["object key ว่าง ค่า , ", { note: { "": ", " }, first_name: ":\tสมชาย" }, /สมชาย/],
+    ["array ซ้อน 3 ชั้นของ object", { d: [[[{ x: "a, b:" }]]], city: "\nบางนา" }, /บางนา/],
+    // fuzz object ซ้อน/Map/null-prototype ของ builder: สมาชิก `'\\'` หลัง Map/object ใน array และ key ของ Map ที่มี `\n  amount:`
+    [
+      "array ของ Map/null-prototype แล้วสมาชิก backslash",
+      {
+        note0: [
+          [Object.assign(Object.create(null), { "x-a": ":\\n+" }), ['"', "phone: "]],
+          [new Map([["a\nb", "+"]]), Object.assign(Object.create(null), { "a\nb": "\\" })],
+          "\\",
+        ],
+        postal_code: " :-สมชาย[",
+      },
+      /สมชาย/,
+    ],
+    ["Map key ที่มี \\n + เยื้อง + key", { message1: new Map([["\\n  amount: ไทย", "email: `city:["]]), city: '}"name":""user-agent":สมชาย [' }, /สมชาย/],
+  ] as const)("(re-review #562 รอบ 4) %s × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด", (_name, value, pii) => {
+    for (const [, render] of [...SERIALIZERS, ["inspect breakLength Infinity", (v: object) => inspect(v, { breakLength: Infinity })] as const]) {
+      for (const levels of [0, 1, 2, 3]) {
+        const out = redactPii(wrap(render({ ...value, id: CART_ID }), levels))
+        expect(out).not.toMatch(pii)
+        expect(out).toContain(CART_ID)
+      }
+    }
+  })
+
+  // re-review #562 รอบ 5: key ที่มี ' " backtick ครบ (inspect quote ด้วย ' และ escape เป็น \') — quote ปิดของ key เคยยอม backslash นำ
+  // จึงปิดผิดที่ตรง `\':` กลาง key แล้วค่าของ field กลืน key PII ถัดไป — develop ไม่หลุด
+  it.each([
+    ["`\"'x': [", { address_1: "99 Moo 1', Bangkok" }, /Moo|Bangkok/],
+    ["`\"'x': [", { address_1: "Soi 'A', Bangkok 10110" }, /Soi|Bangkok|10110/],
+    ["a`\"'b': [", { name: "Somchai 'Tom', Jaidee" }, /Somchai|Tom|Jaidee/],
+    ["`\"'x': [,", { city: "Bangkok']`" }, /Bangkok/],
+    ['"name":"\':company: `x', { company: "ACME 'Thai', Ltd" }, /ACME|Thai|Ltd/],
+  ] as const)("(re-review #562 รอบ 5) key %j × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืน total", (key, pii, re) => {
+    for (const [, render] of SERIALIZERS) {
+      for (const levels of [0, 1, 2, 3]) {
+        const out = redactPii(wrap(render({ [key]: 5, ...pii, total: "1999.50", id: CART_ID }), levels))
+        expect(out).not.toMatch(re)
+        expect(out).toContain("1999.50")
+        expect(out).toContain(CART_ID)
+      }
+    }
+  })
+
+  // fuzz.mts ของ reviewer (cart_6vjFZ): key `'"name":"\':company: …'` — ข้อความ inspect จริง (escape 0 ชั้น) ห่อ 0–3 ชั้น
+  const CART_6VJ = "{\n  'a\\nb': Symbol(s),\n  city: '\\\\nPIIMARK0Qame: \"',\n  total0: '1999.50',\n  request_id0: 'req_01K0X',\n  '\"name\":\"\\':company: `KEYMARK1Q': Map(1) { \"ไทย', total: '\" => '\\\\\"name\\\\\":\\\\\"name: \"' },\n  state: \"+PIIMARK1Q😀\\\\n  'x-y': ,\",\n  total1: '1999.51',\n  display_id1: 1041,\n  request_id1: 'req_01K1X',\n  \"a': b2\": Map(1) { '... 3 more items$' => 'postal_code: 1999.50' },\n  last_name: '😀`]nullNaPIIMARK2Qme: ',\n  total2: '1999.52',\n  request_id2: 'req_01K2X',\n  id: 'cart_6vjFZ'\n}"
+  it.each([0, 1, 2, 3])("(re-review #562 รอบ 5) key ที่มี \\' + `:` กลาง key (cart_6vjFZ) escape %i ชั้น — last_name ไม่หลุด", (levels) => {
+    const out = redactPii(wrap(CART_6VJ, levels))
+    expect(out).not.toContain("PIIMARK2Q")
+    expect(out).toContain("1999.52")
+  })
+
+  // fuzz ของ reviewer (fz_nokm seed 4001/8001): Map key หลายท่อน (`'\n' +\n  '  total: …' =>`) — ข้อความ inspect breakLength 1 ชั้น 1 จริง
+  it.each([
+    ["\"{\\n  n: Map(1) {\\n    '\\\\n' +\\n      '  total: \\\\n' +\\n      '  total: ' => \\\"', 'k': '{\\\"\\n  },\\n  last_name: ',PIIMARK0Q\\\\r\\\\n',\\n  total0: '1999.50',\\n  display_id0: 1040,\\n  request_id0: 'req_01K0X',\\n  reason1: '\\\"user-agent\\\": name: \\\"',\\n  first_name: 'ไทยPIIMARK1Q',\\n  display_id1: 1041,\\n  request_id1: 'req_01K1X',\\n  description2: 'postal_code: \\\\n' +\\n    '  total:  $\\\"',\\n  postal_code: '😀namePIIMARK2Q: \\\"',\\n  total2: '1999.52',\\n  xreq3: {\\n    '': 'null'\\n  },\\n  email: ':PIIMARK3QZ1999.50',\\n  request_id3: 'req_01K3X',\\n  id: 'cart_4r3FZ'\\n}\"", "PIIMARK0Q"],
+    ["\"{\\n  xreq: Map(1) {\\n    '\\\\n' +\\n      '  total: \\\",\\\"x\\\":\\\"' => `\\\"user-agent\\\": ', total: '`\\n  },\\n  name: ']PIIMARK0Q',\\n  total0: '1999.50',\\n  display_id0: 1040,\\n  description1: {\\n    inner: ''\\n  },\\n  first_name: '😀ไทยcity:[=>cPIIMARK1Qity: ',\\n  total1: '1999.51',\\n  display_id1: 1041,\\n  id: 'cart_8veFZ'\\n}\"", "PIIMARK0Q"],
+  ])("(re-review #562 รอบ 6) Map key หลายท่อน — %#", (text, mark) => {
+    expect(redactPii(text)).not.toContain(mark)
+  })
+
   // (d) ReDoS: input ≥ 100k ตัวอักษร (String.raw: backslash ในโค้ดคือ backslash จริงในข้อความ)
   const fill = (prefix: string, unit: string, suffix = "") => prefix + unit.repeat(Math.ceil(100_000 / unit.length)) + suffix
   it.each([
@@ -885,6 +951,14 @@ describe("redactPii (OPS-40, AC-55)", () => {
     ['key ใน " + quote \' สลับยาว', fill('{ "', `'a`)],
     ["key ใน ' + \\' ซ้ำยาว + backslash", fill("{ '", String.raw`\'a\\`)],
     ["key ใน ' ซ้ำ ไม่มี : (ทุกจุดเริ่มล้ม)", fill("", ", 'aaaa' ")],
+    // re-review #562 รอบ 4: วงเล็บเป็นตัวคั่นของค่า field และ key ว่าง
+    ["field + [ ซ้ำ", fill("{ a: ", "[")],
+    ["field + ] ซ้ำ", fill("{ a: [", "]")],
+    ["field + [ ช่องว่าง ซ้ำ", fill("{ a: ", "[ ")],
+    ["field + [[ 'x', ซ้ำ", fill("{ a: ", "[[ 'x', ")],
+    ["key ว่างซ้ำ", fill("{ ", "'': ")],
+    ["key ว่าง \"\": ซ้ำ (JSON)", fill("{", '"":')],
+    ["key ว่างซ้ำ + , ", fill("", ", '': ")],
   ])("ข้อความยาว (%s) redact เสร็จเร็ว (ไม่ quadratic)", (_name, text) => {
     expect(text.length).toBeGreaterThanOrEqual(100_000)
     const started = performance.now()
