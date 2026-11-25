@@ -916,6 +916,24 @@ describe("redactPii (OPS-40, AC-55)", () => {
     expect(redactPii(text)).not.toContain(mark)
   })
 
+  // re-review #562 รอบ 6: ค่าของ field ไม่หยุดหลัง `],\n` แล้วรับท่อนแรกของ key บรรทัดถัดไป (`'\\' +`) เป็นสมาชิก — ` +` เป็นขอบได้เฉพาะเมื่อท่อนถัดไปขึ้นต้นด้วย quote
+  it("(re-review #562 รอบ 7) key หลายท่อน `' + 'name: …` หลัง array ของ field ที่ไม่ใช่ PII × serialize 4 แบบ × escape 0–3 ชั้น — city ไม่หลุด", () => {
+    for (const [, render] of SERIALIZERS) {
+      for (const levels of [0, 1, 2, 3]) {
+        const value = { note: ["x", 'name: "'], ["' + 'name: \"x'y`"]: 1, city: '"Bangkok', total: "1999.50", id: CART_ID }
+        const out = redactPii(wrap(render(value), levels))
+        expect(out).not.toContain("Bangkok")
+        expect(out).toContain("1999.50")
+        expect(out).toContain(CART_ID)
+      }
+    }
+  })
+  // fuzz.mts ของ reviewer (cart_2d5FZ — ข้อความ inspect ชั้น 1 จริง) ห่อเพิ่ม 0–2 ชั้น
+  const CART_2D5 = "\"{\\n  `a':\\\"b`: true,\\n  last_name: [ '😀=>\\\\\\\\PIIMARK0Q\\\":', 'name: \\\"' ],\\n  total0: '1999.50',\\n  display_id0: 1040,\\n  request_id0: 'req_01K0X',\\n  '\\\\' + \\\\'\\\"name\\\":\\\"last_name: `KEYMARK1Q\\\\'x-a\\\\': ': undefined,\\n  state: '\\\"PIIMARK1Q',\\n  display_id1: 1041,\\n  \\\"it's2\\\": { 'name: [': \\\"'+'\\\" },\\n  name: '😀PIIMARK2Q\\\",\\\"x\\\":\\\"',\\n  total2: '1999.52',\\n  display_id2: 1042,\\n  request_id2: 'req_01K2X',\\n  id: 'cart_2d5FZ'\\n}\""
+  it.each([0, 1, 2])("(re-review #562 รอบ 7) cart_2d5FZ ห่อเพิ่ม %i ชั้น — state ไม่หลุด", (levels) => {
+    expect(redactPii(wrap(CART_2D5, levels))).not.toContain("PIIMARK1Q")
+  })
+
   // (d) ReDoS: input ≥ 100k ตัวอักษร (String.raw: backslash ในโค้ดคือ backslash จริงในข้อความ)
   const fill = (prefix: string, unit: string, suffix = "") => prefix + unit.repeat(Math.ceil(100_000 / unit.length)) + suffix
   it.each([

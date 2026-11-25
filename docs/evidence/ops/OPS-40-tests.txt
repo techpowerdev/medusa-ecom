@@ -580,3 +580,54 @@ fuzz อื่นของ builder (นับดิบ, ไม่มีกรณ
   thai field rep               3.0 / 12.3 / 59.1  dev100k 0.7
 ไล่ค้นของ builder 1,315,716 หน่วย: flag 89 วัดซ้ำเชิงเส้น (อัตรา 400k÷100k ≤ 4.8) ช้าสุด 54.9ms@100k; whitespace ยาว 77 รูป ไม่ถูก flag ช้าสุด 15.7ms@100k
 compile + เรียกครั้งแรก 15ms (source 18,831 ตัวอักษร < 20KB)
+
+## รอบ 7 (re-review #562 รอบ 6 — https://github.com/techpowerdev/medusa-ecom/pull/562#issuecomment-7167354644)
+# หมายเหตุ: ตารางจำแนกของรอบ 5–6 ด้านบนใช้ตัวจำแนกที่หลวม (cls-OPS40 ต้นฉบับนับหมวด `dk_none`/`nospan` เป็น (d1)) — ตัวเลขที่ถูกต้องคือตารางรอบ 7 ด้านล่าง (ตัวจำแนกแบบเข้ม)
+# แก้: ` +` เป็นขอบสมาชิกของค่า field เฉพาะเมื่อท่อนถัดไปขึ้นต้นด้วย quote (ข้อเสนอของ reviewer) — เดิมค่าของ field ไม่หยุดหลัง `],\n`
+#   แล้วรับท่อนแรกของ key หลายท่อนบรรทัดถัดไป (`'\\' +`) เป็นสมาชิก จน city หลุด (เกิดใหม่ใน dbf9a8a3; ไม่เข้า (d1)/(d2))
+
+## RED บนหัว PR dbf9a8a3 — 4 ล้ม
+    ✕ (re-review #562 รอบ 7) key หลายท่อน `' + 'name: …` หลัง array ของ field ที่ไม่ใช่ PII × serialize 4 แบบ × escape 0–3 ชั้น — city ไม่หลุด
+    ✕ (re-review #562 รอบ 7) cart_2d5FZ ห่อเพิ่ม 0 ชั้น — state ไม่หลุด
+    ✕ (re-review #562 รอบ 7) cart_2d5FZ ห่อเพิ่ม 1 ชั้น — state ไม่หลุด
+    ✕ (re-review #562 รอบ 7) cart_2d5FZ ห่อเพิ่ม 2 ชั้น — state ไม่หลุด
+Tests:       4 failed, 510 passed, 514 total
+
+## GREEN
+    ✓ (re-review #562 รอบ 7) key หลายท่อน `' + 'name: …` หลัง array ของ field ที่ไม่ใช่ PII × serialize 4 แบบ × escape 0–3 ชั้น — city ไม่หลุด
+    ✓ (re-review #562 รอบ 7) cart_2d5FZ ห่อเพิ่ม 0 ชั้น — state ไม่หลุด
+    ✓ (re-review #562 รอบ 7) cart_2d5FZ ห่อเพิ่ม 1 ชั้น — state ไม่หลุด
+    ✓ (re-review #562 รอบ 7) cart_2d5FZ ห่อเพิ่ม 2 ชั้น — state ไม่หลุด
+Tests:       514 passed, 514 total
+backend test:unit: Test Suites: 133 passed, 133 total; Tests:       2358 passed, 2358 total
+storefront test:e2e:unit: 165 passed; backend typecheck/build: ผ่าน; lint: 0 error (warning 4 รายการเดิมของ OPS-38)
+
+## จำแนกด้วยตัวจำแนกแบบเข้มของ reviewer (cls4-OPS40.mts — สำเนาใน scratchpad fz-OPS40d ไม่แก้) เทียบ develop d5b7c0d7
+# (d1) = หมวด EXEMPT_other_field / EXEMPT_self_or_combo · (d2) = หมวด EXEMPT_d2_strict · render = serializer × ชั้น 0–3
+| ชุด | render | PR แย่กว่า: หลุด / หาย | (d1) | (d2) | ไม่เข้าข้อยกเว้น |
+|---|---|---|---|---|---|
+| fz_nokm id 1–30000 | 720,000 | 96 / 0 | 36 | 60 | **0** |
+| fz_nokm ext 1–30000 | 720,000 | 96 / 0 | 36 | 60 | **0** |
+| fz_nokm q 1–30000 | 720,000 | 116 / 0 | 12 | 104 | **0** |
+| fz_nokm long 1–30000 | 720,000 | 84 / 0 | 24 | 60 | **0** |
+| fz_nokm all 1–30000 | 720,000 | 116 / 64 | 24 | 156 | **0** |
+| fuzz.mts all 1–44000 | 1,056,000 | 113 / 116 | 15 | 214 | **0** |
+| keyq 1–30000 | 360,000 | 123 / 0 | 0 | 123 | **0** |
+| M (reviewer) 1–10000 | 240,000 | 0 / 0 | 0 | 0 | **0** |
+| object ซ้อน (B) 1–600 | 6,000,000 | 0 / 0 | 0 | 0 | **0** |
+| fuzz รอบ 3 (F) 1–500 | 4,000,000 | 340 / 0 | 0 | 340 | **0** |
+
+## ReDoS (ms ที่ 100k / 400k / 1.6M — เส้นตรงทุกตัว ≤ 200ms@100k)
+redos.mts ของ reviewer (3 ตัวที่ช้าสุด):
+  builder slowest              35.8 / 115.4 / 467.0  dev100k 0.9
+  surrogate                    13.8 / 56.9 / 248.4  dev100k 0.8
+  ', `x rep                    13.2 / 59.9 / 191.6  dev100k 0.9
+redos2-OPS40.mts (ช้าสุด):
+  field + [            8.3 / 3.8 / 15.4
+  , '':                2.1 / 8.3 / 33.1
+redos3-OPS40.mts (รูปใหม่ของ reviewer, ช้าสุด):
+  long bs run then ', '        22.3 / 27.8 / 109.0
+  rep bs1000 ', '              6.5 / 26.3 / 104.0
+  rep ,\\\n  'a\\\\'           3.8 / 14.7 / 56.9
+ไล่ค้นของ builder 1,315,716 หน่วย: flag 95 วัดซ้ำเชิงเส้น (อัตรา 400k÷100k ≤ 5.1) ช้าสุด 48.7ms@100k; whitespace ยาว 77 รูป ไม่ถูก flag ช้าสุด 15.6ms@100k
+compile + เรียกครั้งแรก 15ms (source 18,860 ตัวอักษร < 20KB)
