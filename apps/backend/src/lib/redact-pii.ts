@@ -84,10 +84,11 @@ const itemValue = (n: number) =>
 //   ข้อความ `name: [` ในค่าอื่น (`'Invalid name: ['`) จึงไม่เริ่ม array
 const ARRAY_SEPARATOR = `(?:\\s|,|${BS}+n|\\.\\.\\. \\d+ more items?)`
 const ITEM_END = `(?=\\s*(?:[,\\]]|${BS}+n|$))`
+// re-review #559 รอบ 4: ใช้หลัง `(?=\[)` เท่านั้น — ถ้าไม่ตรวจ `[` ก่อน `\s*` ท้าย prefix ที่ backtrack ทุกตำแหน่งจะย้อน lookbehind ผ่านช่วง whitespace ทั้งช่วง (O(n²))
 const STRUCTURAL_KEY = `(?<=(?:^|[{,\\[\\n]|${BS}+n)[ \\t]*${BS}{0,7}["']?${KEY_NAMES}${BS}{0,7}["']?\\s*(?::|=>)\\s*)`
 export const KEY_VALUE = new RegExp(
   `((?<![A-Za-z0-9_$])(${BS}{0,7}["']|)${KEY_NAMES}\\2\\s*(?::|=>)\\s*)` +
-    `(?:${STRUCTURAL_KEY}(\\[)((?:${ARRAY_SEPARATOR}|(?=(${itemValue(6)})${NOT_KEY_AFTER}${ITEM_END})\\5)*)(\\])|${scalarValue(9)})`,
+    `(?:(?=\\[)${STRUCTURAL_KEY}(\\[)((?:${ARRAY_SEPARATOR}|(?=(${itemValue(6)})${NOT_KEY_AFTER}${ITEM_END})\\5)*)(\\])|${scalarValue(9)})`,
   "gi"
 )
 // (a) สตริงรูปอีเมล — เริ่ม match ได้เฉพาะต้นช่วงอักขระ local และจำกัดความยาวตาม RFC 5321 (local ≤ 64, label ≤ 63)

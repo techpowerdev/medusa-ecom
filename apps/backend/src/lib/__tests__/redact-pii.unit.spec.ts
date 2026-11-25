@@ -517,10 +517,13 @@ describe("redactPii (OPS-39, AC-54)", () => {
     // re-review #559 รอบ 3: guard ขอบ field (`,"key":`, newline ที่ escape + `key:`), สมาชิกต้องตามด้วยขอบ array, key ตำแหน่งโครงสร้าง
     ["note ลงท้าย name: [ ตามด้วย field ที่ไม่ใช่ PII ซ้ำ", fill("", '{"note":"[name: [","total":"1999.50","id":"cart_1"},')],
     ["สมาชิก ' ข้าม field JSON ซ้ำไม่มี ]", fill("name: [ '", '","total":1,"x":"')],
-    ["สมาชิกข้าม newline ที่ escape ซ้ำไม่มี ]", fill(String.raw`name: [ '`, String.raw`
-  total: 1,`)],
-    ["[name: + newline ที่ escape ซ้ำ", fill("", String.raw`[name: "
-]+`)],
+    ["สมาชิกข้าม newline ที่ escape ซ้ำไม่มี ]", fill(String.raw`name: [ '`, String.raw`\n  total: 1,`)],
+    ["[name: + newline ที่ escape ซ้ำ", fill("", String.raw`[name: "\n]+`)],
+    // re-review #559 รอบ 4: whitespace/newline ยาวคั่น key กับค่า (lookbehind ของ key ตำแหน่งโครงสร้างย้อนผ่าน \s* ทุกจุดที่ backtrack)
+    ["name: + ช่องว่างยาว", "name:" + " ".repeat(100_000)],
+    ['"name": + ช่องว่างยาว + x', '{"name":' + " ".repeat(100_000) + "x"],
+    ["name: + newline ยาว + x", "name:" + "\n".repeat(100_000) + "x"],
+    [",name: + ช่องว่างยาว + [", ",name:" + " ".repeat(100_000) + "["],
   ])("ข้อความยาว (%s) redact เสร็จเร็ว (ไม่ quadratic)", (_name, text) => {
     expect(text.length).toBeGreaterThanOrEqual(100_000)
     const started = performance.now()
