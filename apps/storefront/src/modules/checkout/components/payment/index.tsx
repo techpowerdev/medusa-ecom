@@ -274,7 +274,7 @@ const Payment = ({
       <div className="flex flex-row items-center justify-between mb-6">
         <h2
           className={cn(
-            "flex flex-row text-3xl-regular font-semibold gap-x-2 items-baseline",
+            "flex flex-row text-2xl font-semibold gap-x-2 items-baseline",
             {
               "opacity-50 pointer-events-none select-none":
                 !isOpen && !paymentReady,
