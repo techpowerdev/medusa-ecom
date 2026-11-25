@@ -611,11 +611,11 @@ Status: done (☑ OPS-35 #536 — ปิดรอบ 42 2026-11-24) · แตะ
 | OPS-35 | ☑ #536 — redact backtick/JSON escape/`'` + runbook access log และ reset layout (กฎข้อ 17 รอบ 42) | `apps/backend/src/lib/redact-pii.ts` (+ unit), `docs/ops/production.md`, `src/__tests__/ops-runbook.unit.spec.ts` | ~20 LOC + ~60 LOC test | AC-50 | PR เอกสารปิดรอบ 41 | `production.md` |
 
 ## Follow-up รอบ 43 (เสนอ — ปิดรอบ 42 2026-11-24; ☐ รอ owner สั่งทำ)
-Status: accepted สำหรับ OPS-36 (owner สั่งทำก่อน go-live — Q-R43-ฉ = ก (owner 2026-11-25) แก้เพิ่ม: 3 task รวมใน v0.3.1) · OPS-37, OPS-38 draft (☐ หลัง go-live — รอ owner สั่ง) · ที่มา: review #536, #548, GB-32 #534 (builder) — ตรวจบน develop `599009b6` · OPS-36 เป็น**ช่องรั่วของ PII ใน log** (Go-live ข้อ 13)
+Status: accepted สำหรับ OPS-36 (owner สั่งทำก่อน go-live — Q-R43-ฉ = ก (owner 2026-11-25) แก้เพิ่ม: 3 task รวมใน v0.3.1) และ OPS-39 (owner สั่ง 2026-11-25: ปิดช่อง PII ที่เหลือจาก review #554 รวมใน v0.3.1) · OPS-37, OPS-38 draft (☐ หลัง go-live — รอ owner สั่ง) · ที่มา: review #536, #548, GB-32 #534 (builder) — ตรวจบน develop `599009b6` · OPS-36 เป็น**ช่องรั่วของ PII ใน log** (Go-live ข้อ 13)
 ### What Medusa already gives us (รอบ 43)
 | Need | Medusa provides | Use as-is / extend / custom |
 |---|---|---|
-| logger ของ prod | `logger` ใน `medusa-config.ts` → `json-logger.ts` ของเรา (OPS-33) | ขยาย `redactPii` ตามเดิม (กฎข้อ 18 รอบ 43) |
+| logger ของ prod | `logger` ใน `medusa-config.ts` → `json-logger.ts` ของเรา (OPS-33) | ขยาย `redactPii` ตามเดิม (กฎข้อ 18, 21 รอบ 43) |
 | ล้าง layout ส่วนตัว | `DELETE /admin/layouts/:zone/configuration` (`clearLayoutConfigurationWorkflow`) | ใช้ตามเดิมใน runbook (กฎข้อ 19 รอบ 43) |
 | lint ของ workflow/step/module | `@medusajs/eslint-plugin` (`step-id-kebab-case` ฯลฯ) | แก้ตามกฎ ไม่เปลี่ยน id ที่ engine เก็บ (กฎข้อ 20 รอบ 43) |
 ### Business rules (รอบ 43)
@@ -627,19 +627,38 @@ Status: accepted สำหรับ OPS-36 (owner สั่งทำก่อน
     (b) `.github/workflows/ci.yml` job ที่บูต backend ให้ e2e เก็บ log เต็มของ backend เป็น artifact (retention 14 วัน — CLAUDE.md ข้อ 6) นอกเหนือจาก tail 200 บรรทัดเดิม (tail ไม่ครอบช่วง test — review #548)
 20. (กฎข้อ 20 รอบ 43 — คนละชุดกับเช็กลิสต์ bump; OPS-38 — GB-32 #534 builder) `pnpm --filter backend lint` ไม่มี warning ใน `src/workflows/group-buy/campaign.ts` (~`:177` step id), `src/workflows/group-buy/refund-cancelled-membership.ts` (~`:48` workflow id),
     `src/lib/json-logger.ts` (import path ภายใน build ของ package) และ `src/modules/evoucher/service.ts` (method ที่ใช้ manager แต่ขาด `@InjectManager`) — **id ของ step/workflow ที่ engine เก็บห้ามเปลี่ยน** (เปลี่ยนชื่อตัวแปรแทน แบบกฎข้อ 58e ของ spec 04; ถ้าต้องเปลี่ยน id → หยุดและรายงาน)
+21. (กฎข้อ 21 รอบ 43 — คนละชุดกับเช็กลิสต์ bump; OPS-39 — review #554, owner 2026-11-25 ก่อน go-live) `redactPii`/`redactValue` (`src/lib/redact-pii.ts`) ปิดช่องที่เหลือหลัง OPS-36:
+    (a) ค่าที่ `util.inspect` quote ด้วย `'` และ escape `'` ภายในเป็น `\'` (inspect ทำเมื่อสตริงมีครบทั้ง `'`, `"` และ backtick) ต้อง redact ทั้งค่าเมื่ออยู่ใน JSON escape 0–3 ชั้น —
+        ชั้น k: `\'` ของ inspect = backslash 2^k ตัว + `'` (JSON ไม่ escape `'`) ส่วน backslash จริงในค่า = 2^(k+1) ตัว จึงแยก quote ปิดได้ก็ต่อเมื่อรู้ k (ปัจจุบัน `\\.` กิน `\\` แล้วจบที่ `'` ถัดไป → ส่วนที่เหลือหลุด เช่น `name: '[REDACTED]'s \"Somchai\" …`; มีมาตั้งแต่ OPS-35);
+        วิธีรู้ k (เช่น ลองทีละชั้นแล้วยืนยันด้วยช่วง backslash ของ `"` ภายในค่า ซึ่งต้องมีเสมอในกรณีนี้) หรือ redact เกินถึงขอบที่ปลอดภัย = builder เลือก แต่ต้องไม่กลืน id/`request_id`/จำนวนเงินของ key ถัดไปในบรรทัด
+    (b) ค่าของ key PII ที่เป็น array แบบแบน (สมาชิกเป็น string/ตัวเลข) ถูก redact ทั้ง array (หรือทุกสมาชิก) ทั้งรูป `util.inspect` (`name: [ 'Somchai' ]`, หลายบรรทัด, ท่อน `+`), JSON (`"name":["Somchai"]`) และ JSON escape 1–3 ชั้น (`\"name\":[\"Somchai\"]`) —
+        ตรวจบน develop `0c416cce`: **ทั้งรูป inspect และรูป JSON หลุด** (ค่าต้องขึ้นต้นด้วย quote/ตัวเลขเท่านั้น `[` จึงไม่ match);
+        array ซ้อน/object ใน array ไม่บังคับ (redact เกินได้) แต่ห้ามทำให้ค่าหลัง `]` ของ key ถัดไปหลุด
+    (c) `redactValue` (field แบบ structured ของ log): ค่า array ใต้ key PII (`{ name: ["Somchai"] }`) ทุกสมาชิกที่เป็น string/ตัวเลขเป็น `[REDACTED]` — ปัจจุบัน array ส่ง `key = undefined` ให้สมาชิกจึงผ่าน `redactPii` เฉยๆ และหลุด (ตรวจบน develop `0c416cce`)
+    (d) คงข้อจำกัดเดิม: linear-time (unit 100k ตัวอักษรเดิม ≤ เกณฑ์ 200ms เดิม), escape ≤ 3 ชั้น (≥ 4 ไม่บังคับ — กฎข้อ 18b รอบ 43), ไม่ตัด id/`request_id`/จำนวนเงิน, redact เกินได้แต่ห้ามหลุด; test เดิมของ AC-48/50/51 ผ่านไม่แก้ fixture
 ### Acceptance criteria (รอบ 43)
 - AC-51 (OPS-36, กฎข้อ 18 รอบ 43) ☑ (unit red 5 → green: เคส review #536 + escape 1–3 ชั้น 3 + util.inspect หลายท่อน 1; review #554 red 3 → green: util.inspect หลายท่อนใน JSON escape 1–3 ชั้น; escape 0 ชั้น/≥ 4 ชั้นผ่านทั้งก่อนและหลัง; linear-time เดิม 6 กรณีผ่านที่เกณฑ์ 200ms เดิม + เพิ่ม 9 กรณี) unit `redact-pii` — **ล้มบน develop** ก่อน: fixture JSON escape ซ้อนที่ค่า `email` ลงท้ายด้วย `\\` ตามด้วย `"city":"Bangkok"` → ไม่เหลือค่า email และไม่เหลือ "Bangkok";
   escape 1–3 ชั้น redact ครบ; สตริงหลายท่อนของ `util.inspect` (`address_1` ที่มี `\n`) ไม่เหลือท่อนใด; unit linear-time เดิมผ่านโดยไม่เพิ่มเกณฑ์เวลา
 - AC-52 (OPS-37, กฎข้อ 19 รอบ 43) unit `ops-runbook.unit.spec.ts`: หัวข้อ "หลัง go-live" มี `method: "DELETE"` และ `credentials: "include"`; unit `ci-workflow.unit.spec.ts`: job ที่บูต backend สำหรับ e2e มี `actions/upload-artifact` ของไฟล์ log backend ที่ `retention-days: 14`
 - AC-53 (OPS-38, กฎข้อ 20 รอบ 43) output ของ `pnpm --filter backend lint` (แนบก่อน/หลังใน PR) ไม่มี warning ในสี่ไฟล์; unit: id ของ step/workflow ที่แตะ (`createStep`/`createWorkflow` อาร์กิวเมนต์แรก) เท่าค่าบน develop; test เดิมของ evoucher ผ่าน
+- AC-54 (OPS-39, กฎข้อ 21 รอบ 43) unit `redact-pii` — **ล้มบน develop** ก่อน (รายงานจำนวน red → green ใน PR):
+  (a) `redactPii(s)` โดย s = `inspect({ name: "it's \"Somchai\" \`x\`", id: "cart_01ABC" })` ห่อด้วย `JSON.stringify` 0, 1, 2, 3 ชั้น → ผลไม่มี `Somchai` และยังมี `cart_01ABC` (ชั้น 1–3 red; ชั้น 0 ผ่านทั้งก่อนและหลัง);
+      guard (ผ่านทั้งก่อนและหลัง — กันแก้ (a) แล้วพัง): ค่า `name` ที่ลงท้ายด้วย backslash จริง (`"a\\"` ใน JS) ตามด้วย `city: 'Bangkok'` ใน escape 0–3 ชั้น → ไม่มี `Bangkok`;
+  (b) ค่า array: `inspect({ name: ["Somchai", "Jaidee"], postal_code: [10110] })` (บรรทัดเดียวและแบบ `breakLength: 1` หลายบรรทัด) และ `JSON.stringify({ name: ["Somchai"], city: "Bangkok", id: "pay_01X" })` ห่อด้วย JSON.stringify 0–3 ชั้น →
+      ไม่มี `Somchai`/`Jaidee`/`10110`/`Bangkok` และยังมี `pay_01X`; `redactValue({ name: ["Somchai", 1] })` → `{ name: ["[REDACTED]", "[REDACTED]"] }`;
+  (c) fuzz: PRNG แบบ seed คงที่ (บันทึก seed ใน test) สร้าง ≥ 500 object ที่ค่าของ key PII สุ่มจากอักขระ `'` `"` `` ` `` `\` `\n` `[` `]` `,` `:` ช่องว่าง ตัวอักษร พร้อม marker เฉพาะ (เช่น `PIIMARK`) — เป็น string หรือ array ของ string —
+      ผ่าน `inspect` แล้ว `JSON.stringify` 0–3 ชั้น → ผล `redactPii` ไม่มี marker ทุกกรณี และ id `cart_…` ที่อยู่ใน key ที่ไม่ใช่ PII ยังอยู่;
+  (d) ReDoS: input ≥ 100k ตัวอักษรอย่างน้อย 3 แบบใหม่ (เช่น `name: '` + `\\'` ซ้ำไม่มี quote ปิด, `name: [ ` + `'a', ` ซ้ำไม่มี `]`, `\"name\":[` + `\\\"a\\\",` ซ้ำ) แต่ละแบบ ≤ 200ms (เกณฑ์เดิม); test linear-time และ test เดิมของ AC-48/50/51 ผ่านไม่แก้
 ### Tasks (รอบ 43)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
 | OPS-36 | ☑ #554 — (PII — v0.3.1 ก่อน go-live) redact: ค่าลงท้าย backslash ไม่ทำให้ key ถัดไปหลุด, ≤ 3 ชั้น, สตริงหลายท่อน (กฎข้อ 18 รอบ 43) | `apps/backend/src/lib/redact-pii.ts` (+ unit) | ~20 LOC + ~60 LOC test | AC-51 | PR เอกสารปิดรอบ 42 | — |
 | OPS-37 | runbook หลัง go-live (ตำแหน่ง widget + คำสั่ง DELETE) + log backend เต็มเป็น artifact ของ CI (กฎข้อ 19 รอบ 43) | `docs/ops/production.md`, `.github/workflows/ci.yml`, `src/__tests__/{ops-runbook,ci-workflow}.unit.spec.ts` | ~15 LOC + ~30 LOC test | AC-52 | PR เอกสารปิดรอบ 42 | `production.md` (PAY-23 — ตัวหลัง sync) |
 | OPS-38 | backend lint warning 4 ไฟล์ โดยไม่เปลี่ยน id ของ step/workflow (กฎข้อ 20 รอบ 43) | ไฟล์ในกฎข้อ 20 รอบ 43, unit | ~15 LOC + ~30 LOC test | AC-53 | PR เอกสารปิดรอบ 42 | — |
+| OPS-39 | (PII — v0.3.1 ก่อน go-live, owner 2026-11-25) redact: `\'` ของ util.inspect ใน JSON escape 1–3 ชั้น + ค่า array ของ key PII (inspect/JSON/`redactValue`) + fuzz/ReDoS (กฎข้อ 21 รอบ 43) | `apps/backend/src/lib/redact-pii.ts` (+ unit `redact-pii`) | ~25 LOC + ~70 LOC test (< ~100 LOC) | AC-54 | PR เอกสาร OPS-39 (`docs/r43-pii-followup`) | `redact-pii.ts` — ไม่มี task อื่นแตะ |
 
 ลำดับ: OPS-36 ∥ OPS-37 ∥ OPS-38 — OPS-36 ใน v0.3.1 ก่อน go-live (owner สั่งแล้ว 2026-11-25); OPS-37, OPS-38 หลัง go-live (☐ รอ owner สั่ง)
+OPS-39 (เพิ่ม 2026-11-25 หลัง train #557): ∥ งานหลัง go-live ทุกตัว — **v0.3.1 รอ OPS-39 merge ก่อน owner merge `develop → main`**
 
 ## Open questions (รอบ 35)
 - **Q-O6** [**ตอบแล้ว: ก — owner 2026-11-18** (placeholder inline เฉพาะบรรทัด build); ไม่เปลี่ยนคำตัดสินข้อ ก] (พบระหว่างวางแผน: `medusa build` โหลด `medusa-config.ts` → guard ของ ADR-010/OPS-7/OPS-21 throw เมื่อ `NODE_ENV=production` แต่ stage build ของ Dockerfile ไม่มี env → image build ล้มถ้าตั้งแค่ `NODE_ENV`):
