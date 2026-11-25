@@ -3,8 +3,9 @@ import { GroupBuyMembership, GroupBuyMembershipView, groupBuyMembershipView } fr
 import { convertToLocale } from "@lib/util/money"
 import { PROCESSING_MESSAGE, REFUND_NOTICE_MESSAGE } from "@lib/util/order-pay"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { buttonClassName } from "@modules/common/components/ui"
 import LeaveGroupButton from "./leave-button"
+
+import { buttonVariants } from "@/components/ui/button"
 
 type Props = {
   /** null = อ่าน GB-8 ล้ม */
@@ -24,7 +25,7 @@ const STATUS_LABEL: Record<Exclude<GroupBuyMembershipView["kind"], "pay" | "proc
 export default function AccountGroupOrders({ data, now }: Props) {
   if (!data) {
     return (
-      <p className="text-base-regular text-ui-fg-error mb-8" data-testid="group-orders-error">
+      <p className="text-base-regular text-destructive mb-8" data-testid="group-orders-error">
         โหลดคำสั่งซื้อแบบกลุ่มไม่สำเร็จ กรุณาลองใหม่อีกครั้ง
       </p>
     )
@@ -40,7 +41,7 @@ export default function AccountGroupOrders({ data, now }: Props) {
         ))}
       </ul>
       {data.count > data.memberships.length && (
-        <p className="text-small-regular text-ui-fg-subtle" data-testid="group-orders-truncated">
+        <p className="text-small-regular text-muted-foreground" data-testid="group-orders-truncated">
           {`แสดง ${data.memberships.length} รายการล่าสุดจากทั้งหมด ${data.count} รายการ`}
         </p>
       )}
@@ -61,7 +62,7 @@ function GroupOrderRow({ membership: m, view }: { membership: GroupBuyMembership
           {m.campaign?.name ?? "แคมเปญซื้อกลุ่ม"}
         </span>
         {view.kind === "pay" ? (
-          <span className="text-small-semi text-ui-fg-interactive" data-testid="group-pay-deadline">
+          <span className="text-small-semi text-primary underline-offset-4" data-testid="group-pay-deadline">
             {`ชำระเงินภายใน ${formatDateTime(view.deadline)}`}
           </span>
         ) : view.kind === "processing" ? (
@@ -75,7 +76,7 @@ function GroupOrderRow({ membership: m, view }: { membership: GroupBuyMembership
           </span>
         )}
       </div>
-      <div className="flex flex-wrap items-center gap-x-4 text-small-regular text-ui-fg-subtle">
+      <div className="flex flex-wrap items-center gap-x-4 text-small-regular text-muted-foreground">
         {m.order && <span data-testid="group-order-display-id">{`คำสั่งซื้อ #${m.order.display_id}`}</span>}
         <span>{`เข้าร่วมเมื่อ ${formatDate(m.joined_at)}`}</span>
         <span>{`${m.units} ชิ้น`}</span>
@@ -86,7 +87,7 @@ function GroupOrderRow({ membership: m, view }: { membership: GroupBuyMembership
         )}
       </div>
       {view.kind === "cancelled" && view.refundNotice && (
-        <p className="text-small-regular text-ui-fg-subtle" data-testid="group-order-refund-notice">
+        <p className="text-small-regular text-muted-foreground" data-testid="group-order-refund-notice">
           {REFUND_NOTICE_MESSAGE}
         </p>
       )}
@@ -94,7 +95,7 @@ function GroupOrderRow({ membership: m, view }: { membership: GroupBuyMembership
         {view.kind === "pay" && (
           <LocalizedClientLink
             href={`/account/orders/${m.order_id}/pay`}
-            className={buttonClassName()}
+            className={buttonVariants()}
             data-testid="group-order-pay-link"
           >
             ชำระเงิน
@@ -103,7 +104,7 @@ function GroupOrderRow({ membership: m, view }: { membership: GroupBuyMembership
         {view.kind === "paid" && view.orderDetails && (
           <LocalizedClientLink
             href={`/account/orders/details/${m.order_id}`}
-            className={buttonClassName({ variant: "secondary" })}
+            className={buttonVariants({ variant: "outline" })}
             data-testid="group-order-details-link"
           >
             ดูรายละเอียด

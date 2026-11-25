@@ -43,7 +43,7 @@ export default async function Vouchers(props: Props) {
           ))}
         </ul>
       ) : (
-        <p className="text-base-regular text-ui-fg-subtle" data-testid="vouchers-empty">
+        <p className="text-base-regular text-muted-foreground" data-testid="vouchers-empty">
           ยังไม่มีบัตรกำนัล
         </p>
       )}
@@ -64,7 +64,7 @@ export default async function Vouchers(props: Props) {
           ) : (
             <span />
           )}
-          <span className="text-ui-fg-subtle">หน้า {pagination.page}</span>
+          <span className="text-muted-foreground">หน้า {pagination.page}</span>
           {hasNext ? (
             <Link
               href={`?page=${pagination.page + 1}`}

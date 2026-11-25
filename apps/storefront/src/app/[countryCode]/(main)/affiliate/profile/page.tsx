@@ -22,13 +22,13 @@ export default async function AffiliateProfilePage({ params }: { params: Promise
       <h1 className="text-xl-semi">โปรไฟล์</h1>
       {/* AF-18 (กฎ 42): minmax(0,1fr) + ตัดคำใน <dd> — ค่ายาวไม่มีช่องว่าง (อีเมล) ไม่ดันหน้าล้นที่ 375px */}
       <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-6 gap-y-2 [&>dd]:[overflow-wrap:anywhere]">
-        <dt className="text-ui-fg-subtle">ชื่อ</dt>
+        <dt className="text-muted-foreground">ชื่อ</dt>
         <dd>{affiliate.name}</dd>
-        <dt className="text-ui-fg-subtle">อีเมล</dt>
+        <dt className="text-muted-foreground">อีเมล</dt>
         <dd data-testid="affiliate-profile-email">{affiliate.email}</dd>
-        <dt className="text-ui-fg-subtle">รหัสแนะนำ</dt>
+        <dt className="text-muted-foreground">รหัสแนะนำ</dt>
         <dd>{affiliate.code}</dd>
-        <dt className="text-ui-fg-subtle">ข้อมูลรับเงิน</dt>
+        <dt className="text-muted-foreground">ข้อมูลรับเงิน</dt>
         <dd data-testid="affiliate-payout-info-status">
           {affiliate.has_payout_info
             ? "บันทึกข้อมูลรับเงินแล้ว"

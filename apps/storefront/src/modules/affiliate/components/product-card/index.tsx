@@ -15,13 +15,13 @@ export default function AffiliateProductCard({ item, tab }: { item: PortalProduc
 
   return (
     <li
-      className="flex flex-col gap-y-2 border border-ui-border-base rounded-rounded p-4"
+      className="flex flex-col gap-y-2 border border-border rounded-rounded p-4"
       data-testid="affiliate-product-card"
       data-handle={product.handle}
     >
       <Thumbnail thumbnail={product.thumbnail} size="square" alt={product.title} />
       <p className="text-base-semi">{product.title}</p>
-      {price && <p className="text-ui-fg-subtle">{convertToLocale(price)}</p>}
+      {price && <p className="text-muted-foreground">{convertToLocale(price)}</p>}
       <p className="text-large-semi" data-testid="affiliate-rate">
         {rate_varies && <span data-testid="affiliate-rate-varies">สูงสุด </span>}
         {program.commission_value}%
@@ -33,7 +33,7 @@ export default function AffiliateProductCard({ item, tab }: { item: PortalProduc
             {convertToLocale({ amount: estimate.amount, currency_code: estimate.currency_code })} ต่อชิ้น
           </p>
           {estimate.excludes_tax && (
-            <p className="text-small-regular text-ui-fg-subtle" data-testid="affiliate-estimate-basis">
+            <p className="text-small-regular text-muted-foreground" data-testid="affiliate-estimate-basis">
               {
                 // eslint-disable-next-line no-restricted-syntax -- "VAT" เป็นหน่วย/รหัสตามภาคผนวก 2026-11-13 ของ ADR-014 ป้ายตาม spec 05 กฎ 48a
                 "ค่าคอมโดยประมาณ (คิดจากราคาก่อน VAT)"
@@ -45,7 +45,7 @@ export default function AffiliateProductCard({ item, tab }: { item: PortalProduc
       <p className="text-small-regular" data-testid="affiliate-program-name">
         {program.name}
       </p>
-      <p className="text-small-regular text-ui-fg-subtle" data-testid="affiliate-program-dates">
+      <p className="text-small-regular text-muted-foreground" data-testid="affiliate-program-dates">
         {formatDate(program.starts_at)} – {formatDate(program.ends_at)}
       </p>
       {tab === "upcoming" && (

@@ -44,7 +44,7 @@ export default async function AffiliatePayoutsPage({ params, searchParams }: Pro
       ) : result.payouts.length ? (
         <table className="w-full text-left">
           <thead>
-            <tr className="text-small-regular text-ui-fg-subtle">
+            <tr className="text-small-regular text-muted-foreground">
               <th>งวด</th>
               <th>ยอด</th>
               <th>สถานะ</th>
@@ -53,7 +53,7 @@ export default async function AffiliatePayoutsPage({ params, searchParams }: Pro
           </thead>
           <tbody>
             {result.payouts.map((p) => (
-              <tr key={p.id} className="border-t border-ui-border-base" data-testid="affiliate-payout-row">
+              <tr key={p.id} className="border-t border-border" data-testid="affiliate-payout-row">
                 <td>
                   {formatDate(p.period_from)} – {formatDate(p.period_to)}
                 </td>

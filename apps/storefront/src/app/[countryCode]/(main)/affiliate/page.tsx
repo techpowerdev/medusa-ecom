@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 
 import { getAffiliate, listAffiliateProducts } from "@lib/data/affiliate-portal"
 import { portalPage, portalTab } from "@lib/util/affiliate-portal"
-import { clx } from "@modules/common/components/ui"
+import { cn } from "@/lib/utils"
 import AffiliateProductCard from "@modules/affiliate/components/product-card"
 import PortalError from "@modules/affiliate/components/portal-error"
 import StatusNotice from "@modules/affiliate/components/status-notice"
@@ -54,13 +54,13 @@ export default async function AffiliatePortalPage({ params, searchParams }: Prop
 
       {result && (
         <>
-          <nav className="flex gap-x-6 border-b border-ui-border-base">
+          <nav className="flex gap-x-6 border-b border-border">
             {TABS.map((t) => (
               <Link
                 key={t.tab}
                 href={`/${countryCode}/affiliate?tab=${t.tab}`}
                 aria-current={t.tab === tab ? "page" : undefined}
-                className={clx("pb-2", t.tab === tab && "border-b-2 border-ui-fg-base font-semibold")}
+                className={cn("pb-2", t.tab === tab && "border-b-2 border-foreground font-semibold")}
                 data-testid={t.testId}
               >
                 {t.label}

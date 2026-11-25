@@ -45,18 +45,18 @@ export default async function AffiliateProgramsPage({ params, searchParams }: Pr
           {result.programs.map((p) => (
             <li
               key={p.id}
-              className="flex flex-col gap-y-1 border border-ui-border-base rounded-rounded p-4"
+              className="flex flex-col gap-y-1 border border-border rounded-rounded p-4"
               data-testid="affiliate-program-row"
               data-state={p.state}
             >
               <div className="flex flex-wrap items-center gap-x-3">
                 <span className="text-base-semi">{p.name}</span>
-                <span className="text-small-regular rounded-full bg-ui-bg-subtle px-2" data-testid="affiliate-program-state">
+                <span className="text-small-regular rounded-full bg-muted px-2" data-testid="affiliate-program-state">
                   {STATE_LABEL[p.state]}
                 </span>
               </div>
               <p>ค่าคอมมิชชัน {p.commission_value}%</p>
-              <p className="text-small-regular text-ui-fg-subtle">
+              <p className="text-small-regular text-muted-foreground">
                 {formatDate(p.starts_at)} – {formatDate(p.ends_at)}
               </p>
               {p.announce_text && <p className="text-small-regular">{p.announce_text}</p>}

@@ -18,11 +18,12 @@ import { PDP_QUANTITY_OPTIONS } from "@lib/util/pending-add-to-cart"
 import { findVariantByOptions } from "@lib/util/product-variant-options"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { Button } from "@modules/common/components/ui"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
 import { useParams, useRouter } from "next/navigation"
 import { useRef, useState } from "react"
 import GroupSelectionInfo from "./group-selection-info"
+
+import { Button } from "@/components/ui/button"
 
 type Props = {
   token: string
@@ -128,7 +129,7 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
   }
 
   return (
-    <section className="flex flex-col gap-y-4 rounded-rounded border border-ui-border-base p-4" data-testid="group-join">
+    <section className="flex flex-col gap-y-4 rounded-rounded border border-border p-4" data-testid="group-join">
       <h2 className="text-large-semi">เลือกสินค้าที่ต้องการ</h2>
       <div className="flex flex-col gap-y-4" data-testid="group-options">
         {(product.options ?? []).map((option) => (
@@ -149,7 +150,7 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
           <select
             value={quantity}
             onChange={(e) => setQuantity(Number(e.target.value))}
-            className="rounded-md border border-ui-border-base bg-ui-bg-subtle px-3 py-1.5"
+            className="rounded-md border border-border bg-muted px-3 py-1.5"
             data-testid="group-quantity"
           >
             {PDP_QUANTITY_OPTIONS.map((q) => (
@@ -160,7 +161,7 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
           </select>
         </label>
         <Button
-          variant="secondary"
+          variant="outline"
           disabled={!variant || busy}
           onClick={() => variant && updateSelection(addToSelection(selection, variant.id, quantity))}
           data-testid="group-add-variant"
@@ -180,13 +181,13 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
                 value={item.quantity}
                 aria-label={`จำนวน ${variantTitle(item.variant_id)}`}
                 onChange={(e) => updateSelection(setSelectionQuantity(selection, item.variant_id, e.target.value))}
-                className="w-20 rounded-md border border-ui-border-base px-2 py-1"
+                className="w-20 rounded-md border border-border px-2 py-1"
                 disabled={busy}
                 data-testid="group-selection-quantity"
               />
               <Button
-                variant="transparent"
-                size="small"
+                variant="ghost"
+                size="sm"
                 disabled={busy}
                 onClick={() => updateSelection(removeFromSelection(selection, item.variant_id))}
                 data-testid="group-selection-remove"
@@ -222,7 +223,7 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
                 updateSelection(selection)
               }}
               disabled={busy}
-              className="rounded-md border border-ui-border-base px-3 py-1.5"
+              className="rounded-md border border-border px-3 py-1.5"
               data-testid="group-address-select"
             >
               {addresses.map((a) => (
@@ -234,7 +235,7 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
           </label>
           {!prepared && (
             <Button
-              variant="secondary"
+              variant="outline"
               className="self-start"
               disabled={!selection.length || overLimit || busy}
               onClick={prepare}
@@ -253,7 +254,7 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
             value={shippingId}
             onChange={(e) => setShippingId(e.target.value)}
             disabled={busy}
-            className="rounded-md border border-ui-border-base px-3 py-1.5"
+            className="rounded-md border border-border px-3 py-1.5"
             data-testid="group-shipping-option"
           >
             <option value="" disabled>
