@@ -83,11 +83,11 @@ none
 14. ลิงก์ที่หน้าตาเป็นปุ่มใช้ `cn(buttonVariants({...}), className)` บนลิงก์ (หรือ `<Button asChild>` ครอบลิงก์) — ห้าม `<Button>` เป็นลูกของ `LocalizedClientLink` (spec 01 กฎ 146b, AC-187)
 15. pattern ต้องห้าม (หลัง task เจ้าของไฟล์ merge): import `@medusajs/icons`, `@medusajs/ui-preset`, `@headlessui/react`, `@radix-ui/react-*`, `tailwindcss-radix`, `clsx`,
     `@modules/common/components/ui`, `@modules/common/components/radio`, `@modules/common/components/modal` (รวม `vi.mock("…")` ใน test); class `txt-*`, `h[1-3]-(webs|core|docs)`,
-    `(text|bg|border|ring|divide|fill|stroke|placeholder|outline)-ui-*`, `shadow-(borders|elevation|buttons|details)-*`, `radix-state-*` ในไฟล์ที่ไม่ใช่ test;
+    `(text|bg|border|ring|divide|fill|stroke|placeholder|outline|accent)-ui-*`, `var(--fg-*)`/`var(--bg-*)`/`var(--border-*)` ดิบของ preset, `shadow-(borders|elevation|buttons|details)-*`, `radix-state-*` ในไฟล์ที่ไม่ใช่ test;
     บังคับทีละไฟล์ด้วยรายการ `PENDING` แยก key ตาม task (AC-6) — task ต้องลบ key ของตัวเองใน PR เดียวกัน
-16. ชั้นเข้ากันได้ `src/styles/legacy-medusa.css` (SFUI-1a): `@utility` ของ `txt-*`/`h*-webs` และ `@theme` ของ `--color-ui-*`/`--shadow-*` **เฉพาะชื่อที่ใช้จริงใน `src/`**
+16. ชั้นเข้ากันได้ `src/styles/legacy-medusa.css` (SFUI-1a): `@utility` ของ `txt-*`/`h*-webs` และ `@theme` ของ `--color-ui-*`/`--shadow-*` และตัวแปรดิบของ preset ใน `:root` (เช่น `--fg-interactive`, `--fg-muted` ที่ใช้ผ่าน `var(...)`) **เฉพาะชื่อที่ใช้จริงใน `src/`**; static test บังคับว่าทุก `var(--…)` ใน `src/` ที่ไม่ใช่ของ Tailwind/next/font/shadcn มีนิยาม
     ค่าคัดลอกจาก `@medusajs/ui-preset@2.22.1/dist/index.js` (light) font-family = `var(--font-sans)`; `@custom-variant radix-state-open/closed` (+ แบบ `group-`); ห้ามเพิ่มชื่อใหม่หลัง SFUI-1a;
-    ลบทั้งไฟล์และ `@import` ใน SFUI-6
+    ลบทั้งไฟล์และ `@import` ใน SFUI-6; task 5a/5c ที่ย้าย `interactive-link`, `not-found`, `discount-code` ต้องแทน `var(--fg-*)` ด้วย token ของ shadcn
 17. หน้าในรายการ AC-17 ที่ viewport 390×844 ไม่ล้นแนวนอน (`document.documentElement.scrollWidth <= window.innerWidth`)
 18. admin ไม่ถูกแก้ (`git diff` ของ `apps/backend/**` ว่างในทุก task) และ e2e ที่เปิดหน้า admin (`/app`) ไม่ถูกแก้: `e2e/*admin*.spec.ts`, `e2e/support/admin.ts`,
     `e2e/core-55-return-receive.spec.ts`, `e2e/pay-10-refund-blocked-widget.spec.ts`, `e2e/payments-refund.spec.ts` (รายการนี้ = ไฟล์ใน `e2e/` ที่อ้าง `/app` ณ 2026-11-26)
