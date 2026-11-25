@@ -73,7 +73,7 @@ OPS-36, PAY-23, PAY-24 merge ใน train #557 · OPS-39 เพิ่มหล�
 | OPS-38 | 07 | backend lint warning 4 ไฟล์ (ไม่เปลี่ยน id ของ step/workflow) | — | — | ☐ |
 | ADM-49 | 08 | focus หลัง Mark as paid → แถวถัดไป/ปุ่ม Create payout | — | ✓ | ☐ |
 | ADM-50 | 08 | test hygiene admin: static ผูกปุ่ม Save, unit hook, e2e campaign | — | — | ☐ |
-| OPS-41 | 07 | (PII) `redactPii` แบบ parser นับความลึกวงเล็บ/ชั้น escape แทน regex — ปิดข้อยกเว้น d1/d2/d3 ของกฎ 22d + กรณีรู้แล้ว `cart_13rjFZ` (owner 2026-11-26; fixture ที่ `docs/evidence/ops/OPS-41/`) | OPS-40 ☑ #562, spec/ADR ของ OPS-41 | — | ☐ |
+| OPS-41 | 07 | (PII) `redactPii` แบบ parser นับความลึกวงเล็บ/ชั้น escape แทน regex — ปิดข้อยกเว้น d1/d2/d3 ของกฎ 22d + กรณีรู้แล้ว `cart_13rjFZ` (owner 2026-11-26; fixture ที่ `docs/spec/fixtures/OPS-41/`) | OPS-40 ☑ #562, spec/ADR ของ OPS-41 | — | ☐ |
 
 - **ไฟล์ร่วม** (ตัวที่ merge ทีหลัง sync): `docs/ops/production.md` PAY-23 → OPS-37 · `components/common/*` ADM-49 ↔ ADM-50 ·
   static ของ CORE-99 พบจุดใน nav → ให้ CORE-97 แก้ · `ci.yml` OPS-37 เท่านั้น · `cart.ts` CORE-97 เท่านั้น
