@@ -1,4 +1,3 @@
-import { Text } from "@modules/common/components/ui"
 import { getProductPrice } from "@lib/util/get-product-price"
 import { HttpTypes } from "@medusajs/types"
 import type { CardFlash } from "@lib/util/flash-sale"
@@ -46,13 +45,13 @@ export default async function ProductPreview({
           isFeatured={isFeatured}
         />
         {/* qa D-1 #148: ชื่อยาว/ราคา flash คู่ราคาขีดฆ่าบนจอแคบ → ราคาขึ้นบรรทัดใหม่ ไม่ล้นการ์ด */}
-        <div className="flex flex-wrap txt-compact-medium mt-4 justify-between gap-x-2">
-          <Text
-            className="text-ui-fg-subtle min-w-0 break-words"
+        <div className="flex flex-wrap text-sm leading-5 mt-4 justify-between gap-x-2">
+          <p
+            className="text-sm leading-[1.4rem] text-muted-foreground min-w-0 break-words"
             data-testid="product-title"
           >
             {product.title}
-          </Text>
+          </p>
           <div className="flex items-center gap-x-2">
             {flashPrice ? (
               <CardFlashView

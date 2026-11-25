@@ -25,14 +25,14 @@ const OnSaleToggle = ({ currencyCode }: { currencyCode: string }) => {
         type="checkbox"
         checked={value.isRefined}
         onChange={() => refine(value)}
-        className="shrink-0 accent-ui-fg-interactive"
+        className="shrink-0 accent-primary"
         data-testid="on-sale-toggle"
       />
-      <span className="txt-compact-small-plus text-ui-fg-subtle">
+      <span className="text-sm leading-5 font-medium text-muted-foreground">
         เฉพาะสินค้าลดราคา
       </span>
       {typeof value.count === "number" && (
-        <span className="text-small-regular text-ui-fg-muted">
+        <span className="text-small-regular text-muted-foreground">
           ({value.count})
         </span>
       )}
