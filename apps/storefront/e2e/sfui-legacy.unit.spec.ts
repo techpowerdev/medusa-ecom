@@ -48,11 +48,6 @@ const TASKS: Task[] = [
 ]
 
 const PENDING: Partial<Record<Task, string[]>> = {
-  "SFUI-3a": [
-    "src/modules/account/components/address-card/add-address.tsx",
-    "src/modules/account/components/address-card/edit-address-modal.tsx",
-    "src/modules/common/components/modal/index.tsx",
-  ],
   "SFUI-3d": [
     "src/core-19f-continue-after-timeout.test.ts",
     "src/lib/constants.tsx",
