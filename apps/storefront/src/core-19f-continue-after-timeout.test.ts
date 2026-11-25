@@ -29,15 +29,15 @@ vi.mock("@modules/checkout/components/payment-container", () => ({
   default: () => null,
   StripePaymentContainer: () => null,
 }))
-vi.mock("@headlessui/react", async () => {
+vi.mock("@/components/ui/radio-group", async () => {
   const { createElement: h } = await import("react")
   return {
-    RadioGroup: ({ onChange }: { onChange: (v: string) => void }) =>
+    RadioGroup: ({ onValueChange }: { onValueChange: (v: string) => void }) =>
       h(
         "div",
         null,
-        h("button", { "data-testid": "select-promptpay", onClick: () => onChange(PROMPTPAY) }),
-        h("button", { "data-testid": "select-card", onClick: () => onChange(CARD) })
+        h("button", { "data-testid": "select-promptpay", onClick: () => onValueChange(PROMPTPAY) }),
+        h("button", { "data-testid": "select-card", onClick: () => onValueChange(CARD) })
       ),
   }
 })

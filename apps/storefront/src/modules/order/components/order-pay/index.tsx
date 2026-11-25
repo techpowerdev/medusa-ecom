@@ -1,6 +1,6 @@
 "use client"
 
-import { RadioGroup } from "@headlessui/react"
+import { RadioGroup } from "@/components/ui/radio-group"
 import { paymentInfoMap } from "@lib/constants"
 import { retrieveGroupBuyOrder } from "@lib/data/group-buy"
 import { startPaymentSession } from "@lib/data/payment"
@@ -26,7 +26,6 @@ import PaymentContainer, { StripePaymentContainer } from "@modules/checkout/comp
 import PaymentWrapper from "@modules/checkout/components/payment-wrapper"
 import { StripeContext } from "@modules/checkout/components/payment-wrapper/stripe-wrapper"
 import PromptPayOrderDelayed from "@modules/checkout/components/promptpay-payment/order-delayed"
-import { Heading, Text } from "@modules/common/components/ui"
 import { usePathname, useRouter } from "next/navigation"
 import { useCallback, useContext, useEffect, useRef, useState } from "react"
 import { OrderCardButton, OrderPromptPayButton } from "./pay-buttons"
@@ -129,7 +128,7 @@ export default function OrderPay({ initial, email, redirect, serverNow }: Props)
   }, [awaiting, read])
 
   /**
-   * (d2) ยังไม่ชำระ → error + ฟอร์มเดิมให้ลองใหม่: ล้างตัวเลือก เพราะ RadioGroup ไม่เรียก onChange เมื่อคลิกค่าเดิม
+   * (d2) ยังไม่ชำระ → error + ฟอร์มเดิมให้ลองใหม่: ล้างตัวเลือก เพราะ RadioGroup ไม่เรียก onValueChange เมื่อคลิกค่าเดิม
    * (qa #189 D-1: คลิกบัตรซ้ำแล้วไม่สร้าง session ใหม่)
    */
   const fail = useCallback(() => {
@@ -197,40 +196,40 @@ export default function OrderPay({ initial, email, redirect, serverNow }: Props)
 
   return (
     <div className="flex flex-col gap-y-6 w-full" data-testid="order-pay-page">
-      <Heading level="h1" className="text-2xl-semi">
+      <h1 className="text-2xl-semi">
         ชำระเงินคำสั่งซื้อ #{data.order.display_id}
-      </Heading>
+      </h1>
       <div className="flex flex-col gap-y-1">
         {data.order.items.map((item) => (
-          <Text key={item.id} className="txt-medium text-ui-fg-subtle">
+          <p key={item.id} className="text-sm leading-[1.4rem] text-muted-foreground">
             {item.title} × {item.quantity}
-          </Text>
+          </p>
         ))}
-        <Text className="txt-medium-plus text-ui-fg-base" data-testid="order-pay-total">
+        <p className="text-sm leading-[1.4rem] font-medium text-foreground" data-testid="order-pay-total">
           ยอดชำระ {convertToLocale({ amount: data.order.total, currency_code: data.order.currency_code })}
-        </Text>
+        </p>
       </div>
       {view === "paid" ? (
-        <Text className="txt-medium-plus text-ui-fg-base" data-testid="order-pay-paid">
+        <p className="text-sm leading-[1.4rem] font-medium text-foreground" data-testid="order-pay-paid">
           ชำระเงินเรียบร้อยแล้ว ขอบคุณที่ร่วมซื้อกลุ่มกับเรา
-        </Text>
+        </p>
       ) : final ? (
         <OrderPayClosed refund={showRefundNotice(data)} />
       ) : view === "processing" ? (
         // GB-22 (session หลักตัดสิน 2026-11-21): ข้อความเดียวกับ group-order-processing ของหน้าบัญชี
-        <Text className="txt-medium-plus text-ui-fg-base" aria-live="polite" data-testid="order-pay-processing">
+        <p className="text-sm leading-[1.4rem] font-medium text-foreground" aria-live="polite" data-testid="order-pay-processing">
           {PROCESSING_MESSAGE}
-        </Text>
+        </p>
       ) : delayed ? (
         <PromptPayOrderDelayed />
       ) : awaiting ? (
-        <Text className="txt-medium-plus text-ui-fg-base" aria-live="polite" data-testid="order-pay-awaiting">
+        <p className="text-sm leading-[1.4rem] font-medium text-foreground" aria-live="polite" data-testid="order-pay-awaiting">
           ได้รับชำระเงินแล้ว กำลังยืนยันการชำระเงิน…
-        </Text>
+        </p>
       ) : view === "waiting" ? (
-        <Text className="txt-medium text-ui-fg-subtle" data-testid="order-pay-waiting">
+        <p className="text-sm leading-[1.4rem] text-muted-foreground" data-testid="order-pay-waiting">
           กลุ่มของคุณยังไม่สำเร็จ เมื่อกลุ่มครบเป้าหมายเราจะส่งอีเมลแจ้งให้ชำระเงิน
-        </Text>
+        </p>
       ) : view === "closed" ? (
         <OrderPayClosed refund={false} />
       ) : (
@@ -239,7 +238,8 @@ export default function OrderPay({ initial, email, redirect, serverNow }: Props)
           paymentSessions={session ? [session as unknown as HttpTypes.StorePaymentSession] : []}
         >
           <div className="flex flex-col gap-y-4" data-testid="order-pay-form">
-            <RadioGroup value={selected} onChange={select} disabled={busy}>
+            {/* SFUI-3d (spec 09 กฎ 4): RadioGroup ของ shadcn — ตัวเลือกคือ PaymentContainer (RadioGroupItem) */}
+            <RadioGroup value={selected} onValueChange={select} disabled={busy} className="block">
               <StripePaymentContainer
                 paymentProviderId={CARD}
                 selectedPaymentOptionId={selected}
@@ -257,9 +257,9 @@ export default function OrderPay({ initial, email, redirect, serverNow }: Props)
             </RadioGroup>
             <ErrorMessage error={elementError} data-testid="order-pay-element-error" />
             {expired && (
-              <Text className="txt-medium text-ui-fg-subtle" data-testid="promptpay-expired">
+              <p className="text-sm leading-[1.4rem] text-muted-foreground" data-testid="promptpay-expired">
                 คิวอาร์โค้ดพร้อมเพย์หมดอายุแล้ว กดชำระด้วยพร้อมเพย์อีกครั้งเพื่อรับคิวอาร์โค้ดใหม่
-              </Text>
+              </p>
             )}
             <PayButton
               selected={selected}
@@ -280,13 +280,13 @@ export default function OrderPay({ initial, email, redirect, serverNow }: Props)
 
 const OrderPayClosed = ({ refund }: { refund: boolean }) => (
   <>
-    <Text className="txt-medium text-ui-fg-subtle" data-testid="order-pay-closed">
+    <p className="text-sm leading-[1.4rem] text-muted-foreground" data-testid="order-pay-closed">
       คำสั่งซื้อนี้ชำระเงินไม่ได้แล้ว เนื่องจากหมดเวลาชำระเงินหรือถูกยกเลิก
-    </Text>
+    </p>
     {refund && (
-      <Text className="txt-medium text-ui-fg-base" data-testid="order-pay-refund-notice">
+      <p className="text-sm leading-[1.4rem] text-foreground" data-testid="order-pay-refund-notice">
         {REFUND_NOTICE_MESSAGE}
-      </Text>
+      </p>
     )}
   </>
 )
