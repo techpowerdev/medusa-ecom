@@ -10,7 +10,7 @@ const CheckoutSummary = ({ cart }: { cart: HttpTypes.StoreCart }) => {
       <div className="w-full bg-white flex flex-col">
         <Divider className="my-6 small:hidden" />
         <h2
-          className="font-semibold flex flex-row text-3xl-regular items-baseline"
+          className="text-2xl font-semibold flex flex-row items-baseline"
           data-testid="checkout-summary-heading"
         >
           สินค้าในตะกร้า

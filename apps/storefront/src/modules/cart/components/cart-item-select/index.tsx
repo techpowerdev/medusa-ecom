@@ -44,7 +44,7 @@ const CartItemSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
           onFocus={() => innerRef.current?.focus()}
           onBlur={() => innerRef.current?.blur()}
           className={cn(
-            "relative flex items-center text-sm leading-5 border text-foreground group",
+            "relative flex items-center text-sm leading-5 border border-input font-normal text-foreground group",
             className,
             {
               "text-muted-foreground": isPlaceholder,

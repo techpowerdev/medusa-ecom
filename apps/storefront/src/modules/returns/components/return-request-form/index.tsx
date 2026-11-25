@@ -32,7 +32,7 @@ const ReturnRequestForm = ({ orderId, displayId, lines, reasons }: Props) => {
 
   return (
     <div className="flex flex-col gap-y-6" data-testid="return-request-container">
-      <h2 className="font-semibold text-2xl-semi" data-testid="return-request-heading">
+      <h2 className="text-2xl font-semibold" data-testid="return-request-heading">
         ขอคืนสินค้า คำสั่งซื้อ #{displayId}
       </h2>
 

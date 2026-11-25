@@ -37,7 +37,7 @@ const Review = ({
       <div className="flex flex-row items-center justify-between mb-6">
         <h2
           className={cn(
-            "font-semibold flex flex-row text-3xl-regular gap-x-2 items-baseline",
+            "text-2xl font-semibold flex flex-row gap-x-2 items-baseline",
             {
               "opacity-50 pointer-events-none select-none": !isOpen,
             }

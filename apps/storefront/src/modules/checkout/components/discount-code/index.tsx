@@ -162,7 +162,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                 />
               </div>
               <SubmitButton
-                variant="secondary"
+                variant="outline"
                 disabled={busy}
                 data-testid="discount-apply-button"
               >

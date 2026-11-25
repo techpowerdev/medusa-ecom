@@ -40,3 +40,11 @@ thai-ui-cart-order.spec.ts thai-ui-checkout.spec.ts thai-ui-shell.spec.ts
 failed: core-50-nav-narrow 1280×800 nav-menu-button width ต่าง 1.27px (เรื่องเดิมบน macOS — ไม่เกี่ยวกับ SFUI-5c, ไม่แตะ nav)
 skipped (ต้องใช้ Stripe จริง): core-19b-continue-to-review, core-95-payment-received-notice, fs-22-refunded-notice, fs-24-card-race-refund,
   group-buy-account-orders, pay-9/11/14/15/17/19, payments, payments-order-pay, payments-promptpay-{already-paid,fallback-cap,race}, payments-refund
+
+## รอบแก้ตาม review (REQUEST CHANGES): heading 24px/32px, SubmitButton ส่ง variant/size ของ shadcn ตรง, nit cart-item-select/TableHead
+Red: e2e ใหม่ e2e/sfui-5c-checkout-heading.spec.ts ก่อนแก้ → 1 failed (addresses-heading fontSize 32px/lineHeight 44px, คาด 24px/32px)
+typecheck ผ่าน; lint 0 errors (28 warnings เดิม); test:unit 1997/1997 passed (128 files); test:e2e:unit 192 passed; build prod ผ่าน
+e2e (prod build :8130, backend prod :9130, DB medusa_sfui5c รีเซ็ตใหม่, Redis db 13, ไม่มี Stripe key):
+  sfui-mobile-390 (รันก่อนบน DB สะอาด): 1 passed (35.6s)
+  sfui-5c-checkout-heading, core-38-mobile-layout, thai-ui-checkout, core-20-return-request, core-42-cart-voucher-layout,
+  core-47-cart-375-long-title, thai-ui-cart-order, core-40-discount-action-race: 14 passed (28.4s), 0 failed
