@@ -66,7 +66,6 @@ const PENDING: Partial<Record<Task, string[]>> = {
     "src/modules/layout/components/cart-dropdown/index.tsx",
     "src/modules/layout/components/country-select/index.tsx",
   ],
-  "SFUI-3e": ["src/modules/checkout/components/shipping/index.tsx"],
   "SFUI-4": [
     "src/modules/products/components/product-tabs/accordion.tsx",
     "src/modules/store/components/refinement-list/options-picker/index.tsx",
