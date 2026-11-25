@@ -1,13 +1,15 @@
 # ADR-030 Storefront ใช้ shadcn/ui (Radix) บน Tailwind v4 แทนชั้น UI ของ Medusa
 
-สถานะ: **เสนอ (proposed)** — รอ owner อนุมัติตาม CLAUDE.md ข้อ 1 (ห้ามเริ่ม task SFUI-* จนกว่าจะเป็น accepted)
+สถานะ: **accepted** (owner 2026-11-26 — พร้อมคำตอบ spec 09 Q1 = ยอมรับ browser ขั้นต่ำของ Tailwind v4, Q2 = งด release `develop → main` ระหว่าง SFUI-2 merge ถึง SFUI-6 merge ยกเว้น hotfix)
+· การทำงานแบบ stack (owner อนุญาต 2026-11-26 — ข้อยกเว้นของกติกา "ห้ามแตก branch จาก PR ที่ยังไม่ merge" ใน CLAUDE.md เฉพาะชุด SFUI): task SFUI ทุกตัวแตก branch ต่อจาก branch ของ task ก่อนหน้า
+(เริ่มจาก branch เอกสาร `docs/SFUI-shadcn-adr-spec`) ได้โดยไม่ต้องรอ PR merge แล้วเปิด PR ทั้งชุดพร้อมกันตอนท้าย (base = `develop`) และ merge ตามลำดับ
 เกี่ยวข้อง: spec 09 (task SFUI-1a..6, AC-1..18), ADR-002 (amend), ADR-008 ข้อ 4 (amend วิธีทำ — ไม่เปลี่ยนเจตนา), ADR-014 (ไม่กระทบ), ADR-018 (ไม่กระทบ — admin)
 เลข ADR: ADR-029 ถูกใช้แล้ว (refund-failure-visibility), ADR-020/ADR-027 สงวนไว้ (pool / staging) → ใช้ **ADR-030**
 
 ## บริบท
 - owner (2026-11-26) ตัดสินแล้ว — ไม่เปิดคำถามซ้ำ:
-  1. แทนชั้น UI ของ Medusa ใน `apps/storefront` **ทั้ง 4 ชั้น**: shim `src/modules/common/components/ui/index.tsx` (import 88 ไฟล์),
-     `@medusajs/ui-preset` + `src/styles/thai-ui-preset.js` (CORE-8) + class `txt-*`/`h*-webs`, `@medusajs/icons` (23 ไฟล์), `@headlessui/react` (12 ไฟล์ใน `src/` + mock ใน unit 6 ไฟล์);
+  1. แทนชั้น UI ของ Medusa ใน `apps/storefront` **ทั้ง 4 ชั้น**: shim `src/modules/common/components/ui/index.tsx` (import 89 ไฟล์),
+     `@medusajs/ui-preset` + `src/styles/thai-ui-preset.js` (CORE-8) + class `txt-*`/`h*-webs`, `@medusajs/icons` (23 ไฟล์), `@headlessui/react` (12 ไฟล์ใน `src/` + mock/import ใน unit 6 ไฟล์);
      ถอด `tailwindcss-radix`; Radix ที่มีอยู่ (`@radix-ui/react-accordion`, `@radix-ui/react-slider`) รวมเข้ากับแนวของ shadcn
   2. อัป Tailwind v3 → v4 ก่อน แล้วใช้ shadcn CLI รุ่นล่าสุด (CSS-first, `@theme`, `tw-animate-css`)
   3. ยอมให้หน้าตาเปลี่ยนเป็นสไตล์ shadcn แต่ยังใช้สี brand ตาม ADR-008 (map เป็น CSS variable)
@@ -39,7 +41,7 @@ D. Tailwind v4 แต่เขียน primitive เอง (dialog/select ฯ�
 a. **package `cn`** (สิ่งที่ CLI ปัจจุบันสร้าง; component ทุกตัว import `from "cn"`)
 b. `clsx` + `tailwind-merge` ใน `src/lib/utils.ts` แบบเดิมของ shadcn — ต้องแก้ import ของทุก component ที่ CLI สร้างให้ด้วยมือ
 
-## การตัดสินใจ (เสนอ — รอ owner)
+## การตัดสินใจ (owner accepted 2026-11-26)
 เลือก **A** + ทางเลือกย่อย **a**
 
 1. **Tailwind v4 แบบ CSS-first**: ลบ `tailwind.config.js`; ค่า theme เดิม (brand, grey, breakpoints `2xsmall`..`2xlarge`, `borderRadius`, `maxWidth.8xl`, keyframes/animation)
@@ -89,17 +91,17 @@ b. `clsx` + `tailwind-merge` ใน `src/lib/utils.ts` แบบเดิมข�
 + ถอด dependency ที่ผูกกับ Tailwind v3 ได้หมด; มี primitive ที่เข้าถึงได้ (focus trap, Escape, ARIA) จาก Radix แทนของเขียนเอง/headless คนละค่าย
 + สี brand และฟอนต์ไทยอยู่ใน CSS variable ที่เดียว (ไม่ต้องห่อ plugin แบบ CORE-8)
 + component อยู่ในโค้ดของเรา (shadcn = copy) แก้ได้โดยไม่รอ upstream
-− **browser ขั้นต่ำของ Tailwind v4**: Safari 16.4+, Chrome 111+, Firefox 128+ — iOS < 16.4 จะแสดงผลเพี้ยน (spec 09 Q1)
-− หน้าตาเปลี่ยนทั้งร้าน (owner ยอมรับ); ช่วงที่ task ยัง merge ไม่ครบจะเห็นสไตล์ผสม — ไม่ควร release `develop → main` ระหว่าง SFUI-2..SFUI-6 (spec 09 Q2)
+− **browser ขั้นต่ำของ Tailwind v4**: Safari 16.4+, Chrome 111+, Firefox 128+ — iOS < 16.4 จะแสดงผลเพี้ยน (owner ยอมรับ 2026-11-26 — spec 09 Q1)
+− หน้าตาเปลี่ยนทั้งร้าน (owner ยอมรับ); ช่วงที่ task ยัง merge ไม่ครบจะเห็นสไตล์ผสม — **งด release `develop → main` ระหว่าง SFUI-2 merge ถึง SFUI-6 merge ยกเว้น hotfix** (owner 2026-11-26 — spec 09 Q2)
 − ADR-002: merge การเปลี่ยนแปลงจาก upstream ของ Medusa Next.js Starter ยากขึ้นมากในชั้นแสดงผล (starter ยังใช้ preset/v3) — ต่อไปรับเฉพาะชั้น data/logic จาก upstream
 − test เดิมที่ผูกกับ preset ต้องเขียนใหม่: `src/styles/ui-preset-font.test.ts`, `src/styles/tailwind-config.test.ts`, `e2e/ui-preset-font.spec.ts` (spec 01 AC-9 ส่วนฟอนต์/brand, AC-24, AC-25
-  → แทนด้วย spec 09 AC-3/AC-4) และ unit 6 ไฟล์ที่ mock `@headlessui/react`
+  → แทนด้วย spec 09 AC-3/AC-4) และ unit 6 ไฟล์ที่ mock/import `@headlessui/react`
 − utility บางตัวของ v4 เปลี่ยนชื่อ/ความหมาย (`shadow-sm`→`shadow-xs`, `rounded`→`rounded-sm`, `outline-none`→`outline-hidden`, เลิก `bg-opacity-*`, `flex-shrink-*`; `hover:` มีผลเฉพาะอุปกรณ์ที่ hover ได้;
   สีขอบเริ่มต้นเป็น `currentColor`) — แก้ใน SFUI-1a ด้วย codemod `@tailwindcss/upgrade` หรือมือ
 − package `cn` ยังเป็น 0.x (ออก 2026-09) — ถ้ามีปัญหา ย้อนเป็น `clsx` + `tailwind-merge` ได้โดยแก้ `src/lib/utils.ts` + import ของ `src/components/ui/*` (ADR ใหม่)
 − unit test (Vitest + jsdom) ที่ render `Select`/`Slider` ของ Radix อาจต้อง polyfill `ResizeObserver`/`hasPointerCapture`/`scrollIntoView`
 
-## การแก้ ADR เดิม (มีผลเมื่อ ADR นี้ accepted)
+## การแก้ ADR เดิม (มีผลแล้ว — ADR นี้ accepted 2026-11-26)
 - ADR-002: เพิ่มหมายเหตุ — ชั้นแสดงผลของ starter (preset/shim/headlessui/icons) ถูกแทนด้วย shadcn/ui; ส่วน commerce ของ starter คงเดิม
 - ADR-008 ข้อ 4: เพิ่มหมายเหตุ — brand tokens + Noto Sans Thai ทำผ่าน `@theme`/CSS variable ใน `globals.css` แทน `tailwind.config.js` (ค่าและเจตนาเดิม)
 - ADR-014: เพิ่มหมายเหตุ — ไม่กระทบ (ข้อความไทยเขียนตรงในโค้ดคงเดิม; ข้อความ a11y ใหม่ของ overlay เป็นไทย)
