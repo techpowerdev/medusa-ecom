@@ -1,7 +1,6 @@
 "use client"
 
 import { convertToLocale } from "@lib/util/money"
-import { CheckCircleSolid, XMark } from "@medusajs/icons"
 import {
   HttpTypes,
   StoreCart,
@@ -9,7 +8,9 @@ import {
   StorePrice,
 } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { Button, clx } from "@modules/common/components/ui"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { CircleCheck, X } from "lucide-react"
 import { useState } from "react"
 import { StoreFreeShippingPrice } from "types/global"
 
@@ -149,7 +150,7 @@ function FreeShippingInline({
             {price.target_reached ? (
               <div className="flex items-center gap-1.5">
                 {" "}
-                <CheckCircleSolid className="text-green-500 inline-block" />{" "}
+                <CircleCheck className="size-4 text-green-500 inline-block" />{" "}
                 ได้รับสิทธิ์ส่งฟรีแล้ว!
               </div>
             ) : (
@@ -158,7 +159,7 @@ function FreeShippingInline({
           </div>
 
           <div
-            className={clx("visible", {
+            className={cn("visible", {
               "opacity-0 invisible": price.target_reached,
             })}
           >
@@ -174,7 +175,7 @@ function FreeShippingInline({
         </div>
         <div className="flex justify-between gap-1">
           <div
-            className={clx(
+            className={cn(
               "bg-linear-to-r from-zinc-400 to-zinc-500 h-1 rounded-full max-w-full duration-500 ease-in-out",
               {
                 "from-green-400 to-green-500": price.target_reached,
@@ -200,7 +201,7 @@ function FreeShippingPopup({
 
   return (
     <div
-      className={clx(
+      className={cn(
         "fixed bottom-5 right-5 flex flex-col items-end gap-2 transition-all duration-500 ease-in-out z-10",
         {
           "opacity-0 invisible delay-1000": price.target_reached,
@@ -212,12 +213,13 @@ function FreeShippingPopup({
     >
       <div>
         <Button
-          className="rounded-full bg-neutral-900 shadow-none outline-hidden border-none text-[15px] p-2"
+          size="icon"
+          className="rounded-full bg-neutral-900 shadow-none outline-hidden border-none"
           onClick={() => setIsClosed(true)}
           aria-label="ปิดข้อความส่งฟรี"
           data-testid="free-shipping-nudge-close"
         >
-          <XMark />
+          <X className="size-4" />
         </Button>
       </div>
 
@@ -228,7 +230,7 @@ function FreeShippingPopup({
               <div>
                 {price.target_reached ? (
                   <div className="flex items-center gap-1.5">
-                    <CheckCircleSolid className="text-green-500 inline-block" />{" "}
+                    <CircleCheck className="size-4 text-green-500 inline-block" />{" "}
                     ได้รับสิทธิ์ส่งฟรีแล้ว!
                   </div>
                 ) : (
@@ -237,7 +239,7 @@ function FreeShippingPopup({
               </div>
 
               <div
-                className={clx("visible", {
+                className={cn("visible", {
                   "opacity-0 invisible": price.target_reached,
                 })}
               >
@@ -253,7 +255,7 @@ function FreeShippingPopup({
             </div>
             <div className="flex justify-between gap-1">
               <div
-                className={clx(
+                className={cn(
                   "bg-linear-to-r from-zinc-400 to-zinc-500 h-1.5 rounded-full max-w-full duration-500 ease-in-out",
                   {
                     "from-green-400 to-green-500": price.target_reached,

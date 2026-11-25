@@ -42,7 +42,7 @@ const CartTotals: React.FC<CartTotalsProps> = ({ totals }) => {
 
   return (
     <div data-testid="cart-totals">
-      <div className="flex flex-col gap-y-2 txt-medium text-ui-fg-subtle ">
+      <div className="flex flex-col gap-y-2 text-sm text-muted-foreground ">
         {/* CORE-60 (spec 01 กฎข้อ 118, Q-C8 = ก): ราคาสินค้าลด → บอกว่าเป็นยอดก่อนส่วนลด (เงื่อนไขตามกฎข้อ 120 — CORE-62)
             ป้ายยาวตัดบรรทัดได้ (min-w-0) แต่จำนวนเงินอยู่บรรทัดเดียว (whitespace-nowrap) ที่ 375 */}
         <div className="flex items-center justify-between gap-x-2">
@@ -79,7 +79,7 @@ const CartTotals: React.FC<CartTotalsProps> = ({ totals }) => {
           <div className="flex items-center justify-between">
             <span>ส่วนลด</span>
             <span
-              className="text-ui-fg-interactive"
+              className="text-primary"
               data-testid="cart-discount"
               data-value={discount_total || 0}
             >
@@ -100,10 +100,10 @@ const CartTotals: React.FC<CartTotalsProps> = ({ totals }) => {
         </div>
       </div>
       <div className="h-px w-full border-b border-gray-200 my-4" />
-      <div className="flex items-center justify-between text-ui-fg-base mb-2 txt-medium ">
+      <div className="flex items-center justify-between text-foreground mb-2 text-sm ">
         <span>ยอดรวมทั้งสิ้น</span>
         <span
-          className="txt-xlarge-plus"
+          className="text-lg font-medium"
           data-testid="cart-total"
           data-value={total || 0}
         >

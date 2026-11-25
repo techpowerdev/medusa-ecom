@@ -13,8 +13,8 @@ export default async function Nav() {
 
   return (
     <div className="sticky top-0 inset-x-0 z-50 group">
-      <header className="relative h-16 mx-auto border-b duration-200 bg-white border-ui-border-base">
-        <nav className="content-container px-4 small:px-6 txt-xsmall-plus text-ui-fg-subtle flex items-center justify-between w-full h-full text-small-regular">
+      <header className="relative h-16 mx-auto border-b duration-200 bg-white border-border">
+        <nav className="content-container px-4 small:px-6 text-xs leading-5 text-muted-foreground flex items-center justify-between w-full h-full">
           <div className="flex-1 basis-0 h-full flex items-center">
             <div className="h-full">
               <SideMenu regions={regions} storeName={STORE_NAME} />
@@ -24,7 +24,7 @@ export default async function Nav() {
           <div className="flex items-center h-full">
             <LocalizedClientLink
               href="/"
-              className="txt-compact-large-plus small:txt-compact-xlarge-plus whitespace-nowrap hover:text-ui-fg-base uppercase"
+              className="text-base leading-5 font-medium small:text-lg whitespace-nowrap hover:text-foreground uppercase"
               data-testid="nav-store-link"
             >
               {STORE_NAME}
@@ -35,7 +35,7 @@ export default async function Nav() {
             <Search />
             <div className="hidden small:flex items-center gap-x-6 h-full">
               <LocalizedClientLink
-                className="hover:text-ui-fg-base"
+                className="hover:text-foreground"
                 href="/account"
                 data-testid="nav-account-link"
               >
@@ -45,7 +45,7 @@ export default async function Nav() {
             <Suspense
               fallback={
                 <LocalizedClientLink
-                  className="hover:text-ui-fg-base flex gap-2 whitespace-nowrap"
+                  className="hover:text-foreground flex gap-2 whitespace-nowrap"
                   href="/cart"
                   data-testid="nav-cart-link-loading"
                   aria-busy="true"

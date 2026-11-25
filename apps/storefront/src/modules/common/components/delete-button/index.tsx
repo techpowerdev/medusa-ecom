@@ -1,8 +1,8 @@
 import { deleteLineItem } from "@lib/data/cart"
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { notifyCartUpdated } from "@lib/util/cart-events"
-import { Spinner, Trash } from "@medusajs/icons"
-import { clx } from "@modules/common/components/ui"
+import { cn } from "@/lib/utils"
+import { LoaderCircle, Trash2 } from "lucide-react"
 import { useState } from "react"
 
 // CORE-19c (spec 01 กฎข้อ 64): ลบล้มต้องบอกผู้ใช้ ไม่กลืน error เงียบ
@@ -47,31 +47,31 @@ const DeleteButton = ({
 
   return (
     <div
-      className={clx(
+      className={cn(
         "flex flex-wrap items-center justify-between text-small-regular",
         className
       )}
     >
       <button
-        className="flex gap-x-1 text-ui-fg-subtle hover:text-ui-fg-base cursor-pointer"
+        className="flex gap-x-1 text-muted-foreground hover:text-foreground cursor-pointer"
         onClick={() => handleDelete(id)}
         disabled={isDeleting}
         data-testid={dataTestId}
       >
         {isDeleting ? (
-          <Spinner
-            className="animate-spin"
+          <LoaderCircle
+            className="size-4 animate-spin"
             data-testid="cart-item-remove-spinner"
           />
         ) : (
-          <Trash />
+          <Trash2 className="size-4" />
         )}
         <span>{children}</span>
       </button>
       {error && (
         // qa #142 D-2: ขึ้นบรรทัดใหม่เต็มความกว้างของแถว (order-last) ไม่ถูกบีบข้างปุ่ม
         <span
-          className="basis-full order-last text-ui-fg-error text-small-regular"
+          className="basis-full order-last text-destructive text-small-regular"
           role="alert"
           data-testid="cart-item-remove-error"
         >

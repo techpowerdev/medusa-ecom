@@ -1,5 +1,4 @@
 import { HttpTypes } from "@medusajs/types"
-import { Text } from "@modules/common/components/ui"
 
 type LineItemOptionsProps = {
   variant: HttpTypes.StoreProductVariant | undefined
@@ -13,13 +12,13 @@ const LineItemOptions = ({
   "data-value": dataValue,
 }: LineItemOptionsProps) => {
   return (
-    <Text
+    <p
       data-testid={dataTestid}
       data-value={dataValue}
-      className="inline-block txt-medium text-ui-fg-subtle w-full overflow-hidden text-ellipsis"
+      className="inline-block text-sm text-muted-foreground w-full overflow-hidden text-ellipsis"
     >
       ตัวเลือก: {variant?.title}
-    </Text>
+    </p>
   )
 }
 
