@@ -50,19 +50,34 @@ test("AC-7: tsconfig.json มี \"@/*\": [\"*\"] บน baseUrl src และ�
   expect(compilerOptions.paths["@modules/*"]).toEqual(["modules/*"])
 })
 
-test("AC-7: src/lib/utils.ts export cn จาก package cn", () => {
+// SFUI-2 (session หลักตัดสิน Q1): cn สร้างจาก createCn ของ package cn (`cn/config`) ที่ extend กลุ่ม font-size
+// ด้วย utility ของ globals.css แทน re-export ตรง — ยังเป็น package cn ตัวเดียว (ไม่กลับไป clsx + tailwind-merge)
+test("AC-7: src/lib/utils.ts export cn ที่สร้างจาก package cn (createCn ของ cn/config)", () => {
   const source = fs.readFileSync(path.join(STOREFRONT, "src", "lib", "utils.ts"), "utf8")
   const file = ts.createSourceFile("utils.ts", source, ts.ScriptTarget.Latest)
-  const reexports = file.statements.filter(ts.isExportDeclaration).filter(
+  const importsCreateCn = file.statements.filter(ts.isImportDeclaration).some(
     (node) =>
-      node.moduleSpecifier &&
       ts.isStringLiteral(node.moduleSpecifier) &&
-      node.moduleSpecifier.text === "cn" &&
-      node.exportClause &&
-      ts.isNamedExports(node.exportClause) &&
-      node.exportClause.elements.some((el) => el.name.text === "cn")
+      node.moduleSpecifier.text === "cn/config" &&
+      !!node.importClause?.namedBindings &&
+      ts.isNamedImports(node.importClause.namedBindings) &&
+      node.importClause.namedBindings.elements.some((el) => el.name.text === "createCn")
   )
-  expect(reexports).toHaveLength(1)
+  const exportsCn = file.statements.filter(ts.isVariableStatement).some(
+    (node) =>
+      node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) &&
+      node.declarationList.declarations.some(
+        (d) =>
+          ts.isIdentifier(d.name) &&
+          d.name.text === "cn" &&
+          !!d.initializer &&
+          ts.isCallExpression(d.initializer) &&
+          ts.isIdentifier(d.initializer.expression) &&
+          d.initializer.expression.text === "createCn"
+      )
+  )
+  expect(importsCreateCn).toBe(true)
+  expect(exportsCn).toBe(true)
 })
 
 test("AC-7: vitest.config.mts มี alias \"@\" → src และ include ครอบ src/**/*.test.ts + src/**/*.test.tsx", () => {

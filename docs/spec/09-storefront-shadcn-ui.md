@@ -43,7 +43,7 @@ none
    `text-3xl` = 2rem, keyframes/animation `ring`, `fade-in-right`, `fade-in-top`, `fade-out-top`, `accordion-*`, `enter`, `leave`, `slide-in`) ย้ายเป็น `@theme` ชื่อ class เดิมใช้ได้;
    class เดิมใน `globals.css` ที่ถูก `@apply` (`text-xsmall-regular` … `text-3xl-semi`) เป็น `@utility`
 2. `components.json` ตาม ADR-030 ข้อ 2 (style `new-york`, ติดตั้งด้วย `pnpm dlx shadcn@4.23.1 init -b radix`, `tailwind.config: ""`, `baseColor: "neutral"`, `iconLibrary: "lucide"`,
-   aliases `@/components`, `@/components/ui`, `@/lib/utils`, `@/lib`, `@/hooks`); `tsconfig.json` มี `"@/*": ["*"]`; `src/lib/utils.ts` = `export { cn } from "cn"`
+   aliases `@/components`, `@/components/ui`, `@/lib/utils`, `@/lib`, `@/hooks`); `tsconfig.json` มี `"@/*": ["*"]`; `src/lib/utils.ts` export `cn` ที่สร้างด้วย `createCn` จาก `cn/config` โดย extend classGroups `font-size` ด้วย utility ขนาดฟอนต์ `text-*` ของ `globals.css` (`FONT_SIZE_UTILITIES`) — กัน tailwind-merge ตัด `text-xl-semi` ฯลฯ เมื่อคู่กับ `text-ui-fg-*` (ตัดสิน 2026-11-26 ระหว่าง SFUI-2); component ใน `src/components/ui/*` import `cn` จาก `@/lib/utils` เท่านั้น
 3. component ของ shadcn เพิ่มด้วย `pnpm dlx shadcn@4.23.1 add <name>` ลง `src/components/ui/` เท่านั้น และเฉพาะตัวที่ task ระบุ (ตาราง Tasks); แก้ไฟล์ที่ CLI สร้างได้เท่าที่จำเป็น
    พร้อม comment `// SFUI: <เหตุผล>`; ห้ามสร้างไฟล์ใน `src/components/ui/` ที่ไม่มาจาก registry ของ shadcn; task 2–5 ห้ามแก้ `package.json`/`pnpm-lock.yaml`
    (component ต้องการ dependency ใหม่ → หยุดรายงาน planner)
@@ -67,7 +67,7 @@ none
    `Trash`→`Trash2`, `Spinner`/`Loader`→`LoaderCircle` + `animate-spin`, `ExclamationCircleSolid`→`CircleAlert`, `EllipseMiniSolid`→`Circle` (`fill-current size-2`),
    `CreditCard`→`CreditCard`, `Scan`→`QrCode`, `ArrowRightOnRectangle`→`LogOut`; ปุ่มที่มีแต่ icon ต้องมีชื่อที่เข้าถึงได้เป็นภาษาไทยไม่น้อยกว่าเดิม
 7. token (ADR-030 ข้อ 7): `@theme` มี `--color-brand` และ `--color-brand-50..900` ค่า hex เดิม (`DEFAULT #525252`, 50 `#FAFAFA` … 900 `#171717`) และ `--color-grey-0..90` เดิม;
-   `:root` มี `--primary: var(--color-brand-900)`, `--primary-foreground: var(--color-brand-50)`, `--ring: var(--color-brand-400)`; token อื่นตาม `neutral`; ไม่มี selector `.dark`;
+   `:root` มี `--primary: var(--color-brand-900)`, `--primary-foreground: var(--color-brand-50)`, `--ring: var(--color-brand-400)`; token อื่นตาม `neutral`; ไม่มี selector `.dark`; `@custom-variant dark (&:where([data-mode=dark] *))` เพื่อไม่ให้ `dark:` ของ component shadcn ทำงานตาม `prefers-color-scheme` (ตัดสิน 2026-11-26 ระหว่าง SFUI-2);
    โค้ดใหม่ไม่ใช้สี hex แบบ arbitrary (`[#…]`) ใน `className`
 8. ฟอนต์: `--font-sans` ขึ้นต้นด้วย `var(--font-noto-sans-thai)`; `body` ใช้ `font-sans`; `src/app/layout.tsx` ยังโหลด `Noto_Sans_Thai` (`variable: "--font-noto-sans-thai"`) — แทนกฎ 14 ของ spec 01 (CORE-8)
 9. `data-testid` ทุกค่าใน baseline (`e2e/support/sfui-baseline.json`, SFUI-1a) ต้องยังอยู่ใน `src/` และอยู่บน element ที่ e2e ใช้งานจริง:
@@ -96,7 +96,7 @@ none
 20. ตาราง map ของ shim (SFUI-5x, 3x): `Text` → `<p className="text-sm">` (หรือ `<span>`/`<div>` ตาม `as`); `Heading` h1/h2/h3 → `<hN className="text-3xl|text-2xl|text-xl font-semibold">`;
     `Container` → `<div className="rounded-lg bg-card p-4">`; `Badge color` → shadcn `Badge` (`grey`→`secondary`, `red`→`destructive`, อื่น → `outline` + `bg-<สี>-100 text-<สี>-700`);
     `IconBadge` → `Badge variant="secondary"`; `IconButton` → `Button variant="ghost" size="icon"`; `Button` `primary|secondary|transparent` → `default|outline|ghost`,
-    `small|medium|large` → `sm|default|lg`; `buttonClassName(o, c)` → `cn(buttonVariants(o), c)`; `clx` → `cn`; `Label`/`Input`/`Table.*` → shadcn ชื่อเดียวกัน
+    `small|medium|large` → `sm|default|lg` (`large` → `lg` + `h-12` คงความสูง 48px ของ develop — D-1 จาก qa: `lg` ของ shadcn สูง 40px ทำให้คลิก `submit-payment-button` หลังกรอกบัตรตกใน iframe ของ Stripe แล้วค้างที่ `step=payment`; shim ใส่ให้ เมื่อย้ายไปใช้ shadcn ตรงต้องใส่ `h-12` เอง — กฎ 19 ชนะกฎ 20); `buttonClassName(o, c)` → `cn(buttonVariants(o), c)`; `clx` → `cn`; `Label`/`Input`/`Table.*` → shadcn ชื่อเดียวกัน (shim ส่ง `px-4` ให้ `TableHead` และ `p-4` ให้ `TableCell` และ `Text` ค่าเริ่มต้น `text-sm leading-[1.4rem]` ที่ไม่ทับ `txt-*`/`h*-webs` ของผู้เรียก)
     (`Table.Header`→`TableHeader`, `.Body`→`TableBody`, `.Row`→`TableRow`, `.Head`/`.HeaderCell`→`TableHead`, `.Cell`→`TableCell`); `Button isLoading` → prop `isLoading` ที่เพิ่มใน
     `src/components/ui/button.tsx` (SFUI-2 — แสดง "กำลังดำเนินการ..." + disabled ตามเดิม)
     `Checkbox` (shim native → shadcn, ใน `common/components/checkbox/index.tsx` ของ SFUI-5a; ผู้ใช้เดียวคือ `checkout/components/shipping-address/index.tsx:212` `name="same_as_billing"`):
@@ -106,12 +106,12 @@ none
     `RadioGroup` ใน `common/components/filter-radio-group/index.tsx` (SFUI-5a; sort/filter ของ store): `<RadioGroup value={value} onValueChange={handleChange} data-testid={dataTestId}>`
     + `RadioGroupItem value id className="sr-only"` (ไม่ใช้ `hidden` — `display:none` ทำให้ label คลิกไม่ถึง) + `Label htmlFor` ที่คง `data-testid="radio-label"` และ `data-active` เดิม;
     `EllipseMiniSolid` → `Circle` ตามกฎ 6
-21. map class (SFUI-5x, 3x): `txt-*xsmall*`→`text-xs`, `txt-*small*`/`txt-*medium*`→`text-sm`, `txt-*large*`→`text-base`, `txt-*xlarge*`→`text-lg`, `-plus`→`+ font-medium`, `compact`→`+ leading-5`;
+21. map class (SFUI-5x, 3x): `txt-*xsmall*`→`text-xs`, `txt-*small*`→`text-sm`, `txt-*medium*`→`text-sm leading-[1.4rem]` (คง line-height 22.4px เดิม — core-38), `txt-*large*`→`text-base`, `txt-*xlarge*`→`text-lg`, `-plus`→`+ font-medium`, `compact`→`+ leading-5`;
     `h1-webs`→`text-6xl font-medium`, `h2-webs`→`text-5xl font-medium`, `h3-webs`→`text-4xl font-medium`; `text-ui-fg-base`→`text-foreground`, `text-ui-fg-subtle`/`-muted`→`text-muted-foreground`,
     `text-ui-fg-disabled`→`text-muted-foreground/60`, `text-ui-fg-interactive`→`text-primary underline-offset-4`, `text-ui-fg-error`→`text-destructive`, `text-ui-fg-on-color`/`-on-inverted`→`text-primary-foreground`,
     `bg-ui-bg-base`/`-field`→`bg-background`, `bg-ui-bg-subtle`/`-component`→`bg-muted`, `bg-ui-bg-interactive`→`bg-primary`, `bg-ui-bg-disabled`→`bg-muted opacity-50`,
     `border-ui-border-base`/`-strong`→`border-border`/`border-input`, `shadow-borders-*`→`border border-input` (+ `ring-[3px] ring-ring/50` แบบ focus), `shadow-elevation-*`→`shadow-sm`/`shadow-md`,
-    `ui-tag-<สี>-*`→`<สี>-100`/`<สี>-700`; ชื่อที่ไม่อยู่ในตาราง → token ของ shadcn ที่ใกล้ที่สุด (บันทึกใน PR)
+    `ui-tag-<สี>-*`→`<สี>-100`/`<สี>-700`; ชื่อที่ไม่อยู่ในตาราง → token ของ shadcn ที่ใกล้ที่สุด (บันทึกใน PR); **กฎ 19 ชนะกฎ 20/21**: ถ้าการ map ทำให้ e2e เดิมล้ม (ขนาด/ตำแหน่ง/ระยะ) ให้คงค่าเดิมด้วย utility ของ Tailwind แทน เช่น `TableHead` ของ cart/order/skeleton คง `px-4` และ `TableCell` คง `p-4` (shim ส่งให้แล้วตั้งแต่ SFUI-2; เมื่อย้ายไปใช้ shadcn ตรงต้องใส่เอง — core-42/47) (ตัดสิน 2026-11-26 จาก triage)
 
 ## Acceptance criteria (Given/When/Then, numbered AC-1..n)
 - AC-1 (SFUI-1a, 1b, 6; กฎ 1–3) static `e2e/sfui-deps.unit.spec.ts`: Given `apps/storefront/package.json` Then เวอร์ชันตรงตาราง ADR-030 ข้อ 10 แบบ exact ตามขั้น
@@ -135,7 +135,7 @@ none
   SFUI-2 ส่งต่อไป shadcn แล้ว pattern ในไฟล์นี้หาย → ลบ key `SFUI-2` ออก (การลบไฟล์ shim ใน SFUI-6 ยังถูกบังคับผ่านไฟล์ผู้ใช้ที่ import `@modules/common/components/ui` ซึ่งอยู่ใต้ key ของ 3x/4/5x
   และ AC-16); หลัง SFUI-6 ไฟล์นี้เหลือเฉพาะการตรวจ (a) กับรายการว่าง
   — reviewer ตรวจ (ไม่ใช่ static): task ที่จะ merge ลบ key ของตัวเองออกจาก `PENDING` ครบ และไม่ลบ key ของ task อื่น
-- AC-7 (SFUI-1b, กฎ 2) static: `components.json` มีค่าตามกฎ 2 ทุก field; `tsconfig.json` มี `@/*`; `src/lib/utils.ts` export `cn`; `vitest.config.mts` มี alias `"@"` → `src` และ `include` ครอบ `src/**/*.test.ts` + `src/**/*.test.tsx`;
+- AC-7 (SFUI-1b, กฎ 2) static: `components.json` มีค่าตามกฎ 2 ทุก field; `tsconfig.json` มี `@/*`; `src/lib/utils.ts` export `cn` (สร้างด้วย `createCn` ตามกฎ 2 และทุก utility ขนาดฟอนต์ใน `globals.css` อยู่ใน `FONT_SIZE_UTILITIES`); `vitest.config.mts` มี alias `"@"` → `src` และ `include` ครอบ `src/**/*.test.ts` + `src/**/*.test.tsx`;
   unit `src/lib/utils.test.ts` ที่ `import { cn } from "@/lib/utils"` (ผ่าน alias ไม่ใช่ path สัมพัทธ์) ผ่าน: `cn("px-2", "px-4") === "px-4"`
 - AC-8 (SFUI-2, กฎ 3, 14, 20) unit (jsdom) `src/components/ui/button.test.tsx` — ต้อง**ถูกรันจริง** (ปรากฏในผล `pnpm --filter storefront test:unit` ของ PR; include `*.test.tsx` จาก SFUI-1b) — ของ `src/components/ui/button.tsx`: `isLoading` → ปุ่ม disabled และข้อความมีอักษรไทย; `buttonVariants({ variant: "outline", size: "sm" })` คืน string;
   shim `Button`/`Badge`/`Label`/`Input`/`Table`/`IconButton`/`buttonClassName`/`clx` ส่งต่อไป shadcn (`Button` ที่ render มี `data-slot="button"`); e2e AC-4 ข้อ (2);
