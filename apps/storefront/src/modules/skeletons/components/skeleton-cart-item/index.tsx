@@ -2,28 +2,29 @@ import { TableCell, TableRow } from "@/components/ui/table"
 
 const SkeletonCartItem = () => {
   return (
+    // SFUI-6 (กฎ 19): Table.Cell เดิมไม่มี whitespace-nowrap ของ shadcn TableCell
     <TableRow className="w-full m-4">
-      <TableCell className="pl-0! p-4 w-24">
+      <TableCell className="whitespace-normal pl-0! p-4 w-24">
         <div className="flex w-24 h-24 p-4 bg-gray-200 rounded-large animate-pulse" />
       </TableCell>
-      <TableCell className="p-4 text-left">
+      <TableCell className="whitespace-normal p-4 text-left">
         <div className="flex flex-col gap-y-2">
           <div className="w-32 h-4 bg-gray-200 animate-pulse" />
           <div className="w-24 h-4 bg-gray-200 animate-pulse" />
         </div>
       </TableCell>
-      <TableCell className="p-4">
+      <TableCell className="whitespace-normal p-4">
         <div className="flex gap-2 items-center">
           <div className="w-6 h-8 bg-gray-200 animate-pulse" />
           <div className="w-14 h-10 bg-gray-200 animate-pulse" />
         </div>
       </TableCell>
-      <TableCell className="p-4">
+      <TableCell className="whitespace-normal p-4">
         <div className="flex gap-2">
           <div className="w-12 h-6 bg-gray-200 animate-pulse" />
         </div>
       </TableCell>
-      <TableCell className="p-4 pr-0! text-right">
+      <TableCell className="whitespace-normal p-4 pr-0! text-right">
         <div className="flex gap-2 justify-end">
           <div className="w-12 h-6 bg-gray-200 animate-pulse" />
         </div>

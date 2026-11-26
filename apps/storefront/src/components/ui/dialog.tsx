@@ -74,7 +74,8 @@ function DialogContent({
             className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
           >
             <XIcon />
-            <span className="sr-only">Close</span>
+            {/* SFUI: ข้อความของ UI เป็นภาษาไทย (spec 09 กฎ 10) */}
+            <span className="sr-only">ปิด</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Content>
@@ -112,7 +113,8 @@ function DialogFooter({
       {children}
       {showCloseButton && (
         <DialogPrimitive.Close asChild>
-          <Button variant="outline">Close</Button>
+          {/* SFUI: ข้อความของ UI เป็นภาษาไทย (spec 09 กฎ 10) */}
+          <Button variant="outline">ปิด</Button>
         </DialogPrimitive.Close>
       )}
     </div>

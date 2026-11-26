@@ -42,18 +42,19 @@ const ItemsTemplate = ({
           >
             {/* CORE-42 (กฎข้อ 100a): padding < small ตรงกับ cell ของ Item (≥ small คงเดิม)
                 SFUI-5c: shadcn TableHead เริ่มที่ px-2 — ใส่ px-4 เดิมของ shim เอง (spec 09 กฎ 21, core-42/47)
-                และ text-muted-foreground (TableHead ของ shadcn ตั้ง text-foreground ทับสีของแถวหัวตาราง) */}
-            <TableHead className="px-4 pl-0! pr-2 small:pr-4 text-muted-foreground">
+                และ text-muted-foreground (TableHead ของ shadcn ตั้ง text-foreground ทับสีของแถวหัวตาราง)
+                SFUI-6 (กฎ 19): Table.HeaderCell เดิมสูง h-12 และไม่มี whitespace-nowrap ของ shadcn TableHead (h-10) */}
+            <TableHead className="h-12 whitespace-normal px-4 pl-0! pr-2 small:pr-4 text-muted-foreground">
               สินค้า
             </TableHead>
-            <TableHead className="px-2 small:px-4 text-muted-foreground"></TableHead>
-            <TableHead className="px-2 small:px-4 text-muted-foreground">
+            <TableHead className="h-12 whitespace-normal px-2 small:px-4 text-muted-foreground"></TableHead>
+            <TableHead className="h-12 whitespace-normal px-2 small:px-4 text-muted-foreground">
               จำนวน
             </TableHead>
-            <TableHead className="px-4 hidden small:table-cell text-muted-foreground">
+            <TableHead className="h-12 whitespace-normal px-4 hidden small:table-cell text-muted-foreground">
               ราคา
             </TableHead>
-            <TableHead className="px-4 pr-0! text-right text-muted-foreground">
+            <TableHead className="h-12 whitespace-normal px-4 pr-0! text-right text-muted-foreground">
               รวม
             </TableHead>
           </TableRow>

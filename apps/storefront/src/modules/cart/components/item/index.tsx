@@ -82,9 +82,10 @@ const Item = ({
       data-testid="product-row"
     >
       {/* CORE-42 (กฎข้อ 100a): < small ลด padding ของช่องรูป/ชื่อสินค้า/จำนวน ให้คอลัมน์ "รวม" อยู่ในจอ 375 (รวมยอดหลักหมื่นมีทศนิยม — qa #278 D-1) — ≥ small คงเดิม
-          SFUI-5c: shadcn TableCell เริ่มที่ p-2 — ทุก cell ใส่ p-4 เดิมของ shim เอง (spec 09 กฎ 21, core-42/47) */}
+          SFUI-5c: shadcn TableCell เริ่มที่ p-2 — ทุก cell ใส่ p-4 เดิมของ shim เอง (spec 09 กฎ 21, core-42/47)
+          SFUI-6: shadcn TableCell ตั้ง whitespace-nowrap ซึ่ง Table.Cell เดิมไม่มี — ทุก cell ใส่ whitespace-normal ให้ข้อความยาวตัดบรรทัดเท่าเดิม (กฎ 19) */}
       <TableCell
-        className={cn("pl-0! p-4 pr-2 small:pr-4 w-24", {
+        className={cn("whitespace-normal pl-0! p-4 pr-2 small:pr-4 w-24", {
           "max-small:block max-small:w-auto max-small:row-span-2": card,
         })}
       >
@@ -104,7 +105,7 @@ const Item = ({
       </TableCell>
 
       <TableCell
-        className={cn("p-4 text-left px-2 small:px-4", {
+        className={cn("whitespace-normal p-4 text-left px-2 small:px-4", {
           "max-small:block max-small:col-span-2 max-small:min-w-0 max-small:break-words":
             card,
         })}
@@ -120,7 +121,7 @@ const Item = ({
 
       {type === "full" && (
         <TableCell
-          className={cn("p-4 px-2 small:px-4", {
+          className={cn("whitespace-normal p-4 px-2 small:px-4", {
             "max-small:block max-small:min-w-0 max-small:pt-0": card,
           })}
         >
@@ -153,7 +154,7 @@ const Item = ({
       )}
 
       {type === "full" && (
-        <TableCell className="p-4 hidden small:table-cell">
+        <TableCell className="whitespace-normal p-4 hidden small:table-cell">
           <LineItemUnitPrice
             item={item}
             style="tight"
@@ -163,7 +164,7 @@ const Item = ({
       )}
 
       <TableCell
-        className={cn("p-4 pr-0!", {
+        className={cn("whitespace-normal p-4 pr-0!", {
           "max-small:block max-small:pl-2 max-small:pt-0 max-small:whitespace-nowrap":
             card,
         })}

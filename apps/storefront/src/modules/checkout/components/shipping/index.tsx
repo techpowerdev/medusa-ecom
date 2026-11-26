@@ -10,6 +10,7 @@ import { selectedShippingOptionId, shippingOptionsForCart } from "@lib/util/ship
 import { HttpTypes } from "@medusajs/types"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import Divider from "@modules/common/components/divider"
+import OptionDot from "@modules/common/components/option-dot"
 import { CircleCheck, LoaderCircle } from "lucide-react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -27,12 +28,6 @@ const PICKUP_OPTION_OFF = "__PICKUP_OFF"
 // ทั้งแถวเป็นปุ่ม (คลิกได้ทั้งแถวเหมือนเดิม); indicator ของ shadcn ซ่อน — วาดวงกลมเองในแถว (แบบเดียวกับ PaymentContainer ของ SFUI-3d)
 const OPTION_CLASS =
   "group flex size-auto aspect-auto w-full items-center justify-between rounded-md text-small-regular text-left shadow-none cursor-pointer py-4 px-8 mb-2 hover:border-ring [&>[data-slot=radio-group-indicator]]:hidden"
-
-const OptionDot = () => (
-  <span className="flex size-4 shrink-0 items-center justify-center rounded-full border border-input group-data-[state=checked]:border-primary group-data-[state=checked]:bg-primary">
-    <span className="hidden size-1.5 rounded-full bg-primary-foreground group-data-[state=checked]:block" />
-  </span>
-)
 
 type ShippingProps = {
   cart: HttpTypes.StoreCart

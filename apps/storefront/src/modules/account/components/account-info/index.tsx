@@ -124,9 +124,8 @@ const AccountInfo = ({
       </div>
 
       <CollapsibleContent
-        // SFUI-3c (กฎ 4a): render ตลอด ซ่อน/แสดงด้วย class เดิม — hidden={false} ทับ `hidden` ที่ Radix ใส่ตอนปิด (ไม่งั้น transition หาย)
+        // SFUI-3c (กฎ 4a): render ตลอด ซ่อน/แสดงด้วย class เดิม — forceMount ทำให้ Radix ไม่ใส่ `hidden` ตอนปิด (transition เดิมยังทำงาน)
         forceMount
-        hidden={false}
         // CORE-22 (กฎข้อ 48): panel ที่ปิดต้องไม่รับ click/focus — ไม่งั้นปุ่มบันทึกที่มองไม่เห็นบัง editor ถัดไป
         inert={!state}
         className={cn(

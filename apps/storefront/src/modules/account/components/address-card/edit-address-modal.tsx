@@ -88,7 +88,8 @@ const EditAddress: React.FC<EditAddressProps> = ({
         data-testid="address-container"
       >
         <div className="flex flex-col">
-          <h2 className="text-left text-base-semi" data-testid="address-name">
+          {/* SFUI-6 (กฎ 21): เดิม <Heading> h2 + text-base-semi — บน develop text-2xl/font-semibold ของ shim ชนะ (.text-base-semi อยู่ @layer components) → 24px/32px/600 */}
+          <h2 className="text-left text-2xl font-semibold" data-testid="address-name">
             {address.first_name} {address.last_name}
           </h2>
           {address.company && (

@@ -6,7 +6,7 @@ import { STOREFRONT } from "./support/sfui-source"
 
 // SFUI (spec 09 กฎ 1, AC-1; ADR-030 ข้อ 10): dependency ของ storefront pin แบบ exact ตามตาราง ADR-030 ทีละขั้น
 // ขั้น 1a: Tailwind v4 + PostCSS plugin ของ v4; ถอด preset/plugin ของ v3 และ autoprefixer
-// (task ถัดไปเพิ่มข้อตรวจของขั้นตัวเองในไฟล์นี้: 1b = tw-animate-css, radix-ui, cva, cn, lucide-react; 6 = ถอดชุดที่เหลือ)
+// ขั้น 1b = tw-animate-css, radix-ui, cva, cn, lucide-react; ขั้น 6 = ถอดชุดที่เหลือ (ข้อตรวจของแต่ละขั้นอยู่ด้านล่าง)
 const pkg = JSON.parse(fs.readFileSync(path.join(STOREFRONT, "package.json"), "utf8")) as {
   dependencies: Record<string, string>
   devDependencies: Record<string, string>
@@ -59,4 +59,13 @@ test("AC-1 (1b): dependency ของ shadcn pin exact ตาม ADR-030 ข้�
   }
   // CLI ใช้ผ่าน pnpm dlx เท่านั้น ไม่เป็น dependency
   expect(all.shadcn).toBeUndefined()
+})
+
+// ขั้น 6 (SFUI-6): ถอดชั้น UI เดิมที่ไม่มีผู้ใช้แล้ว — icon (lucide แทน), headless (Radix ผ่าน shadcn แทน),
+// Radix แยก package (radix-ui รวมแทน), clsx (cn แทน)
+test("AC-1 (6): ไม่มี @medusajs/icons, @headlessui/react, @radix-ui/react-*, clsx", () => {
+  for (const name of ["@medusajs/icons", "@headlessui/react", "clsx"]) {
+    expect(all[name], name).toBeUndefined()
+  }
+  expect(Object.keys(all).filter((name) => name.startsWith("@radix-ui/"))).toEqual([])
 })

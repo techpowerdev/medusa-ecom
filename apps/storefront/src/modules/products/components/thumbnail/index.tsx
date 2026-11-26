@@ -26,9 +26,10 @@ const Thumbnail: React.FC<ThumbnailProps> = ({
   const initialImage = thumbnail || images?.[0]?.url
 
   return (
+    // SFUI-6 (กฎ 19): เดิมเป็น <Container> ของ shim (clsx "bg-white rounded-lg p-4" + class ผู้เรียก) — ใน CSS ของ v3 บน develop .bg-white/.p-4 อยู่หลัง .bg-ui-bg-subtle จึงชนะ → พื้นขาว (bg-card) ไม่ใช่ bg-muted
     <div
       className={cn(
-        "relative w-full overflow-hidden p-4 bg-muted shadow-sm rounded-lg group-hover:shadow-md transition-shadow ease-in-out duration-150",
+        "relative w-full overflow-hidden p-4 bg-card shadow-sm rounded-lg group-hover:shadow-md transition-shadow ease-in-out duration-150",
         className,
         {
           "aspect-[11/14]": isFeatured,

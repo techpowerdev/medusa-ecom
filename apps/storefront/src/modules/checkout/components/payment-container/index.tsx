@@ -4,6 +4,7 @@ import React, { useContext, useEffect, useRef, useState, type JSX } from "react"
 
 import { isManual } from "@lib/constants"
 import { intentIsTerminal } from "@lib/util/payment-session"
+import OptionDot from "@modules/common/components/option-dot"
 import SkeletonCardDetails from "@modules/skeletons/components/skeleton-card-details"
 import { PaymentElement, useStripe } from "@stripe/react-stripe-js"
 import PaymentTest from "../payment-test"
@@ -47,9 +48,7 @@ const PaymentContainer: React.FC<PaymentContainerProps> = ({
         {/* เนื้อหาในปุ่มเป็น span (phrasing content ของ <button>) */}
         <span className="flex items-center justify-between">
           <span className="flex items-center gap-x-4">
-            <span className="flex size-4 shrink-0 items-center justify-center rounded-full border border-input group-data-[state=checked]:border-primary group-data-[state=checked]:bg-primary">
-              <span className="hidden size-1.5 rounded-full bg-primary-foreground group-data-[state=checked]:block" />
-            </span>
+            <OptionDot />
             <span className="text-base-regular">
               {paymentInfoMap[paymentProviderId]?.title || paymentProviderId}
             </span>

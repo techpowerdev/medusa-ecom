@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils"
 // หัวแท็บทั้งแถวเป็นปุ่ม trigger (ชื่อปุ่ม = ชื่อแท็บ) และใช้ chevron ของ shadcn แทนไอคอน +/− เดิม
 type AccordionItemProps = React.ComponentProps<typeof AccordionItem> & {
   title: string
-  headingSize?: "small" | "medium" | "large"
   children: React.ReactNode
 }
 
@@ -26,7 +25,6 @@ const Item: React.FC<AccordionItemProps> = ({
   title,
   children,
   className,
-  headingSize: _headingSize = "large",
   ...props
 }) => {
   return (

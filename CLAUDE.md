@@ -87,7 +87,12 @@ GitHub ใช้งานผ่าน `gh` CLI ไม่ใช่ MCP server
 - Medusa v2 (pin เวอร์ชัน `@medusajs/*` แบบระบุแน่ชัดใน `package.json` ที่ root; bump ผ่าน ADR เท่านั้น)
 - PostgreSQL 16, Redis 7 (event bus, workflow engine, cache, locking)
 - Stripe (บัตรเครดิต + PromptPay ผ่าน `@medusajs/medusa/payment-stripe`)
-- Next.js (Medusa starter), Tailwind, Playwright
+- Next.js (Medusa starter — ชั้น commerce/data คงเดิม), Playwright
+- storefront UI (ADR-030): Tailwind CSS v4 แบบ CSS-first (ไม่มี `tailwind.config.*`; theme/brand อยู่ใน `@theme` ของ `src/styles/globals.css`)
+  + shadcn/ui (Radix ผ่าน package `radix-ui`; component อยู่ที่ `src/components/ui/*` เพิ่มด้วย `pnpm dlx shadcn@4.23.1 add` เท่านั้น) + icon `lucide-react`;
+  ไม่ใช้ `@medusajs/ui-preset`/`@medusajs/icons`/`@headlessui/react`/`clsx` ใน storefront (admin ยังใช้ `@medusajs/ui` ตาม ADR-018)
+  - Radix เข้าผ่าน `src/components/ui/*` เท่านั้น ห้าม import `radix-ui`/`@radix-ui/*` ใน `src/modules`/`src/app` (ADR-030 ข้อ 4)
+  - แก้ไฟล์ใน `src/components/ui/` ได้เท่าที่จำเป็นพร้อม comment `// SFUI:` อธิบายเหตุผล
 - Docker Compose สำหรับ local; ดู `docs/spec/07-scaling-ops.md` สำหรับ prod
 
 ## Commands
@@ -188,8 +193,8 @@ pnpm --filter storefront build && pnpm --filter storefront start
 - ก่อน push งานที่แก้หน้าใดของ storefront/admin ต้องรัน e2e **ทุก** spec ที่อ้างหน้านั้น (grep path/testid ใน `apps/storefront/e2e/`)
   ไม่ใช่แค่ spec ของ task (CORE-85: AC-48 ของ `thai-ui-cart-order` ล้มใน CI)
 - e2e ที่ assert ข้อความ error ต้องสร้างค่าที่คาดจาก code จริง และ assert ว่าไม่เท่ากับข้อความ fallback (CORE-83 D1)
-- unit ที่ mock component UI ทั้งก้อน (เช่น `RadioGroup` ของ headless UI) พลาด bug จริงได้ (`disabled={false}` ทับค่าของกลุ่ม — PAY-16 #541)
-  ให้ render headless component ของจริงแล้วตรวจ `aria-*`
+- unit ที่ mock component UI ทั้งก้อน (เช่น `RadioGroup` — เดิม headless UI, ตอนนี้ Radix ผ่าน shadcn) พลาด bug จริงได้ (`disabled={false}` ทับค่าของกลุ่ม — PAY-16 #541)
+  ให้ render component ของจริงแล้วตรวจ `aria-*`
 - Next 16 ส่ง server action ทีละตัวตามคิว — e2e ที่จำลอง race ระหว่าง action สองตัว (เช่น poll กับ placeOrder) ต้องจำลองลำดับคิวที่เกิดได้จริง
   (PAY-17 #540) และ route mock ที่ส่ง server action ต่อไป backend ยังมีผลข้างเคียงจริง (เช่น `authorizePaymentSession` เปลี่ยน session เป็น
   canceled ก่อน throw — PAY-16 #541) ถ้าไม่ต้องการให้ตอบจาก browser แทน

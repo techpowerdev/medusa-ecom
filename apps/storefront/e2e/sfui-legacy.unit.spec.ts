@@ -11,67 +11,34 @@ import {
   legacyClassNames,
   legacyNamesOfClass,
   readSource,
+  sourceFiles,
 } from "./support/sfui-source"
 
-// SFUI (spec 09 กฎ 15, AC-6): ไฟล์ที่ยังมี pattern ต้องห้าม (import ของชั้น UI เดิม / class ของ preset) ต้องอยู่ใน PENDING
-// ของ task เจ้าของไฟล์ (ตารางเจ้าของไฟล์ใน spec 09) — task ที่ย้ายไฟล์เสร็จต้องลบไฟล์ออกจากรายการ และลบ key ของตัวเองใน PR เดียวกัน
-// (สร้างใน SFUI-1a จาก origin/develop; หลัง SFUI-6 เหลือเฉพาะข้อ (a) กับรายการว่าง)
-type Task =
-  | "SFUI-2"
-  | "SFUI-3a"
-  | "SFUI-3b"
-  | "SFUI-3c"
-  | "SFUI-3d"
-  | "SFUI-3e"
-  | "SFUI-4"
-  | "SFUI-5a"
-  | "SFUI-5b"
-  | "SFUI-5c"
-  | "SFUI-5d"
-  | "SFUI-5e"
-  | "SFUI-6"
+// SFUI (spec 09 กฎ 15–16, AC-6, AC-16): ชั้น UI เดิม (shim/radio/modal, @medusajs/icons, @headlessui/react, @radix-ui/react-*, clsx,
+// class/ตัวแปรของ @medusajs/ui-preset) ถูกย้ายครบแล้ว (SFUI-2..5e) และ SFUI-6 ลบชั้นเข้ากันได้ทิ้ง — ไม่มีไฟล์ใดใน src/** ได้รับยกเว้นอีก
+// (ก่อน SFUI-6 ไฟล์นี้มี PENDING แยก key ตาม task เจ้าของไฟล์ — ตามสเปก AC-6 หลัง SFUI-6 เหลือเฉพาะข้อ (a) กับรายการว่าง)
+const PENDING: string[] = []
 
-const TASKS: Task[] = [
-  "SFUI-2",
-  "SFUI-3a",
-  "SFUI-3b",
-  "SFUI-3c",
-  "SFUI-3d",
-  "SFUI-3e",
-  "SFUI-4",
-  "SFUI-5a",
-  "SFUI-5b",
-  "SFUI-5c",
-  "SFUI-5d",
-  "SFUI-5e",
-  "SFUI-6",
-]
-
-const PENDING: Partial<Record<Task, string[]>> = {
-  "SFUI-6": [
-    "src/modules/common/components/radio/index.tsx",
-    // SFUI-2: unit ของ shim (import shim = pattern ต้องห้าม) — ลบพร้อมโฟลเดอร์ shim ใน SFUI-6
-    "src/modules/common/components/ui/index.test.tsx",
-  ],
-}
-
-const pendingFiles = Object.values(PENDING).flat()
-
-test("AC-6 (a): ทุกไฟล์ที่มี pattern ต้องห้ามอยู่ใน PENDING ของ task ใด task หนึ่ง", () => {
-  const missing = filesWithForbiddenPattern().filter((file) => !pendingFiles.includes(file))
-  expect(missing, "ไฟล์ที่มี pattern ต้องห้ามแต่ไม่อยู่ใน PENDING").toEqual([])
+test("AC-6 (a) / AC-16: ไม่มีไฟล์ใดใน src/** ที่มี pattern ต้องห้ามของกฎ 15 (PENDING ว่าง)", () => {
+  expect(PENDING).toEqual([])
+  const offending = filesWithForbiddenPattern().filter((file) => !PENDING.includes(file))
+  expect(offending, "ไฟล์ที่ import ชั้น UI เดิม หรือใช้ class/ตัวแปรของ preset กลับมา").toEqual([])
 })
 
-test("AC-6 (b): ทุกไฟล์ใน PENDING ยังมีอยู่และยังมี pattern (ย้ายเสร็จแล้วต้องลบออกจากรายการ)", () => {
-  const stale = pendingFiles.filter(
-    (file) => !fs.existsSync(path.join(STOREFRONT, file)) || !hasForbiddenPattern(file, readSource(file))
-  )
-  expect(stale, "ไฟล์ใน PENDING ที่ไม่มี pattern แล้ว/ไม่มีไฟล์").toEqual([])
-})
-
-test("AC-6 (c): key ของ PENDING เป็น task ที่ยังไม่ merge เท่านั้น และไม่มีไฟล์ซ้ำข้าม task", () => {
-  for (const key of Object.keys(PENDING)) expect(TASKS, key).toContain(key)
-  expect(new Set(pendingFiles).size).toBe(pendingFiles.length)
+// AC-16: ชั้นเข้ากันได้ชั่วคราวถูกลบและ globals.css ไม่ import กลับมา
+test("AC-16: ไม่มี legacy-medusa.css, shim common/components/{ui,radio,modal} และ globals.css ไม่ import legacy", () => {
+  for (const removed of [
+    "src/styles/legacy-medusa.css",
+    "src/modules/common/components/ui",
+    "src/modules/common/components/radio",
+    "src/modules/common/components/modal",
+  ]) {
+    expect(fs.existsSync(path.join(STOREFRONT, removed)), removed).toBe(false)
+  }
+  const globals = readSource("src/styles/globals.css")
+  expect(globals).not.toMatch(/legacy-medusa/)
+  // ไม่มี @theme/สีของ preset กลับมาใน CSS (--color-ui-*, --shadow-borders-* ฯลฯ, ring สีน้ำเงินของ v3)
+  expect(globals).not.toMatch(/--color-ui-|--shadow-(?:borders|elevation|buttons|details)-|--default-ring-color/)
 })
 
 // positive/negative control ของตัวจับ pattern
@@ -116,4 +83,24 @@ test("AC-6: ไฟล์ที่อ้าง var(--fg-*) อยู่ใน PEN
   ]) {
     expect(hasForbiddenPattern(file, readSource(file)), file).toBe(false)
   }
+})
+
+// ย้ายจาก e2e/sfui-legacy-css.unit.spec.ts (ลบใน SFUI-6): ตัวแปร CSS ที่ src/** อ้างตรงต้องมีนิยาม — ไม่งั้นค่าเป็น invalid เงียบๆ
+// ตัวแปรที่ไม่ต้องนิยามเอง: ของ Tailwind (namespace ของ theme + `--tw-*`), next/font, Radix
+const EXTERNAL_VAR =
+  /^(tw-|radix-|font-noto-sans-thai$|(color|spacing|text|font|font-weight|tracking|leading|breakpoint|container|radius|shadow|inset-shadow|drop-shadow|blur|perspective|aspect|ease|animate|default)-)/
+
+test("AC-16: ทุก var(--…) ที่ src/** อ้างตรงมีนิยามใน src/styles/*.css (ยกเว้นของ Tailwind/next/font/Radix)", () => {
+  const css = fs
+    .readdirSync(path.join(STOREFRONT, "src", "styles"))
+    .filter((name) => name.endsWith(".css"))
+    .map((name) => readSource(`src/styles/${name}`))
+    .join("\n")
+  const declared = new Set(Array.from(css.matchAll(/--([\w-]+)\s*:/g), (m) => m[1]))
+  const missing = sourceFiles().flatMap((file) =>
+    Array.from(readSource(file).matchAll(/var\(--([\w-]+)/g), (m) => m[1])
+      .filter((name) => !EXTERNAL_VAR.test(name) && !declared.has(name))
+      .map((name) => `--${name} (${file})`)
+  )
+  expect(missing, "ตัวแปร CSS ที่ไม่มีนิยาม").toEqual([])
 })
