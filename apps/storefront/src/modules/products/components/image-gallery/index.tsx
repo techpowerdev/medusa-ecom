@@ -11,9 +11,10 @@ const ImageGallery = ({ images }: ImageGalleryProps) => {
       <div className="flex flex-col flex-1 small:mx-16 gap-y-4">
         {images.map((image, index) => {
           return (
+            // SFUI-6 (กฎ 19): เดิม <Container> ของ shim — .bg-white ของ v3 อยู่หลัง .bg-ui-bg-subtle บน develop จึงชนะ → bg-card
             <div
               key={image.id}
-              className="relative aspect-[29/34] w-full overflow-hidden rounded-lg bg-muted p-4"
+              className="relative aspect-[29/34] w-full overflow-hidden rounded-lg bg-card p-4"
               id={image.id}
             >
               {!!image.url && (

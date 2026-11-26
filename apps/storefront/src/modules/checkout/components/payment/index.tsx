@@ -429,7 +429,8 @@ const Payment = ({
                   className="flex gap-2 text-sm leading-[1.4rem] text-muted-foreground items-center"
                   data-testid="payment-details-summary"
                 >
-                  <div className="rounded-lg p-2 flex items-center h-7 w-fit bg-muted">
+                  {/* SFUI-6 (กฎ 19): เดิมเป็น <Container> ของ shim (clsx "bg-white rounded-lg p-4" + class ผู้เรียก) — ใน CSS ของ v3 บน develop .bg-white/.p-4 อยู่หลัง .p-2/.bg-ui-button-neutral-hover จึงชนะ → p-4 พื้นขาว */}
+                  <div className="rounded-lg bg-card p-4 flex items-center h-7 w-fit">
                     {paymentInfoMap[selectedPaymentMethod]?.icon || (
                       <CreditCard className="size-4" />
                     )}
