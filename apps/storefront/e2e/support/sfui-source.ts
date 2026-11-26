@@ -3,7 +3,7 @@ import path from "node:path"
 import ts from "typescript"
 
 // SFUI (spec 09): ตัวอ่าน source ของ storefront ที่ static spec ของ SFUI ใช้ร่วมกัน
-// (sfui-baseline / sfui-legacy / sfui-legacy-css) — parse ด้วย TypeScript จึงไม่นับ comment
+// (sfui-baseline / sfui-legacy) — parse ด้วย TypeScript จึงไม่นับ comment
 
 export const STOREFRONT = path.resolve(__dirname, "..", "..")
 export const SRC = path.join(STOREFRONT, "src")
@@ -185,7 +185,7 @@ export function legacyClassNames(file: string, source: string): string[] {
 
 export const isTestFile = (file: string) => /\.test\.tsx?$/.test(file)
 
-/** ตัวแปรดิบของ preset (`:root` จาก addBase — ชั้นเข้ากันได้คืนให้ใน legacy-medusa.css) ที่โค้ดอ้างตรง */
+/** ตัวแปรดิบของ preset (`:root` จาก addBase — ไม่มีนิยามแล้วหลัง SFUI-6) ที่โค้ดอ้างตรง */
 export const PRESET_RAW_VAR = /var\(--(?:fg|bg|border)-[\w-]+/
 
 /** กฎ 15: import ต้องห้าม (ทุกไฟล์) หรือ class/ตัวแปรดิบของ preset (เฉพาะไฟล์ที่ไม่ใช่ test) */

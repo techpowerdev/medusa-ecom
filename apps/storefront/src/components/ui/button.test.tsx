@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { Button, buttonVariants } from "@/components/ui/button"
 
 // SFUI-2 (spec 09 กฎ 3, 14, 20, AC-8): Button ของ shadcn มี `isLoading` (แสดงข้อความไทย + disabled ตาม shim เดิม)
-// test ของ shim ที่ส่งต่อมาที่นี่อยู่ใน `src/modules/common/components/ui/index.test.tsx` (ลบพร้อม shim ใน SFUI-6)
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const THAI = /[฀-๿]/

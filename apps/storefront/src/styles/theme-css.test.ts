@@ -100,23 +100,13 @@ describe("globals.css — ฟอนต์ (AC-3 ส่วน CSS, กฎ 8)", ()
     const root = await compile([])
     expect(declsOf(root, "body")["font-family"]).toBe(cssVar(globals, "--font-sans"))
   })
-
-  it("class typography ของ preset (txt-*) ใช้ var(--font-sans) — ไม่ fix Inter", async () => {
-    // ตรวจทุก @utility txt-* ที่ยังเหลือใน legacy-medusa.css (ไม่ผูกชื่อตัวอย่าง — task เจ้าของไฟล์ลบ utility ที่ไม่มีผู้ใช้ตาม AC-2;
-    // หลัง SFUI-5d ไม่เหลือ txt-* แล้ว test นี้จึงไม่มีอะไรให้ตรวจจน SFUI-6 ลบทั้งไฟล์)
-    const legacy = fs.readFileSync(path.join(STYLES, "legacy-medusa.css"), "utf8")
-    const names = Array.from(legacy.matchAll(/@utility\s+(txt-[\w-]+)\s*\{/g), (m) => m[1])
-    const root = await compile(names)
-    for (const name of names) {
-      expect(declsOf(root, `.${name}`)["font-family"], name).toBe("var(--font-sans)")
-    }
-  })
 })
 
 describe("globals.css — Tailwind v4 CSS-first คงค่า theme เดิม (กฎ 1)", () => {
-  it("ขึ้นต้นด้วย @import \"tailwindcss\" และ import ชั้นเข้ากันได้ legacy-medusa.css", () => {
+  it("ขึ้นต้นด้วย @import \"tailwindcss\" และไม่ import ชั้นเข้ากันได้ legacy-medusa.css แล้ว (SFUI-6)", () => {
     expect(globals.replace(/\/\*[\s\S]*?\*\//g, "").trim().startsWith('@import "tailwindcss";')).toBe(true)
-    expect(globals).toContain('@import "./legacy-medusa.css";')
+    expect(globals).not.toMatch(/legacy-medusa/)
+    expect(fs.existsSync(path.join(STYLES, "legacy-medusa.css"))).toBe(false)
   })
 
   it("breakpoint, radius, max-w-8xl, text-3xl, animation เดิม generate ได้", async () => {
@@ -130,7 +120,6 @@ describe("globals.css — Tailwind v4 CSS-first คงค่า theme เดิ�
       "max-w-8xl",
       "text-3xl",
       "animate-fade-in-top",
-      "animate-accordion-open",
     ])
     const css = root.toString()
     expect(css).toMatch(/@media \(width >= 1024px\)/)
@@ -148,7 +137,6 @@ describe("globals.css — Tailwind v4 CSS-first คงค่า theme เดิ�
     expect(cssVar(globals, "--text-3xl")).toBe("2rem")
     expect(declsOf(root, ".animate-fade-in-top").animation).toBe("var(--animate-fade-in-top)")
     expect(css).toMatch(/@keyframes fade-in-top/)
-    expect(declsOf(root, ".animate-accordion-open").animation).toBe("var(--animate-accordion-open)")
   })
 
   it("class ใน globals.css เดิม (text-*-regular/semi, content-container, no-scrollbar) ยังใช้ได้เป็น utility", async () => {
@@ -160,34 +148,30 @@ describe("globals.css — Tailwind v4 CSS-first คงค่า theme เดิ�
   })
 })
 
-describe("legacy-medusa.css — ชั้นเข้ากันได้ของ preset (กฎ 16)", () => {
-  // SFUI-4: variant radix-state-* ถูกลบพร้อมผู้ใช้คนสุดท้าย (product-tabs/accordion.tsx ใช้ data-[state=…] ของ shadcn แทน)
-  it("สี/เงา ui-* generate ได้", async () => {
-    const root = await compile(["bg-ui-bg-base", "border-ui-border-base", "shadow-borders-base"])
-    expect(declsOf(root, ".bg-ui-bg-base")["background-color"]).toBe("var(--color-ui-bg-base)")
-    expect(declsOf(root, ".border-ui-border-base")["border-color"]).toBe("var(--color-ui-border-base)")
-    expect(declsOf(root, ".shadow-borders-base")["--tw-shadow"]).toBeDefined()
-  })
-
-  it("ring ที่ไม่ระบุสีเป็น blue-500/50 แบบ v3 และตัวแปรดิบ --fg-* ของ preset ไม่เหลือใน :root (ผู้ใช้ย้ายครบใน SFUI-5a/5c)", async () => {
-    const root = await compile(["ring-2"])
-    expect(declsOf(root, ".ring-2")["--tw-ring-shadow"]).toContain("rgb(59 130 246 / 0.5)")
-    const rootDecls = declsOf(root, ":root")
-    // SFUI-5a: --fg-interactive ไม่มีผู้ใช้แล้ว (not-found/InteractiveLink ใช้ token ของ shadcn) — ลบตาม AC-2
-    expect(rootDecls["--fg-interactive"]).toBeUndefined()
-    // SFUI-5c: --fg-muted ไม่มีผู้ใช้แล้ว (discount-code ใช้ token ของ shadcn) — ลบตาม AC-2
-    expect(rootDecls["--fg-muted"]).toBeUndefined()
-  })
-
-  it("ขอบเริ่มต้นเป็นสี --color-ui-border-base แบบ preset เดิม (v4 เริ่มต้นเป็น currentColor)", async () => {
+// SFUI-6 (spec 09 กฎ 16, AC-16): ลบชั้นเข้ากันได้ของ preset — ขอบเริ่มต้นใช้ token ของ shadcn และไม่มีค่า/ชื่อของ preset หรือ token ที่ไม่มีผู้ใช้เหลือ
+describe("globals.css — หลังลบ legacy-medusa.css (SFUI-6)", () => {
+  it("ขอบเริ่มต้นของทุก element เป็น --border ของ shadcn (* { border-border }) ไม่ใช่ currentColor ของ v4", async () => {
     const root = await compile([])
-    let found = false
+    const colors: string[] = []
     root.walkRules((rule) => {
-      if (rule.selector.includes("*") && rule.nodes.some((n) => n.type === "decl" && n.prop === "border-color" && n.value === "var(--color-ui-border-base)")) {
-        found = true
-      }
+      if (!rule.selectors.includes("*")) return
+      rule.walkDecls("border-color", (decl) => {
+        colors.push(decl.value)
+      })
     })
-    expect(found).toBe(true)
+    expect(colors).toEqual(["var(--border)"])
+  })
+
+  it("ไม่มีสี/เงา ui-* ของ preset และ ring ที่ไม่ระบุสีเป็นค่าเริ่มต้นของ v4 (ไม่มีผู้ใช้ ring เปล่า)", async () => {
+    expect(globals).not.toMatch(/--color-ui-|--shadow-(borders|elevation|buttons|details)-|--default-ring-color/)
+    const root = await compile(["bg-ui-bg-base", "shadow-borders-base"])
+    expect(declsOf(root, ".bg-ui-bg-base")["background-color"]).toBeUndefined()
+    expect(declsOf(root, ".shadow-borders-base")["--tw-shadow"]).toBeUndefined()
+  })
+
+  it("ไม่มี token/animation ที่ไม่มีผู้ใช้ (accordion-* ของ v3, --chart-*, --sidebar-*)", () => {
+    expect(globals).not.toMatch(/accordion-(open|close|slide)/)
+    expect(globals).not.toMatch(/--(color-)?(chart|sidebar)[\w-]*\s*:/)
   })
 })
 

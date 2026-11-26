@@ -1,6 +1,4 @@
 @import "tailwindcss";
-/* SFUI-1a: ชั้นเข้ากันได้ชั่วคราวของ @medusajs/ui-preset (ลบใน SFUI-6) */
-@import "./legacy-medusa.css";
 /* SFUI-1b (ADR-030 ข้อ 10): animation ของ shadcn (แทน tailwindcss-animate ที่มากับ preset)
    ไม่ import "shadcn/tailwind.css" ที่ CLI ใส่ให้ — ต้องติดตั้ง package shadcn เป็น dependency (ADR-030: CLI ใช้ผ่าน dlx เท่านั้น)
    และไม่มี dark mode (กฎ 7) จึงตัด variant dark แบบ class กับ token ชุดมืดที่ CLI สร้างออก (variant dark ของเราอยู่ด้านล่าง — SFUI-2) */
@@ -65,8 +63,6 @@
   --animate-fade-in-right: fade-in-right 0.3s cubic-bezier(0.5, 0, 0.5, 1) forwards;
   --animate-fade-in-top: fade-in-top 0.2s cubic-bezier(0.5, 0, 0.5, 1) forwards;
   --animate-fade-out-top: fade-out-top 0.2s cubic-bezier(0.5, 0, 0.5, 1) forwards;
-  --animate-accordion-open: accordion-slide-down 300ms cubic-bezier(0.87, 0, 0.13, 1) forwards;
-  --animate-accordion-close: accordion-slide-up 300ms cubic-bezier(0.87, 0, 0.13, 1) forwards;
   --animate-enter: enter 200ms ease-out;
   --animate-slide-in: slide-in 1.2s cubic-bezier(0.41, 0.73, 0.51, 1.02);
   --animate-leave: leave 150ms ease-in forwards;
@@ -110,28 +106,6 @@
       visibility: hidden;
     }
   }
-  @keyframes accordion-slide-up {
-    0% {
-      height: var(--radix-accordion-content-height);
-      opacity: 1;
-    }
-    100% {
-      height: 0;
-      opacity: 0;
-    }
-  }
-  @keyframes accordion-slide-down {
-    0% {
-      min-height: 0;
-      max-height: 0;
-      opacity: 0;
-    }
-    100% {
-      min-height: var(--radix-accordion-content-height);
-      max-height: none;
-      opacity: 1;
-    }
-  }
   @keyframes enter {
     0% {
       transform: scale(0.9);
@@ -166,19 +140,6 @@
 @theme inline {
   --font-sans: var(--font-noto-sans-thai), ui-sans-serif, system-ui, sans-serif;
   /* SFUI-1b: token ของ shadcn (สร้างโดย shadcn init) → utility เช่น bg-primary, ring-ring, border-input */
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -206,12 +167,20 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* ค่าเริ่มต้นของ Tailwind v3 ที่ v4 เปลี่ยน (คงหน้าตาเดิมระหว่างย้าย) */
+/* SFUI-1b: ค่าเริ่มต้นของ shadcn (shadcn init) — ฟอนต์/สีพื้นของ body, และขอบเริ่มต้น = --border
+   (SFUI-6: ชั้นเข้ากันได้ของ preset ถูกลบ — ขอบของ element ทุกตัวใช้ค่านี้; v4 เริ่มต้นเป็น currentColor) */
 @layer base {
   body {
     @apply font-sans bg-background text-foreground;
   }
 
+  * {
+    @apply border-border outline-ring/50;
+  }
+}
+
+/* ค่าเริ่มต้นของ Tailwind v3 ที่ v4 เปลี่ยน (คงหน้าตาเดิม) */
+@layer base {
   input::placeholder,
   textarea::placeholder {
     color: var(--color-gray-400);
@@ -220,9 +189,6 @@
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
-  }
-  * {
-    @apply border-border outline-ring/50;
   }
 }
 
@@ -355,17 +321,4 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: var(--color-brand-400);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
 }

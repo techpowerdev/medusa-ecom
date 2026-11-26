@@ -32,7 +32,6 @@ const ProductTabs = ({ product }: ProductTabsProps) => {
           <Accordion.Item
             key={tab.key}
             title={tab.label}
-            headingSize="medium"
             value={tab.key}
             data-testid={`product-tab-${tab.key}`}
           >
