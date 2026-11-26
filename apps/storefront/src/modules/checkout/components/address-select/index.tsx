@@ -77,15 +77,15 @@ const AddressSelect = ({
                   {checked && <span className="size-1.5 rounded-full bg-primary-foreground" />}
                 </span>
                 <div className="flex flex-col">
-                  <span className="text-left text-base-semi">
+                  <span className="text-left text-sm leading-6 font-semibold">
                     {address.first_name} {address.last_name}
                   </span>
                   {address.company && (
-                    <span className="text-small-regular text-foreground">
+                    <span className="text-xs leading-5 font-normal text-foreground">
                       {address.company}
                     </span>
                   )}
-                  <div className="flex flex-col text-left text-base-regular mt-2">
+                  <div className="flex flex-col text-left text-sm leading-6 font-normal mt-2">
                     <span>
                       {address.address_1}
                       {address.address_2 && (

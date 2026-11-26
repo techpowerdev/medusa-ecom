@@ -166,7 +166,7 @@ const CartDropdown = ({
           data-testid="nav-cart-dropdown"
         >
           <div className="p-4 flex items-center justify-center">
-            <h3 className="text-large-semi">ตะกร้า</h3>
+            <h3 className="text-base leading-6 font-semibold">ตะกร้า</h3>
           </div>
           {countUnknown ? (
             // CORE-91 (กฎข้อ 147a): ยังไม่รู้ (กำลังโหลด/อ่านล้ม) → ไม่บอกว่าตะกร้าว่าง
@@ -218,7 +218,7 @@ const CartDropdown = ({
                         <div className="flex flex-col flex-1">
                           <div className="flex items-start justify-between">
                             <div className="flex flex-col text-ellipsis whitespace-nowrap mr-4 w-[180px]">
-                              <h3 className="text-base-regular overflow-hidden text-ellipsis">
+                              <h3 className="text-sm leading-6 font-normal overflow-hidden text-ellipsis">
                                 <LocalizedClientLink
                                   href={`/products/${item.product_handle}`}
                                   data-testid="product-link"
@@ -258,7 +258,7 @@ const CartDropdown = ({
                     </div>
                   ))}
               </div>
-              <div className="p-4 flex flex-col gap-y-4 text-small-regular">
+              <div className="p-4 flex flex-col gap-y-4 text-xs leading-5 font-normal">
                 <div className="flex items-center justify-between">
                   <span
                     className="text-foreground font-semibold"
@@ -269,7 +269,7 @@ const CartDropdown = ({
                     <span className="font-normal">(รวม VAT)</span>
                   </span>
                   <span
-                    className="text-large-semi"
+                    className="text-base leading-6 font-semibold"
                     data-testid="cart-subtotal"
                     data-value={itemTotal}
                   >
@@ -291,7 +291,7 @@ const CartDropdown = ({
           ) : (
             <div>
               <div className="flex py-16 flex-col gap-y-4 items-center justify-center">
-                <div className="bg-gray-900 text-small-regular flex items-center justify-center w-6 h-6 rounded-full text-white">
+                <div className="bg-gray-900 text-xs leading-5 font-normal flex items-center justify-center w-6 h-6 rounded-full text-white">
                   <span>0</span>
                 </div>
                 <span>ตะกร้าของคุณยังว่างอยู่</span>

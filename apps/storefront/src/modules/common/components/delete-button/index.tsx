@@ -48,7 +48,7 @@ const DeleteButton = ({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center justify-between text-small-regular",
+        "flex flex-wrap items-center justify-between text-xs leading-5 font-normal",
         className
       )}
     >
@@ -71,7 +71,7 @@ const DeleteButton = ({
       {error && (
         // qa #142 D-2: ขึ้นบรรทัดใหม่เต็มความกว้างของแถว (order-last) ไม่ถูกบีบข้างปุ่ม
         <span
-          className="basis-full order-last text-destructive text-small-regular"
+          className="basis-full order-last text-destructive text-xs leading-5 font-normal"
           role="alert"
           data-testid="cart-item-remove-error"
         >

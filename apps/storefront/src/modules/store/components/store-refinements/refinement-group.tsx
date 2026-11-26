@@ -41,13 +41,13 @@ const RefinementGroup = ({ attribute, title }: RefinementGroupProps) => {
               />
               <span
                 className={cn(
-                  "text-small-regular min-w-0 break-words",
+                  "text-xs leading-5 font-normal min-w-0 break-words",
                   item.isRefined ? "text-foreground" : "text-muted-foreground"
                 )}
               >
                 {item.label}
               </span>
-              <span className="text-small-regular shrink-0 text-muted-foreground">
+              <span className="text-xs leading-5 font-normal shrink-0 text-muted-foreground">
                 ({item.count})
               </span>
             </label>

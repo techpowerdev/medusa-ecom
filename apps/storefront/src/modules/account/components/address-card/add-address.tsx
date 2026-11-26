@@ -68,7 +68,7 @@ const AddAddress = ({
           className="border border-border rounded-rounded p-5 min-h-[220px] h-full w-full flex flex-col justify-between"
           data-testid="add-address-button"
         >
-          <span className="text-base-semi">เพิ่มที่อยู่ใหม่</span>
+          <span className="text-sm leading-6 font-semibold">เพิ่มที่อยู่ใหม่</span>
           <Plus className="size-4" />
         </button>
       </DialogTrigger>
@@ -166,7 +166,7 @@ const AddAddress = ({
           </div>
           {formState.error && (
             <div
-              className="text-rose-500 text-small-regular py-2"
+              className="text-rose-500 text-xs leading-5 font-normal py-2"
               data-testid="address-error"
             >
               {formState.error}

@@ -88,7 +88,7 @@ const EditAddress: React.FC<EditAddressProps> = ({
         data-testid="address-container"
       >
         <div className="flex flex-col">
-          {/* SFUI-6 (กฎ 21): เดิม <Heading> h2 + text-base-semi — บน develop text-2xl/font-semibold ของ shim ชนะ (.text-base-semi อยู่ @layer components) → 24px/32px/600 */}
+          {/* SFUI-6 (กฎ 21): เดิม <Heading> h2 + utility 14px/24px/600 ของ starter — บน develop text-2xl/font-semibold ของ shim ชนะ (utility ของ starter อยู่ @layer components) → 24px/32px/600 */}
           <h2 className="text-left text-2xl font-semibold" data-testid="address-name">
             {address.first_name} {address.last_name}
           </h2>
@@ -100,7 +100,7 @@ const EditAddress: React.FC<EditAddressProps> = ({
               {address.company}
             </p>
           )}
-          <p className="flex flex-col text-left text-base-regular mt-2">
+          <p className="flex flex-col text-left text-sm leading-6 font-normal mt-2">
             <span data-testid="address-address">
               {address.address_1}
               {address.address_2 && <span>, {address.address_2}</span>}
@@ -117,7 +117,7 @@ const EditAddress: React.FC<EditAddressProps> = ({
         <div className="flex items-center gap-x-4">
           <DialogTrigger asChild>
             <button
-              className="text-small-regular text-foreground flex items-center gap-x-2"
+              className="text-xs leading-5 font-normal text-foreground flex items-center gap-x-2"
               data-testid="address-edit-button"
             >
               <SquarePen className="size-4" />
@@ -125,7 +125,7 @@ const EditAddress: React.FC<EditAddressProps> = ({
             </button>
           </DialogTrigger>
           <button
-            className="text-small-regular text-foreground flex items-center gap-x-2"
+            className="text-xs leading-5 font-normal text-foreground flex items-center gap-x-2"
             onClick={removeAddress}
             data-testid="address-delete-button"
           >
@@ -239,7 +239,7 @@ const EditAddress: React.FC<EditAddressProps> = ({
           </div>
           {formState.error && (
             <div
-              className="text-rose-500 text-small-regular py-2"
+              className="text-rose-500 text-xs leading-5 font-normal py-2"
               data-testid="address-error"
             >
               {formState.error}

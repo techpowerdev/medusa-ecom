@@ -28,15 +28,15 @@ const Register = ({ setCurrentView }: Props) => {
       className="max-w-sm flex flex-col items-center"
       data-testid="register-page"
     >
-      <h1 className="text-large-semi uppercase mb-6">
+      <h1 className="text-base leading-6 font-semibold uppercase mb-6">
         สมัครสมาชิก {STORE_NAME}
       </h1>
-      <p className="text-center text-base-regular text-foreground mb-4">
+      <p className="text-center text-sm leading-6 font-normal text-foreground mb-4">
         สร้างบัญชีสมาชิก {STORE_NAME} เพื่อรับประสบการณ์การช้อปปิ้งที่ดียิ่งขึ้น
       </p>
       {message?.state === "verification_required" && (
         <div
-          className="w-full mb-4 text-center text-base-regular text-foreground bg-muted border border-border rounded-rounded p-4"
+          className="w-full mb-4 text-center text-sm leading-6 font-normal text-foreground bg-muted border border-border rounded-rounded p-4"
           data-testid="register-verification-message"
         >
           เราได้ส่งลิงก์ยืนยันไปที่ <strong>{message.email}</strong> แล้ว
@@ -91,7 +91,7 @@ const Register = ({ setCurrentView }: Props) => {
         </div>
         {emailExists ? (
           <div
-            className="pt-2 text-rose-500 text-small-regular"
+            className="pt-2 text-rose-500 text-xs leading-5 font-normal"
             data-testid="register-email-exists"
           >
             <span>{message.error}</span>{" "}
@@ -118,7 +118,7 @@ const Register = ({ setCurrentView }: Props) => {
             data-testid="register-error"
           />
         )}
-        <span className="text-center text-foreground text-small-regular mt-6">
+        <span className="text-center text-foreground text-xs leading-5 font-normal mt-6">
           การสร้างบัญชีกับ {STORE_NAME} ถือว่าคุณยอมรับ{" "}
           <LocalizedClientLink
             href="/privacy"
@@ -141,7 +141,7 @@ const Register = ({ setCurrentView }: Props) => {
           สมัครสมาชิก
         </SubmitButton>
       </form>
-      <span className="text-center text-foreground text-small-regular mt-6">
+      <span className="text-center text-foreground text-xs leading-5 font-normal mt-6">
         เป็นสมาชิกอยู่แล้ว?{" "}
         <button
           type="button"

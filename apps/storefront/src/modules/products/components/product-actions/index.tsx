@@ -227,7 +227,7 @@ export default function ProductActions({
 
           <FlashSale {...flash} />
 
-          <label className="flex items-center gap-x-3 text-small-regular">
+          <label className="flex items-center gap-x-3 text-xs leading-5 font-normal">
             <span>จำนวน</span>
             <select
               name="quantity"
@@ -258,7 +258,7 @@ export default function ProductActions({
 
           {selectedVariant && isValidVariant && (
             <p
-              className="text-small-regular text-muted-foreground"
+              className="text-xs leading-5 font-normal text-muted-foreground"
               data-testid="product-availability"
             >
               {canBuy ? "มีสินค้า" : "สินค้าหมด"}
@@ -291,7 +291,7 @@ export default function ProductActions({
           </Button>
           {addError && (
             <p
-              className="text-small-regular text-destructive"
+              className="text-xs leading-5 font-normal text-destructive"
               role="alert"
               data-testid="add-to-cart-error"
             >

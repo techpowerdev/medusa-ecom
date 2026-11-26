@@ -52,7 +52,7 @@ const AddVariantError = async ({ countryCode, searchParams, confirm }: Props) =>
         <input type="hidden" name={PENDING_ADD_PARAM} value={pending.variantId} />
         <input type="hidden" name={PENDING_QUANTITY_PARAM} value={pending.quantity} />
         <input type="hidden" name="country_code" value={countryCode} />
-        <div className="text-base-regular text-foreground">
+        <div className="text-sm leading-6 font-normal text-foreground">
           <p className="font-semibold">
             {inCart > 0 ? (
               <>
@@ -82,7 +82,7 @@ const AddVariantError = async ({ countryCode, searchParams, confirm }: Props) =>
   return (
     <div
       role="alert"
-      className="mb-6 rounded-rounded border border-destructive bg-muted p-4 text-base-regular text-destructive"
+      className="mb-6 rounded-rounded border border-destructive bg-muted p-4 text-sm leading-6 font-normal text-destructive"
       data-testid="add-variant-error"
     >
       เพิ่มสินค้าลงตะกร้าไม่สำเร็จ สินค้าที่เลือกอาจไม่มีอยู่ หมดแล้ว

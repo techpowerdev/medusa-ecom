@@ -249,7 +249,7 @@ const Shipping: React.FC<ShippingProps> = ({
                     >
                       <span className="flex items-center gap-x-4">
                         <OptionDot />
-                        <span className="text-base-regular">
+                        <span className="text-sm leading-6 font-normal">
                           รับสินค้าด้วยตนเอง
                         </span>
                       </span>
@@ -290,7 +290,7 @@ const Shipping: React.FC<ShippingProps> = ({
                       >
                         <span className="flex items-center gap-x-4">
                           <OptionDot />
-                          <span className="text-base-regular">
+                          <span className="text-sm leading-6 font-normal">
                             {option.name}
                           </span>
                         </span>
@@ -358,10 +358,10 @@ const Shipping: React.FC<ShippingProps> = ({
                           <span className="flex items-start gap-x-4">
                             <OptionDot />
                             <span className="flex flex-col">
-                              <span className="text-base-regular">
+                              <span className="text-sm leading-6 font-normal">
                                 {option.name}
                               </span>
-                              <span className="text-base-regular text-muted-foreground">
+                              <span className="text-sm leading-6 font-normal text-muted-foreground">
                                 {formatAddress(
                                   (option as unknown as { service_zone?: { fulfillment_set?: { location?: { address: HttpTypes.StoreCartAddress } } } }).service_zone?.fulfillment_set?.location
                                     ?.address as HttpTypes.StoreCartAddress
@@ -404,7 +404,7 @@ const Shipping: React.FC<ShippingProps> = ({
         </>
       ) : (
         <div>
-          <div className="text-small-regular">
+          <div className="text-xs leading-5 font-normal">
             {selectedMethod && (
               <div className="flex flex-col w-1/3">
                 <p className="text-sm leading-[1.4rem] font-medium text-foreground mb-1">

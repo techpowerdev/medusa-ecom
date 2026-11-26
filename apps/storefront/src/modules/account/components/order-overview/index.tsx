@@ -27,8 +27,8 @@ const OrderOverview = ({ orders }: { orders: HttpTypes.StoreOrder[] }) => {
       className="w-full flex flex-col items-center gap-y-4"
       data-testid="no-orders-container"
     >
-      <h2 className="text-large-semi">ยังไม่มีคำสั่งซื้อ</h2>
-      <p className="text-base-regular">
+      <h2 className="text-base leading-6 font-semibold">ยังไม่มีคำสั่งซื้อ</h2>
+      <p className="text-sm leading-6 font-normal">
         คุณยังไม่มีคำสั่งซื้อ เริ่มช้อปกันเลย
       </p>
       <div className="mt-4">

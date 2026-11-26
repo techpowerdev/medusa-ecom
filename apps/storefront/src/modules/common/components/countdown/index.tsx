@@ -19,7 +19,7 @@ export default function Countdown({
   now,
   testId,
   expiredLabel,
-  className = "text-small-regular",
+  className = "text-xs leading-5 font-normal",
 }: Props) {
   const [current, setCurrent] = useState(now)
   const label = countdownLabel(endsAt, current)

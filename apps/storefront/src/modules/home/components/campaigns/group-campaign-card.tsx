@@ -30,8 +30,8 @@ export default function GroupCampaignCard({ campaign, product, countryCode, now 
       data-testid="group-campaign-card"
       data-campaign-id={campaign.id}
     >
-      <span className="text-small-regular text-muted-foreground">ซื้อกลุ่ม</span>
-      <h3 className="text-base-semi break-words">{campaign.name}</h3>
+      <span className="text-xs leading-5 font-normal text-muted-foreground">ซื้อกลุ่ม</span>
+      <h3 className="text-sm leading-6 font-semibold break-words">{campaign.name}</h3>
       {product && (
         <div className="flex items-center gap-x-3">
           <div className="w-20 shrink-0" data-testid="group-campaign-thumbnail">
@@ -39,31 +39,31 @@ export default function GroupCampaignCard({ campaign, product, countryCode, now 
           </div>
           <div className="flex min-w-0 flex-col gap-y-1">
             {/* testid เดียวกับชื่อสินค้าบนการ์ดอื่น — ข้อมูลจาก backend (store-content.spec ไม่นับเป็นข้อความของ storefront) */}
-            <span className="text-small-regular break-words" data-testid="product-title">
+            <span className="text-xs leading-5 font-normal break-words" data-testid="product-title">
               {product.title}
             </span>
             {price && (
               <p className="flex flex-wrap items-baseline gap-x-2" data-testid="group-campaign-price">
                 {after != null ? (
                   <>
-                    <s className="text-small-regular text-muted-foreground">{price.calculated_price}</s>
-                    <span className="text-base-semi text-primary">
+                    <s className="text-xs leading-5 font-normal text-muted-foreground">{price.calculated_price}</s>
+                    <span className="text-sm leading-6 font-semibold text-primary">
                       {convertToLocale({ amount: after, currency_code: price.currency_code })}
                     </span>
                   </>
                 ) : (
-                  <span className="text-base-semi">{price.calculated_price}</span>
+                  <span className="text-sm leading-6 font-semibold">{price.calculated_price}</span>
                 )}
               </p>
             )}
           </div>
         </div>
       )}
-      {discount && <p className="text-small-regular text-primary">ลด {discount} เมื่อกลุ่มครบเป้าหมาย</p>}
+      {discount && <p className="text-xs leading-5 font-normal text-primary">ลด {discount} เมื่อกลุ่มครบเป้าหมาย</p>}
       <Countdown endsAt={campaign.ends_at} now={now} testId="group-campaign-countdown" expiredLabel="หมดเวลาแล้ว" />
       {pool && progress && (
         <div className="flex flex-col gap-y-2">
-          <span className="text-small-regular" data-testid="group-campaign-progress">
+          <span className="text-xs leading-5 font-normal" data-testid="group-campaign-progress">
             กลุ่มเปิด{" "}
             <span className="tabular-nums">
               {progress.current} / {progress.target}
@@ -72,7 +72,7 @@ export default function GroupCampaignCard({ campaign, product, countryCode, now 
           </span>
           <Link
             href={groupSharePath(countryCode, pool.join_token)}
-            className="text-small-regular text-primary underline underline-offset-4"
+            className="text-xs leading-5 font-normal text-primary underline underline-offset-4"
             data-testid="group-pool-link"
           >
             เข้าร่วมกลุ่มเปิด
