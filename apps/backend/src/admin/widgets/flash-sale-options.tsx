@@ -6,6 +6,7 @@ import { Alert, Button, Drawer, Input, Switch, Text, toast } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { Container } from "../components/common/container"
 import { Header } from "../components/common/header"
 import { NumberInput } from "../components/common/number-input"
@@ -39,6 +40,7 @@ type FlashSaleConfigResponse = {
 }
 
 const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.AdminCampaign>) => {
+  const { t } = useTranslation("ecom-group-buy")
   const queryClient = useQueryClient()
   const queryKey = ["flash-sale-config", campaign.id]
   const [open, setOpen] = useState(false)
@@ -68,11 +70,11 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey })
-      toast.success("Flash sale options saved")
+      toast.success(t("flashSale.saved"))
       setOpen(false)
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to save flash sale options")
+      toast.error(error.message || t("flashSale.saveFailed"))
     },
   })
 
@@ -102,11 +104,16 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
   return (
     <Container data-testid="flash-sale-options">
       <Header
-        title="Flash sale options"
+        title={t("flashSale.title")}
         actions={[
           {
             type: "button",
-            props: { variant: "secondary", onClick: openEditor, disabled: isLoading, children: "Edit" },
+            props: {
+              variant: "secondary",
+              onClick: openEditor,
+              disabled: isLoading,
+              children: t("actions.edit", { ns: "translation" }),
+            },
           },
         ]}
       />
@@ -114,9 +121,7 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
       {missing.length > 0 && (
         <div className="px-6 py-4">
           <Alert variant="warning">
-            Automatic promotions without the exclusivity rule can stack with promotion codes:{" "}
-            {missing.map((p) => p.code ?? p.id).join(", ")}. Save the flash sale options to add
-            the rule.
+            {t("flashSale.missingExclusivity", { codes: missing.map((p) => p.code ?? p.id).join(", ") })}
           </Alert>
         </div>
       )}
@@ -124,25 +129,28 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
       {isLoading ? (
         <div className="px-6 py-4">
           <Text size="small" leading="compact" className="text-ui-fg-subtle">
-            Loading...
+            {t("loading")}
           </Text>
         </div>
       ) : !config ? (
         <div className="px-6 py-4">
           <Text size="small" leading="compact" className="text-ui-fg-subtle">
-            This campaign is not a flash sale yet. Save the options to enable per-customer limits,
-            total cap and storefront countdown.
+            {t("flashSale.notFlashSale")}
           </Text>
         </div>
       ) : (
         // SectionRow ไม่รับ data-testid จึงห่อแต่ละแถวด้วย div ที่มี testid (e2e ของ AC-5 อ่านค่า Total cap)
         [
-          ["per_customer_limit", "Per-customer limit", config.per_customer_limit?.toString() ?? "Unlimited"],
-          ["total_cap", "Total cap", config.total_cap?.toString() ?? "Unlimited"],
-          ["units_sold", "Units sold", config.units_sold.toString()],
-          ["show_countdown", "Show countdown", config.show_countdown ? "Yes" : "No"],
-          ["show_remaining", "Show remaining", config.show_remaining ? "Yes" : "No"],
-          ["banner_text", "Banner text", config.banner_text ?? "-"],
+          [
+            "per_customer_limit",
+            t("flashSale.fields.perCustomerLimit"),
+            config.per_customer_limit?.toString() ?? t("flashSale.unlimited"),
+          ],
+          ["total_cap", t("flashSale.fields.totalCap"), config.total_cap?.toString() ?? t("flashSale.unlimited")],
+          ["units_sold", t("flashSale.fields.unitsSold"), config.units_sold.toString()],
+          ["show_countdown", t("flashSale.fields.showCountdown"), config.show_countdown ? t("flashSale.yes") : t("flashSale.no")],
+          ["show_remaining", t("flashSale.fields.showRemaining"), config.show_remaining ? t("flashSale.yes") : t("flashSale.no")],
+          ["banner_text", t("flashSale.fields.bannerText"), config.banner_text ?? "-"],
         ].map(([key, title, value]) => (
           <div key={key} data-testid={`flash-sale-row-${key}`}>
             <SectionRow title={title} value={value} />
@@ -156,7 +164,7 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
           <Form {...form}>
             <KeyboundForm noValidate onSubmit={handleSave} className="flex flex-1 flex-col overflow-hidden">
               <Drawer.Header>
-                <Drawer.Title>Flash sale options</Drawer.Title>
+                <Drawer.Title>{t("flashSale.title")}</Drawer.Title>
               </Drawer.Header>
               <Drawer.Body className="flex-1 overflow-auto p-4">
                 <div className="flex flex-col gap-y-4">
@@ -165,9 +173,9 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
                     name="per_customer_limit"
                     render={({ field }) => (
                       <Form.Item>
-                        <Form.Label>Per-customer limit</Form.Label>
+                        <Form.Label>{t("flashSale.fields.perCustomerLimit")}</Form.Label>
                         <Form.Control>
-                          <NumberInput {...field} min={1} placeholder="Unlimited" />
+                          <NumberInput {...field} min={1} placeholder={t("flashSale.unlimited")} />
                         </Form.Control>
                         <Form.ErrorMessage data-testid="fs-per-customer-limit-error" />
                       </Form.Item>
@@ -178,14 +186,14 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
                     name="total_cap"
                     render={({ field }) => (
                       <Form.Item>
-                        <Form.Label>Total cap</Form.Label>
+                        <Form.Label>{t("flashSale.fields.totalCap")}</Form.Label>
                         <Form.Control>
-                          <NumberInput {...field} min={1} placeholder="Unlimited" />
+                          <NumberInput {...field} min={1} placeholder={t("flashSale.unlimited")} />
                         </Form.Control>
                         <Form.ErrorMessage data-testid="fs-total-cap-error" />
                         {capBelowSold && (
                           <Form.Hint>
-                            {unitsSold} units already sold — new checkouts will fail as sold out.
+                            {t("flashSale.capBelowSold", { sold: unitsSold })}
                           </Form.Hint>
                         )}
                       </Form.Item>
@@ -193,8 +201,8 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
                   />
                   {(
                     [
-                      ["show_countdown", "Show countdown"],
-                      ["show_remaining", "Show remaining"],
+                      ["show_countdown", t("flashSale.fields.showCountdown")],
+                      ["show_remaining", t("flashSale.fields.showRemaining")],
                     ] as const
                   ).map(([name, label]) => (
                     <Form.Field
@@ -216,7 +224,7 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
                     name="banner_text"
                     render={({ field }) => (
                       <Form.Item>
-                        <Form.Label>Banner text</Form.Label>
+                        <Form.Label>{t("flashSale.fields.bannerText")}</Form.Label>
                         <Form.Control>
                           <Input {...field} />
                         </Form.Control>
@@ -229,11 +237,11 @@ const FlashSaleOptionsWidget = ({ data: campaign }: DetailWidgetProps<HttpTypes.
                 <div className="flex items-center justify-end gap-x-2">
                   <Drawer.Close asChild>
                     <Button size="small" variant="secondary" type="button" disabled={save.isPending}>
-                      Cancel
+                      {t("actions.cancel", { ns: "translation" })}
                     </Button>
                   </Drawer.Close>
                   <Button size="small" type="submit" disabled={save.isPending} isLoading={save.isPending}>
-                    Save
+                    {t("actions.save", { ns: "translation" })}
                   </Button>
                 </div>
               </Drawer.Footer>

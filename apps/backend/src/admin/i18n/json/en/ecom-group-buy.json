@@ -1,1 +1,246 @@
-{}
+{
+  "nav": {
+    "groupBuying": "Group buying"
+  },
+  "breadcrumb": {
+    "campaign": "Campaign"
+  },
+  "loading": "Loading...",
+  "status": {
+    "draft": "draft",
+    "active": "active",
+    "ended": "ended"
+  },
+  "groupStatus": {
+    "open": "open",
+    "succeeded": "succeeded",
+    "failed": "failed"
+  },
+  "membershipStatus": {
+    "joined": "joined",
+    "awaiting_payment": "awaiting_payment",
+    "paid": "paid",
+    "cancelled": "cancelled"
+  },
+  "groupKind": {
+    "pool": "pool",
+    "team": "team"
+  },
+  "groupMode": {
+    "pool": "pool",
+    "team": "team",
+    "both": "both"
+  },
+  "targetType": {
+    "orders": "orders",
+    "units": "units",
+    "people": "people"
+  },
+  "targetValue": {
+    "orders": "{{value}} orders",
+    "units": "{{value}} units",
+    "people": "{{value}} people"
+  },
+  "progress": {
+    "orders": "{{current}} / {{target}} orders",
+    "units": "{{current}} / {{target}} units",
+    "people": "{{current}} / {{target}} people"
+  },
+  "discountType": {
+    "percentage": "percentage",
+    "fixed": "fixed"
+  },
+  "productStatus": {
+    "draft": "draft",
+    "proposed": "proposed",
+    "published": "published",
+    "rejected": "rejected"
+  },
+  "list": {
+    "templateWarning": "Never activate or share GBT- template codes; customers get a GB- code per group.",
+    "heading": "Group-buy campaigns",
+    "subHeading": "Discount and product scope live on each campaign's template promotion (GBT-…); edits apply only to groups created afterwards.",
+    "create": "Create campaign",
+    "loadError": "Could not load campaigns",
+    "emptyHeading": "No group-buy campaigns yet",
+    "emptyDescription": "Create a campaign to start selling in groups.",
+    "openPromotion": "Open",
+    "columns": {
+      "campaign": "Campaign",
+      "status": "Status",
+      "target": "Target",
+      "mode": "Mode",
+      "endsAt": "Ends (ICT)",
+      "templatePromotion": "Template promotion"
+    }
+  },
+  "detail": {
+    "notFound": "Campaign not found",
+    "notFoundMessage": "It may have been deleted.",
+    "loadError": "Could not load the campaign",
+    "back": "Back to group-buy campaigns",
+    "activate": "Activate",
+    "end": "End campaign",
+    "fields": {
+      "target": "Target",
+      "groupMode": "Group mode",
+      "startsAt": "Starts (ICT)",
+      "endsAt": "Ends (ICT)",
+      "templatePromotion": "Template promotion"
+    },
+    "prompts": {
+      "activate": {
+        "title": "Activate campaign?",
+        "description": "Customers can join groups once the campaign is active.",
+        "confirm": "Activate"
+      },
+      "end": {
+        "title": "End campaign?",
+        "description": "No new groups or joins after the campaign ends. This cannot be undone.",
+        "confirm": "End"
+      },
+      "remove": {
+        "title": "Delete draft campaign?",
+        "description": "The campaign, its template promotion and its Medusa campaign are deleted."
+      }
+    },
+    "toast": {
+      "deleted": "Campaign deleted",
+      "activated": "Campaign activated",
+      "ended": "Campaign ended"
+    }
+  },
+  "groups": {
+    "title": "Groups",
+    "createPool": "Create pool group",
+    "created": "Pool group created",
+    "selected": "(selected)",
+    "loadError": "Could not load groups",
+    "emptyHeading": "No groups yet",
+    "emptyDescription": "Pool groups are created here; teams by customers.",
+    "columns": {
+      "kind": "Kind",
+      "name": "Name",
+      "status": "Status",
+      "progress": "Progress",
+      "endsAt": "Ends (ICT)",
+      "joinToken": "Join token"
+    }
+  },
+  "members": {
+    "title": "Members of {{name}}",
+    "deletedCustomer": "{{id}} (deleted)",
+    "markSucceeded": "Mark succeeded",
+    "markFailed": "Mark failed",
+    "close": "Close",
+    "loadError": "Could not load members",
+    "emptyHeading": "No members yet",
+    "columns": {
+      "customer": "Customer",
+      "units": "Units",
+      "status": "Status",
+      "order": "Order",
+      "payment": "Payment",
+      "joinedAt": "Joined (ICT)"
+    },
+    "prompts": {
+      "succeed": {
+        "title": "Mark group as succeeded?",
+        "description": "Members get a payment request for their draft orders. This cannot be undone.",
+        "confirm": "Succeed"
+      },
+      "fail": {
+        "title": "Mark group as failed?",
+        "description": "All member draft orders are canceled. This cannot be undone.",
+        "confirm": "Fail"
+      }
+    },
+    "toast": {
+      "succeeded": "Group succeeded",
+      "failed": "Group failed"
+    }
+  },
+  "picker": {
+    "product": "Product *",
+    "summarySelected": "1 selected. A group buy campaign covers exactly one product (any of its variants).",
+    "summaryNone": "None selected. A group buy campaign covers exactly one product (any of its variants).",
+    "search": "Search products by name",
+    "columns": {
+      "product": "Product",
+      "status": "Status"
+    }
+  },
+  "form": {
+    "title": "Create group-buy campaign",
+    "description": "The campaign starts as draft. Activate it from the campaign page when ready.",
+    "created": "Campaign created as draft",
+    "endsAtPast": "This end time has already passed. The campaign will be created as draft but cannot be activated until the end time is in the future.",
+    "labels": {
+      "targetType": "Target type *",
+      "groupMode": "Group mode *",
+      "discountType": "Discount type *",
+      "name": "Name *",
+      "targetValue": "Target value *",
+      "startsAt": "Starts at",
+      "endsAt": "Ends at *",
+      "discountValue": "Discount value *",
+      "maxQuantity": "Max discounted quantity per order *",
+      "teamDuration": "Team duration (hours)",
+      "maxTotalOrders": "Max total orders",
+      "maxUnitsPerPerson": "Max units per person",
+      "maxPeoplePerGroup": "Max people per group",
+      "payWithin": "Pay within (hours) *",
+      "taxInclusive": "Discount is tax inclusive (THB prices include VAT)"
+    },
+    "hints": {
+      "discountValue": "Percent, or THB for fixed",
+      "maxQuantity": "Must be at least max units per person, or members join with units the discount does not cover",
+      "teamDuration": "Required for team/both"
+    },
+    "fieldNames": {
+      "target": "Target",
+      "teamDuration": "Team duration",
+      "maxTotalOrders": "Max total orders",
+      "maxUnitsPerPerson": "Max units per person",
+      "maxPeoplePerGroup": "Max people per group",
+      "payWithin": "Pay within",
+      "maxQuantity": "Max quantity",
+      "endDate": "End date"
+    },
+    "errors": {
+      "invalidDate": "Invalid date",
+      "wholeNumber": "{{label}} must be a whole number greater than 0",
+      "atMost": "{{label}} must be at most {{max}}",
+      "required": "{{label}} is required",
+      "nameRequired": "Name is required",
+      "endAfterStart": "End date must be after start date",
+      "teamDurationRequired": "Team duration is required when teams are allowed",
+      "discountValue": "Discount value must be a number greater than 0",
+      "percentageMax": "Percentage discount cannot exceed 100",
+      "product": "Select the product of this campaign",
+      "maxQuantityBelowUnits": "Max discounted quantity must be at least max units per person"
+    }
+  },
+  "flashSale": {
+    "title": "Flash sale options",
+    "saved": "Flash sale options saved",
+    "saveFailed": "Failed to save flash sale options",
+    "missingExclusivity": "Automatic promotions without the exclusivity rule can stack with promotion codes: {{codes}}. Save the flash sale options to add the rule.",
+    "notFlashSale": "This campaign is not a flash sale yet. Save the options to enable per-customer limits, total cap and storefront countdown.",
+    "unlimited": "Unlimited",
+    "yes": "Yes",
+    "no": "No",
+    "capBelowSold": "{{sold}} units already sold — new checkouts will fail as sold out.",
+    "fields": {
+      "perCustomerLimit": "Per-customer limit",
+      "totalCap": "Total cap",
+      "unitsSold": "Units sold",
+      "showCountdown": "Show countdown",
+      "showRemaining": "Show remaining",
+      "bannerText": "Banner text"
+    },
+    "errors": {
+      "positiveInt": "Must be a whole number greater than 0"
+    }
+  }
+}

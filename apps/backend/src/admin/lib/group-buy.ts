@@ -21,11 +21,16 @@ export type Campaign = {
   promotion: { id: string; code: string; status: string } | null
 }
 
+// spec 10 กฎ 7 (AI18N-2): enum ที่แสดงต่อผู้ใช้ประกาศเป็น type union — unit ตรวจว่ามี key ครบ
+export type GroupKind = "pool" | "team"
+export type GroupStatus = "open" | "succeeded" | "failed"
+export type MembershipStatus = "joined" | "awaiting_payment" | "paid" | "cancelled"
+
 export type Group = {
   id: string
-  kind: "pool" | "team"
+  kind: GroupKind
   name: string | null
-  status: "open" | "succeeded" | "failed"
+  status: GroupStatus
   join_token: string
   ends_at: string
   progress_orders: number
@@ -38,7 +43,7 @@ export type Membership = {
   customer_id: string
   customer: { email: string } | null
   units: number
-  status: "joined" | "awaiting_payment" | "paid" | "cancelled"
+  status: MembershipStatus
   joined_at: string
   order_id: string
   order: { status: string; is_draft_order: boolean; payment_status: string } | null
