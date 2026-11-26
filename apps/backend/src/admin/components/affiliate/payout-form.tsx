@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { Button, DatePicker, FocusModal, Heading, Text, toast } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { affiliateKeys, createPayout, listAffiliateOptions } from "../../lib/affiliate"
 import {
   defaultPayoutPeriod,
@@ -19,10 +20,8 @@ import { useConfirmDiscard } from "../common/use-confirm-discard"
 import { useRestoreOpenerFocus } from "../common/use-restore-opener-focus"
 
 // spec 08 กฎ 5: กรอกตาม timezone ของเครื่องแอดมิน (ต้องตั้งเป็นเวลาไทย) — ส่ง Date เข้า API ตรงๆ
-const PERIOD: { key: "period_from" | "period_to"; label: string }[] = [
-  { key: "period_from", label: "From (inclusive) *" },
-  { key: "period_to", label: "To (exclusive) *" },
-]
+// spec 10 (AI18N-4): label = key `payoutForm.fields.<key>` แปลตอน render
+const PERIOD = ["period_from", "period_to"] as const
 
 /**
  * AF-12c (spec 05 กฎ 37c): FocusModal สร้าง payout — ช่วงเริ่มต้น = เดือนก่อนตามเวลาเครื่อง; 400 → toast และไม่มีแถวใหม่
@@ -33,6 +32,7 @@ const PERIOD: { key: "period_from" | "period_to"; label: string }[] = [
  * ADM-27 (กฎ 31): ฟอร์ม dirty ถามก่อนปิด (useConfirmDiscard)
  */
 export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
+  const { t } = useTranslation("ecom-affiliate")
   const queryClient = useQueryClient()
   const form = useForm<PayoutForm>({
     resolver: zodResolver(payoutFormSchema, PAYOUT_PARSE_OPTIONS, { raw: true }),
@@ -49,7 +49,7 @@ export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
     getOptions: (data) =>
       data.affiliates.map((a) => ({
         value: a.id,
-        label: `${a.name} (${a.email})${a.status === "suspended" ? " — suspended" : ""}`,
+        label: `${a.name} (${a.email})${a.status === "suspended" ? t("payoutForm.suspendedSuffix") : ""}`,
       })),
     selectedValue: form.watch("affiliate_id") || undefined,
   })
@@ -59,7 +59,7 @@ export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
   const save = useMutation({
     mutationFn: createPayout,
     onSuccess: () => {
-      toast.success("Payout created")
+      toast.success(t("payoutForm.created"))
       onClose()
       return refetch()
     },
@@ -103,26 +103,26 @@ export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
                   disabled={submitLocked}
                   data-testid="affiliate-payout-save"
                 >
-                  Create
+                  {t("actions.create", { ns: "translation" })}
                 </Button>
               </div>
             </FocusModal.Header>
             <FocusModal.Body className="flex justify-center overflow-auto py-16">
               <div className="flex w-full max-w-lg flex-col gap-y-4">
                 <FocusModal.Title asChild>
-                  <Heading>Create payout</Heading>
+                  <Heading>{t("payoutForm.title")}</Heading>
                 </FocusModal.Title>
                 <Form.Field
                   control={form.control}
                   name="affiliate_id"
                   render={({ field: { onChange, ...field } }) => (
                     <Form.Item>
-                      <Form.Label>Affiliate *</Form.Label>
+                      <Form.Label>{t("payoutForm.fields.affiliate_id")}</Form.Label>
                       <Form.Control>
                         <Combobox
                           {...field}
                           onChange={(id?: string) => onChange(id ?? "")}
-                          placeholder={options.isLoading ? "Loading..." : "Select an affiliate"}
+                          placeholder={options.isLoading ? t("payoutForm.loading") : t("payoutForm.selectAffiliate")}
                           options={options.options}
                           searchValue={options.searchValue}
                           onSearchValueChange={options.onSearchValueChange}
@@ -134,21 +134,21 @@ export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
                       {/* กฎ 21: query ล้มต้องบอกผู้ใช้ ไม่ใช่รายการว่างเงียบ */}
                       {options.isError && (
                         <Text size="small" className="text-ui-fg-error" data-testid="affiliate-payout-options-error">
-                          Could not load affiliates: {options.error.message}
+                          {t("payoutForm.optionsError", { message: options.error.message })}
                         </Text>
                       )}
                       <Form.ErrorMessage data-testid="affiliate-payout-error-affiliate_id" />
                     </Form.Item>
                   )}
                 />
-                {PERIOD.map(({ key, label }) => (
+                {PERIOD.map((key) => (
                   <Form.Field
                     key={key}
                     control={form.control}
                     name={key}
                     render={({ field }) => (
                       <Form.Item>
-                        <Form.Label>{label}</Form.Label>
+                        <Form.Label>{t(`payoutForm.fields.${key}`)}</Form.Label>
                         {/* e2e กรอก/อ่านผ่าน wrapper ที่มี testid เดิม (spec 08 กฎ 7b) */}
                         <div data-testid={`affiliate-payout-field-${key}`}>
                           <Form.Control>
@@ -161,8 +161,7 @@ export const PayoutFormModal = ({ onClose }: { onClose: () => void }) => {
                   />
                 ))}
                 <Text size="xsmall" className="text-ui-fg-subtle">
-                  Includes approved entries (and their reversals) created before To that are not in another payout. From
-                  is recorded as the period start.
+                  {t("payoutForm.note")}
                 </Text>
               </div>
             </FocusModal.Body>

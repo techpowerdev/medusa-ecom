@@ -12,6 +12,7 @@ import { fieldErrorMap } from "../lib/form-validation"
 import {
   type Json,
   type Resources,
+  RETURN_ALLOWLIST,
   THAI,
   dashboardTranslations,
   guardIssues,
@@ -36,20 +37,7 @@ const I18N_PENDING: Record<"groupBuy" | "evoucher" | "affiliate", string[]> = {
   evoucher: [],
   // ---- AI18N-4 (ecom-affiliate) ----
   // ไม่อยู่ในรายการแต่ต้องตรวจเอง: lib/affiliate{,-names}.ts (enum สถานะ — กฎ 7)
-  affiliate: [
-    "routes/affiliate/page.tsx",
-    "components/affiliate/affiliates-table.tsx",
-    "components/affiliate/list-table.tsx",
-    "components/affiliate/mark-paid-prompt.tsx",
-    "components/affiliate/payout-form.tsx",
-    "components/affiliate/payout-info-drawer.tsx",
-    "components/affiliate/payouts-table.tsx",
-    "components/affiliate/program-form.tsx",
-    "components/affiliate/programs-table.tsx",
-    "lib/affiliate-account.ts",
-    "lib/affiliate-payout.ts",
-    "lib/affiliate-program-form.ts",
-  ],
+  affiliate: [],
   // ---- จบรายการ ----
 }
 const PENDING = Object.values(I18N_PENDING).flat()
@@ -132,6 +120,15 @@ describe("key ที่ใช้ในโค้ดมีจริง (AC-3, ก�
     expect(keyIssues("components/x.tsx", two, res)).toEqual(["useTranslation หลาย namespace: ecom-common, ecom-evoucher"])
     const route = `export const config = defineRouteConfig({ label: "nav.missing", translationNs: "ecom-common" })`
     expect(keyIssues("routes/x/page.tsx", route, res)).toEqual(["ecom-common:nav.missing"])
+  })
+
+  // nit review AI18N-3: helper ที่ key เป็น template (enum — ตรวจด้วย missingEnumKeys) ข้ามได้ แต่ key เป็น identifier ตรวจไม่ได้ → รายงาน
+  it("fixture: helper key แบบ template ข้าม, แบบ identifier รายงาน", () => {
+    const res = resources as Resources
+    const template = `import { t } from "../i18n/t"\nexport const f = (v: string) => t("ecom-common", \`confirmDiscard.\${v}\`)`
+    expect(keyIssues("lib/x.ts", template, res)).toEqual([])
+    const identifier = `import { t } from "../i18n/t"\nconst KEY = "nope"\nexport const f = () => t("ecom-common", KEY)`
+    expect(keyIssues("lib/x.ts", identifier, res)).toEqual(["ecom-common: key ไม่ใช่ literal/template (KEY)"])
   })
 
   it("fixture enum (กฎ 7): ค่าใหม่ใน array/union ที่ไม่มี key → คืนค่านั้น", () => {
@@ -238,6 +235,17 @@ describe("guard static (AC-5, กฎ 9, 14)", () => {
     ["g", "routes/x/page.tsx", `export const config = defineRouteConfig({ label: LABEL, translationNs: NS })`],
   ])("fixture (%s) ถูกจับ: %s %s", (rule, file, src) => {
     expect(rules(file, src)).toContain(rule)
+  })
+
+  // nit review AI18N-3: RETURN_ALLOWLIST ผูกกับไฟล์ — ค่าที่อนุญาตในไฟล์หนึ่งยังถูกจับในไฟล์อื่น และทุกค่าอยู่ในไฟล์นั้นจริง
+  it("RETURN_ALLOWLIST ผูกกับไฟล์: ไฟล์มีอยู่และค่าเป็น literal ในไฟล์นั้น; ไฟล์อื่นคืนค่าเดียวกัน → (e)", () => {
+    for (const [file, values] of Object.entries(RETURN_ALLOWLIST)) {
+      expect(adminFiles).toContain(file)
+      values.forEach((value) => expect(read(file)).toContain(`"${value}"`))
+    }
+    const src = `export const state = (low: boolean) => (low ? "low" : "ok")`
+    expect(rules("lib/x.ts", src)).toEqual(["e", "e"])
+    expect(rules("lib/evoucher-pool-delete.ts", src)).toEqual([])
   })
 
   it("fixture (c) new Error ในไฟล์ที่แสดงต่อผู้ใช้ถูกจับ ไฟล์อื่นไม่จับ", () => {

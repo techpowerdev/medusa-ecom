@@ -5,6 +5,7 @@ import { CheckCircle, EllipsisHorizontal, XCircle } from "@medusajs/icons"
 import { Badge, createDataTableColumnHelper, IconButton, toast, usePrompt } from "@medusajs/ui"
 import { useIsMutating, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { affiliateKeys, cancelPayout, Payout } from "../../lib/affiliate"
 import { canCancelPayout, canMarkPaid } from "../../lib/affiliate-payout"
 import { createSingleFlight } from "../../lib/single-flight"
@@ -22,6 +23,7 @@ const columnHelper = createDataTableColumnHelper<Payout>()
  * จึงไม่หายแม้ cell ถูก mount ใหม่ (review #316) — กล่อง mark paid อยู่นอกตาราง (render ใน cell แล้ว Escape ครั้งแรกไม่ปิด)
  */
 const PayoutActions = ({ payout, onMarkPaid }: { payout: Payout; onMarkPaid: (p: Payout) => void }) => {
+  const { t } = useTranslation("ecom-affiliate")
   const prompt = usePrompt()
   const queryClient = useQueryClient()
   // กล่องยืนยันเปิดอยู่หรือ request ยังไม่จบ → กด Cancel ซ้ำถูกข้าม (กฎ 4)
@@ -36,7 +38,7 @@ const PayoutActions = ({ payout, onMarkPaid }: { payout: Payout; onMarkPaid: (p:
     mutationKey,
     mutationFn: cancelPayout,
     onSuccess: () => {
-      toast.success("Payout cancelled")
+      toast.success(t("payouts.cancelled"))
       return refetch()
     },
     // รอบ 10: ยกเลิกไม่สำเร็จ (เช่น ถูก mark paid ไปแล้ว) → โหลดรายการใหม่ให้ตารางแสดงสถานะจริง
@@ -49,10 +51,10 @@ const PayoutActions = ({ payout, onMarkPaid }: { payout: Payout; onMarkPaid: (p:
   const confirmCancel = () =>
     cancelOnce(async () => {
       const ok = await prompt({
-        title: "Cancel this draft payout?",
-        description: "The payout is removed and its entries can be picked up by the next payout.",
-        confirmText: "Cancel payout",
-        cancelText: "Keep payout",
+        title: t("payouts.cancelPrompt.title"),
+        description: t("payouts.cancelPrompt.description"),
+        confirmText: t("payouts.cancelPrompt.confirm"),
+        cancelText: t("payouts.cancelPrompt.cancel"),
       })
       if (ok) {
         await cancel.mutateAsync(payout.id).catch(() => undefined)
@@ -63,7 +65,7 @@ const PayoutActions = ({ payout, onMarkPaid }: { payout: Payout; onMarkPaid: (p:
     ...(canMarkPaid(payout)
       ? [
           {
-            label: "Mark paid",
+            label: t("payouts.markPaid"),
             icon: <CheckCircle />,
             disabled: busy,
             onClick: () => {
@@ -76,7 +78,7 @@ const PayoutActions = ({ payout, onMarkPaid }: { payout: Payout; onMarkPaid: (p:
     ...(canCancelPayout(payout)
       ? [
           {
-            label: "Cancel",
+            label: t("actions.cancel", { ns: "translation" }),
             icon: <XCircle />,
             disabled: busy,
             onClick: confirmCancel,
@@ -98,6 +100,7 @@ const PayoutActions = ({ payout, onMarkPaid }: { payout: Payout; onMarkPaid: (p:
 // AF-6 (spec 05 AC-26): เฉพาะแถว `draft` มีปุ่มยกเลิก (route ของ AF-9) ยืนยันด้วย usePrompt และกันกดซ้ำ
 // AF-12c (กฎ 37c): ปุ่มสร้าง payout (FocusModal) และ mark paid ต่อแถว `draft` (Prompt พร้อมช่อง reference)
 export const PayoutsTable = () => {
+  const { t } = useTranslation("ecom-affiliate")
   const { getFullDate } = useDate()
   const list = useAffiliateList<Payout>("payouts", "payouts")
   const rows = useAffiliateNames(list.rows)
@@ -126,10 +129,10 @@ export const PayoutsTable = () => {
   const columns = useMemo(
     () => [
       columnHelper.accessor("status", {
-        header: "Status",
+        header: t("payouts.columns.status"),
         cell: ({ getValue }) => (
           <Badge size="2xsmall" color={getValue() === "paid" ? "green" : "orange"}>
-            {getValue()}
+            {t(`payouts.status.${getValue()}`, { defaultValue: getValue() })}
           </Badge>
         ),
       }),
@@ -143,7 +146,7 @@ export const PayoutsTable = () => {
       // แล้วขยายตามความกว้างของ div ห่อด้านใน (ไม่มี maxSize — ถ้ามี td ถูกกดเหลือ 150 ทุกจอ); div ห่อไม่ตัด overflow เอง
       // ข้อความจึงยังล้นไปถึง div `.truncate` ของ TruncatedCell → tooltip ชื่อเต็มเหมือนเดิม (กฎ 41b)
       columnHelper.accessor("affiliate_id", {
-        header: "Affiliate",
+        header: t("payouts.columns.affiliate_id"),
         size: 150,
         cell: ({ row }) => (
           <div className="w-[126px] 2xl:w-[250px]">
@@ -156,15 +159,15 @@ export const PayoutsTable = () => {
       // ตามสัดส่วนโดยไม่สน maxSize ของคอลัมน์ข้อความ
       columnHelper.accessor((row) => getLocaleAmount(castNumber(row.amount), row.currency), {
         id: "amount",
-        header: "Amount",
+        header: t("payouts.columns.amount"),
         size: undefined,
       }),
       columnHelper.accessor(
         (row) => `${getFullDate({ date: row.period_from })} – ${getFullDate({ date: row.period_to })}`,
-        { id: "period", header: "Period", size: undefined },
+        { id: "period", header: t("payouts.columns.period"), size: undefined },
       ),
       columnHelper.accessor("paid_at", {
-        header: "Paid at",
+        header: t("payouts.columns.paid_at"),
         size: undefined,
         cell: ({ getValue }) => {
           const value = getValue()
@@ -175,16 +178,16 @@ export const PayoutsTable = () => {
       // (width/max-width ของ td แบบ border-box จึงบวก padding pr-6) ข้อความที่ถูกตัดยังมี tooltip ของ TruncatedCell;
       // กฎ 45 (ADM-41): เนื้อหา 100px (+ pr-6 = 124) แทน 250px ของกฎ 39 ให้ทั้งตารางไม่ล้นที่ 1280
       columnHelper.accessor("reference", {
-        header: "Reference",
+        header: t("payouts.columns.reference"),
         size: 124,
         maxSize: 124,
         cell: ({ getValue }) => getValue() ?? "-",
       }),
       // spec 08 กฎ 45 (ADM-41): id (`affpay_` + ULID ~250px) ถูกตัดที่เนื้อหา 100px (+ pr-6 = 124) พร้อม tooltip id เต็มของ TruncatedCell
       // — ไม่เป็นคอลัมน์ auto ตามกฎ 41c แล้ว (คอลัมน์ auto กว้างไม่น้อยกว่าข้อความ → ตารางล้นที่ 1280); Amount/Period/Paid at รับส่วนเกินแทน
-      columnHelper.accessor("id", { header: "Payout", size: 124, maxSize: 124 }),
+      columnHelper.accessor("id", { header: t("payouts.columns.id"), size: 124, maxSize: 124 }),
     ],
-    [actionsColumn, getFullDate],
+    [actionsColumn, getFullDate, t],
   )
 
   return (
@@ -195,10 +198,10 @@ export const PayoutsTable = () => {
           {...list}
           rows={rows}
           columns={columns}
-          heading="Payouts"
-          subHeading="Draft payouts can be marked paid or cancelled."
-          action={{ label: "Create payout", onClick: () => setCreating((c) => c ?? Date.now()) }}
-          empty="No payouts yet"
+          heading={t("payouts.heading")}
+          subHeading={t("payouts.subHeading")}
+          action={{ label: t("payouts.create"), onClick: () => setCreating((c) => c ?? Date.now()) }}
+          empty={t("payouts.empty")}
         />
       </div>
       {creating && <PayoutFormModal key={creating} onClose={() => setCreating(undefined)} />}

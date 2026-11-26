@@ -1,22 +1,27 @@
 import { z } from "zod"
+import { t } from "../i18n/t"
 import { isAccountNumber, normalizeAccountNumber } from "../../modules/affiliate/utils/account-number"
 import type { Affiliate } from "./affiliate"
 
 // AF-12b (spec 05 กฎ 37b): action สถานะเดียวต่อแถวตามสถานะ affiliate — suspend ต้องยืนยันด้วย usePrompt
 // ADM-8b: อยู่ใน ActionMenu ของแถว (menuitem หาด้วย label — spec 08 กฎ 10)
+// spec 10 กฎ 4d (AI18N-4): label แปลตอนเรียก affiliateAction (ห้ามเรียก t ตอนโหลด module)
 export type AffiliateAction = {
   label: string
   status: Affiliate["status"]
   confirm: boolean
 }
 
-const ACTIONS: Record<Affiliate["status"], AffiliateAction> = {
-  pending: { label: "Approve", status: "active", confirm: false },
-  active: { label: "Suspend", status: "suspended", confirm: true },
-  suspended: { label: "Reactivate", status: "active", confirm: false },
+const ACTIONS: Record<Affiliate["status"], Omit<AffiliateAction, "label"> & { label: () => string }> = {
+  pending: { label: () => t("ecom-affiliate", "affiliates.actions.approve"), status: "active", confirm: false },
+  active: { label: () => t("ecom-affiliate", "affiliates.actions.suspend"), status: "suspended", confirm: true },
+  suspended: { label: () => t("ecom-affiliate", "affiliates.actions.reactivate"), status: "active", confirm: false },
 }
 
-export const affiliateAction = (status: Affiliate["status"]) => ACTIONS[status]
+export const affiliateAction = (status: Affiliate["status"]): AffiliateAction => {
+  const { label, ...rest } = ACTIONS[status]
+  return { label: label(), ...rest }
+}
 
 // owner Q18: ข้อมูลรับเงินมี 3 ช่องนี้เท่านั้นใน v1 (โอนธนาคาร ADR-005)
 export const PAYOUT_INFO_FIELDS = ["bank_name", "account_name", "account_number"] as const
@@ -32,12 +37,17 @@ export const payoutInfoForm = (stored: Record<string, unknown> | null | undefine
   }
 }
 
-const required = z.string().trim().min(1, "Required")
+const required = z
+  .string()
+  .trim()
+  .min(1, { error: () => t("ecom-affiliate", "payoutInfo.errors.required") })
 
 /** validator ฝั่ง admin: trim ทุกช่อง และทั้ง 3 ช่องต้องไม่ว่าง — ส่งเฉพาะ 3 key นี้;
  * account_number ตัด `-`/ช่องว่างแล้วต้องเป็นตัวเลข 10–12 หลัก (AF-15 กฎ 39a — ตรงกับ validator ของ API) */
 export const payoutInfoSchema = z.object({
   bank_name: required,
   account_name: required,
-  account_number: required.transform(normalizeAccountNumber).refine(isAccountNumber, "Must be 10–12 digits"),
+  account_number: required.transform(normalizeAccountNumber).refine(isAccountNumber, {
+    error: () => t("ecom-affiliate", "payoutInfo.errors.accountNumber"),
+  }),
 })

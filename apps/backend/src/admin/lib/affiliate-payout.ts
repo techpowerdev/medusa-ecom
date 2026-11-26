@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { t } from "../i18n/t"
 import type { Affiliate, Payout } from "./affiliate"
 import { fieldErrorMap } from "./form-validation"
 
@@ -14,7 +15,8 @@ export const defaultPayoutPeriod = (now: Date) => ({
   period_to: new Date(now.getFullYear(), now.getMonth(), 1),
 })
 
-const INVALID_DATE = "Invalid date"
+// spec 10 กฎ 4d (AI18N-4): ข้อความเป็น function — แปลตอน parse ตามภาษาปัจจุบัน
+const invalidDate = () => t("ecom-affiliate", "payoutForm.errors.invalidDate")
 
 // ADM-9 (spec 08 กฎ 8): รูปค่าของฟอร์ม — กฎตรวจอยู่ใน toPayoutBody แล้ว map error เข้า form.setError (แบบ toProgramBody)
 export const payoutFormSchema = z.object({
@@ -25,7 +27,7 @@ export const payoutFormSchema = z.object({
 export type PayoutForm = z.input<typeof payoutFormSchema>
 
 export const PAYOUT_PARSE_OPTIONS = {
-  error: fieldErrorMap({ period_from: INVALID_DATE, period_to: INVALID_DATE }),
+  error: fieldErrorMap({ period_from: invalidDate, period_to: invalidDate }),
 }
 
 type PayoutBody = { affiliate_id: string; period_from: Date; period_to: Date }
@@ -35,16 +37,16 @@ export const toPayoutBody = (
 ): { body: PayoutBody } | { error: string; field: keyof PayoutForm } => {
   const { affiliate_id, period_from, period_to } = form
   if (!affiliate_id) {
-    return { error: "Select an affiliate", field: "affiliate_id" }
+    return { error: t("ecom-affiliate", "payoutForm.errors.affiliate"), field: "affiliate_id" }
   }
   if (!period_from) {
-    return { error: "From is required", field: "period_from" }
+    return { error: t("ecom-affiliate", "payoutForm.errors.fromRequired"), field: "period_from" }
   }
   if (!period_to) {
-    return { error: "To is required", field: "period_to" }
+    return { error: t("ecom-affiliate", "payoutForm.errors.toRequired"), field: "period_to" }
   }
   if (period_to.getTime() <= period_from.getTime()) {
-    return { error: "To must be after From", field: "period_to" }
+    return { error: t("ecom-affiliate", "payoutForm.errors.toAfterFrom"), field: "period_to" }
   }
   return { body: { affiliate_id, period_from, period_to } }
 }
