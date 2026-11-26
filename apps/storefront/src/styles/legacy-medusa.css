@@ -5,12 +5,6 @@
   - task เจ้าของไฟล์ (SFUI-2..5e) ย้าย class ไปเป็น token ของ shadcn ตามตารางกฎ 21; SFUI-6 ลบทั้งไฟล์และ @import ใน globals.css
 */
 
-/* tailwindcss-radix (plugin ของ v3) — ใช้ที่ product-tabs/accordion.tsx (ลบใน SFUI-4) */
-@custom-variant radix-state-open (&[data-state="open"]);
-@custom-variant radix-state-closed (&[data-state="closed"]);
-@custom-variant group-radix-state-open (&:is(:where(.group)[data-state="open"] *));
-@custom-variant group-radix-state-closed (&:is(:where(.group)[data-state="closed"] *));
-
 /* preset ใส่ตัวแปรดิบ (light) ใน :root ด้วย addBase — โค้ดที่อ้าง var(--fg-*) ตรง (prop color ของ icon, interactive-link, not-found, discount-code) */
 :root {
   --fg-interactive: rgba(59, 130, 246, 1);
