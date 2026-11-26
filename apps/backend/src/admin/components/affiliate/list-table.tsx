@@ -3,6 +3,7 @@ import { useDebouncedSearch, useQueryParams } from "@medusajs/dashboard/hooks"
 import { DataTableColumnDef, Text } from "@medusajs/ui"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { affiliateKeys, listAffiliateNames, listAffiliateResource } from "../../lib/affiliate"
 import { affiliateNamesQuery, withAffiliateNames } from "../../lib/affiliate-names"
 import { isUnauthorized } from "../../lib/fetch-error"
@@ -12,14 +13,6 @@ import { PageOffsetGate } from "../common/page-offset-gate"
 const PAGE_SIZE = 20
 
 type Resource = "programs" | "affiliates" | "entries" | "payouts"
-
-// spec 08 กฎ 29b: ชื่อใน heading error ตามชื่อแท็บ — แท็บ Ledger อ่าน resource `entries`
-const LOAD_ERROR_NOUN: Record<Resource, string> = {
-  programs: "programs",
-  affiliates: "affiliates",
-  entries: "ledger entries",
-  payouts: "payouts",
-}
 
 /**
  * AF-6 / ADM-8a (spec 08 กฎ 9): รายการของแท็บหนึ่งในหน้า Affiliate (เรียง created_at ใหม่สุดก่อนตามค่าเริ่มต้นของ AF-5)
@@ -112,6 +105,7 @@ export const AffiliateListTable = <T extends { id: string }>({
   resource,
   searchable = false,
 }: Props<T>) => {
+  const { t } = useTranslation("ecom-affiliate")
   // spec 08 กฎ 25 (24b): 401 → ErrorBoundary ของ dashboard พาไป /login
   if (isUnauthorized(error)) {
     throw error
@@ -138,9 +132,10 @@ export const AffiliateListTable = <T extends { id: string }>({
           // ตอน error ไม่มีช่องค้นหา (แบบแถบแบ่งหน้า) — DataTable จึงแสดง empty (error) ไม่ใช่ filtered แม้ URL มีคำค้น
           enableSearch={searchable && !loadFailed}
           emptyState={{
-            empty: loadFailed ? { heading: `Could not load ${LOAD_ERROR_NOUN[resource]}`, description: error?.message } : { heading: empty },
+            // spec 08 กฎ 29b: ชื่อใน heading error ตามชื่อแท็บ — แท็บ Ledger อ่าน resource `entries` (key `list.loadError.<resource>`)
+            empty: loadFailed ? { heading: t(`list.loadError.${resource}`), description: error?.message } : { heading: empty },
             // ADM-40: ผลค้นหาว่าง = ข้อความ "ไม่พบผล" ของ dashboard (en: general.noResultsTitle/noResultsMessage) ไม่ใช่ข้อความตารางว่าง
-            filtered: { heading: "No results", description: "Try changing the filters or search query" },
+            filtered: { heading: t("list.noResults.heading"), description: t("list.noResults.description") },
           }}
         />
       </PageOffsetGate>

@@ -36,20 +36,7 @@ const I18N_PENDING: Record<"groupBuy" | "evoucher" | "affiliate", string[]> = {
   evoucher: [],
   // ---- AI18N-4 (ecom-affiliate) ----
   // ไม่อยู่ในรายการแต่ต้องตรวจเอง: lib/affiliate{,-names}.ts (enum สถานะ — กฎ 7)
-  affiliate: [
-    "routes/affiliate/page.tsx",
-    "components/affiliate/affiliates-table.tsx",
-    "components/affiliate/list-table.tsx",
-    "components/affiliate/mark-paid-prompt.tsx",
-    "components/affiliate/payout-form.tsx",
-    "components/affiliate/payout-info-drawer.tsx",
-    "components/affiliate/payouts-table.tsx",
-    "components/affiliate/program-form.tsx",
-    "components/affiliate/programs-table.tsx",
-    "lib/affiliate-account.ts",
-    "lib/affiliate-payout.ts",
-    "lib/affiliate-program-form.ts",
-  ],
+  affiliate: [],
   // ---- จบรายการ ----
 }
 const PENDING = Object.values(I18N_PENDING).flat()

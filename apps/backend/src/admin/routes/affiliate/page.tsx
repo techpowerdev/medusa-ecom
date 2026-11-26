@@ -4,6 +4,7 @@ import { castNumber, getLocaleAmount } from "@medusajs/dashboard/lib"
 import { ReceiptPercent } from "@medusajs/icons"
 import { Badge, createDataTableColumnHelper, Tabs } from "@medusajs/ui"
 import { useMemo } from "react"
+import { useTranslation } from "react-i18next"
 import { useSearchParams } from "react-router-dom"
 import { AffiliatesTable } from "../../components/affiliate/affiliates-table"
 import {
@@ -23,9 +24,11 @@ import { CommissionEntry } from "../../lib/affiliate"
 // AF-14: คอลัมน์ Affiliate ของ Ledger/Payouts แสดงชื่อ + อีเมล (กฎ 38)
 // AF-12b: แท็บ Affiliates (approve/suspend/reactivate + payout info) อยู่ที่ components/affiliate/affiliates-table.tsx
 // ADM-8a (spec 08): Header + DataTable ของ dashboard (prefix ต่อแท็บ), เงินด้วย getLocaleAmount, วันเวลาด้วย useDate
+// spec 10 (AI18N-4): ข้อความผ่าน namespace `ecom-affiliate`; สถานะ = `<prefix>.status.<ค่า>` (ค่าที่ไม่รู้จักแสดงค่าดิบ — กฎ 7)
 const entry = createDataTableColumnHelper<CommissionEntry>()
 
 const LedgerTable = () => {
+  const { t } = useTranslation("ecom-affiliate")
   const { getFullDate } = useDate()
   const list = useAffiliateList<CommissionEntry>("entries", "ledger")
   const rows = useAffiliateNames(list.rows)
@@ -33,32 +36,32 @@ const LedgerTable = () => {
   const columns = useMemo(
     () => [
       entry.accessor("created_at", {
-        header: "Created",
+        header: t("ledger.columns.created_at"),
         cell: ({ getValue }) => getFullDate({ date: getValue(), includeTime: true }),
       }),
       // spec 08 กฎ 42a (ADM-38): เนื้อหา 250px แบบกฎ 41a (ไม่ใช่คอลัมน์แรก: 250 + pr-6 = 274) — ชื่อ/อีเมลยาวถูกตัดที่ขอบ cell
       // และมี tooltip "ชื่อ อีเมล" ของ TruncatedCell จาก AffiliateCell เดิม (กฎ 41b/42b)
       entry.accessor("affiliate_id", {
-        header: "Affiliate",
+        header: t("ledger.columns.affiliate_id"),
         size: 274,
         maxSize: 274,
         cell: ({ row }) => <AffiliateCell row={row.original} />,
       }),
-      entry.accessor("order_id", { header: "Order" }),
+      entry.accessor("order_id", { header: t("ledger.columns.order_id") }),
       // API ส่งหน่วยหลัก (major units) — แสดงตามนั้น ไม่หาร 100 และไม่ใช้คำนวณ
       entry.accessor((row) => getLocaleAmount(castNumber(row.amount), row.currency), {
         id: "amount",
-        header: "Amount",
+        header: t("ledger.columns.amount"),
       }),
       // spec 08 กฎ 42c (ADM-38): คอลัมน์สุดท้ายเป็นคอลัมน์ auto (ไม่มี width) รับความกว้างส่วนเกินของตาราง w-full
       // — ไม่งั้น Chrome แจกส่วนเกินตามสัดส่วนให้คอลัมน์ Affiliate จนเกิน 250px (แบบกฎ 41c, Q12 = ก)
       entry.accessor("status", {
-        header: "Status",
+        header: t("ledger.columns.status"),
         size: undefined,
-        cell: ({ getValue }) => <Badge size="2xsmall">{getValue()}</Badge>,
+        cell: ({ getValue }) => <Badge size="2xsmall">{t(`ledger.status.${getValue()}`, { defaultValue: getValue() })}</Badge>,
       }),
     ],
-    [getFullDate],
+    [getFullDate, t],
   )
 
   return (
@@ -68,19 +71,20 @@ const LedgerTable = () => {
         {...list}
         rows={rows}
         columns={columns}
-        heading="Ledger"
-        subHeading="Commission entries, newest first."
-        empty="No commission entries yet"
+        heading={t("ledger.heading")}
+        subHeading={t("ledger.subHeading")}
+        empty={t("ledger.empty")}
       />
     </div>
   )
 }
 
+// ชื่อแท็บ = key `tabs.<value>` (แปลตอน render — spec 10 กฎ 4e)
 const TABS = [
-  { value: "programs", label: "Programs", content: <ProgramsTable /> },
-  { value: "affiliates", label: "Affiliates", content: <AffiliatesTable /> },
-  { value: "ledger", label: "Ledger", content: <LedgerTable /> },
-  { value: "payouts", label: "Payouts", content: <PayoutsTable /> },
+  { value: "programs", content: <ProgramsTable /> },
+  { value: "affiliates", content: <AffiliatesTable /> },
+  { value: "ledger", content: <LedgerTable /> },
+  { value: "payouts", content: <PayoutsTable /> },
 ]
 
 // ADM-43 (spec 08 กฎ 47c): แท็บที่เลือกอยู่ใน URL (`?tab=<key>`) — reload/แชร์ลิงก์กลับแท็บเดิม; ไม่มี/ค่าผิด → Programs
@@ -88,6 +92,7 @@ const TABS = [
 // activationMode="manual" (qa #491 D-1): แบบ automatic Radix เรียก onValueChange ทั้งตอน mousedown และ focus ก่อน router commit
 // คลิกเดียวจึง push history 2 รายการ (back ต้องกด 2 ครั้ง) — manual เลือกแท็บด้วยคลิก/Enter/Space ครั้งเดียว ลูกศรแค่ย้ายโฟกัส
 const AffiliatePage = () => {
+  const { t } = useTranslation("ecom-affiliate")
   const [searchParams, setSearchParams] = useSearchParams()
   const active = TABS.find((t) => t.value === searchParams.get("tab"))?.value ?? TABS[0].value
   const selectTab = (value: string) =>
@@ -98,12 +103,12 @@ const AffiliatePage = () => {
 
   return (
     <Container>
-      <Header title="Affiliate" />
+      <Header title={t("page.title")} />
       <Tabs value={active} onValueChange={selectTab} activationMode="manual">
         <Tabs.List className="px-6 py-4">
           {TABS.map((tab) => (
             <Tabs.Trigger key={tab.value} value={tab.value} data-testid={`affiliate-admin-tab-${tab.value}`}>
-              {tab.label}
+              {t(`tabs.${tab.value}`)}
             </Tabs.Trigger>
           ))}
         </Tabs.List>
@@ -117,8 +122,10 @@ const AffiliatePage = () => {
   )
 }
 
+// spec 10 กฎ 9: label เป็น key + translationNs (string literal ทั้งคู่)
 export const config = defineRouteConfig({
-  label: "Affiliate",
+  label: "nav.label",
+  translationNs: "ecom-affiliate",
   icon: ReceiptPercent,
 })
 

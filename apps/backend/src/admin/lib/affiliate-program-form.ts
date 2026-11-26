@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { t } from "../i18n/t"
 import type { Program, ProgramBody, ProgramStatus } from "./affiliate"
 import { fieldErrorMap } from "./form-validation"
 
@@ -25,9 +26,18 @@ export const programFormSchema = z.object({
 export type ProgramForm = z.input<typeof programFormSchema>
 export type ProgramFormField = keyof ProgramForm
 
-// z.date() กับ Invalid Date ให้ "Invalid input" — แทนด้วยข้อความของช่อง (ADM-3 fieldErrorMap)
+// spec 10 กฎ 3 (AI18N-4): ข้อความประกอบจากชื่อช่อง — `{{label}}` ที่ label แปลเป็น key ของตัวเอง (en เท่าเดิมทุกตัวอักษร)
+const dateError = (kind: "required" | "invalid", field: "starts_at" | "ends_at") => {
+  const label =
+    field === "starts_at" ? t("ecom-affiliate", "programForm.errors.start") : t("ecom-affiliate", "programForm.errors.end")
+  return kind === "required"
+    ? t("ecom-affiliate", "programForm.errors.required", { label })
+    : t("ecom-affiliate", "programForm.errors.invalid", { label })
+}
+
+// z.date() กับ Invalid Date ให้ "Invalid input" — แทนด้วยข้อความของช่อง (ADM-3 fieldErrorMap; spec 10 กฎ 4d: function เรียกตอน parse)
 export const PROGRAM_PARSE_OPTIONS = {
-  error: fieldErrorMap({ starts_at: "Start is invalid", ends_at: "End is invalid" }),
+  error: fieldErrorMap({ starts_at: () => dateError("invalid", "starts_at"), ends_at: () => dateError("invalid", "ends_at") }),
 }
 
 export const emptyProgramForm = (): ProgramForm => ({
@@ -66,18 +76,13 @@ export type ProgramFieldError = { field: ProgramFormField; message: string }
 
 // ADM-42 (spec 08 กฎ 46): ตรวจครบทุกช่องแล้วคืน error ทั้งหมด (ตามลำดับช่องในฟอร์ม) — ไม่หยุดที่ช่องแรก
 // ให้ฟอร์ม setError ได้ทุกช่องในการกด Save ครั้งเดียว
-const date = (
-  errors: ProgramFieldError[],
-  value: Date | null,
-  label: string,
-  field: ProgramFormField,
-): Date | undefined => {
+const date = (errors: ProgramFieldError[], value: Date | null, field: "starts_at" | "ends_at"): Date | undefined => {
   if (!value) {
-    errors.push({ field, message: `${label} is required` })
+    errors.push({ field, message: dateError("required", field) })
     return undefined
   }
   if (Number.isNaN(value.getTime())) {
-    errors.push({ field, message: `${label} is invalid` })
+    errors.push({ field, message: dateError("invalid", field) })
     return undefined
   }
   return value
@@ -114,39 +119,39 @@ export const toProgramBody = (form: ProgramForm): { body: ProgramBody } | { erro
   const errors: ProgramFieldError[] = []
   const name = form.name.trim()
   if (!name) {
-    errors.push({ field: "name", message: "Name is required" })
+    errors.push({ field: "name", message: t("ecom-affiliate", "programForm.errors.name") })
   }
-  const starts_at = date(errors, form.starts_at, "Start", "starts_at")
-  const ends_at = date(errors, form.ends_at, "End", "ends_at")
+  const starts_at = date(errors, form.starts_at, "starts_at")
+  const ends_at = date(errors, form.ends_at, "ends_at")
   if (starts_at && ends_at && ends_at.getTime() <= starts_at.getTime()) {
-    errors.push({ field: "ends_at", message: "End must be after start" })
+    errors.push({ field: "ends_at", message: t("ecom-affiliate", "programForm.errors.endAfterStart") })
   }
   const commission_value = number(
     errors,
     form,
     "commission_value",
-    "Commission must be above 0 and at most 100",
+    t("ecom-affiliate", "programForm.errors.commission"),
     (n) => n > 0 && n <= 100,
   )
   const attribution_window_days = number(
     errors,
     form,
     "attribution_window_days",
-    "Attribution window must be a whole number of at least 1",
+    t("ecom-affiliate", "programForm.errors.attributionWindow"),
     (n) => Number.isInteger(n) && n >= 1,
   )
   const hold_days = number(
     errors,
     form,
     "hold_days",
-    "Hold days must be a whole number of at least 0",
+    t("ecom-affiliate", "programForm.errors.holdDays"),
     (n) => Number.isInteger(n) && n >= 0,
   )
   const cap_per_order = form.cap_per_order.trim()
-    ? number(errors, form, "cap_per_order", "Cap per order must be above 0", (n) => n > 0)
+    ? number(errors, form, "cap_per_order", t("ecom-affiliate", "programForm.errors.capPerOrder"), (n) => n > 0)
     : null
   if (!form.all && !form.collection_ids.length && !form.category_ids.length && !form.variant_ids.length) {
-    errors.push({ field: "collection_ids", message: "Select at least one collection or category" })
+    errors.push({ field: "collection_ids", message: t("ecom-affiliate", "programForm.errors.scope") })
   }
   if (errors.length || !starts_at || !ends_at) {
     return { errors }

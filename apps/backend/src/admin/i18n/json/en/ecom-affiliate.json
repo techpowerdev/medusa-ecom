@@ -1,1 +1,208 @@
-{}
+{
+  "nav": {
+    "label": "Affiliate"
+  },
+  "page": {
+    "title": "Affiliate"
+  },
+  "tabs": {
+    "programs": "Programs",
+    "affiliates": "Affiliates",
+    "ledger": "Ledger",
+    "payouts": "Payouts"
+  },
+  "list": {
+    "loadError": {
+      "programs": "Could not load programs",
+      "affiliates": "Could not load affiliates",
+      "entries": "Could not load ledger entries",
+      "payouts": "Could not load payouts"
+    },
+    "noResults": {
+      "heading": "No results",
+      "description": "Try changing the filters or search query"
+    }
+  },
+  "programs": {
+    "heading": "Programs",
+    "subHeading": "Only draft programs can be deleted.",
+    "create": "Create program",
+    "empty": "No programs yet",
+    "columns": {
+      "name": "Program",
+      "status": "Status",
+      "starts_at": "Starts",
+      "ends_at": "Ends",
+      "rate": "Commission",
+      "hold_days": "Hold days"
+    },
+    "status": {
+      "draft": "draft",
+      "published": "published",
+      "ended": "ended"
+    },
+    "deleted": "Program deleted",
+    "deletePrompt": {
+      "title": "Delete {{name}}?",
+      "description": "Only draft programs can be deleted. This cannot be undone.",
+      "confirm": "Delete program",
+      "cancel": "Keep program"
+    }
+  },
+  "programForm": {
+    "createTitle": "Create program",
+    "editTitle": "Edit program",
+    "created": "Program created",
+    "updated": "Program updated",
+    "fields": {
+      "name": "Name *",
+      "starts_at": "Starts at *",
+      "ends_at": "Ends at *",
+      "commission_value": "Commission (%) *",
+      "attribution_window_days": "Attribution window (days) *",
+      "hold_days": "Hold days *",
+      "cap_per_order": "Cap per order (THB)",
+      "announce_text": "Announcement",
+      "status": "Status *",
+      "all": "All products",
+      "collection_ids": "Collections",
+      "category_ids": "Categories"
+    },
+    "variantCount": "Variants set via API: {{variantCount}} (kept as is; edit through the API)",
+    "errors": {
+      "required": "{{label}} is required",
+      "invalid": "{{label}} is invalid",
+      "start": "Start",
+      "end": "End",
+      "name": "Name is required",
+      "endAfterStart": "End must be after start",
+      "commission": "Commission must be above 0 and at most 100",
+      "attributionWindow": "Attribution window must be a whole number of at least 1",
+      "holdDays": "Hold days must be a whole number of at least 0",
+      "capPerOrder": "Cap per order must be above 0",
+      "scope": "Select at least one collection or category"
+    }
+  },
+  "affiliates": {
+    "heading": "Affiliates",
+    "subHeading": "Approve applicants and manage payout info.",
+    "empty": "No affiliates yet",
+    "columns": {
+      "name": "Name",
+      "email": "Email",
+      "code": "Code",
+      "status": "Status",
+      "created_at": "Joined"
+    },
+    "status": {
+      "pending": "pending",
+      "active": "active",
+      "suspended": "suspended"
+    },
+    "actions": {
+      "approve": "Approve",
+      "suspend": "Suspend",
+      "reactivate": "Reactivate",
+      "payoutInfo": "Payout info"
+    },
+    "updated": "Affiliate updated",
+    "suspendPrompt": {
+      "title": "Suspend {{name}}?",
+      "description": "The affiliate stops earning new commission until reactivated.",
+      "confirm": "Suspend"
+    }
+  },
+  "payoutInfo": {
+    "title": "Payout info — {{name}}",
+    "fields": {
+      "bank_name": "Bank name",
+      "account_name": "Account name",
+      "account_number": "Account number"
+    },
+    "clear": "Clear",
+    "clearPrompt": {
+      "title": "Clear payout info of {{name}}?",
+      "description": "Bank name, account name and account number are removed.",
+      "confirm": "Clear"
+    },
+    "fillAll": "Fill in all payout fields",
+    "errors": {
+      "required": "Required",
+      "accountNumber": "Must be 10–12 digits"
+    }
+  },
+  "ledger": {
+    "heading": "Ledger",
+    "subHeading": "Commission entries, newest first.",
+    "empty": "No commission entries yet",
+    "columns": {
+      "created_at": "Created",
+      "affiliate_id": "Affiliate",
+      "order_id": "Order",
+      "amount": "Amount",
+      "status": "Status"
+    },
+    "status": {
+      "pending": "pending",
+      "approved": "approved",
+      "reversed": "reversed",
+      "paid": "paid"
+    }
+  },
+  "payouts": {
+    "heading": "Payouts",
+    "subHeading": "Draft payouts can be marked paid or cancelled.",
+    "create": "Create payout",
+    "empty": "No payouts yet",
+    "columns": {
+      "status": "Status",
+      "affiliate_id": "Affiliate",
+      "amount": "Amount",
+      "period": "Period",
+      "paid_at": "Paid at",
+      "reference": "Reference",
+      "id": "Payout"
+    },
+    "status": {
+      "draft": "draft",
+      "paid": "paid"
+    },
+    "markPaid": "Mark paid",
+    "cancelled": "Payout cancelled",
+    "cancelPrompt": {
+      "title": "Cancel this draft payout?",
+      "description": "The payout is removed and its entries can be picked up by the next payout.",
+      "confirm": "Cancel payout",
+      "cancel": "Keep payout"
+    }
+  },
+  "markPaid": {
+    "title": "Mark payout as paid?",
+    "description": "Confirm the bank transfer of {{amount}} was made. Its entries become paid. This cannot be undone.",
+    "reference": "Transfer reference (optional)",
+    "dismiss": "Keep as draft",
+    "confirm": "Mark as paid",
+    "done": "Payout marked as paid"
+  },
+  "payoutForm": {
+    "title": "Create payout",
+    "created": "Payout created",
+    "fields": {
+      "affiliate_id": "Affiliate *",
+      "period_from": "From (inclusive) *",
+      "period_to": "To (exclusive) *"
+    },
+    "loading": "Loading...",
+    "selectAffiliate": "Select an affiliate",
+    "suspendedSuffix": " — suspended",
+    "optionsError": "Could not load affiliates: {{message}}",
+    "note": "Includes approved entries (and their reversals) created before To that are not in another payout. From is recorded as the period start.",
+    "errors": {
+      "invalidDate": "Invalid date",
+      "affiliate": "Select an affiliate",
+      "fromRequired": "From is required",
+      "toRequired": "To is required",
+      "toAfterFrom": "To must be after From"
+    }
+  }
+}

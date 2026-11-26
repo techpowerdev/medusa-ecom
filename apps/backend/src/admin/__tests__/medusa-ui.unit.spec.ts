@@ -546,8 +546,9 @@ describe("ปุ่มต่อแถวของ affiliate อยู่ใน A
 
   it("payouts-table: Mark paid และ Cancel ของแถวเดียวกันกันกัน (disabled ระหว่างอีก action ทำงาน — nit #176)", () => {
     const src = read("components/affiliate/payouts-table.tsx")
+    // spec 10 (AI18N-4): label เป็น t(...) — หา action จาก expression ของ label
     const action = (label: string) => {
-      const i = src.indexOf(`label: "${label}"`)
+      const i = src.indexOf(`label: ${label}`)
       expect(i).toBeGreaterThan(-1)
       return src.slice(i, src.indexOf("}", src.indexOf("onClick", i)))
     }
@@ -555,8 +556,8 @@ describe("ปุ่มต่อแถวของ affiliate อยู่ใน A
     expect(src).toMatch(/const busy = useIsMutating\(\{ mutationKey \}\) > 0/)
     expect(src).toMatch(/const mutationKey = affiliateKeys\.payoutAction\(payout\.id\)/)
     expect(src).toMatch(/useMutation\(\{\s*mutationKey,/)
-    expect(action("Mark paid")).toMatch(/disabled:\s*busy\b/)
-    expect(action("Cancel")).toMatch(/disabled:\s*busy\b/)
+    expect(action('t("payouts.markPaid")')).toMatch(/disabled:\s*busy\b/)
+    expect(action('t("actions.cancel", { ns: "translation" })')).toMatch(/disabled:\s*busy\b/)
     expect(read("components/affiliate/mark-paid-prompt.tsx")).toMatch(
       /useMutation\(\{[^}]*mutationKey:\s*affiliateKeys\.payoutAction\(payout\.id\)/
     )
@@ -674,21 +675,11 @@ describe("ปุ่มสร้างของ Partners/Programs/Payouts อย�
   const PARTNERS = "components/evoucher/partners-section.tsx"
   const PROGRAMS = "components/affiliate/programs-table.tsx"
   const PAYOUTS = "components/affiliate/payouts-table.tsx"
-  const CASES: [string, string, string, string][] = [
-    [PROGRAMS, "affiliate-programs-table", "Programs", "Create program"],
-    [PAYOUTS, "affiliate-payouts-table", "Payouts", "Create payout"],
+  // spec 10 (AI18N-4): heading/label ของตาราง affiliate เป็น key ของ `ecom-affiliate` (เจตนาเดิม: อยู่ที่ตารางภายใน wrapper)
+  const AFFILIATE_CASES: [string, string, string, string][] = [
+    [PROGRAMS, "affiliate-programs-table", "programs.heading", "programs.create"],
+    [PAYOUTS, "affiliate-payouts-table", "payouts.heading", "payouts.create"],
   ]
-
-  it.each(CASES)("%s ไม่ใช้ Header แยก — heading/action อยู่ที่ตารางภายใน wrapper %s", (file, wrapper, heading, label) => {
-    const src = read(file)
-    expect(src).not.toMatch(/common\/header/)
-    expect(src).not.toMatch(/<Header\b/)
-    const inside = src.slice(src.indexOf(`data-testid="${wrapper}"`))
-    expect(src).toContain(`data-testid="${wrapper}"`)
-    expect(inside).toMatch(/<(DataTable|AffiliateListTable)\b/)
-    expect(inside).toContain(`heading="${heading}"`)
-    expect(inside).toMatch(new RegExp(`action=\\{\\{\\s*label: "${label}",\\s*onClick:`))
-  })
 
   // spec 10 AC-7 (AI18N-3): partners แปลแล้ว — heading/label ของ action เป็น key ของ ecom-evoucher (เจตนาเดิม: อยู่ที่ตารางใน wrapper)
   it(`${PARTNERS} ไม่ใช้ Header แยก — heading/action อยู่ที่ตารางภายใน wrapper evoucher-partners-table`, () => {
@@ -700,6 +691,17 @@ describe("ปุ่มสร้างของ Partners/Programs/Payouts อย�
     expect(inside).toMatch(/<DataTable\b/)
     expect(inside).toContain('heading={t("partners.heading")}')
     expect(inside).toMatch(/action=\{\{\s*label: t\("partners\.create"\),\s*onClick:/)
+  })
+
+  it.each(AFFILIATE_CASES)("%s ไม่ใช้ Header แยก — heading/action (key) อยู่ที่ตารางภายใน wrapper %s", (file, wrapper, heading, label) => {
+    const src = read(file)
+    expect(src).not.toMatch(/common\/header/)
+    expect(src).not.toMatch(/<Header\b/)
+    const inside = src.slice(src.indexOf(`data-testid="${wrapper}"`))
+    expect(src).toContain(`data-testid="${wrapper}"`)
+    expect(inside).toMatch(/<AffiliateListTable\b/)
+    expect(inside).toContain(`heading={t("${heading}")}`)
+    expect(inside).toMatch(new RegExp(`action=\\{\\{\\s*label: t\\("${label}"\\),\\s*onClick:`))
   })
 
   it.each([
@@ -826,8 +828,8 @@ describe("ตาราง e-voucher: สถานะ error แทน empty (spec
 describe("ตาราง affiliate / group buy: สถานะ error แทน empty (spec 08 AC-26, กฎ 25, ADM-21b)", () => {
   // [ไฟล์, testid error, heading error (regex), tag ที่รับ emptyState]
   const ERROR_TABLES: [string, string, string, string][] = [
-    // ADM-25 (กฎ 29b): ชื่อใน heading มาจาก LOAD_ERROR_NOUN (แท็บ Ledger = "ledger entries")
-    ["components/affiliate/list-table.tsx", "affiliate-list-error", "`Could not load \\$\\{LOAD_ERROR_NOUN\\[resource\\]\\}`", "DataTable"],
+    // ADM-25 (กฎ 29b): heading ต่อ resource จาก key `list.loadError.<resource>` (spec 10 AI18N-4; แท็บ Ledger = "ledger entries")
+    ["components/affiliate/list-table.tsx", "affiliate-list-error", "t\\(`list\\.loadError\\.\\$\\{resource\\}`\\)", "DataTable"],
     // spec 10 AC-7 (AI18N-2): heading เป็น key ของ ecom-group-buy (ค่า en "Could not load groups/members")
     ["components/group-buy/groups-section.tsx", "gb-groups-error", 't\\("groups\\.loadError"\\)', "DataTable.Table"],
     ["components/group-buy/group-members.tsx", "gb-memberships-error", 't\\("members\\.loadError"\\)', "DataTable.Table"],
@@ -883,10 +885,14 @@ describe("ตาราง admin: ซ่อนแถบแบ่งหน้า�
   })
 
   it("list-table.tsx: heading error ของแท็บ Ledger (resource entries) = \"Could not load ledger entries\" แท็บอื่นคงชื่อ resource", () => {
-    const src = read("components/affiliate/list-table.tsx")
-    expect(src).toMatch(
-      /const LOAD_ERROR_NOUN: Record<Resource, string> = \{\s*programs: "programs",\s*affiliates: "affiliates",\s*entries: "ledger entries",\s*payouts: "payouts",?\s*\}/
-    )
+    // spec 10 (AI18N-4): ข้อความอยู่ใน key `list.loadError.<resource>` ของ ecom-affiliate — ค่า en เท่าข้อความเดิม
+    expect(read("components/affiliate/list-table.tsx")).toContain("t(`list.loadError.${resource}`)")
+    expect(JSON.parse(read("i18n/json/en/ecom-affiliate.json")).list.loadError).toEqual({
+      programs: "Could not load programs",
+      affiliates: "Could not load affiliates",
+      entries: "Could not load ledger entries",
+      payouts: "Could not load payouts",
+    })
   })
 
   it("pools-table.tsx: comment กฎ 25 อยู่ติด div ที่ใส่ testid error (กฎ 29d)", () => {

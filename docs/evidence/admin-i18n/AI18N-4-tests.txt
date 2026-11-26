@@ -1,0 +1,53 @@
+# AI18N-4 (affiliate — ecom-affiliate) ผลทดสอบ — spec 10 (docs/spec/10-admin-thai-i18n.md)
+# รันในเครื่อง 2026-11-27, node 24.12.0, worktree ของ branch feat/AI18N-4-affiliate (stack บน AI18N-1 4b9e94fa)
+
+## Red (ก่อนแก้โค้ด: เอาไฟล์กลุ่ม affiliate ออกจาก I18N_PENDING + เพิ่ม lib/__tests__/i18n-affiliate.unit.spec.ts)
+Tests:       24 failed, 158 passed, 182 total
+# ล้ม = i18n-affiliate 12 ข้อ (key ยังไม่มี) + guard กฎ 14 ของไฟล์กลุ่ม affiliate 12 ไฟล์ (ข้อความฮาร์ดโค้ด)
+
+## Green — unit ใหม่ (lib/__tests__/i18n-affiliate.unit.spec.ts — AC-3 enum, AC-4a)
+    ✓ toPayoutBody ไม่เลือก affiliate: en = ข้อความเดิม, th = ค่าไทย, de → en (2 ms)
+    ✓ error ของ toPayoutBody/PAYOUT_PARSE_OPTIONS เป็นไทยเมื่อ lng=th
+    ✓ toProgramBody: ข้อความประกอบด้วย {{label}} — en เท่าเดิมทุกตัวอักษร, th มีอักษรไทยทุกข้อ (2 ms)
+    ✓ affiliateAction / payoutInfoSchema: en เท่าเดิม, th มีอักษรไทย (1 ms)
+    ✓ lib/affiliate.ts ProgramStatus → programs.status.* (10 ms)
+    ✓ lib/affiliate.ts AffiliateStatus → affiliates.status.* (2 ms)
+    ✓ lib/affiliate.ts CommissionEntryStatus → ledger.status.* (1 ms)
+    ✓ lib/affiliate.ts PayoutStatus → payouts.status.* (1 ms)
+    ✓ Resource ของ list-table → list.loadError.* (4 ms)
+    ✓ แท็บของหน้า affiliate → tabs.* (1 ms)
+    ✓ ช่องของฟอร์ม → payoutInfo.fields.* / programForm.fields.* / payoutForm.fields.* (1 ms)
+    ✓ ค่า en ของสถานะ = ค่าดิบเดิม (badge แสดงค่า enum ตรงๆ ก่อนแปล) (1 ms)
+Tests:       12 passed, 12 total
+
+## Green — unit ที่เกี่ยวข้อง (i18n guard AC-1..5, medusa-ui static, unit เดิมของ lib affiliate)
+PASS src/admin/lib/__tests__/affiliate-account.unit.spec.ts
+PASS src/admin/lib/__tests__/affiliate-payout.unit.spec.ts
+PASS src/admin/lib/__tests__/affiliate-program-form.unit.spec.ts
+PASS src/admin/__tests__/medusa-ui.unit.spec.ts
+PASS src/admin/lib/__tests__/i18n-affiliate.unit.spec.ts
+PASS src/admin/__tests__/i18n.unit.spec.ts
+Test Suites: 6 passed, 6 total
+Tests:       481 passed, 481 total
+
+## Green — backend unit ทั้งชุด (pnpm --filter backend test:unit)
+Test Suites: 135 passed, 135 total
+Tests:       2543 passed, 2543 total
+
+## pnpm lint && pnpm typecheck
+lint: 0 errors (warning เดิมของ storefront/backend นอกไฟล์ของ task นี้)
+typecheck: backend + storefront ผ่าน
+
+## pnpm --filter backend build: ผ่าน; NODE_ENV=production build + assert-absent "Development Mode": ผ่าน
+
+## e2e admin (prod build, backend :9341, lng=en ผ่าน ADMIN_UI_OPTIONS / lng=th ผ่าน ADMIN_UI_OPTIONS_TH)
+# 20 ไฟล์ที่อ้างหน้า /app/affiliate (grep path/testid) รวม admin-i18n-affiliate.spec.ts (AC-11), --workers=2
+    test-results/admin-row-menu-return-focu-0fc14-็จ-→-focus-ที่ปุ่ม-…-ของแถว-chromium/test-failed-1.png
+  1 failed
+  91 passed (2.3m)
+# ตัวที่ล้ม = เคส partners (หน้า e-voucher, ไม่ใช่ไฟล์ของ task นี้) — รันซ้ำไฟล์นั้นเดี่ยว (--workers=1): 3 passed
+# AC-11 (admin-i18n-affiliate.spec.ts): 2 passed (lng=th, lng=en)
+
+## หมายเหตุ
+# storefront test:e2e:unit: evidence-budget ล้มที่ docs/evidence/admin-i18n/AI18N-1-tests.txt (regex task id ยังไม่รับ AI18N-* —
+# session หลักแจ้งว่าแก้ใน commit ใหม่ของ AI18N-1) ไฟล์นี้ก็จะติดเหตุเดียวกันจนกว่า commit นั้นเข้า stack

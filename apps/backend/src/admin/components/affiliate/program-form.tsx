@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { Button, DatePicker, Drawer, FocusModal, Heading, Input, Select, Switch, Text, Textarea, toast } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm, type FieldErrors, type Resolver, type UseFormReturn } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { sdk } from "../../lib/client"
 import { affiliateKeys, createProgram, Program, ProgramBody, updateProgram } from "../../lib/affiliate"
 import {
@@ -23,22 +24,16 @@ import { useConfirmDiscard } from "../common/use-confirm-discard"
 import { useRestoreOpenerFocus } from "../common/use-restore-opener-focus"
 
 // spec 08 กฎ 5: กรอกตาม timezone ของเครื่องแอดมิน (ต้องตั้งเป็นเวลาไทย) — ส่ง Date เข้า API ตรงๆ
-const DATES: { key: "starts_at" | "ends_at"; label: string }[] = [
-  { key: "starts_at", label: "Starts at *" },
-  { key: "ends_at", label: "Ends at *" },
-]
+// spec 10 (AI18N-4): label ของทุกช่อง = key `programForm.fields.<key>` แปลตอน render
+const DATES = ["starts_at", "ends_at"] as const
 
-const NUMBERS: { key: "commission_value" | "attribution_window_days" | "hold_days" | "cap_per_order"; label: string }[] = [
-  { key: "commission_value", label: "Commission (%) *" },
-  { key: "attribution_window_days", label: "Attribution window (days) *" },
-  { key: "hold_days", label: "Hold days *" },
-  { key: "cap_per_order", label: "Cap per order (THB)" },
-]
+const NUMBERS = ["commission_value", "attribution_window_days", "hold_days", "cap_per_order"] as const
 
 const idsOrUndefined = (ids?: string[]) => (ids?.length ? ids : undefined)
 
 // spec 08 กฎ 11: scope ค้นหาฝั่ง server + แบ่งหน้าด้วย useComboboxData (route ของ Medusa ตามเดิม ไม่สร้างใหม่) — mount เมื่อปิด all เท่านั้น
 const ScopeFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; program?: Program }) => {
+  const { t } = useTranslation("ecom-affiliate")
   const collections = useComboboxData({
     queryKey: ["affiliate-program-scope", "collections"],
     queryFn: (params) => sdk.admin.productCollection.list({ ...params, fields: "id,title" }),
@@ -52,20 +47,20 @@ const ScopeFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; prog
     defaultValue: idsOrUndefined(program?.scope?.category_ids),
   })
   const fields = [
-    { key: "collection_ids", label: "Collections", data: collections },
-    { key: "category_ids", label: "Categories", data: categories },
+    { key: "collection_ids", data: collections },
+    { key: "category_ids", data: categories },
   ] as const
 
   return (
     <>
-      {fields.map(({ key, label, data }) => (
+      {fields.map(({ key, data }) => (
         <Form.Field
           key={key}
           control={form.control}
           name={key}
           render={({ field: { onChange, ...field } }) => (
             <Form.Item>
-              <Form.Label>{label}</Form.Label>
+              <Form.Label>{t(`programForm.fields.${key}`)}</Form.Label>
               <Form.Control>
                 <Combobox
                   {...field}
@@ -108,6 +103,7 @@ const programResolver: Resolver<ProgramForm> = async (values, context, options) 
 }
 
 const ProgramFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; program?: Program }) => {
+  const { t } = useTranslation("ecom-affiliate")
   const all = form.watch("all")
   const variantCount = form.watch("variant_ids").length
 
@@ -118,7 +114,7 @@ const ProgramFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; pr
         name="name"
         render={({ field }) => (
           <Form.Item>
-            <Form.Label>Name *</Form.Label>
+            <Form.Label>{t("programForm.fields.name")}</Form.Label>
             <Form.Control>
               <Input {...field} size="small" data-testid="affiliate-program-field-name" />
             </Form.Control>
@@ -126,7 +122,7 @@ const ProgramFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; pr
           </Form.Item>
         )}
       />
-      {DATES.map(({ key, label }) => (
+      {DATES.map((key) => (
         <Form.Field
           key={key}
           control={form.control}
@@ -135,7 +131,7 @@ const ProgramFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; pr
           rules={key === "starts_at" ? { deps: ["ends_at"] } : undefined}
           render={({ field: { ref, ...field } }) => (
             <Form.Item>
-              <Form.Label>{label}</Form.Label>
+              <Form.Label>{t(`programForm.fields.${key}`)}</Form.Label>
               {/* e2e กรอกผ่าน wrapper ที่มี testid เดิม (fillDatePicker — spec 08 กฎ 7b) */}
               <div data-testid={`affiliate-program-field-${key}`}>
                 <Form.Control>
@@ -153,14 +149,14 @@ const ProgramFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; pr
           )}
         />
       ))}
-      {NUMBERS.map(({ key, label }) => (
+      {NUMBERS.map((key) => (
         <Form.Field
           key={key}
           control={form.control}
           name={key}
           render={({ field }) => (
             <Form.Item>
-              <Form.Label>{label}</Form.Label>
+              <Form.Label>{t(`programForm.fields.${key}`)}</Form.Label>
               <Form.Control>
                 <NumberInput {...field} size="small" data-testid={`affiliate-program-field-${key}`} />
               </Form.Control>
@@ -174,7 +170,7 @@ const ProgramFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; pr
         name="announce_text"
         render={({ field }) => (
           <Form.Item>
-            <Form.Label>Announcement</Form.Label>
+            <Form.Label>{t("programForm.fields.announce_text")}</Form.Label>
             <Form.Control>
               <Textarea {...field} data-testid="affiliate-program-field-announce_text" />
             </Form.Control>
@@ -186,7 +182,7 @@ const ProgramFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; pr
         name="status"
         render={({ field: { onChange, ref, ...field } }) => (
           <Form.Item>
-            <Form.Label>Status *</Form.Label>
+            <Form.Label>{t("programForm.fields.status")}</Form.Label>
             {/* กฎ 20: แสดงเฉพาะสถานะที่เปลี่ยนไปได้จากสถานะปัจจุบัน */}
             <Form.Control>
               <Select {...field} size="small" onValueChange={onChange}>
@@ -196,7 +192,7 @@ const ProgramFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; pr
                 <Select.Content>
                   {allowedProgramStatuses(program?.status).map((s) => (
                     <Select.Item key={s} value={s}>
-                      {s}
+                      {t(`programs.status.${s}`, { defaultValue: s })}
                     </Select.Item>
                   ))}
                 </Select.Content>
@@ -221,14 +217,14 @@ const ProgramFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; pr
                 data-testid="affiliate-program-scope-all"
               />
             </Form.Control>
-            <Form.Label>All products</Form.Label>
+            <Form.Label>{t("programForm.fields.all")}</Form.Label>
           </Form.Item>
         )}
       />
       {!all && <ScopeFields form={form} program={program} />}
       {/* Q16: variant_ids แก้ใน UI ไม่ได้ใน v1 — แสดงจำนวนและส่งค่าเดิมกลับเสมอ */}
       <Text size="xsmall" className="text-ui-fg-subtle" data-testid="affiliate-program-variant-count">
-        Variants set via API: {variantCount} (kept as is; edit through the API)
+        {t("programForm.variantCount", { variantCount })}
       </Text>
     </>
   )
@@ -241,6 +237,7 @@ const ProgramFields = ({ form, program }: { form: UseFormReturn<ProgramForm>; pr
  * ADM-26 (กฎ 30c): Escape ขณะ Combobox ของ scope ขยายไม่ปิด modal/Drawer (keepModalOpenWhileComboboxExpanded)
  */
 export const ProgramFormModal = ({ program, onClose }: { program?: Program; onClose: () => void }) => {
+  const { t } = useTranslation("ecom-affiliate")
   const queryClient = useQueryClient()
   const form = useForm<ProgramForm>({
     resolver: programResolver,
@@ -256,7 +253,7 @@ export const ProgramFormModal = ({ program, onClose }: { program?: Program; onCl
     mutationFn: (body: ProgramBody) =>
       program ? updateProgram(program.id, omitUnchangedDates(body, program)) : createProgram(body),
     onSuccess: () => {
-      toast.success(program ? "Program updated" : "Program created")
+      toast.success(program ? t("programForm.updated") : t("programForm.created"))
       onClose()
       return refetch()
     },
@@ -283,7 +280,7 @@ export const ProgramFormModal = ({ program, onClose }: { program?: Program; onCl
 
   const saveButton = (
     <Button size="small" type="submit" isLoading={save.isPending} disabled={submitLocked} data-testid="affiliate-program-save">
-      Save
+      {t("actions.save", { ns: "translation" })}
     </Button>
   )
 
@@ -299,7 +296,7 @@ export const ProgramFormModal = ({ program, onClose }: { program?: Program; onCl
             <KeyboundForm noValidate onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
               <Drawer.Header>
                 <Drawer.Title asChild>
-                  <Heading>Edit program</Heading>
+                  <Heading>{t("programForm.editTitle")}</Heading>
                 </Drawer.Title>
               </Drawer.Header>
               <Drawer.Body className="flex flex-col gap-y-4 overflow-auto">
@@ -309,7 +306,7 @@ export const ProgramFormModal = ({ program, onClose }: { program?: Program; onCl
                 <div className="flex items-center justify-end gap-x-2">
                   <Drawer.Close asChild>
                     <Button size="small" variant="secondary" type="button" disabled={save.isPending}>
-                      Cancel
+                      {t("actions.cancel", { ns: "translation" })}
                     </Button>
                   </Drawer.Close>
                   {saveButton}
@@ -334,7 +331,7 @@ export const ProgramFormModal = ({ program, onClose }: { program?: Program; onCl
             <FocusModal.Body className="flex justify-center overflow-auto py-16">
               <div className="flex w-full max-w-lg flex-col gap-y-4">
                 <FocusModal.Title asChild>
-                  <Heading>Create program</Heading>
+                  <Heading>{t("programForm.createTitle")}</Heading>
                 </FocusModal.Title>
                 <ProgramFields form={form} />
               </div>
