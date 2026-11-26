@@ -289,3 +289,11 @@ NODE_ENV=production pnpm --filter backend build: exit 0
 
 หมายเหตุ: admin-row-menu-return-focus.spec.ts AC-52 (payouts — affiliate, ไม่ใช่ไฟล์ของ task นี้) ล้มครั้งเดียวที่ Escape ปิด alertdialog;
 รันซ้ำ --repeat-each=3 ผ่าน 3/3 (flaky timing ของ Escape) — ไม่เกี่ยวกับการแปลของกลุ่ม e-voucher
+
+## หลังเรียง stack (2026-11-27): rebase --onto feat/AI18N-2-group-buy-flash-sale (AI18N-1 2bc72327 + AI18N-2) — ไม่มี conflict
+range-diff f849d285 → ใหม่: ต่างเฉพาะบริบทของ I18N_PENDING (groupBuy: [] จาก AI18N-2) — ไม่มีอะไรหาย
+TEST_TYPE=unit jest src/admin: Test Suites: 27 passed, 27 total / Tests: 826 passed, 826 total
+pnpm typecheck: ผ่าน
+ที่ปลาย stack (AI18N-4 รวม 1+2+3+4): pnpm --filter backend test:unit 137 suites / 2600 passed; Playwright project unit 226 passed (รวม evidence-budget — regex รับ AI18N-* แล้ว);
+  pnpm lint 0 errors; pnpm typecheck ผ่าน; NODE_ENV=production build ผ่าน
+e2e ไม่ได้รันซ้ำหลังเรียง stack (qa รันชุดเต็มที่ปลาย stack)
