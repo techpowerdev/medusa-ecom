@@ -62,21 +62,21 @@ export const CreateCampaign = ({
 }) => {
   const { t } = useTranslation("ecom-group-buy")
   // spec 10 กฎ 4e (AI18N-2): label/hint ของช่องย้ายจากค่าคงที่ระดับ module เข้า component เพื่อเรียก t ตอน render (ลำดับช่องเดิม)
-  const SELECTS: { key: keyof typeof SELECT_OPTIONS; label: string }[] = [
+  const selects: { key: keyof typeof SELECT_OPTIONS; label: string }[] = [
     { key: "target_type", label: t("form.labels.targetType") },
     { key: "group_mode", label: t("form.labels.groupMode") },
     { key: "discount_type", label: t("form.labels.discountType") },
   ]
-  const NAME_AND_TARGET: TextField[] = [
+  const nameAndTarget: TextField[] = [
     { key: "name", label: t("form.labels.name") },
     { key: "target_value", label: t("form.labels.targetValue"), numeric: true },
   ]
   // spec 08 กฎ 5: กรอกตาม timezone ของเครื่องแอดมิน (ต้องตั้งเป็นเวลาไทย) — ส่ง Date เข้า API ตรงๆ
-  const DATES: { key: "starts_at" | "ends_at"; label: string }[] = [
+  const dates: { key: "starts_at" | "ends_at"; label: string }[] = [
     { key: "starts_at", label: t("form.labels.startsAt") },
     { key: "ends_at", label: t("form.labels.endsAt") },
   ]
-  const INPUTS: TextField[] = [
+  const inputs: TextField[] = [
     { key: "discount_value", label: t("form.labels.discountValue"), numeric: true, hint: t("form.hints.discountValue") },
     {
       key: "max_quantity",
@@ -201,7 +201,7 @@ export const CreateCampaign = ({
                 <Text size="small" className="text-ui-fg-subtle">
                   {t("form.description")}
                 </Text>
-                {SELECTS.map(({ key, label }) => (
+                {selects.map(({ key, label }) => (
                   <Form.Field
                     key={key}
                     control={form.control}
@@ -227,8 +227,8 @@ export const CreateCampaign = ({
                     )}
                   />
                 ))}
-                {NAME_AND_TARGET.map(textField)}
-                {DATES.map(({ key, label }) => (
+                {nameAndTarget.map(textField)}
+                {dates.map(({ key, label }) => (
                   <Form.Field
                     key={key}
                     control={form.control}
@@ -253,7 +253,7 @@ export const CreateCampaign = ({
                     )}
                   />
                 ))}
-                {INPUTS.map(textField)}
+                {inputs.map(textField)}
                 <Form.Field
                   control={form.control}
                   name="product_id"

@@ -6,7 +6,7 @@ import { join } from "path"
 import { getI18n } from "react-i18next"
 
 import resources from "../../i18n"
-import { THAI, flatten, missingEnumKeys, unionLiterals, type Json, type Resources } from "../../__tests__/i18n-check"
+import { THAI, dashboardTranslations, flatten, missingEnumKeys, unionLiterals, type Json, type Resources } from "../../__tests__/i18n-check"
 import { FLASH_SALE_PARSE_OPTIONS, flashSaleFormSchema, positiveIntMessage } from "../flash-sale-form"
 import { customerLabel, groupProgress } from "../group-buy-campaign"
 import { CAMPAIGN_PARSE_OPTIONS, campaignFormSchema, emptyCampaignForm, toCampaignBody } from "../group-buy-form"
@@ -138,6 +138,16 @@ describe("AC-3 enum ของ group buy มี key ครบ (กฎ 7)", () => 
     }
     expect(en["targetValue.orders"]).toBe("{{value}} orders")
     expect(en["progress.people"]).toBe("{{current}} / {{target}} people")
+  })
+
+  // AI18N-N1 (nit review รอบ 46): ค่า th ของสถานะสินค้าเท่าคำแปลของ Medusa (`products.productStatus.*` ใน th.json ของ dashboard)
+  it("productStatus: ค่า th = th.json ของ @medusajs/dashboard", () => {
+    const dashboardTh = dashboardTranslations("th")
+    const th = flatten(resources.th[NS] as Json)
+    for (const value of ["draft", "proposed", "published", "rejected"]) {
+      expect(dashboardTh[`products.productStatus.${value}`]).toMatch(THAI)
+      expect(th[`productStatus.${value}`]).toBe(dashboardTh[`products.productStatus.${value}`])
+    }
   })
 })
 

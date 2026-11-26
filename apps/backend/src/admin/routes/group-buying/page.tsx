@@ -11,7 +11,7 @@ import { Container } from "../../components/common/container"
 import { usePageOffset } from "../../components/common/use-page-offset"
 import { PageOffsetGate } from "../../components/common/page-offset-gate"
 import { CreateCampaign } from "../../components/group-buy/create-campaign"
-import { t } from "../../i18n/t"
+import { t as tNs } from "../../i18n/t"
 import { isUnauthorized } from "../../lib/fetch-error"
 import {
   Campaign,
@@ -166,7 +166,7 @@ export const config = defineRouteConfig({
 })
 
 // ADM-6: createRouteMap ของ dashboard สร้าง route "group-buying" เป็นพ่อของ ":id" → breadcrumb "Group buying › <ชื่อแคมเปญ>"
-// spec 10 กฎ 4b: breadcrumb นอก component ใช้ helper t (เรียกตอน render ของ Shell)
-export const handle = { breadcrumb: () => t("ecom-group-buy", "nav.groupBuying") }
+// spec 10 กฎ 4b: breadcrumb นอก component ใช้ helper t (alias tNs ไม่ซ้อนกับ t ของ useTranslation — AI18N-N1; เรียกตอน render ของ Shell)
+export const handle = { breadcrumb: () => tNs("ecom-group-buy", "nav.groupBuying") }
 
 export default GroupBuyingPage

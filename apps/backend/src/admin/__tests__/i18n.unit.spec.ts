@@ -114,6 +114,9 @@ describe("key ที่ใช้ในโค้ดมีจริง (AC-3, ก�
     expect(keyIssues("components/x.tsx", missing, res)).toEqual(["ecom-common:nope.key"])
     const helper = `import { t } from "../i18n/t"\nexport const f = () => t("ecom-common", "nope.helper")`
     expect(keyIssues("lib/x.ts", helper, res)).toEqual(["ecom-common:nope.helper"])
+    // AI18N-N1: helper ที่ import แบบ alias (กันชื่อซ้อนกับ t ของ useTranslation) ยังถูกตรวจ key
+    const alias = `import { t as tNs } from "../i18n/t"\nexport const f = () => tNs("ecom-common", "nope.alias")`
+    expect(keyIssues("lib/x.ts", alias, res)).toEqual(["ecom-common:nope.alias"])
     const medusa = `const C = () => { const { t } = useTranslation("ecom-common"); return [t("actions.save", { ns: "translation" }), t("actions.foo", { ns: "translation" })] }`
     expect(keyIssues("components/x.tsx", medusa, res)).toEqual(["translation:actions.foo ไม่อยู่ในรายการ MEDUSA_KEYS"])
     const two = `const A = () => useTranslation("ecom-common"); const B = () => useTranslation("ecom-evoucher")`
@@ -232,6 +235,7 @@ describe("guard static (AC-5, กฎ 9, 14)", () => {
     ["e", "lib/x.ts", `export function activeChangeType(type?: string) { if (!type) return "order change"; return type }`],
     ["f", "components/x.tsx", `const X = t("ecom-common", "a")`],
     ["f", "components/x.tsx", `const { t } = useTranslation("ecom-common")`],
+    ["f", "routes/x/page.tsx", `import { t as tNs } from "../../i18n/t"\nconst X = tNs("ecom-common", "a")`],
     ["g", "routes/x/page.tsx", `export const config = defineRouteConfig({ label: LABEL, translationNs: NS })`],
   ])("fixture (%s) ถูกจับ: %s %s", (rule, file, src) => {
     expect(rules(file, src)).toContain(rule)
