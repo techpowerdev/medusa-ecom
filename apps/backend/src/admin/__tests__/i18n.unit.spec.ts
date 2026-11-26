@@ -21,6 +21,7 @@ import {
   parityIssues,
   shadowedHelperLines,
   unionLiterals,
+  untranslatedPaginationLines,
 } from "./i18n-check"
 
 const ADMIN_DIR = join(__dirname, "..")
@@ -54,6 +55,14 @@ const adminFiles = (readdirSync(ADMIN_DIR, { recursive: true }) as string[])
   .map((f) => f.split("\\").join("/"))
   .filter((f) => /\.tsx?$/.test(f) && !f.split("/").includes("__tests__") && !f.endsWith(".d.ts"))
 const read = (file: string) => readFileSync(join(ADMIN_DIR, file), "utf8")
+/** prop ของ `translations` ใน Table.Pagination → key ของ Medusa (AI18N-N2) */
+const PAGINATION_KEYS = {
+  of: "general.of",
+  results: "general.results",
+  pages: "general.pages",
+  prev: "general.prev",
+  next: "general.next",
+} as const
 const jsonOf = (lng: string, ns: string) => join(ADMIN_DIR, "i18n/json", lng, `${ns}.json`)
 
 describe("โครง src/admin/i18n (AC-1, กฎ 1–2)", () => {
@@ -219,6 +228,43 @@ describe("guard static (AC-5, กฎ 9, 14)", () => {
     expect(shadowedHelperLines("routes/x/page.tsx", `import { t } from "../../i18n/t"${body}`)).toEqual([2])
     expect(shadowedHelperLines("routes/x/page.tsx", `import { t as tNs } from "../../i18n/t"${body}`)).toEqual([])
     expect(shadowedHelperLines("lib/x.ts", `import { t } from "../i18n/t"\nexport const f = () => t("ecom-common", "a")`)).toEqual([])
+  })
+
+  // AI18N-N2: ข้อความแถบแบ่งหน้า ("of"/"results"/"pages"/"Prev"/"Next") อยู่ใน @medusajs/ui guard ข้อความ (a–g) จึงมองไม่เห็น —
+  // `DataTable.Pagination`/`Table.Pagination` ของ @medusajs/ui ที่ใช้ตรงต้องส่ง `translations` (จาก usePaginationTranslations)
+  it.each(adminFiles.filter((f) => f.endsWith(".tsx")))("%s: DataTable.Pagination/Table.Pagination มี translations", (file) => {
+    expect(untranslatedPaginationLines(file, read(file))).toEqual([])
+  })
+
+  it("fixture: Pagination ไม่มี translations (หรือ spread แทน) → ล้ม; มี translations → ผ่าน", () => {
+    const src = [
+      `const A = () => <DataTable.Pagination />`,
+      `const B = () => <DataTable.Pagination translations={tr} />`,
+      `const C = () => <Table.Pagination count={1} />`,
+      `const D = () => <DataTable.Pagination {...props} />`,
+      `const E = () => <Table.Pagination translations={tr}></Table.Pagination>`,
+    ].join("\n")
+    expect(untranslatedPaginationLines("components/x.tsx", src)).toEqual([1, 3, 4])
+  })
+
+  it("usePaginationTranslations: ครบ 5 key ของ Medusa และค่า en เท่าค่าเริ่มต้นของ Table.Pagination ใน @medusajs/ui", () => {
+    const src = read("components/common/use-pagination-translations.ts")
+    const tableJs = readFileSync(
+      // package.json ของ @medusajs/ui ไม่อยู่ใน exports → อ้างจาก entry `dist/cjs/index.js`
+      join(require.resolve("@medusajs/ui"), "../../esm/components/table/table.js"),
+      "utf8"
+    )
+    const defaults = /translations = \{([^}]*)\}/.exec(tableJs)![1]
+    const en = dashboardTranslations("en")
+    const th = dashboardTranslations("th")
+    for (const [prop, key] of Object.entries(PAGINATION_KEYS)) {
+      expect(src).toContain(`${prop}: t("${key}", { ns: "translation" })`)
+      expect(defaults).toContain(`${prop}: ${JSON.stringify(en[key])}`)
+      expect(th[key]).toMatch(THAI)
+    }
+    expect(Object.keys(PAGINATION_KEYS).sort()).toEqual(
+      [...defaults.matchAll(/(\w+):/g)].map((m) => m[1]).sort()
+    )
   })
 
   it.each(adminFiles.filter((f) => f.startsWith("i18n/")))("%s ไม่เรียก t ตอนโหลด (f)", (file) => {

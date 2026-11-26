@@ -1,6 +1,6 @@
-import { APIRequestContext, Page } from "@playwright/test"
+import { APIRequestContext, Locator, Page } from "@playwright/test"
 
-import { ADMIN_UI_OPTIONS, ADMIN_UI_OPTIONS_TH, adminText, loginAdmin } from "./support/admin"
+import { ADMIN_UI_OPTIONS, ADMIN_UI_OPTIONS_TH, PAGINATION_TEXT, adminText, loginAdmin } from "./support/admin"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { adminHeaders, Headers } from "./support/medusa"
 import { THAI } from "./support/thai-text"
@@ -59,9 +59,33 @@ async function seedCampaigns(request: APIRequestContext, admin: Headers, tag: st
 const expectLang = (lng: Lng, shown: string | null) =>
   lng === "th" ? expect(shown).toMatch(THAI) : expect(shown).not.toMatch(THAI)
 
+// AI18N-N2: แถบแบ่งหน้าของ DataTable (@medusajs/ui) ใน wrapper ที่มี testid — ข้อความจาก key ของ Medusa (`general.*` ของ dashboard)
+const pagination = (lng: Lng, key: "of" | "results" | "pages" | "prev" | "next") => adminText(lng, "translation", `general.${key}`)
+const escapeRe = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+/** "<from> — <to> <of> <count> <results>", "<page> <of> <pageCount> <pages>" และปุ่ม prev/next (role + ชื่อภายใน wrapper) ตามภาษา */
+async function expectPagination(wrapper: Locator, lng: Lng) {
+  const of = escapeRe(pagination(lng, "of"))
+  const resultsRe = new RegExp(`\\d+ ${of} \\d+ ${escapeRe(pagination(lng, "results"))}`)
+  const pagesRe = new RegExp(`\\d+ ${of} \\d+ ${escapeRe(pagination(lng, "pages"))}`)
+  await expect(wrapper).toContainText(resultsRe)
+  await expect(wrapper).toContainText(pagesRe)
+  const prev = wrapper.getByRole("button", { name: pagination(lng, "prev"), exact: true })
+  const next = wrapper.getByRole("button", { name: pagination(lng, "next"), exact: true })
+  await expect(prev).toBeVisible()
+  await expect(next).toBeVisible()
+  // th: ไม่เหลือข้อความอังกฤษเดิมของ @medusajs/ui; en: รูปแบบเดิม (spec 08 กฎ 29a)
+  if (lng === "th") await expect(wrapper).not.toContainText(PAGINATION_TEXT)
+  else await expect(wrapper).toContainText(PAGINATION_TEXT)
+  const shown = (await wrapper.textContent()) ?? ""
+  for (const part of [shown.match(resultsRe)?.[0], shown.match(pagesRe)?.[0], await prev.textContent(), await next.textContent()])
+    expectLang(lng, part ?? null)
+}
+
 async function run(page: Page, request: APIRequestContext, lng: Lng, step: (title: string, body: () => Promise<void>) => Promise<void>, shot: (name: string) => Promise<void>) {
   test.setTimeout(150_000)
-  const { groupBuyId, flashId } = await seedCampaigns(request, await adminHeaders(request), `${lng}-${Date.now()}`)
+  const admin = await adminHeaders(request)
+  const { groupBuyId, flashId } = await seedCampaigns(request, admin, `${lng}-${Date.now()}`)
   const table = page.getByTestId("gb-campaigns-table")
 
   await step("/group-buying: ลิงก์เมนูด้านข้างและ heading ของตาราง", async () => {
@@ -96,6 +120,8 @@ async function run(page: Page, request: APIRequestContext, lng: Lng, step: (titl
     const toast = page.locator("[data-sonner-toast]").filter({ hasText: text(lng, "form.errors.nameRequired") })
     await expect(toast).toHaveCount(1)
     expectLang(lng, `${await dialog.getByRole("heading").first().textContent()} ${fieldErrorText} ${await toast.textContent()}`)
+    // AI18N-N2: แถบแบ่งหน้าของตารางเลือกสินค้า
+    await expectPagination(page.getByTestId("gb-product-picker"), lng)
     await shot("02-create-form")
   })
 
@@ -109,6 +135,25 @@ async function run(page: Page, request: APIRequestContext, lng: Lng, step: (titl
     await expect(first).toHaveText(text(lng, "nav.groupBuying"))
     expectLang(lng, `${await first.textContent()} ${await status.textContent()}`)
     await shot("03-detail")
+  })
+
+  await step("AI18N-N2 /group-buying/:id: แถบแบ่งหน้าของตารางกลุ่มและตารางสมาชิก", async () => {
+    const activated = await request.post(`${BACKEND_URL}/admin/group-buy/campaigns/${groupBuyId}/status`, {
+      headers: admin,
+      data: { status: "active" },
+    })
+    expect(activated.status(), "activate group-buy campaign").toBe(200)
+    const group = await request.post(`${BACKEND_URL}/admin/group-buy/campaigns/${groupBuyId}/groups`, {
+      headers: admin,
+      data: { name: `AI18N-N2 ${lng}` },
+    })
+    expect(group.status(), "create pool group").toBe(201)
+    await page.reload()
+    const groups = page.getByTestId("gb-groups-table")
+    await expect(groups.locator("tbody tr")).toHaveCount(1)
+    await expectPagination(groups, lng)
+    await groups.locator("tbody tr").first().click()
+    await expectPagination(page.getByTestId("gb-memberships-table"), lng)
   })
 
   await step("หน้า campaign ที่มี widget flash-sale-options: หัว widget และ title ของแถว Total cap", async () => {
@@ -141,6 +186,14 @@ test.describe("lng=en", () => {
       "Group buying",
       "Group-buy campaigns",
       "draft",
+    ])
+    // AI18N-N2: ค่า en ของ key แถบแบ่งหน้า = ค่าเริ่มต้นเดิมของ Table.Pagination (@medusajs/ui)
+    expect((["of", "results", "pages", "prev", "next"] as const).map((key) => pagination("en", key))).toEqual([
+      "of",
+      "results",
+      "pages",
+      "Prev",
+      "Next",
     ])
     await run(page, request, "en", step, async () => undefined)
   })

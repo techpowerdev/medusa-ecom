@@ -18,6 +18,7 @@ import { canSetGroupOutcome, customerLabel, orderAdminPath } from "../../lib/gro
 import { isUnauthorized } from "../../lib/fetch-error"
 import { Group, groupBuyApi, groupBuyKeys, Membership } from "../../lib/group-buy"
 import { createSingleFlight } from "../../lib/single-flight"
+import { usePaginationTranslations } from "../common/use-pagination-translations"
 
 type Outcome = "succeed" | "fail"
 
@@ -71,6 +72,7 @@ export const GroupMembers = ({
   onClose: () => void
 }) => {
   const { t } = useTranslation("ecom-group-buy")
+  const paginationTranslations = usePaginationTranslations()
   const queryClient = useQueryClient()
   const prompt = usePrompt()
   const columns = useColumns()
@@ -179,7 +181,7 @@ export const GroupMembers = ({
               }}
             />
             {/* spec 08 กฎ 29a: ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results") */}
-            {!loadFailed && <DataTable.Pagination />}
+            {!loadFailed && <DataTable.Pagination translations={paginationTranslations} />}
           </DataTable>
         </div>
       </div>

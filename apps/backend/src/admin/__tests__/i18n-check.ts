@@ -70,6 +70,12 @@ export const MEDUSA_KEYS: Record<string, string> = {
   // AI18N-4: ผลค้นหาว่างของตาราง affiliate (components/affiliate/list-table.tsx)
   "general.noResultsTitle": "No results",
   "general.noResultsMessage": "Try changing the filters or search query",
+  // AI18N-N2: แถบแบ่งหน้าของ DataTable ของ @medusajs/ui (components/common/use-pagination-translations.ts) — เท่าค่าเริ่มต้นของ Table.Pagination
+  "general.of": "of",
+  "general.results": "results",
+  "general.pages": "pages",
+  "general.prev": "Prev",
+  "general.next": "Next",
 }
 
 const dashboardDir = () => join(require.resolve("@medusajs/dashboard/package.json"), "..")
@@ -166,6 +172,26 @@ export const shadowedHelperLines = (fileName: string, src: string): number[] => 
       node.name &&
       ts.isIdentifier(node.name) &&
       node.name.text === "t"
+    )
+      lines.push(sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1)
+    ts.forEachChild(node, visit)
+  }
+  visit(sf)
+  return lines
+}
+
+/**
+ * บรรทัดของ `<DataTable.Pagination>`/`<Table.Pagination>` ที่ไม่ส่ง `translations` (ว่าง = ผ่าน; AI18N-N2) — ข้อความแถบแบ่งหน้าเป็นค่าเริ่มต้น
+ * ภาษาอังกฤษใน @medusajs/ui guard ข้อความจึงมองไม่เห็น; spread (`{...props}`) ตรวจแบบ static ไม่ได้ → นับว่าไม่ส่ง
+ */
+export const untranslatedPaginationLines = (fileName: string, src: string): number[] => {
+  const sf = parse(fileName, src)
+  const lines: number[] = []
+  const visit = (node: ts.Node) => {
+    if (
+      (ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) &&
+      /^(DataTable|Table)\.Pagination$/.test(node.tagName.getText(sf)) &&
+      !node.attributes.properties.some((p) => ts.isJsxAttribute(p) && p.name.getText(sf) === "translations")
     )
       lines.push(sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1)
     ts.forEachChild(node, visit)

@@ -880,7 +880,8 @@ describe("ตาราง admin: ซ่อนแถบแบ่งหน้า�
 
   it.each(UI_TABLES)("%s: render DataTable.Pagination เฉพาะเมื่อไม่ error", (file) => {
     const src = read(file)
-    expect(src).toMatch(/\{!loadFailed && <DataTable\.Pagination \/>\}/)
+    // AI18N-N2: ส่ง translations (ข้อความแถบแบ่งหน้าตามภาษา) — ยัง render เฉพาะเมื่อไม่ error
+    expect(src).toMatch(/\{!loadFailed && <DataTable\.Pagination translations=\{paginationTranslations\} \/>\}/)
     expect(src.match(/<DataTable\.Pagination\b/g)).toHaveLength(1)
   })
 
