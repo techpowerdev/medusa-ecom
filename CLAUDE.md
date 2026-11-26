@@ -211,8 +211,9 @@ pnpm --filter storefront build && pnpm --filter storefront start
   48px → 40px ทำคลิกตก iframe Stripe) → วัดด้วย `getComputedStyle` บน build ของ develop/commit ฐาน (หรือ compile CSS ของ develop) แล้ว assert ใน e2e
 - e2e ที่ใช้ Stripe รันในเครื่องได้: owner ตั้ง `STRIPE_TEST_API_KEY`/`STRIPE_TEST_PUBLISHABLE_KEY` ใน `~/.zshrc` → shell ของ agent ไม่เห็น
   ให้ `source ~/.zshrc` (ห้าม `cat`/พิมพ์ค่า) ส่งต่อด้วยชื่อแบบ CI (`STRIPE_API_KEY`, `NEXT_PUBLIC_STRIPE_KEY` — ดู `.github/workflows/ci.yml`)
-  และ `stripe listen` forward ไป `:<backend>/hooks/payment/stripe_stripe`; ไม่มี key → ระบุ spec ที่รอ CI
-- pnpm ใช้ `minimumReleaseAge` 1 วัน: dependency เวอร์ชันที่ออกไม่ถึง 24 ชม. ติดตั้งในเครื่องได้ (มี cache) แต่ CI `--frozen-lockfile`
+  ก่อน start backend ตั้ง `STRIPE_WEBHOOK_SECRET=$(stripe listen --print-secret)` (`medusa-config.ts` ใช้ตรวจลายเซ็น) แล้ว `stripe listen --events <ชุดเดียวกับ CI
+  — `docs/ops/production.md` หัวข้อ "Stripe webhooks"> --forward-to :<backend>/hooks/payment/stripe_stripe` (ดู `ci.yml`); ไม่มี key → ระบุ spec ที่รอ CI
+- pnpm 12 (ที่ pin) มีค่าเริ่มต้น `minimumReleaseAge` 1 วัน (repo ไม่ได้ตั้งเอง): dependency เวอร์ชันที่ออกไม่ถึง 24 ชม. อาจติดตั้งในเครื่องผ่าน (มี cache) แต่ CI `--frozen-lockfile`
   ล้ม → ดูเวลา publish (`npm view <pkg>@<ver> time`) แล้วรอก่อน push; ห้าม commit `minimumReleaseAgeExclude`
 
 ## Agents (`.claude/agents/`)
