@@ -205,6 +205,16 @@ pnpm --filter storefront build && pnpm --filter storefront start
 - คืนเงิน PromptPay ของ Stripe เป็น async (`requires_action` — Stripe อีเมลลูกค้าขอเลขบัญชี) และ Medusa นับ refunded ทันที; บัญชี Stripe test
   ส่งอีเมลได้เฉพาะอีเมลบัญชี → e2e ที่คืนเงินพร้อมเพย์จริงใช้อีเมลลูกค้าจาก secret `E2E_PROMPTPAY_REFUND_EMAIL` (repo public — ห้ามอีเมลนี้
   ลงโค้ด/log/evidence, ปิด trace ของ spec นั้น และเปิดดู PNG ก่อน commit)
+- งานย้าย/เปลี่ยน class ของ UI (เช่น SFUI): ค่าที่ต้องคงคือ **computed style ที่ browser render จริงบน develop** (font-size, line-height,
+  font-weight, padding, สีพื้น, radius, ความสูงปุ่ม ฯลฯ) ไม่ใช่ค่าที่อ่านจากชื่อ class — ชื่อหลอกได้เพราะลำดับใน CSS/`@layer`, `clsx` ที่ไม่ merge
+  และ `cn`/tailwind-merge ที่ตัด class (เคยพลาด: Heading `text-3xl-regular` จริง 24px ไม่ใช่ 32px, `Container` พื้นขาวทับ `bg-gray-50`, ปุ่ม `large`
+  48px → 40px ทำคลิกตก iframe Stripe) → วัดด้วย `getComputedStyle` บน build ของ develop/commit ฐาน (หรือ compile CSS ของ develop) แล้ว assert ใน e2e
+- e2e ที่ใช้ Stripe รันในเครื่องได้: owner ตั้ง `STRIPE_TEST_API_KEY`/`STRIPE_TEST_PUBLISHABLE_KEY` ใน `~/.zshrc` → shell ของ agent ไม่เห็น
+  ให้ `source ~/.zshrc` (ห้าม `cat`/พิมพ์ค่า) ส่งต่อด้วยชื่อแบบ CI (`STRIPE_API_KEY`, `NEXT_PUBLIC_STRIPE_KEY` — ดู `.github/workflows/ci.yml`)
+  ก่อน start backend `export STRIPE_WEBHOOK_SECRET=$(stripe listen --print-secret)` (`medusa-config.ts` ใช้ตรวจลายเซ็น) แล้ว `stripe listen --events <ชุดเดียวกับ CI
+  — `docs/ops/production.md` หัวข้อ "Stripe webhooks"> --forward-to :<backend>/hooks/payment/stripe_stripe` (ดู `ci.yml`); ไม่มี key → ระบุ spec ที่รอ CI
+- pnpm 12 (ที่ pin) มีค่าเริ่มต้น `minimumReleaseAge` 1 วัน (repo ไม่ได้ตั้งเอง): dependency เวอร์ชันที่ออกไม่ถึง 24 ชม. อาจติดตั้งในเครื่องผ่าน (มี cache) แต่ CI `--frozen-lockfile`
+  ล้ม → ดูเวลา publish (`npm view <pkg>@<ver> time`) แล้วรอก่อน push; ห้าม commit `minimumReleaseAgeExclude`
 
 ## Agents (`.claude/agents/`)
 - `planner` — แปลงเป้าหมายเป็น/อัปเดต spec + task list + ADR ไม่เขียนโค้ด
