@@ -47,7 +47,7 @@ export default function LeaveGroupButton({ membershipId, canLeave }: { membershi
       {!canLeave ? null : confirming ? (
         // GB-12 (กฎข้อ 32d): < 640px ข้อความหนึ่งแถว ปุ่มสองปุ่มอีกแถว (ไม่ตัดคำ); ≥ 640px (`sm` ของ Tailwind — `small` ของ starter คือ 1024px) แถวเดียว
         <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center" data-testid="group-leave-confirm-box">
-          <span className="text-small-regular">ยืนยันออกจากกลุ่ม? คำสั่งซื้อนี้จะถูกยกเลิก</span>
+          <span className="text-xs leading-5 font-normal">ยืนยันออกจากกลุ่ม? คำสั่งซื้อนี้จะถูกยกเลิก</span>
           <div className="flex shrink-0 gap-2">
             <Button
               variant="outline"
@@ -69,7 +69,7 @@ export default function LeaveGroupButton({ membershipId, canLeave }: { membershi
         </Button>
       )}
       {error && (
-        <p className="text-small-regular text-destructive" data-testid="group-leave-error">
+        <p className="text-xs leading-5 font-normal text-destructive" data-testid="group-leave-error">
           {error}
         </p>
       )}

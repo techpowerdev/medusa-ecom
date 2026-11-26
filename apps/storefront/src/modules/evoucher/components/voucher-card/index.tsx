@@ -8,11 +8,11 @@ export default function VoucherCard({ voucher }: { voucher: CustomerEvoucher }) 
 
   return (
     <li
-      className="flex flex-col gap-y-3 rounded-lg border border-border p-4 text-small-regular"
+      className="flex flex-col gap-y-3 rounded-lg border border-border p-4 text-xs leading-5 font-normal"
       data-testid="voucher-card"
     >
       <div className="flex flex-col">
-        <span className="text-base-semi" data-testid="voucher-partner-name">
+        <span className="text-sm leading-6 font-semibold" data-testid="voucher-partner-name">
           {partner.name}
         </span>
         <span className="text-muted-foreground">{pool.name}</span>
@@ -21,7 +21,7 @@ export default function VoucherCard({ voucher }: { voucher: CustomerEvoucher }) 
           CORE-42 (กฎข้อ 100b): ไม่มี gap-y — ระยะห่างอยู่ที่ margin ของสถานะเมื่อมีเนื้อหา (สถานะว่าง = ไม่มีช่องว่างใต้แถว) */}
       <div className="flex flex-wrap items-center gap-x-3" data-testid="voucher-code-row">
         <span className="text-muted-foreground">รหัส</span>
-        <code className="break-all font-mono text-base-semi" data-testid="voucher-code">
+        <code className="break-all font-mono text-sm leading-6 font-semibold" data-testid="voucher-code">
           {voucher.code}
         </code>
         <VoucherCopyButton code={voucher.code} />

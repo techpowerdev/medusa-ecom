@@ -18,7 +18,7 @@ export default function AffiliateAuthForms({ countryCode }: { countryCode: strin
   return (
     <div className="grid grid-cols-1 small:grid-cols-2 gap-12 w-full">
       <form onSubmit={submitWithoutReset(loginAction)} className="flex flex-col gap-y-2">
-        <h1 className="text-large-semi mb-4" data-testid="affiliate-login-title">
+        <h1 className="text-base leading-6 font-semibold mb-4" data-testid="affiliate-login-title">
           เข้าสู่ระบบแอฟฟิลิเอต
         </h1>
         <input type="hidden" name="countryCode" value={countryCode} />
@@ -38,7 +38,7 @@ export default function AffiliateAuthForms({ countryCode }: { countryCode: strin
       </form>
 
       <form onSubmit={submitWithoutReset(registerAction)} className="flex flex-col gap-y-2">
-        <h2 className="text-large-semi mb-4">สมัครเป็นแอฟฟิลิเอต</h2>
+        <h2 className="text-base leading-6 font-semibold mb-4">สมัครเป็นแอฟฟิลิเอต</h2>
         <input type="hidden" name="countryCode" value={countryCode} />
         <Input label="ชื่อ" name="name" autoComplete="name" required data-testid="affiliate-register-name" />
         <Input

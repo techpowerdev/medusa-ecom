@@ -59,7 +59,7 @@ export function EvoucherPartnerBlockView({ pool }: { pool: EvoucherPool | null }
 
   return (
     <div
-      className="flex flex-col gap-y-3 rounded-lg border border-border p-4 text-small-regular"
+      className="flex flex-col gap-y-3 rounded-lg border border-border p-4 text-xs leading-5 font-normal"
       data-testid="evoucher-partner-block"
     >
       <div className="flex items-center gap-x-3">
@@ -69,7 +69,7 @@ export function EvoucherPartnerBlockView({ pool }: { pool: EvoucherPool | null }
         )}
         <div className="flex flex-col">
           <span className="text-muted-foreground">บัตรกำนัลจากพาร์ทเนอร์</span>
-          <span className="text-base-semi" data-testid="evoucher-partner-name">
+          <span className="text-sm leading-6 font-semibold" data-testid="evoucher-partner-name">
             {partner.name}
           </span>
         </div>
