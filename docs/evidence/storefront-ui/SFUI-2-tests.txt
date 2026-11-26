@@ -327,3 +327,76 @@ TC=0
  Test Files  128 passed (128)
       Tests  1998 passed (1998)
   192 passed (1.3s)
+
+## D-1: e2e Stripe จริงที่ปลาย stack (SFUI-7 @ 5c5521c0 หลัง merge การแก้ h-12) — prod build backend :9170 / storefront :8170, DB medusa_sfuifix, Redis db 12, stripe listen → :9170/hooks/payment/stripe_stripe, --workers=1 (2026-11-26)
+### red — storefront ที่เอา h-12 ของ submit-payment-button ออกชั่วคราว (payments + sfui-3d-payment)
+  ✓  1 [chromium] › e2e/payments.spec.ts:49:5 › AC-9: session บัตรจาก checkout → PaymentIntent มี payment_method_types ['card']; PromptPay → ['promptpay']
+  ✘  2 [chromium] › e2e/payments.spec.ts:91:7 › บัตร (Stripe Elements) › AC-1: บัตร 4242 → order สำเร็จ payment_status=captured
+  ✘  3 [chromium] › e2e/payments.spec.ts:109:7 › บัตร (Stripe Elements) › AC-2: บัตร 3DS (4000 0027 6000 3184) → 3DS modal → สำเร็จ
+  ✘  4 [chromium] › e2e/payments.spec.ts:136:7 › บัตร (Stripe Elements) › AC-3: บัตรถูกปฏิเสธ (4000 0000 0000 0002) → แสดง error, ไม่สร้าง order, cart ยังอยู่
+  ✓  5 [chromium] › e2e/payments.spec.ts:169:7 › PromptPay (QR + polling) › AC-4: แสดง QR → authorize test payment → webhook → order captured
+  ✓  6 [chromium] › e2e/payments.spec.ts:226:7 › PromptPay (QR + polling) › AC-5: ไม่ชำระภายใน 10 นาที → session ถูกยกเลิก, cart ยังใช้งานได้
+  ✘  7 [chromium] › e2e/sfui-3d-payment.spec.ts:9:5 › AC-12: focus ตัวเลือกบัตรแล้วกด ArrowDown → พร้อมเพย์ถูกเลือก (aria-checked)
+    Expected: 48
+    Received: 40
+  4 failed
+  3 passed (2.0m)
+### green รอบ 2 (11 test ที่ล้ม + payments-order-pay + sfui-3d-payment + core-19b)
+  ✓   1 [chromium] › e2e/core-19b-continue-to-review.spec.ts:23:5 › AC-64: กด Continue to review ครั้งเดียว 20 รอบ (cart ใหม่ทุกรอบ) → step=review ภายใน 10 วินาที
+  ✓   2 [chromium] › e2e/core-19b-continue-to-review.spec.ts:74:5 › AC-64: PromptPay — กดครั้งเดียวทันทีที่ปุ่มพร้อม 20 รอบ → step=review ภายใน 10 วินาที และมี session เดียว
+  ✓   3 [chromium] › e2e/core-19f-switch-payment-method.spec.ts:20:5 › AC-113: บัตร → พร้อมเพย์ → บัตร แล้วกด Continue 1 ครั้ง → review แสดงบัตรและ cart มี session บัตรเท่านั้น
+  ✓   4 [chromium] › e2e/core-95-payment-received-notice.spec.ts:28:5 › (a) บัตร PI succeeded แล้ว session หมด → login พร้อม notice แล้วไปหน้า orders
+  ✓   5 [chromium] › e2e/core-95-payment-received-notice.spec.ts:61:5 › (a)(b) notice=payment_received → notice ไทย แล้ว login ไป /th/account/orders
+  ✓   6 [chromium] › e2e/core-95-payment-received-notice.spec.ts:79:7 › (c) notice=<script>alert(1)</script> → ไม่มี notice ไม่ render ค่าจาก URL
+  ✓   7 [chromium] › e2e/core-95-payment-received-notice.spec.ts:79:7 › (c) notice=x → ไม่มี notice ไม่ render ค่าจาก URL
+  ✓   8 [chromium] › e2e/core-95-payment-received-notice.spec.ts:94:5 › login ปกติ (ไม่มี notice) → คงอยู่หน้า /th/account (ไม่ไปหน้า orders)
+  ✓   9 [chromium] › e2e/fs-22-refunded-notice.spec.ts:70:5 › AC-29 (a): ชิ้นสุดท้ายถูกซื้อไประหว่างอยู่ขั้น review → จ่ายด้วยบัตร → checkout-refunded-notice และ Stripe คืนเงินจริง
+  ✓  10 [chromium] › e2e/fs-22-refunded-notice.spec.ts:104:5 › AC-29 (b): total_cap ของ flash ครบระหว่างอยู่ขั้น review → จ่ายด้วยบัตร → checkout-refunded-notice
+  ✘  11 [chromium] › e2e/fs-24-card-race-refund.spec.ts:85:5 › AC-31: สองลูกค้าแย่ง flash ชิ้นสุดท้าย (cap 1) ด้วยบัตร 4242 → ผู้ชนะได้ order, ผู้แพ้เห็น checkout-refunded-notice และได้ refund เต็มจำนวนภายใน 30 วินาที
+  ✓  12 [chromium] › e2e/pay-14-stale-session.spec.ts:96:5 › AC-27 a/b/c: session ชี้ PI ที่จบแล้ว → สร้าง session ใหม่อัตโนมัติ ไม่ confirm PI เดิม แล้วจ่ายได้ order captured
+  ✓  13 [chromium] › e2e/pay-14-stale-session.spec.ts:145:5 › AC-27 a: สร้างอัตโนมัติล้ม 1 ครั้ง → notice ไทย แล้วคลิกตัวเลือกบัตรที่เลือกอยู่ → ได้ session ใหม่
+  ✓  14 [chromium] › e2e/pay-14-stale-session.spec.ts:214:7 › PAY-16 (AC-29) › AC-29 a: notice แล้วเลือก manual → notice และปุ่มลองอีกครั้งหาย ไม่สร้าง session ของบัตรเพิ่ม
+  ✓  15 [chromium] › e2e/pay-14-stale-session.spec.ts:243:7 › PAY-16 (AC-29) › AC-29 b: dblclick ปุ่มลองอีกครั้ง → สร้าง session 1 ครั้ง แล้วได้ PI ใหม่
+  ✓  16 [chromium] › e2e/pay-14-stale-session.spec.ts:261:7 › PAY-16 (AC-29) › AC-29 c: สร้าง session ใหม่ 'สำเร็จ' แต่ cart ไม่ได้ session ใหม่ → ภายใน 12 วินาทีเห็น notice ไม่เห็น skeleton แล้วกดลองอีกครั้งได้
+  ✓  17 [chromium] › e2e/pay-14-stale-session.spec.ts:301:7 › PAY-16 (AC-29) › AC-29 d: PAYMENT_ALREADY_COMPLETED → ระหว่างรอ order radio วิธีชำระ disabled
+  ✓  18 [chromium] › e2e/pay-17-stripe-error-thai.spec.ts:27:7 › ข้อความไทยของ error Stripe ขั้น review (AC-30a) › confirmPayment ได้ card_error/card_declined ข้อความอังกฤษ → stripe-payment-error-message เป็นไทย ไม่มีข้อ
+  ✓  19 [chromium] › e2e/pay-9-refunded-cart-repay.spec.ts:74:5 › AC-22c: ใช้สิทธิ์ flash จาก cart อื่นระหว่างอยู่หน้า review → จ่ายด้วยบัตรแล้วถูกคืนเงิน → จ่ายใหม่ใน cart เดิม → order captured มี payment collection ชุด
+  ✓  20 [chromium] › e2e/payments-order-pay.spec.ts:134:7 › หน้าชำระเงินของ order กลุ่ม — สถานะ (AC-19) › B เปิด URL ของ A → HTTP 404; A เห็นฟอร์มชำระเงิน
+  ✓  21 [chromium] › e2e/payments-order-pay.spec.ts:150:7 › หน้าชำระเงินของ order กลุ่ม — สถานะ (AC-19) › joined → order-pay-waiting; cancelled → order-pay-closed (ไม่มีฟอร์ม)
+  ✓  22 [chromium] › e2e/payments-order-pay.spec.ts:164:7 › หน้าชำระเงินของ order กลุ่ม — สถานะ (AC-19) › เลย pay_deadline_at → order-pay-closed
+  ✓  23 [chromium] › e2e/payments-order-pay.spec.ts:176:7 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 409 PAYMENT_ALREADY_COMPLETED → poll GB-8 อย่างเดียว ≤ 10 ครั้ง แล้ว promptpay-ord
+  ✓  24 [chromium] › e2e/payments-order-pay.spec.ts:203:9 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 500 unknown_error + GB-8 มีการชำระแล้ว → poll จน captured แล้ว order-pay-paid (ไม่
+  ✓  25 [chromium] › e2e/payments-order-pay.spec.ts:203:9 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 400 invalid_data + GB-8 มีการชำระแล้ว → poll จน captured แล้ว order-pay-paid (ไม่ม
+  ✓  26 [chromium] › e2e/payments-order-pay.spec.ts:235:9 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 500 unknown_error + GB-8 ยังไม่ชำระ → order-pay-error + ฟอร์มเดิม, อ่าน GB-8 1 ครั
+  ✓  27 [chromium] › e2e/payments-order-pay.spec.ts:235:9 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 400 invalid_data + GB-8 ยังไม่ชำระ → order-pay-error + ฟอร์มเดิม, อ่าน GB-8 1 ครั้
+  ✓  28 [chromium] › e2e/payments-order-pay.spec.ts:235:9 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 409 invalid_state_error + GB-8 ยังไม่ชำระ → order-pay-error + ฟอร์มเดิม, อ่าน GB-8
+  ✓  29 [chromium] › e2e/payments-order-pay.spec.ts:259:7 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › d2 ยังไม่ชำระแล้วคลิกบัตรอีกครั้ง → สร้าง session ใหม่ได้ (ฟอร์มเดิมให้ลองใหม่ — q
+  ✓  30 [chromium] › e2e/payments-order-pay.spec.ts:294:7 › หน้าชำระเงินของ order กลุ่ม — สร้าง session ไม่สำเร็จ (กฎข้อ 9 d/d2, AC-19) › 401 → หน้า login และไม่อ่าน GB-8 จาก d2
+  ✓  31 [chromium] › e2e/payments-order-pay.spec.ts:312:7 › หน้าชำระเงินของ order กลุ่ม — กลับจาก redirect ของ Stripe (กฎข้อ 9 d3, AC-20) › redirect_status=succeeded + GB-8 ยัง not_paid → poll GB-8 (ไม่มีฟอร์ม) จน order-
+  ✓  32 [chromium] › e2e/payments-order-pay.spec.ts:349:7 › หน้าชำระเงินของ order กลุ่ม — กลับจาก redirect ของ Stripe (กฎข้อ 9 d3, AC-20) › redirect_status=failed → order-pay-error + ฟอร์ม แล้วลองใหม่สำเร็จ → order-pay-p
+  ✓  33 [chromium] › e2e/payments-order-pay.spec.ts:374:7 › หน้าชำระเงินของ order กลุ่ม — กลับจาก redirect ของ Stripe (กฎข้อ 9 d3, AC-20) › d2 แล้วอ่าน GB-8 ล้ม (500) → order-pay-error ไม่ poll ต่อ; ลองใหม่ได้ 409 PAYMEN
+  ✓  34 [chromium] › e2e/payments-order-pay.spec.ts:408:7 › หน้าชำระเงินของ order กลุ่ม — สิทธิ์ปิดแล้ว (GB-22) › กลับจาก redirect แล้ว GB-8 ตอบ cancelled + captured → order-pay-closed + order-pay-refund-notice ไม่ใช่ or
+  ✓  35 [chromium] › e2e/payments-order-pay.spec.ts:434:7 › หน้าชำระเงินของ order กลุ่ม — สิทธิ์ปิดแล้ว (GB-22) › GB-8 ตอบ awaiting_payment + captured (ยังเป็น draft) → order-pay-processing ไม่ใช่ order-pay-paid และคงอยู
+  ✓  36 [chromium] › e2e/payments-order-pay.spec.ts:462:7 › หน้าชำระเงินของ order กลุ่ม — สิทธิ์ปิดแล้ว (GB-22) › สร้าง session ได้ 400 GB_PAYMENT_CLOSED → อ่าน GB-8 ใหม่แล้ว order-pay-closed (ไม่มีฟอร์ม/error)
+  ✓  37 [chromium] › e2e/payments-order-pay.spec.ts:488:7 › หน้าชำระเงินของ order กลุ่ม — Stripe test mode (AC-19 บัตร, AC-7 พร้อมเพย์) › บัตร 4242 → order-pay-paid ภายใน 60 วินาที และ payment captured
+  ✓  38 [chromium] › e2e/payments-order-pay.spec.ts:499:7 › หน้าชำระเงินของ order กลุ่ม — Stripe test mode (AC-19 บัตร, AC-7 พร้อมเพย์) › พร้อมเพย์ → QR → authorize test payment → order-pay-paid และ captured (AC-7)
+  ✓  39 [chromium] › e2e/payments-order-pay.spec.ts:516:7 › หน้าชำระเงินของ order กลุ่ม — Stripe test mode (AC-19 บัตร, AC-7 พร้อมเพย์) › poll ระหว่างแสดง QR เจอ authorized ที่ยังไม่ captured → order-pay-awaiting แล้ว or
+  ✓  40 [chromium] › e2e/payments-order-pay.spec.ts:538:7 › หน้าชำระเงินของ order กลุ่ม — Stripe test mode (AC-19 บัตร, AC-7 พร้อมเพย์) › กลับจาก redirect ที่ failed แล้วลองใหม่ด้วยบัตร 4242 → order-pay-paid และ captured
+  ✓  41 [chromium] › e2e/payments.spec.ts:49:5 › AC-9: session บัตรจาก checkout → PaymentIntent มี payment_method_types ['card']; PromptPay → ['promptpay']
+  ✓  42 [chromium] › e2e/payments.spec.ts:91:7 › บัตร (Stripe Elements) › AC-1: บัตร 4242 → order สำเร็จ payment_status=captured
+  ✓  43 [chromium] › e2e/payments.spec.ts:109:7 › บัตร (Stripe Elements) › AC-2: บัตร 3DS (4000 0027 6000 3184) → 3DS modal → สำเร็จ
+  ✓  44 [chromium] › e2e/payments.spec.ts:136:7 › บัตร (Stripe Elements) › AC-3: บัตรถูกปฏิเสธ (4000 0000 0000 0002) → แสดง error, ไม่สร้าง order, cart ยังอยู่
+  ✓  45 [chromium] › e2e/payments.spec.ts:169:7 › PromptPay (QR + polling) › AC-4: แสดง QR → authorize test payment → webhook → order captured
+  ✓  46 [chromium] › e2e/payments.spec.ts:226:7 › PromptPay (QR + polling) › AC-5: ไม่ชำระภายใน 10 นาที → session ถูกยกเลิก, cart ยังใช้งานได้
+  ✓  47 [chromium] › e2e/sfui-3d-payment.spec.ts:9:5 › AC-12: focus ตัวเลือกบัตรแล้วกด ArrowDown → พร้อมเพย์ถูกเลือก (aria-checked)
+  1 failed
+  46 passed (8.6m)
+### รอบ 1 ของชุดเดียวกัน: 43 passed / 4 failed (core-95 (a), fs-22 AC-29 (a), fs-24 AC-31, payments AC-3) — ทุกตัวค้าง step=payment เพราะคลิกตกช่องวันหมดอายุใน iframe ของ Stripe
+### เทียบ develop (c21b0502) บนเครื่องเดียวกัน — ค้าง step=payment แบบเดียวกันเป็นครั้งคราว (flake เดิม ไม่ใช่ regression ของ SFUI)
+- ชุดการ์ด 7 test × repeat 3: develop 20 passed / 1 failed (pay-9 AC-22c) | ปลาย SFUI-7: 21 passed / 0 failed
+- develop ชุด 7 spec ครั้งเดียว: 16 passed / 1 failed (payments AC-2)
+- flow ขั้นต่ำ (กรอก 4242 แล้วกด submit-payment-button) 10 รอบ: develop ค้าง 2/10 | ปลาย SFUI-7 ค้าง 2/10 (ตัด transition-all ออกก็ค้าง 3/10 — ไม่เกี่ยว)
+- geometry ขั้นชำระเงินหลังกรอกบัตร (scrollY/ปุ่ม/iframe) เท่ากับ develop: button [1159,48], iframe บัตร [728,303], scrollY 200
+- fs-24 AC-31 (สองลูกค้า = กรอกบัตร 2 ครั้งต่อ test) repeat 4 บน DB ใหม่: develop 1 passed / 3 failed | ปลาย SFUI-7 3 passed / 1 failed — ล้มด้วย step=payment แบบเดียวกันทั้งสองฝั่ง
+- สรุป: ก่อนแก้ (lg 40px) ชุดการ์ดล้มทุกครั้ง (red ข้างบน 3/3 + qa 11 test); หลังแก้ h-12 อัตราค้างเท่ากับ develop บนเครื่องนี้ — ส่วนที่เหลือเป็น flake เดิมของ develop
+  (ตาม trace: Playwright เลื่อนหน้าแล้วคลิก (126, 695.7) แต่ event ไปตกช่องวันหมดอายุใน iframe ของ Stripe ซึ่งอยู่ตำแหน่งนั้นก่อนเลื่อน) — เสนอเป็น task ใหม่ ไม่แก้ e2e/helper ใน SFUI
