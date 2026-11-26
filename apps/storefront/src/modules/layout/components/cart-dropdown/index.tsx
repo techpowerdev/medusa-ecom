@@ -281,7 +281,7 @@ const CartDropdown = ({
                 </div>
                 <LocalizedClientLink
                   href="/cart"
-                  className={cn(buttonVariants({ size: "lg" }), "w-full")}
+                  className={cn(buttonVariants({ size: "lg" }), "h-12 w-full")}
                   data-testid="go-to-cart-button"
                 >
                   ไปที่ตะกร้า
