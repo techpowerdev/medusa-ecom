@@ -139,10 +139,9 @@ describe("globals.css — Tailwind v4 CSS-first คงค่า theme เดิ�
     expect(css).toMatch(/@keyframes fade-in-top/)
   })
 
-  it("class ใน globals.css เดิม (text-*-regular/semi, content-container, no-scrollbar) ยังใช้ได้เป็น utility", async () => {
-    const root = await compile(["text-small-regular", "text-3xl-semi", "content-container", "no-scrollbar"])
-    expect(declsOf(root, ".text-small-regular")["font-size"]).toBeDefined()
-    expect(declsOf(root, ".text-3xl-semi")["font-weight"]).toBeDefined()
+  // SFUI-10 (กฎ 24): utility ขนาดฟอนต์ของ starter ถูกลบแล้ว (guard ที่ e2e/sfui-10-font-utilities.unit.spec.ts)
+  it("class ใน globals.css เดิม (content-container, no-scrollbar) ยังใช้ได้เป็น utility", async () => {
+    const root = await compile(["content-container", "no-scrollbar"])
     expect(declsOf(root, ".content-container")["max-width"]).toBe("1440px")
     expect(declsOf(root, ".no-scrollbar")["scrollbar-width"]).toBe("none")
   })

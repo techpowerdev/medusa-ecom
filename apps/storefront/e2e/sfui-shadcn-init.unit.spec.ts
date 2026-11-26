@@ -50,34 +50,22 @@ test("AC-7: tsconfig.json มี \"@/*\": [\"*\"] บน baseUrl src และ�
   expect(compilerOptions.paths["@modules/*"]).toEqual(["modules/*"])
 })
 
-// SFUI-2 (session หลักตัดสิน Q1): cn สร้างจาก createCn ของ package cn (`cn/config`) ที่ extend กลุ่ม font-size
-// ด้วย utility ของ globals.css แทน re-export ตรง — ยังเป็น package cn ตัวเดียว (ไม่กลับไป clsx + tailwind-merge)
-test("AC-7: src/lib/utils.ts export cn ที่สร้างจาก package cn (createCn ของ cn/config)", () => {
+// ADR-030 ข้อ 3 (SFUI-10 กฎ 24 แทนทางเลี่ยงของ SFUI-2): src/lib/utils.ts re-export `cn` ของ package cn ตรงตัว — ไม่ extend
+// (ไม่กลับไป clsx + tailwind-merge); รายละเอียดของ AC-24 (c) อยู่ที่ e2e/sfui-10-font-utilities.unit.spec.ts
+test("AC-7: src/lib/utils.ts export cn จาก package cn (re-export ตรง)", () => {
   const source = fs.readFileSync(path.join(STOREFRONT, "src", "lib", "utils.ts"), "utf8")
   const file = ts.createSourceFile("utils.ts", source, ts.ScriptTarget.Latest)
-  const importsCreateCn = file.statements.filter(ts.isImportDeclaration).some(
+  const reExportsCn = file.statements.filter(ts.isExportDeclaration).some(
     (node) =>
+      !!node.moduleSpecifier &&
       ts.isStringLiteral(node.moduleSpecifier) &&
-      node.moduleSpecifier.text === "cn/config" &&
-      !!node.importClause?.namedBindings &&
-      ts.isNamedImports(node.importClause.namedBindings) &&
-      node.importClause.namedBindings.elements.some((el) => el.name.text === "createCn")
+      node.moduleSpecifier.text === "cn" &&
+      !!node.exportClause &&
+      ts.isNamedExports(node.exportClause) &&
+      node.exportClause.elements.some((el) => el.name.text === "cn" && !el.propertyName)
   )
-  const exportsCn = file.statements.filter(ts.isVariableStatement).some(
-    (node) =>
-      node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) &&
-      node.declarationList.declarations.some(
-        (d) =>
-          ts.isIdentifier(d.name) &&
-          d.name.text === "cn" &&
-          !!d.initializer &&
-          ts.isCallExpression(d.initializer) &&
-          ts.isIdentifier(d.initializer.expression) &&
-          d.initializer.expression.text === "createCn"
-      )
-  )
-  expect(importsCreateCn).toBe(true)
-  expect(exportsCn).toBe(true)
+  expect(reExportsCn).toBe(true)
+  expect(file.statements).toHaveLength(1)
 })
 
 test("AC-7: vitest.config.mts มี alias \"@\" → src และ include ครอบ src/**/*.test.ts + src/**/*.test.tsx", () => {

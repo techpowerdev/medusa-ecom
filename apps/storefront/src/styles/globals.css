@@ -213,58 +213,6 @@
   @apply px-4 py-2 border border-black rounded-full hover:bg-black hover:text-white transition-colors duration-200 ease-in;
 }
 
-@utility text-xsmall-regular {
-  @apply text-[10px] leading-4 font-normal;
-}
-
-@utility text-small-regular {
-  @apply text-xs leading-5 font-normal;
-}
-
-@utility text-small-semi {
-  @apply text-xs leading-5 font-semibold;
-}
-
-@utility text-base-regular {
-  @apply text-sm leading-6 font-normal;
-}
-
-@utility text-base-semi {
-  @apply text-sm leading-6 font-semibold;
-}
-
-@utility text-large-regular {
-  @apply text-base leading-6 font-normal;
-}
-
-@utility text-large-semi {
-  @apply text-base leading-6 font-semibold;
-}
-
-@utility text-xl-regular {
-  @apply text-2xl leading-[36px] font-normal;
-}
-
-@utility text-xl-semi {
-  @apply text-2xl leading-[36px] font-semibold;
-}
-
-@utility text-2xl-regular {
-  @apply text-[30px] leading-[48px] font-normal;
-}
-
-@utility text-2xl-semi {
-  @apply text-[30px] leading-[48px] font-semibold;
-}
-
-@utility text-3xl-regular {
-  @apply text-[32px] leading-[44px] font-normal;
-}
-
-@utility text-3xl-semi {
-  @apply text-[32px] leading-[44px] font-semibold;
-}
-
 @layer utilities {
   /* SFUI-8: ป้ายลอยของ common/components/input ย้ายเป็น peer / peer-* บน label ของ component นั้น
      (rule `input ~ label` เดิมจับ <label> ทุกตัวที่ตามหลัง <input> พี่น้อง เช่น option-button บน PDP) */

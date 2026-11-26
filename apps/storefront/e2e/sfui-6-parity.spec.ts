@@ -14,7 +14,7 @@ import { addToCartFromPdp } from "./support/server-action"
 // - <Container> ของ shim = clsx("bg-white rounded-lg p-4", className) — ใน CSS v3 `.bg-white`/`.p-4` อยู่หลัง `.bg-ui-bg-subtle`,
 //   `.bg-gray-100`, `.p-2` จึงชนะ class ของผู้เรียก → พื้นขาว + padding 16px (thumbnail, image gallery ของ PDP)
 // - Table.Cell/HeaderCell ของ shim ไม่มี whitespace-nowrap (TableCell/TableHead ของ shadcn มี) และหัวตารางสูง h-12 (48px)
-// - <Heading> h2 + text-base-semi ของการ์ดที่อยู่: .text-base-semi อยู่ @layer components ของ v3 จึงแพ้ text-2xl/font-semibold ของ shim → 24px/32px/600
+// - <Heading> h2 + utility ฟอนต์ base/semi ของ starter (ลบใน SFUI-10) ของการ์ดที่อยู่: utility นั้นอยู่ @layer components ของ v3 จึงแพ้ text-2xl/font-semibold ของ shim → 24px/32px/600
 // - ข้อมูลจาก seed (CORE-2)
 test.use({ evidenceTarget: { feature: "storefront-ui", taskId: "SFUI-6" } })
 
