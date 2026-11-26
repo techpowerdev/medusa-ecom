@@ -23,8 +23,8 @@ const CheckboxWithLabel: React.FC<CheckboxProps> = ({
 }) => {
   return (
     <div className="flex items-center space-x-2 ">
-      {/* ห่อให้ input ซ่อนของ Radix ไม่เป็นพี่น้องของ label (โครงเดียวกับ shim เดิม): rule `input ~ label` ของ globals.css
-          (label ลอย) จึงไม่จับ label นี้ และ core-38 ที่วัด label เทียบ input พี่น้องไม่นับช่องนี้ */}
+      {/* ห่อให้ input ซ่อนของ Radix ไม่เป็นพี่น้องของ label (โครงเดียวกับ shim เดิม): core-38 ที่วัด label เทียบ input พี่น้อง
+          จึงไม่นับช่องนี้ (label ลอยของ common/components/input ใช้ `peer` ตั้งแต่ SFUI-8 ไม่มี rule `input ~ label` ใน globals.css แล้ว) */}
       <span className="flex">
         <Checkbox
           id="checkbox"
