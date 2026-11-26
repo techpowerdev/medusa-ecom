@@ -36,6 +36,12 @@ const H2 = { fontSize: "24px", lineHeight: "32px", fontWeight: "600" }
 const TXT_MEDIUM = { fontSize: "14px", lineHeight: "22.4px", fontWeight: "400" }
 const TXT_MEDIUM_PLUS = { ...TXT_MEDIUM, fontWeight: "500" }
 
+// Container ของ shim บน develop = clsx("bg-white rounded-lg p-4", className) และใน CSS v3 `.bg-white`/`.p-4` อยู่หลัง
+// `.bg-gray-50`/`.bg-ui-button-neutral-hover`/`.p-2` → พื้นขาว + padding 16px ชนะ class ที่ผู้เรียกส่ง (review SFUI-5d)
+const WHITE = /^(rgb\(255, 255, 255\)|oklch\(1 0 0\)|lab\(100 0 0\))$/
+const background = (el: Locator) => el.evaluate((node) => getComputedStyle(node).backgroundColor)
+const whiteSpace = (el: Locator) => el.evaluate((node) => getComputedStyle(node).whiteSpace)
+
 test("order: ตาราง/ตัวอักษร/หัวข้อ/ไอคอน คงค่าเดิมทั้งหน้า confirmed และรายละเอียด order ใน account", async ({
   page,
   context,
@@ -67,6 +73,8 @@ test("order: ตาราง/ตัวอักษร/หัวข้อ/ไอ�
     expect.soft(await padding(cells.nth(0))).toBe("16px 16px 16px 0px")
     expect.soft(await padding(cells.nth(1))).toBe("16px 16px 16px 16px")
     expect.soft(await padding(cells.nth(2))).toBe("16px 0px 16px 16px")
+    // Table.Cell เดิมไม่มี whitespace-nowrap → ชื่อสินค้ายาว/ตัวเลือกตัดบรรทัดได้ (TableCell ของ shadcn มี nowrap)
+    for (const i of [0, 1, 2]) expect.soft(await whiteSpace(cells.nth(i)), `cell ${i}`).toBe("normal")
     expect.soft(await typo(row.getByTestId("product-name"))).toEqual(TXT_MEDIUM_PLUS)
     expect.soft(await typo(row.getByTestId("product-quantity").locator(".."))).toEqual(TXT_MEDIUM)
 
@@ -80,6 +88,10 @@ test("order: ตาราง/ตัวอักษร/หัวข้อ/ไอ�
     expect.soft(await typo(address.locator("p").nth(1))).toEqual(TXT_MEDIUM)
     expect.soft(await typo(page.getByTestId("payment-method"))).toEqual(TXT_MEDIUM)
     expect.soft(await typo(page.getByTestId("payment-amount"))).toEqual(TXT_MEDIUM)
+    // กล่อง icon ของวิธีชำระเงิน (Container ของ shim): พื้นขาว + p-4 ตามค่าที่ชนะบน develop
+    const iconBox = page.getByTestId("payment-amount").locator("xpath=preceding-sibling::div[1]")
+    expect.soft(await background(iconBox)).toMatch(WHITE)
+    expect.soft(await padding(iconBox)).toBe("16px 16px 16px 16px")
     await evidence("01-order-confirmed")
   })
 
@@ -100,7 +112,14 @@ test("order: ตาราง/ตัวอักษร/หัวข้อ/ไอ�
     await evidence("02-account-order-details")
   })
 
-  await step("หน้ารายการ order ใน account: ลิงก์ดูรายละเอียดเป็นปุ่มขอบ (outline) และข้อความช่วยเหลือ txt-medium", async () => {
+  await step("หน้าภาพรวม + รายการ order ใน account: การ์ด order พื้นขาว p-4, ลิงก์ดูรายละเอียดเป็นปุ่มขอบ (outline), ข้อความช่วยเหลือ txt-medium", async () => {
+    await page.goto(`/${CC}/account`)
+    // การ์ด order ล่าสุดในหน้าภาพรวม (Container ของ shim): พื้นขาว + p-4 ตามค่าที่ชนะบน develop
+    const card = page.getByTestId("order-wrapper").first().locator("a > div")
+    await expect(card).toBeVisible()
+    expect.soft(await background(card)).toMatch(WHITE)
+    expect.soft(await padding(card)).toBe("16px 16px 16px 16px")
+
     await page.goto(`/${CC}/account/orders`)
     const link = page.getByTestId("order-details-link").first()
     await expect(link).toBeVisible()
