@@ -13,7 +13,7 @@ export default function CheckoutLayout({
         <nav className="flex h-full items-center content-container justify-between">
           <LocalizedClientLink
             href="/cart"
-            className="text-small-semi text-foreground flex items-center gap-x-2 uppercase flex-1 basis-0"
+            className="text-xs leading-5 font-semibold text-foreground flex items-center gap-x-2 uppercase flex-1 basis-0"
             data-testid="back-to-cart-link"
           >
             <ChevronDown className="rotate-90" size={16} />

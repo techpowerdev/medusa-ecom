@@ -123,7 +123,7 @@ const Addresses = ({
         <div>
           {/* CORE-38 (กฎข้อ 96): overflow-wrap สืบทอดถึงทุกข้อความในกล่องสรุป (ชื่อ/ที่อยู่/เมือง/อีเมลยาวไม่มีช่องว่าง)
               ตัดบรรทัดในคอลัมน์ของตัวเอง; คอลัมน์ต้องมี min-w-0 */}
-          <div className="text-small-regular [overflow-wrap:anywhere]">
+          <div className="text-xs leading-5 font-normal [overflow-wrap:anywhere]">
             {cart && cart.billing_address && digitalOnly ? (
               // CORE-38: < 640px เรียงแนวตั้ง, ≥ sm แถวเดียว
               <div className="flex flex-col gap-y-4 w-full sm:flex-row sm:items-start sm:gap-x-1">

@@ -32,7 +32,7 @@ const PaymentContainer: React.FC<PaymentContainerProps> = ({
 
   return (
     <div
-      className={cn("flex flex-col text-small-regular border rounded-rounded mb-2 hover:border-ring", {
+      className={cn("flex flex-col text-xs leading-5 font-normal border rounded-rounded mb-2 hover:border-ring", {
         "border-primary": selected,
       })}
     >
@@ -49,7 +49,7 @@ const PaymentContainer: React.FC<PaymentContainerProps> = ({
         <span className="flex items-center justify-between">
           <span className="flex items-center gap-x-4">
             <OptionDot />
-            <span className="text-base-regular">
+            <span className="text-sm leading-6 font-normal">
               {paymentInfoMap[paymentProviderId]?.title || paymentProviderId}
             </span>
             {isManual(paymentProviderId) && isDevelopment && (
