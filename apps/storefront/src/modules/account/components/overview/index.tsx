@@ -97,7 +97,7 @@ const Overview = ({ customer, orders, hasGroupOrders = false }: OverviewProps) =
                         <LocalizedClientLink
                           href={`/account/orders/details/${order.id}`}
                         >
-                          <div className="rounded-lg bg-gray-50 flex justify-between items-center p-4">
+                          <div className="rounded-lg bg-card flex justify-between items-center p-4">
                             <div className="grid grid-cols-3 grid-rows-2 text-small-regular gap-x-4 flex-1">
                               <span className="font-semibold">วันที่สั่งซื้อ</span>
                               <span className="font-semibold">

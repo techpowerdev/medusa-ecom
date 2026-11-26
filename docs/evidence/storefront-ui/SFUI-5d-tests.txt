@@ -338,3 +338,57 @@ env ในเครื่อง: Node 22.23.3, backend prod build :9170 (DB medu
            - unexpected value "http://localhost:8170/th/checkout?step=payment"
       - Expect "toHaveURL" with timeout 10000ms
            - unexpected value "http://localhost:8170/th/checkout?step=payment"
+
+== รอบแก้ตาม review (REQUEST CHANGES) บนปลาย cef30366 (stack รวม 3a–5c แล้ว), backend :9180 / storefront :8180, DB medusa_sfui5d สร้างใหม่, Redis db 11 ==
+-- e2e/sfui-mobile-390.spec.ts รันก่อนบน DB สะอาด (build ของ cef30366)
+  1 passed (37.5s)
+-- red: assertion ใหม่ใน e2e/sfui-5d-account-order.spec.ts บน build ของ cef30366 (ก่อนแก้)
+       Expected: "normal"
+       Received: "nowrap"
+       > 77 |     for (const i of [0, 1, 2]) expect.soft(await whiteSpace(cells.nth(i)), `cell ${i}`).toBe("normal")
+       Expected: "normal"
+       Received: "nowrap"
+       > 77 |     for (const i of [0, 1, 2]) expect.soft(await whiteSpace(cells.nth(i)), `cell ${i}`).toBe("normal")
+       Expected: "normal"
+       Received: "nowrap"
+       > 77 |     for (const i of [0, 1, 2]) expect.soft(await whiteSpace(cells.nth(i)), `cell ${i}`).toBe("normal")
+       Expected pattern: /^(rgb\(255, 255, 255\)|oklch\(1 0 0\))$/
+       Received string:  "lab(96.52 -0.0000298023 0.0000119209)"
+       > 93 |     expect.soft(await background(iconBox)).toMatch(WHITE)
+       Expected: "16px 16px 16px 16px"
+       Received: "8px 8px 8px 8px"
+       > 94 |     expect.soft(await padding(iconBox)).toBe("16px 16px 16px 16px")
+       Expected pattern: /^(rgb\(255, 255, 255\)|oklch\(1 0 0\))$/
+       Received string:  "lab(98.2596 -0.247031 -0.706708)"
+       > 120 |     expect.soft(await background(card)).toMatch(WHITE)
+   (regex WHITE รอบแรกไม่รับ lab(100 0 0) ที่ Chrome คืนให้ --card — เพิ่มในรอบ green; ค่าที่ได้ก่อนแก้ไม่ใช่ขาวอยู่แล้ว)
+   (Container ของ shim บน develop = clsx("bg-white rounded-lg p-4", className); CSS v3 .bg-white/.p-4 อยู่หลัง .bg-gray-50/.bg-ui-button-neutral-hover/.p-2 → พื้นขาว + 16px ชนะ;
+    Table.Cell เดิมไม่มี whitespace-nowrap)
+-- green หลังแก้ (overview การ์ด bg-card, payment-details กล่อง icon bg-card p-4, item TableCell whitespace-normal x3, ลบ underline-offset-4 บน <p>)
+  ✓  1 [chromium] › e2e/sfui-5d-account-order.spec.ts:45:5 › order: ตาราง/ตัวอักษร/หัวข้อ/ไอคอน คงค่าเดิมทั้งหน้า confirmed และรายละเอียด order ใน account (2.6s)
+  1 passed (3.1s)
+-- e2e prod build: sfui-mobile-390, core-22-account-fixes, core-23c-account-forms, core-38-mobile-layout, sfui-5d-account-order
+  ✓   1 [chromium] › e2e/core-22-account-fixes.spec.ts:19:5 › AC-82: title ของหน้า account ที่ล็อกอินแล้วตรงหน้า และหน้า login ยังเป็น เข้าสู่ระบบ
+  ✓   2 [chromium] › e2e/core-22-account-fixes.spec.ts:68:5 › AC-83, AC-84: profile เบอร์ว่างไม่แสดง null และกด แก้ไข เบอร์โทรไม่โดน editor อื่นที่ปิดอยู่
+  ✓   3 [chromium] › e2e/core-23c-account-forms.spec.ts:61:7 › AC-112 › เพิ่มที่อยู่ล้ม (500) → ค่าที่พิมพ์ยังอยู่และ error ไทย
+  ✓   4 [chromium] › e2e/core-23c-account-forms.spec.ts:95:7 › AC-112 › แก้ที่อยู่ล้ม (500) → ค่าที่พิมพ์ยังอยู่และ error ไทย
+  ✓   5 [chromium] › e2e/core-23c-account-forms.spec.ts:140:7 › AC-112 › ที่อยู่ใบเสร็จ: action ล้มระดับ network → ยังเห็นฟอร์มพร้อม error ไทย
+  ✓   6 [chromium] › e2e/core-23c-account-forms.spec.ts:183:7 › AC-112 › กดแก้ไขแล้วพิมพ์ทันที → input มีค่าที่พิมพ์
+  ✓   7 [chromium] › e2e/core-23c-account-forms.spec.ts:202:7 › AC-112 › /th/account ไม่มี 404 ใต้ /th/ และลิงก์บริการลูกค้าชี้ /contact
+  ✓   8 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (375px)
+  ✓   9 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (1280px)
+  ✓  10 [chromium] › e2e/core-38-mobile-layout.spec.ts:124:5 › AC-132: checkout — label ของฟอร์มที่อยู่ไม่ทับค่า, สรุปที่อยู่ 375 เรียงแนวตั้งและอีเมลยาวไม่ล้น, 1280 แถวเดียว
+  ✓  11 [chromium] › e2e/core-38-mobile-layout.spec.ts:202:5 › AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่าง + billing ต่างกัน → ข้อความอยู่ในกล่องของตัวเองที่ 375/640/1280
+  ✓  12 [chromium] › e2e/core-38-mobile-layout.spec.ts:247:5 › AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่างอยู่ในกล่องของตัวเองที่ 375/640/1280
+  ✓  13 [chromium] › e2e/sfui-5d-account-order.spec.ts:45:5 › order: ตาราง/ตัวอักษร/หัวข้อ/ไอคอน คงค่าเดิมทั้งหน้า confirmed และรายละเอียด order ใน account
+  ✓  14 [chromium] › e2e/sfui-mobile-390.spec.ts:20:5 › AC-17: หน้าแรก, store, PDP, cart, checkout, account, orders ที่ 390px ไม่ล้นแนวนอน
+  14 passed (1.0m)
+-- test:e2e:unit
+  202 passed (1.6s)
+-- lint: exit 0
+✖ 27 problems (0 errors, 27 warnings)
+-- typecheck: exit 0
+-- test:unit
+ Test Files  132 passed (132)
+      Tests  2022 passed (2022)
+-- build (prod): exit 0

@@ -38,7 +38,7 @@ const PaymentDetails = ({ order }: PaymentDetailsProps) => {
                 รายละเอียดการชำระเงิน
               </p>
               <div className="flex gap-2 text-sm leading-[1.4rem] text-muted-foreground items-center">
-                <div className="rounded-lg flex items-center h-7 w-fit p-2 bg-muted">
+                <div className="rounded-lg bg-card p-4 flex items-center h-7 w-fit">
                   {paymentInfoMap[payment.provider_id].icon}
                 </div>
                 <p className="text-sm leading-[1.4rem]" data-testid="payment-amount">
