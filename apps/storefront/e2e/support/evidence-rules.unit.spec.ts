@@ -74,7 +74,8 @@ test.describe("evidence-rules", () => {
   test("evidenceDir รับ task id ที่มี suffix ตัวเล็ก (AC-20)", () => {
     // GB-6b1: task ที่ spec แยกย่อย (suffix ตัวเล็ก + ตัวเลขหนึ่งหลัก); GB-N1: งานเล็กรวม nit (N นำหน้าตัวเลข)
     // GB-7a2a (spec 04 รอบ 15): แยกย่อยอีกชั้น = ตามด้วยตัวเล็กได้อีกหนึ่งตัวหลังตัวเลข
-    for (const taskId of ["CORE-4a", "CORE-5b", "CORE-5", "GB-12", "GB-6b1", "GB-6b2", "GB-7a2a", "GB-6b1a", "GB-N1", "GB-N12"]) {
+    // AI18N-1 (spec 10): prefix มีตัวเลขหลังตัวอักษรตัวแรกได้
+    for (const taskId of ["CORE-4a", "CORE-5b", "CORE-5", "GB-12", "GB-6b1", "GB-6b2", "GB-7a2a", "GB-6b1a", "GB-N1", "GB-N12", "AI18N-1", "AI18N-12"]) {
       expect(evidenceDir("/repo", { feature: "core", taskId })).toBe(
         path.join("/repo", "docs", "evidence", "core", taskId)
       )
@@ -97,6 +98,10 @@ test.describe("evidence-rules", () => {
       "GB-NN1",
       "GB-N1a",
       "GB-1N",
+      // prefix ต้องขึ้นต้นด้วยตัวอักษรใหญ่
+      "18N-1",
+      "1AI-1",
+      "Ai18N-1",
     ]) {
       expect(() => evidenceDir("/repo", { feature: "core", taskId })).toThrow()
     }

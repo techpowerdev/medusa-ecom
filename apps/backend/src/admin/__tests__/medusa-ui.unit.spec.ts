@@ -932,8 +932,9 @@ describe("ฟอร์มใน FocusModal/Drawer แบบ state ถามก�
   it("hook ใช้ usePrompt ของ @medusajs/ui + ถ้อยคำของ dashboard, กันระหว่างบันทึกและ prompt ซ้อน", () => {
     const src = read("components/common/use-confirm-discard.ts")
     expect(src).toMatch(/import \{ usePrompt \} from "@medusajs\/ui"/)
-    expect(src).toContain('"Are you sure you want to leave this form?"')
-    expect(src).toContain('"You have unsaved changes that will be lost if you exit this form."')
+    // spec 10 AC-7 (AI18N-1): ถ้อยคำของ dashboard อ้างผ่าน key ของ Medusa (ค่า en เท่าเดิม — ตรวจใน i18n.unit.spec.ts)
+    expect(src).toContain('t("general.unsavedChangesTitle", { ns: "translation" })')
+    expect(src).toContain('t("general.unsavedChangesDescription", { ns: "translation" })')
     // qa #389 D-1 (กฎ 31c): ช่วงหลังกด Save ก่อน isPending render ถือว่ากำลังบันทึก (isSubmitting ของ react-hook-form)
     // และตัดสินใจหลัง event เดิมจบด้วยค่าล่าสุด (ref) ไม่ใช่ค่าใน closure ตอนกด
     expect(src).toContain("form.formState.isSubmitting")
@@ -947,7 +948,9 @@ describe("ฟอร์มใน FocusModal/Drawer แบบ state ถามก�
 
   it("ไม่มีสำเนาข้อความ prompt ในไฟล์อื่นของ src/admin (hook กลางตัวเดียว)", () => {
     const copies = adminFiles.filter(
-      (file) => !file.includes("__tests__") && read(file).includes("Are you sure you want to leave this form?")
+      (file) =>
+        !file.includes("__tests__") &&
+        (read(file).includes("Are you sure you want to leave this form?") || read(file).includes("general.unsavedChangesTitle"))
     )
     expect(copies).toEqual(["components/common/use-confirm-discard.ts"])
   })
