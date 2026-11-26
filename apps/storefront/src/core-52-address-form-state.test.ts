@@ -14,6 +14,12 @@ vi.mock("@lib/data/cart", () => ({ setAddresses: vi.fn() }))
 // CORE-52 (spec 01 กฎข้อ 110d–e, AC-147): select ประเทศคงค่าที่เลือกเมื่อ form ถูก reset (React 19 reset `<form action>`
 // หลัง action คืน error) และ ShippingAddress sync จาก cart เมื่อที่อยู่ที่บันทึกเปลี่ยน (แบบปรับ state ระหว่าง render)
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+// SFUI-5a: checkbox เป็น Checkbox ของ shadcn (Radix วัดขนาดด้วย ResizeObserver ที่ jsdom ไม่มี)
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
 
 const region = {
   id: "reg_1",
@@ -130,16 +136,21 @@ describe("ฟอร์มที่อยู่หลัง form.reset() (กฎ�
     await act(async () => {
       root.render(createElement(Addresses, { cart, customer: null } as never))
     })
-    expect(input("billing-address-checkbox").checked).toBe(true)
+    // SFUI-5a: testid อยู่บน root role="checkbox" ของ Radix (aria-checked) + ค่าที่ส่งจริงอยู่ใน FormData
+    const checked = () => input("billing-address-checkbox").getAttribute("aria-checked")
+    const sameAsBilling = () => new FormData(container.querySelector("form")!).get("same_as_billing")
+    expect(checked()).toBe("true")
+    expect(sameAsBilling()).toBe("on")
 
     await act(async () => input("billing-address-checkbox").click())
-    expect(input("billing-address-checkbox").checked).toBe(false)
+    expect(checked()).toBe("false")
     const email = input("shipping-email-input")
     expect(email.value).toBe("a@example.com")
 
     act(() => container.querySelector("form")!.reset())
 
-    expect(input("billing-address-checkbox").checked).toBe(false)
+    expect(checked()).toBe("false")
+    expect(sameAsBilling()).toBeNull()
     expect(input("billing-first-name-input")).not.toBeNull()
   })
 })

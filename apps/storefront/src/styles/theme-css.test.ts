@@ -169,7 +169,8 @@ describe("legacy-medusa.css — ชั้นเข้ากันได้ขอ
     const root = await compile(["ring-2"])
     expect(declsOf(root, ".ring-2")["--tw-ring-shadow"]).toContain("rgb(59 130 246 / 0.5)")
     const rootDecls = declsOf(root, ":root")
-    expect(rootDecls["--fg-interactive"]).toBe("rgba(59, 130, 246, 1)")
+    // SFUI-5a: --fg-interactive ไม่มีผู้ใช้แล้ว (not-found/InteractiveLink ใช้ token ของ shadcn) — ลบตาม AC-2
+    expect(rootDecls["--fg-interactive"]).toBeUndefined()
     expect(rootDecls["--fg-muted"]).toBe("rgba(113, 113, 122, 1)")
   })
 

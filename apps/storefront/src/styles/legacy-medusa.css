@@ -5,9 +5,8 @@
   - task เจ้าของไฟล์ (SFUI-2..5e) ย้าย class ไปเป็น token ของ shadcn ตามตารางกฎ 21; SFUI-6 ลบทั้งไฟล์และ @import ใน globals.css
 */
 
-/* preset ใส่ตัวแปรดิบ (light) ใน :root ด้วย addBase — โค้ดที่อ้าง var(--fg-*) ตรง (prop color ของ icon, interactive-link, not-found, discount-code) */
+/* preset ใส่ตัวแปรดิบ (light) ใน :root ด้วย addBase — โค้ดที่อ้าง var(--fg-*) ตรง (prop color ของ icon ใน discount-code — SFUI-5c) */
 :root {
-  --fg-interactive: rgba(59, 130, 246, 1);
   --fg-muted: rgba(113, 113, 122, 1);
 }
 
@@ -31,10 +30,8 @@
   /* สี ui-* (light) */
   --color-ui-bg-base: rgba(255, 255, 255, 1);
   --color-ui-bg-base-hover: rgba(244, 244, 245, 1);
-  --color-ui-bg-component-pressed: rgba(228, 228, 231, 1);
   --color-ui-bg-disabled: rgba(244, 244, 245, 1);
   --color-ui-bg-field: rgba(250, 250, 250, 1);
-  --color-ui-bg-field-hover: rgba(244, 244, 245, 1);
   --color-ui-bg-interactive: rgba(59, 130, 246, 1);
   --color-ui-bg-subtle: rgba(250, 250, 250, 1);
   --color-ui-bg-subtle-hover: rgba(244, 244, 245, 1);
@@ -53,31 +50,16 @@
 
   /* เงา ui-* (light) */
   --shadow-borders-base: 0px 1px 2px 0px rgba(0, 0, 0, 0.12), 0px 0px 0px 1px rgba(0, 0, 0, 0.08);
-  --shadow-borders-interactive-with-active: 0px 0px 0px 4px rgba(37, 99, 235, 0.2), 0px 0px 0px 1px rgba(37, 99, 235, 1);
   --shadow-borders-interactive-with-focus: 0px 1px 2px 0px rgba(30, 58, 138, 0.5), 0px 0px 0px 1px rgba(37, 99, 235, 1), 0px 0px 0px 2px rgba(255, 255, 255, 1), 0px 0px 0px 4px rgba(37, 99, 235, 0.6);
   --shadow-details-contrast-on-bg-interactive: 0px 1px 2px 0px rgba(30, 58, 138, 0.6);
   --shadow-elevation-card-hover: 0px 0px 0px 1px rgba(0, 0, 0, 0.08), 0px 1px 2px -1px rgba(0, 0, 0, 0.08), 0px 2px 8px 0px rgba(0, 0, 0, 0.1);
   --shadow-elevation-card-rest: 0px 0px 0px 1px rgba(0, 0, 0, 0.08), 0px 1px 2px -1px rgba(0, 0, 0, 0.08), 0px 2px 4px 0px rgba(0, 0, 0, 0.04);
 }
 
-@utility txt-compact-large-plus {
-  font-size: 1rem;
-  line-height: 1.25rem;
-  font-weight: 500;
-  font-family: var(--font-sans);
-}
-
 @utility txt-compact-medium {
   font-size: 0.875rem;
   line-height: 1.25rem;
   font-weight: 400;
-  font-family: var(--font-sans);
-}
-
-@utility txt-compact-medium-plus {
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  font-weight: 500;
   font-family: var(--font-sans);
 }
 
@@ -140,13 +122,6 @@
 @utility txt-xlarge-plus {
   font-size: 1.125rem;
   line-height: 1.8000000715255737rem;
-  font-weight: 500;
-  font-family: var(--font-sans);
-}
-
-@utility txt-xsmall-plus {
-  font-size: 0.75rem;
-  line-height: 1.2000000476837158rem;
   font-weight: 500;
   font-family: var(--font-sans);
 }

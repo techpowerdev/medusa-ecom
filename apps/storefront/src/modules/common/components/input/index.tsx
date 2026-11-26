@@ -1,4 +1,5 @@
-import { Label } from "@modules/common/components/ui"
+import { Input as ShadcnInput } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import React, { useEffect, useImperativeHandle, useState } from "react"
 
 import Eye from "@modules/common/icons/eye"
@@ -36,24 +37,25 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="flex flex-col w-full">
         {topLabel && (
-          <Label className="mb-2 txt-compact-medium-plus">{topLabel}</Label>
+          <Label className="mb-2 text-sm leading-5 font-medium">{topLabel}</Label>
         )}
-        <div className="flex relative z-0 w-full txt-compact-medium">
-          <input
+        <div className="flex relative z-0 w-full text-sm leading-5">
+          <ShadcnInput
             type={inputType}
             name={name}
             placeholder=" "
             required={required}
-            className="pt-5 pb-1 block w-full h-12 px-4 mt-0 bg-ui-bg-field border rounded-md appearance-none focus:outline-hidden focus:ring-0 focus:shadow-borders-interactive-with-active border-ui-border-base hover:bg-ui-bg-field-hover"
+            className="pt-5 pb-1 block w-full h-12 px-4 mt-0 text-sm bg-background appearance-none hover:bg-muted focus:border-ring focus:ring-[3px] focus:ring-ring/50"
             {...props}
             ref={inputRef}
           />
           {/* CORE-4e (qa #109): transition เฉพาะตอน focus (globals.css) — ค่าที่เติมจากโค้ด (เลือกที่อยู่ที่บันทึกไว้)
-              ทำให้ label ลอยทันทีไม่ทับข้อความ; h-12/pt-5 เผื่อสระบน/ล่างของอักษรไทย */}
+              ทำให้ label ลอยทันทีไม่ทับข้อความ; h-12/pt-5 เผื่อสระบน/ล่างของอักษรไทย
+              SFUI-5a: ไม่ใส่ z-index ติดลบ — v4 สร้าง `-z-1` จริง (v3 ไม่มี class นี้) แล้ว label ไปอยู่หลังพื้นทึบของ input */}
           <label
             htmlFor={name}
             onClick={() => inputRef.current?.focus()}
-            className="flex items-center justify-center mx-3 px-1 absolute top-3.5 -z-1 origin-0 text-ui-fg-subtle"
+            className="flex items-center justify-center mx-3 px-1 absolute top-3.5 text-muted-foreground"
           >
             {label}
             {required && <span className="text-rose-500">*</span>}
@@ -62,7 +64,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="text-ui-fg-subtle px-4 focus:outline-hidden transition-all duration-150 outline-hidden focus:text-ui-fg-base absolute right-0 top-3.5"
+              className="text-muted-foreground px-4 focus:outline-hidden transition-all duration-150 outline-hidden focus:text-foreground absolute right-0 top-3.5"
             >
               {showPassword ? <Eye /> : <EyeOff />}
             </button>

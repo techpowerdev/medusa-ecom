@@ -50,7 +50,7 @@ none
 4. map primitive (ADR-030 ข้อ 5): modal ที่อยู่ → `Dialog`; side menu → `Sheet side="left"`, search drawer → `Sheet side="top"`, mobile actions → `Sheet side="bottom"`;
    cart dropdown → `Popover` (คงการเปิดเมื่อ hover/เพิ่มสินค้า และปิดตามเดิม); `layout/country-select`, `checkout/address-select` → `Select`; `account-info` → `Collapsible`;
    ตัวเลือกจัดส่ง/ชำระเงิน → `RadioGroup` + `RadioGroupItem`; filter/sort ของ store → `RadioGroup`; accordion/slider → `Accordion`/`Slider` ของ shadcn;
-   `<select>` native ทุกตัว (`common/native-select`, จำนวนสินค้า, ประเทศในฟอร์มที่อยู่, คืนสินค้า, group buy) คงเป็น `<select>` (`native-select` ของ shadcn) — `selectOption` ใช้ได้เหมือนเดิม
+   `<select>` native ทุกตัว (`common/native-select`, จำนวนสินค้า, ประเทศในฟอร์มที่อยู่, คืนสินค้า, group buy) คงเป็น `<select>` ของเราเอง (`common/components/native-select` จัด style ด้วย token + icon lucide) — **ไม่ใช้ `NativeSelect` ของ shadcn** เพราะ wrapper ตั้ง `w-fit` ตายตัวทำ CORE-4g ล้ม (ตัดสิน 2026-11-26 ระหว่าง SFUI-5a; ลบ `src/components/ui/native-select.tsx`) — `selectOption` ใช้ได้เหมือนเดิม
    ส่วนที่เดิมใช้ `static` / `Transition` ของ headless (ต้องคง DOM และพฤติกรรมเดิม):
    (a) `account-info/index.tsx` — `Disclosure.Panel static` 3 ตัว (L83/102/120): แผง `success-message`/`error-message` ไม่มีปุ่ม toggle → เป็น `<div>` ธรรมดา (คง class/transition เดิม);
        `edit-panel` → `Collapsible open={state}` + `CollapsibleContent forceMount` (render ตลอด ซ่อน/แสดงด้วย class เดิม) และคง `data-open={state}` ไว้ตรงๆ บน element ที่มี testid
@@ -100,7 +100,7 @@ none
     (`Table.Header`→`TableHeader`, `.Body`→`TableBody`, `.Row`→`TableRow`, `.Head`/`.HeaderCell`→`TableHead`, `.Cell`→`TableCell`); `Button isLoading` → prop `isLoading` ที่เพิ่มใน
     `src/components/ui/button.tsx` (SFUI-2 — แสดง "กำลังดำเนินการ..." + disabled ตามเดิม)
     `Checkbox` (shim native → shadcn, ใน `common/components/checkbox/index.tsx` ของ SFUI-5a; ผู้ใช้เดียวคือ `checkout/components/shipping-address/index.tsx:212` `name="same_as_billing"`):
-    `<Checkbox id checked={checked} onCheckedChange={onChange} name={name} data-testid={dataTestId} />` — เอา `role`/`readOnly`/`aria-checked`/`onClick` ที่ใส่เองออก (Radix root เป็น
+    `<Checkbox id checked={checked} defaultChecked={checked} onClick={onChange} name={name} data-testid={dataTestId} />` ห่อด้วย `<span>` — **ไม่ใช้ `onCheckedChange`** เพราะ Radix ฟัง event `reset` ของ form แล้วเรียก `onCheckedChange` ด้วยค่าตอน mount ทำให้ติ๊กกลับเองหลัง action คืน error (qa #353 D-1; ตัดสิน 2026-11-26 ระหว่าง SFUI-5a); Enter ไม่ toggle ตาม WAI-ARIA (Space toggle); เอา `role`/`readOnly`/`aria-checked` ที่ใส่เองออก (Radix root เป็น
     `role="checkbox"` + `aria-checked` เองและ testid อยู่บน root จึง `toBeChecked` ใช้ได้); ใน `<form>` Radix สร้าง input ซ่อนที่ส่ง `same_as_billing=on` เมื่อติ๊ก
     และไม่ส่งเมื่อไม่ติ๊ก (`cart.ts:541` อ่าน `=== "on"` — `value` ต้องคงค่าเริ่มต้น `"on"`); `Label htmlFor` ชี้ id เดิม
     `RadioGroup` ใน `common/components/filter-radio-group/index.tsx` (SFUI-5a; sort/filter ของ store): `<RadioGroup value={value} onValueChange={handleChange} data-testid={dataTestId}>`
