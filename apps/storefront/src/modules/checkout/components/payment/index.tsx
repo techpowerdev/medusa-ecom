@@ -390,7 +390,8 @@ const Payment = ({
 
           <Button
             size="lg"
-            className="mt-6"
+            // D-1: คงความสูง 48px ของ size large เดิม — lg (40px) ทำให้คลิกหลังกรอกบัตรตกใน iframe ของ Stripe
+            className="mt-6 h-12"
             onClick={handleSubmit}
             isLoading={isLoading || sessionNotInCartYet}
             disabled={

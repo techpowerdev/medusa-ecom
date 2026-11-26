@@ -54,4 +54,9 @@ test("AC-12: focus ตัวเลือกบัตรแล้วกด ArrowD
     await expect(card).toHaveAttribute("aria-checked", "false")
     await evidence("01-payment-arrowdown-promptpay")
   })
+
+  await step("D-1: ปุ่ม submit-payment-button สูง 48px เท่า size large เดิม (คลิกหลังกรอกบัตรไม่ตกใน iframe ของ Stripe)", async () => {
+    const box = await page.getByTestId("submit-payment-button").boundingBox()
+    expect(box?.height).toBe(48)
+  })
 })
