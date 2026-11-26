@@ -45,17 +45,18 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             name={name}
             placeholder=" "
             required={required}
-            className="pt-5 pb-1 block w-full h-12 px-4 mt-0 text-sm bg-background appearance-none hover:bg-muted focus:border-ring focus:ring-[3px] focus:ring-ring/50"
+            className="peer pt-5 pb-1 block w-full h-12 px-4 mt-0 text-sm bg-background appearance-none hover:bg-muted focus:border-ring focus:ring-[3px] focus:ring-ring/50"
             {...props}
             ref={inputRef}
           />
-          {/* CORE-4e (qa #109): transition เฉพาะตอน focus (globals.css) — ค่าที่เติมจากโค้ด (เลือกที่อยู่ที่บันทึกไว้)
+          {/* CORE-4e (qa #109): transition เฉพาะตอน focus (peer-focus:transition-all) — ค่าที่เติมจากโค้ด (เลือกที่อยู่ที่บันทึกไว้)
               ทำให้ label ลอยทันทีไม่ทับข้อความ; h-12/pt-5 เผื่อสระบน/ล่างของอักษรไทย
-              SFUI-5a: ไม่ใส่ z-index ติดลบ — v4 สร้าง `-z-1` จริง (v3 ไม่มี class นี้) แล้ว label ไปอยู่หลังพื้นทึบของ input */}
+              SFUI-5a: ไม่ใส่ z-index ติดลบ — v4 สร้าง `-z-1` จริง (v3 ไม่มี class นี้) แล้ว label ไปอยู่หลังพื้นทึบของ input
+              SFUI-8: ลอยด้วย peer ของ input (เดิม rule `input ~ label` ใน globals.css): focus/มีค่า = 10px/16px/400 เลื่อนขึ้น 12px */}
           <label
             htmlFor={name}
             onClick={() => inputRef.current?.focus()}
-            className="flex items-center justify-center mx-3 px-1 absolute top-3.5 text-muted-foreground"
+            className="flex items-center justify-center mx-3 px-1 absolute top-3.5 text-muted-foreground peer-focus:-translate-y-3 peer-focus:text-[10px] peer-focus:leading-4 peer-focus:font-normal peer-focus:left-0 peer-focus:transition-all peer-focus:duration-300 peer-not-placeholder-shown:-translate-y-3 peer-not-placeholder-shown:text-[10px] peer-not-placeholder-shown:leading-4 peer-not-placeholder-shown:font-normal"
           >
             {label}
             {required && <span className="text-rose-500">*</span>}
