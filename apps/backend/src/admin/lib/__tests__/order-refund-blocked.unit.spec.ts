@@ -8,7 +8,7 @@ import {
   REFUND_BLOCKED_WIDGET_LAYOUT_KEY,
   withRefundBlockedWidgetFirst,
 } from "../../../lib/order-refund-blocked-layout"
-import { ACTIVE_ORDER_CHANGE_STATUSES, REFUND_BLOCKED_MESSAGE, activeChangeType } from "../order-refund-blocked"
+import { ACTIVE_ORDER_CHANGE_STATUSES, activeChangeType, refundBlockedMessage } from "../order-refund-blocked"
 
 // PAY-10 (spec 06 กฎข้อ 12): widget ต้องเตือนด้วยเงื่อนไขเดียวกับ middleware ของ PAY-8 (กฎข้อ 10b)
 describe("order refund blocked widget", () => {
@@ -16,8 +16,9 @@ describe("order refund blocked widget", () => {
     expect([...ACTIVE_ORDER_CHANGE_STATUSES].sort()).toEqual([...GUARD_STATUSES].sort())
   })
 
+  // spec 10 AC-7 (AI18N-3): ข้อความแปลตามภาษา — ค่า `en` (jest ตั้ง lng=en) ยังเท่าถ้อยคำของ toast PAY-8
   it("warns with the message of rule 12, matching the wording of the PAY-8 toast", () => {
-    expect(REFUND_BLOCKED_MESSAGE).toBe(
+    expect(refundBlockedMessage()).toBe(
       "Refunds are blocked while this order has an active return, claim, exchange or edit. Confirm or cancel it first."
     )
     expect(ACTIVE_ORDER_CHANGE_REFUND_MESSAGE).toContain("active return, claim, exchange or edit. Confirm or cancel it first.")

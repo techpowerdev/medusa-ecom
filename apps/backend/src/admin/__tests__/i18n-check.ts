@@ -149,6 +149,8 @@ export const keyIssues = (fileName: string, src: string, resources: Resources): 
         else issues.push("useTranslation ต้องระบุ namespace เป็น string literal")
       } else if (name === "t" && stringArg(a0) && ours.includes(stringArg(a0)!) && stringArg(a1)) {
         calls.push({ ns: stringArg(a0), key: stringArg(a1)! })
+      } else if (name === "t" && stringArg(a0) && ours.includes(stringArg(a0)!) && a1) {
+        // helper ที่ key ไม่ใช่ literal (enum `t("<ns>", \`<prefix>.${value}\`)`) — ตรวจด้วย missingEnumKeys (กฎ 7)
       } else if (name === "t" && stringArg(a0)) {
         calls.push({ key: stringArg(a0)!, ns: stringArg(objectProp(a1, "ns")) })
       } else if (name === "defineRouteConfig") {
@@ -184,7 +186,12 @@ export type GuardIssue = { rule: GuardRule; text: string; line: number }
 /** ชื่อเฉพาะ/หน่วยที่คงละตินได้ (กฎ 14 allowlist) */
 export const LATIN_TOKENS = ["THB", "CSV", "URL", "ID"]
 /** literal ที่ function export ใน lib คืนได้ (กฎ 14e) — ค่าภายในที่ไม่ใช่ข้อความแสดงผล */
-export const RETURN_ALLOWLIST: string[] = []
+export const RETURN_ALLOWLIST: string[] = [
+  // AI18N-3: `PoolStockState` ของ lib/evoucher-pool-delete.ts (ค่า enum ภายใน — ข้อความแสดงผลอยู่ใน ecom-evoucher `stock.*`)
+  "no_codes",
+  "low",
+  "ok",
+]
 
 const TEXT_PROPS = new Set([
   "title",

@@ -675,7 +675,6 @@ describe("ปุ่มสร้างของ Partners/Programs/Payouts อย�
   const PROGRAMS = "components/affiliate/programs-table.tsx"
   const PAYOUTS = "components/affiliate/payouts-table.tsx"
   const CASES: [string, string, string, string][] = [
-    [PARTNERS, "evoucher-partners-table", "Partners", "Create partner"],
     [PROGRAMS, "affiliate-programs-table", "Programs", "Create program"],
     [PAYOUTS, "affiliate-payouts-table", "Payouts", "Create payout"],
   ]
@@ -689,6 +688,18 @@ describe("ปุ่มสร้างของ Partners/Programs/Payouts อย�
     expect(inside).toMatch(/<(DataTable|AffiliateListTable)\b/)
     expect(inside).toContain(`heading="${heading}"`)
     expect(inside).toMatch(new RegExp(`action=\\{\\{\\s*label: "${label}",\\s*onClick:`))
+  })
+
+  // spec 10 AC-7 (AI18N-3): partners แปลแล้ว — heading/label ของ action เป็น key ของ ecom-evoucher (เจตนาเดิม: อยู่ที่ตารางใน wrapper)
+  it(`${PARTNERS} ไม่ใช้ Header แยก — heading/action อยู่ที่ตารางภายใน wrapper evoucher-partners-table`, () => {
+    const src = read(PARTNERS)
+    expect(src).not.toMatch(/common\/header/)
+    expect(src).not.toMatch(/<Header\b/)
+    const inside = src.slice(src.indexOf('data-testid="evoucher-partners-table"'))
+    expect(src).toContain('data-testid="evoucher-partners-table"')
+    expect(inside).toMatch(/<DataTable\b/)
+    expect(inside).toContain('heading={t("partners.heading")}')
+    expect(inside).toMatch(/action=\{\{\s*label: t\("partners\.create"\),\s*onClick:/)
   })
 
   it.each([
@@ -775,7 +786,7 @@ describe("partners: clamp ไม่กระพริบ + PartnerActions แบ
     const src = read(PARTNERS)
     expect(src).toMatch(/<ActionMenu\s+key=\{menuKey\}/)
     expect(src).toMatch(/const \{ menuKey, remountMenu, trigger \} = useRemountMenu\(\)/)
-    expect(src).toMatch(/label: "Edit",[^}]*disabled: removing,[^}]*onClick: \(\) => \{\s*remountMenu\(\)\s*onEdit\(partner\)/)
+    expect(src).toMatch(/label: t\("actions\.edit", \{ ns: "translation" \}\),[^}]*disabled: removing,[^}]*onClick: \(\) => \{\s*remountMenu\(\)\s*onEdit\(partner\)/)
   })
 })
 
@@ -783,9 +794,10 @@ describe("partners: clamp ไม่กระพริบ + PartnerActions แบ
 // (คงหัวตาราง/ปุ่มใน action) แทนข้อความ empty เดิม; 401 → throw ให้ ErrorBoundary ของ dashboard พาไป /login (กฎ 24b)
 describe("ตาราง e-voucher: สถานะ error แทน empty (spec 08 AC-25, กฎ 25, ADM-21a)", () => {
   const ERROR_TABLES: [string, string, string][] = [
-    ["components/evoucher/pools-table.tsx", "evoucher-pools-error", "Could not load voucher pools"],
-    ["components/evoucher/codes-table.tsx", "evoucher-codes-error", "Could not load codes"],
-    ["components/evoucher/partners-section.tsx", "evoucher-partners-error", "Could not load partners"],
+    // spec 10 AC-7 (AI18N-3): heading error เป็น key ของ ecom-evoucher (ค่า en = ข้อความเดิม)
+    ["components/evoucher/pools-table.tsx", "evoucher-pools-error", "pools.loadError"],
+    ["components/evoucher/codes-table.tsx", "evoucher-codes-error", "codes.loadError"],
+    ["components/evoucher/partners-section.tsx", "evoucher-partners-error", "partners.loadError"],
   ]
 
   it.each(ERROR_TABLES)("%s: isError && !data → %s และ heading error อยู่ใน emptyState ของ DataTable", (file, testId, heading) => {
@@ -793,13 +805,13 @@ describe("ตาราง e-voucher: สถานะ error แทน empty (spec
     expect(src).toMatch(/const loadFailed = isError && !data\b/)
     // prop emptyState ของ <DataTable ... /> (ตั้งแต่ emptyState= จนปิด tag)
     const emptyState = src.match(/<DataTable\b[\s\S]*?emptyState=([\s\S]*?)\/>/)?.[1] ?? ""
-    expect(emptyState).toMatch(new RegExp(`loadFailed\\s*\\?\\s*\\{ heading: "${heading}", description: error\\?\\.message \\}`))
+    expect(emptyState).toMatch(new RegExp(`loadFailed\\s*\\?\\s*\\{ heading: t\\("${heading}"\\), description: error\\?\\.message \\}`))
     expect(src).toContain(`data-testid={loadFailed ? "${testId}" : undefined}`)
   })
 
   it("codes-table.tsx: มี filter ใน URL (emptyState.filtered) ล้มแล้วแสดง error ด้วย", () => {
     const src = read("components/evoucher/codes-table.tsx")
-    expect(src).toMatch(/filtered: loadFailed\s*\?\s*\{ heading: "Could not load codes", description: error\?\.message \}/)
+    expect(src).toMatch(/filtered: loadFailed\s*\?\s*\{ heading: t\("codes\.loadError"\), description: error\?\.message \}/)
   })
 
   it.each(ERROR_TABLES)("%s: 401 → throw error ผ่าน isUnauthorized ของ lib/fetch-error", (file) => {

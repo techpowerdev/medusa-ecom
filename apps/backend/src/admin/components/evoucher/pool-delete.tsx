@@ -3,6 +3,7 @@ import { Trash } from "@medusajs/icons"
 import { Badge, StatusBadge, toast, usePrompt } from "@medusajs/ui"
 import { useIsMutating, useMutation, useQueryClient } from "@tanstack/react-query"
 import type { ReactNode } from "react"
+import { useTranslation } from "react-i18next"
 import { evoucherApi, evoucherKeys, Pool } from "../../lib/evoucher"
 import { deletePoolPrompt, poolStockState } from "../../lib/evoucher-pool-delete"
 import type { createSingleFlight } from "../../lib/single-flight"
@@ -16,24 +17,25 @@ type StockPool = Pick<Pool, "total_codes" | "low_stock" | "low_stock_threshold">
  * pool ไม่มี code เลย = StatusBadge สีเทา "No codes" แทน "Low stock" (กฎข้อ 36c); `showOk` = แสดง "OK" (คอลัมน์ Stock ของตาราง)
  */
 export const PoolStockBadge = ({ pool, showOk = false }: { pool: StockPool; showOk?: boolean }) => {
+  const { t } = useTranslation("ecom-evoucher")
   const state = poolStockState(pool)
   if (state === "no_codes") {
     return (
       <StatusBadge color="grey" data-testid="evoucher-pool-no-codes">
-        No codes
+        {t("stock.noCodes")}
       </StatusBadge>
     )
   }
   if (state === "low") {
     return (
       <Badge size="2xsmall" color="red" data-testid="evoucher-pool-low-stock">
-        Low stock (&lt; {pool.low_stock_threshold})
+        {t("stock.low", { threshold: pool.low_stock_threshold })}
       </Badge>
     )
   }
   return showOk ? (
     <Badge size="2xsmall" color="green">
-      OK
+      {t("stock.ok")}
     </Badge>
   ) : null
 }
@@ -54,6 +56,7 @@ export const PoolDeleteMenu = ({
   onDeleted?: () => void
   children: ReactNode
 }) => {
+  const { t } = useTranslation("ecom-evoucher")
   const prompt = usePrompt()
   const queryClient = useQueryClient()
   const removing = useIsMutating({ mutationKey: DELETE_KEY }) > 0
@@ -67,7 +70,7 @@ export const PoolDeleteMenu = ({
     mutationKey: DELETE_KEY,
     mutationFn: () => evoucherApi.deletePool(pool.id),
     onSuccess: () => {
-      toast.success("Voucher pool deleted")
+      toast.success(t("pool.deleted"))
       onDeleted?.()
       return refetchPools()
     },
@@ -87,7 +90,7 @@ export const PoolDeleteMenu = ({
 
   return (
     <ActionMenu
-      groups={[{ actions: [{ label: "Delete", icon: <Trash />, disabled: removing, onClick: confirmDelete }] }]}
+      groups={[{ actions: [{ label: t("actions.delete", { ns: "translation" }), icon: <Trash />, disabled: removing, onClick: confirmDelete }] }]}
     >
       {children}
     </ActionMenu>

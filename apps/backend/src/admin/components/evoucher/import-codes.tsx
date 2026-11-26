@@ -1,6 +1,7 @@
 import { Button, Text, toast } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { evoucherApi, evoucherKeys, ImportResult } from "../../lib/evoucher"
 import { createSingleFlight } from "../../lib/single-flight"
 import { Container } from "../common/container"
@@ -8,6 +9,7 @@ import { Header } from "../common/header"
 
 // import CSV `code,pin?,expires_at?` → แสดงสรุปจำนวนที่เพิ่ม / ข้ามเพราะซ้ำ (AC-1)
 export const ImportCodes = ({ poolId }: { poolId: string }) => {
+  const { t } = useTranslation("ecom-evoucher")
   const queryClient = useQueryClient()
   const inputRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -26,7 +28,7 @@ export const ImportCodes = ({ poolId }: { poolId: string }) => {
       queryClient.invalidateQueries({ queryKey: evoucherKeys.pool(poolId) })
       queryClient.invalidateQueries({ queryKey: evoucherKeys.codes(poolId) })
       queryClient.invalidateQueries({ queryKey: evoucherKeys.pools })
-      toast.success(`Imported ${res.inserted} codes`)
+      toast.success(t("import.toast", { inserted: res.inserted }))
     },
     onError: (e: Error) => {
       setResult(null)
@@ -37,15 +39,15 @@ export const ImportCodes = ({ poolId }: { poolId: string }) => {
   return (
     <Container>
       <Header
-        title="Import codes"
-        subtitle="CSV columns: code, pin (optional), expires_at (optional, YYYY-MM-DD). Duplicates are skipped."
+        title={t("import.title")}
+        subtitle={t("import.subtitle")}
       />
       <div className="flex items-center gap-x-3 px-6 py-4">
         <input
           ref={inputRef}
           type="file"
           accept=".csv,text/csv"
-          aria-label="CSV file"
+          aria-label={t("import.fileLabel")}
           className="txt-compact-small text-ui-fg-subtle"
           onChange={(e) => {
             importOnce.release()
@@ -58,16 +60,16 @@ export const ImportCodes = ({ poolId }: { poolId: string }) => {
           isLoading={upload.isPending}
           onClick={() => file && importOnce(() => upload.mutateAsync(file).then(importOnce.hold, () => undefined))}
         >
-          Import
+          {t("import.submit")}
         </Button>
       </div>
       {result && (
         <div className="flex flex-col gap-y-1 px-6 py-4" data-testid="evoucher-import-result">
           <Text size="small" leading="compact" weight="plus">
-            Imported {result.inserted} codes, skipped {result.skipped_duplicates} duplicates
+            {t("import.result", { inserted: result.inserted, skipped: result.skipped_duplicates })}
           </Text>
           <Text size="small" leading="compact" className="text-ui-fg-subtle">
-            Batch {result.batch_ref}
+            {t("import.batch", { batch: result.batch_ref })}
           </Text>
         </div>
       )}

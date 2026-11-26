@@ -3,6 +3,7 @@ import { EllipsisHorizontal } from "@medusajs/icons"
 import { createDataTableColumnHelper, IconButton } from "@medusajs/ui"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { evoucherApi, evoucherKeys, Pool } from "../../lib/evoucher"
 import { isUnauthorized } from "../../lib/fetch-error"
 import { createSingleFlight } from "../../lib/single-flight"
@@ -12,22 +13,9 @@ import { PageOffsetGate } from "../common/page-offset-gate"
 
 const columnHelper = createDataTableColumnHelper<Pool>()
 
-const count = (status: keyof Pool["code_counts"], header: string) =>
+// spec 10 (AI18N-3): ชื่อ countColumn — ใช้ใน component ซึ่งมี state ชื่อ `count` (เดิมเรียกที่ระดับ module)
+const countColumn = (status: keyof Pool["code_counts"], header: string) =>
   columnHelper.accessor((row) => row.code_counts[status], { id: status, header })
-
-const baseColumns = [
-  columnHelper.accessor("name", { header: "Pool" }),
-  columnHelper.accessor((row) => row.partner.name, { id: "partner", header: "Partner" }),
-  count("available", "Available"),
-  count("allocated", "Allocated"),
-  count("delivered", "Delivered"),
-  count("void", "Void"),
-  // EV-21 (spec 02 กฎข้อ 37): pool ไม่มี code = "No codes" แทน "Low stock"
-  columnHelper.accessor("low_stock", {
-    header: "Stock",
-    cell: ({ row }) => <PoolStockBadge pool={row.original} showOk />,
-  }),
-]
 
 const PAGE_SIZE = 20
 const PREFIX = "pools"
@@ -39,10 +27,22 @@ export const PoolsTable = () => {
   const query = { limit: PAGE_SIZE, offset }
   // EV-21 (กฎข้อ 37): guard ตัวเดียวทั้งตาราง (แบบ PartnersSection) — ไม่ hold หลังลบ เพราะลบ pool อื่นต่อได้
   const [deleteOnce] = useState(createSingleFlight)
+  const { t } = useTranslation("ecom-evoucher")
   // `cell` ต้องคงที่ข้าม render (เมนูที่เปิดอยู่ไม่ปิดเองตอน refetch — spec 08 กฎ 20a)
+  // spec 10 กฎ 4e: header แปลจึงย้ายจากค่าคงที่ระดับ module เข้ามาที่นี่ (สร้างใหม่เฉพาะตอนเปลี่ยนภาษา)
   const columns = useMemo(
     () => [
-      ...baseColumns,
+      columnHelper.accessor("name", { header: t("fields.pool") }),
+      columnHelper.accessor((row) => row.partner.name, { id: "partner", header: t("fields.partner") }),
+      countColumn("available", t("pools.columns.available")),
+      countColumn("allocated", t("pools.columns.allocated")),
+      countColumn("delivered", t("pools.columns.delivered")),
+      countColumn("void", t("pools.columns.void")),
+      // EV-21 (spec 02 กฎข้อ 37): pool ไม่มี code = "No codes" แทน "Low stock"
+      columnHelper.accessor("low_stock", {
+        header: t("pools.columns.stock"),
+        cell: ({ row }) => <PoolStockBadge pool={row.original} showOk />,
+      }),
       columnHelper.display({
         id: "actions",
         // spec 08 กฎ 37: ไม่ห่อด้วย tooltip ของ TruncatedCell — tooltip กิน Escape แรกของ ActionMenu
@@ -56,7 +56,7 @@ export const PoolsTable = () => {
         ),
       }),
     ],
-    [deleteOnce]
+    [deleteOnce, t]
   )
 
   const { data, isLoading, isError, error } = useQuery({
@@ -93,8 +93,8 @@ export const PoolsTable = () => {
             getRowId={(pool) => pool.id}
             rowCount={data?.count ?? 0}
             isLoading={isLoading}
-            heading="E-voucher pools"
-            subHeading="Create a pool from a product variant page (Voucher pool widget), then import partner codes here."
+            heading={t("pools.heading")}
+            subHeading={t("pools.subHeading")}
             prefix={PREFIX}
             pageSize={PAGE_SIZE}
             // spec 08 กฎ 29a: ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results"/"2 of 1 pages" จาก rowCount 0)
@@ -103,10 +103,10 @@ export const PoolsTable = () => {
             rowHref={(pool) => `/evouchers/pools/${pool.id}`}
             emptyState={{
               empty: loadFailed
-                ? { heading: "Could not load voucher pools", description: error?.message }
+                ? { heading: t("pools.loadError"), description: error?.message }
                 : {
-                    heading: "No voucher pools yet",
-                    description: "Open a product variant and create a voucher pool from the Voucher pool widget.",
+                    heading: t("pools.emptyHeading"),
+                    description: t("pools.emptyDescription"),
                   },
             }}
           />
