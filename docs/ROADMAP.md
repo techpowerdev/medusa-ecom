@@ -1,6 +1,6 @@
 # ROADMAP — milestone, ลำดับ PR, สถานะ
 
-อัปเดตล่าสุด: 2026-11-26 (OPS-40 ☑ #562 merge เข้า develop; เพิ่ม OPS-41 หลัง go-live; รอบ 44 storefront shadcn/ui ☑ merge ครบ #565–#581 — spec 09, ADR-030) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
+อัปเดตล่าสุด: 2026-11-26 (OPS-40 ☑ #562 merge เข้า develop; เพิ่ม OPS-41 หลัง go-live; รอบ 44 storefront shadcn/ui ☑ merge ครบ #565–#581 — spec 09, ADR-030; เพิ่มรอบ 45 เก็บกวาด SFUI-8/9a–9e/10) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
 [`docs/roadmap/history.md`](roadmap/history.md) และ follow-up เก่า (รอบ 13–39) อยู่ที่
 [`docs/roadmap/followups-archive.md`](roadmap/followups-archive.md)
 
@@ -8,7 +8,7 @@
 
 - **ตอนนี้**: **release v0.3.1 แล้ว (2026-11-25)** — #561 `develop → main` (merge commit `88bb0b63`, tag `v0.3.1`): รอบ 42 (21 task) +
   รอบ 43 ส่วน v0.3.1 (OPS-36 #554, PAY-23 #555, PAY-24 #556, OPS-39 #559) เป็น 🚀 · OPS-40 (PII ค่าเดี่ยวจาก review #559) ☑ #562 (merge 2026-11-26 — ข้อยกเว้น d1/d2/d3 ของกฎ 22d + กรณีรู้แล้ว `cart_13rjFZ` → OPS-41), **ไม่อยู่ใน v0.3.1**
-- **รอ owner ตัดสิน**: ไม่มีคำถามค้างของรอบ 43 — เหลือเฉพาะเรื่องก่อน go-live (Stripe live, ค่าส่ง, staging); รอบ 44: ไม่มีคำถามค้าง (ADR-030 accepted, Q1/Q2 ตอบแล้ว 2026-11-26)
+- **รอ owner ตัดสิน**: ไม่มีคำถามค้างของรอบ 43 — เหลือเฉพาะเรื่องก่อน go-live (Stripe live, ค่าส่ง, staging); รอบ 44: ไม่มีคำถามค้าง (ADR-030 accepted, Q1/Q2 ตอบแล้ว 2026-11-26); รอบ 45: ไม่มีคำถามค้าง (owner สั่ง "เก็บต่อเลย" 2026-11-26)
 - **ขั้นต่อไป**: go-live (checklist ข้อ 1–16) → **v1.0.0** (ร้านเปิดจริงครั้งแรก)
 
 ### Release
@@ -109,7 +109,31 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 - **ไฟล์ร่วม** (ตัวที่ merge ทีหลัง sync): `e2e/sfui-legacy.unit.spec.ts` (แต่ละ task ลบ key `PENDING` ของตัวเอง) · `package.json`/lockfile แก้เฉพาะ 1a, 1b, 6 · `globals.css` 1a → 1b → 6
 - ~~**งด release `develop → main`** ตั้งแต่ SFUI-2 merge จนถึง SFUI-6 merge ยกเว้น hotfix (owner 2026-11-26 — spec 09 Q2; ขยายถึง SFUI-7 ที่เพิ่มภายหลัง)~~ สิ้นสุดแล้ว — SFUI merge ครบ 2026-11-26 · browser ขั้นต่ำของ Tailwind v4 owner ยอมรับ (Q1 — ยังมีผล)
 
+## รอบ 45 — เก็บกวาดหลัง SFUI-7 (spec 09 หัวข้อ "ส่วนเก็บกวาดหลัง SFUI-7", กฎ 22–25, AC-20–AC-25)
+
+ที่มา: owner 2026-11-26 "เก็บต่อเลย" — (1) เลิกใช้ utility ขนาดฟอนต์ของ starter `text-*-regular/semi` 13 ตัว (~217 จุดใน 81 ไฟล์ของ `src/modules` + `src/app` ณ `b2b27ccc`)
+แทนด้วย utility มาตรฐานที่ค่าที่ render เท่าเดิม แล้วลบ `@utility` + `cn` ที่ extend (`createCn`/`FONT_SIZE_UTILITIES`) กลับเป็น `export { cn } from "cn"` ตาม ADR-030 ข้อ 3;
+(2) แก้ rule floating label ใน `globals.css` ที่จับ `<label>` อื่น (ป้ายตัวเลือก/จำนวนบน PDP ได้ 10px และเลื่อนขึ้น -12px) — **เปลี่ยนหน้าตา PDP (แก้บั๊ก)** · ไม่มี ADR ใหม่ (อยู่ในกรอบ ADR-030) ·
+**stack — วิธีเดียวกับรอบ 44** (owner อนุญาต 2026-11-26): 8 และ 9a–9e แตกจาก branch เอกสาร `docs/SFUI2-font-utilities`, 10 แตกจาก branch ที่รวม 8 + 9a..9e → เปิด PR ทั้งชุดตอนท้าย (base = `develop`) → merge ตามลำดับ ·
+แต่ละไฟล์มี task เจ้าของเดียว (ตาราง Tasks รอบ 45 ของ spec 09) · admin ไม่กระทบ · ไม่งด release
+
+| Task | spec | งาน (สั้น) | Depends | UI/qa | สถานะ |
+|---|---|---|---|---|---|
+| SFUI-8 | 09 | floating label ผูกเฉพาะ `common/components/input` (`peer-*` แทน rule `input ~ label`); ป้าย PDP ได้ขนาดตาม className (12px/20px) | PR เอกสารรอบ 45 (stack) | ✓ | ☐ |
+| SFUI-9a | 09 | แทน `text-*-regular/semi`: common + layout + หน้าคงที่ (ค่าที่ render เท่าเดิม + e2e วัดก่อน/หลัง) | PR เอกสารรอบ 45 (stack) | ✓ | ☐ |
+| SFUI-9b | 09 | แทน `text-*-regular/semi`: catalog (products/store/home/categories/collections/search) | PR เอกสารรอบ 45 (stack) | ✓ | ☐ |
+| SFUI-9c | 09 | แทน `text-*-regular/semi`: checkout + cart + returns | PR เอกสารรอบ 45 (stack) | ✓ | ☐ |
+| SFUI-9d | 09 | แทน `text-*-regular/semi`: account + order | PR เอกสารรอบ 45 (stack) | ✓ | ☐ |
+| SFUI-9e | 09 | แทน `text-*-regular/semi`: group buy + affiliate + evoucher | PR เอกสารรอบ 45 (stack) | ✓ | ☐ |
+| SFUI-10 | 09 | ลบ `@utility` 13 ตัว, `cn` = `export { cn } from "cn"`, ปรับ test + guard static กัน token กลับมา | SFUI-8, 9a..9e ทั้งหมด | — | ☐ |
+
+- ลำดับ: (8 ∥ 9a ∥ 9b ∥ 9c ∥ 9d ∥ 9e) → 10
+- **ไฟล์ร่วม**: `globals.css` 8 → 10 เท่านั้น · กลุ่มขนานไม่มีไฟล์ร่วม (`option-select.tsx`/`product-actions/index.tsx` เป็นของ 9b; SFUI-8 ไม่แตะ)
+- ค่าที่คาดใน e2e ของ 9x/8 วัดที่ commit ที่ branch แตกออกมา (ก่อนแก้) ไม่ใช่คำนวณจากชื่อ class — spec ใหม่ของ 9x ต้องผ่านทั้งก่อนและหลังแก้
+
 ## คำถามที่รอ owner
+
+- **รอบ 45**: ไม่มีคำถามค้าง
 
 - **รอบ 44**: ไม่มีคำถามค้าง — owner 2026-11-26: ADR-030 = accepted · ~~Q1~~ = ยอมรับ browser ขั้นต่ำของ Tailwind v4 · ~~Q2~~ = งด release ระหว่าง SFUI-2..6 (ยกเว้น hotfix — สิ้นสุดแล้ว 2026-11-26) · ทำแบบ stack ได้
 
@@ -162,6 +186,7 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 | รอบ 41 | 01–08 | 🚀 | 36 🚀 + 1 ✕ | ✕ PAY-13 (ปิดโดย hotfix #468) |
 | รอบ 42 | 01–08 | 🚀 | 21 🚀 | v0.3.1 (#561); ADR-029 |
 | รอบ 44 storefront shadcn/ui | 09 | ☑ | 16 ☑ (#566–#581; เอกสาร #565) | ADR-030 accepted 2026-11-26; stack; งด release ระหว่าง SFUI-2..6 สิ้นสุดแล้ว |
+| รอบ 45 เก็บกวาดหลัง SFUI-7 | 09 | ☐ | 7 ☐ | ฟอนต์ `text-*-regular/semi` + floating label; stack แบบรอบ 44; ไม่งด release |
 | รอบ 43 | 01, 03, 04, 06–08 | ◐ | 4 🚀 + 1 ☑ + 14 ☐ | 4 🚀 (3 train #557 + OPS-39 #559) ใน v0.3.1; OPS-40 ☑ #562 ก่อน go-live (ไม่อยู่ใน v0.3.1); 14 ตัวหลัง go-live (รวม OPS-41) |
 
 จำนวน task นับจากตารางใน history.md ณ 2026-11-24 และตารางรอบ 43 ด้านบน ณ 2026-11-25 (task ที่อยู่หลาย milestone นับที่ milestone หลักของ spec)
