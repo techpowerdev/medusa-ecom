@@ -26,11 +26,11 @@ export default function GroupCampaignCard({ campaign, product, countryCode, now 
 
   return (
     <li
-      className="flex flex-col gap-y-3 rounded-rounded border border-ui-border-base p-4"
+      className="flex flex-col gap-y-3 rounded-rounded border border-border p-4"
       data-testid="group-campaign-card"
       data-campaign-id={campaign.id}
     >
-      <span className="text-small-regular text-ui-fg-subtle">ซื้อกลุ่ม</span>
+      <span className="text-small-regular text-muted-foreground">ซื้อกลุ่ม</span>
       <h3 className="text-base-semi break-words">{campaign.name}</h3>
       {product && (
         <div className="flex items-center gap-x-3">
@@ -46,8 +46,8 @@ export default function GroupCampaignCard({ campaign, product, countryCode, now 
               <p className="flex flex-wrap items-baseline gap-x-2" data-testid="group-campaign-price">
                 {after != null ? (
                   <>
-                    <s className="text-small-regular text-ui-fg-muted">{price.calculated_price}</s>
-                    <span className="text-base-semi text-ui-fg-interactive">
+                    <s className="text-small-regular text-muted-foreground">{price.calculated_price}</s>
+                    <span className="text-base-semi text-primary">
                       {convertToLocale({ amount: after, currency_code: price.currency_code })}
                     </span>
                   </>
@@ -59,7 +59,7 @@ export default function GroupCampaignCard({ campaign, product, countryCode, now 
           </div>
         </div>
       )}
-      {discount && <p className="text-small-regular text-ui-fg-interactive">ลด {discount} เมื่อกลุ่มครบเป้าหมาย</p>}
+      {discount && <p className="text-small-regular text-primary">ลด {discount} เมื่อกลุ่มครบเป้าหมาย</p>}
       <Countdown endsAt={campaign.ends_at} now={now} testId="group-campaign-countdown" expiredLabel="หมดเวลาแล้ว" />
       {pool && progress && (
         <div className="flex flex-col gap-y-2">
@@ -72,7 +72,7 @@ export default function GroupCampaignCard({ campaign, product, countryCode, now 
           </span>
           <Link
             href={groupSharePath(countryCode, pool.join_token)}
-            className="text-small-regular text-ui-fg-interactive underline"
+            className="text-small-regular text-primary underline underline-offset-4"
             data-testid="group-pool-link"
           >
             เข้าร่วมกลุ่มเปิด

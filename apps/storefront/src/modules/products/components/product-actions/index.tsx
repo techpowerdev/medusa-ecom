@@ -10,7 +10,7 @@ import {
   clampLineItemQuantity,
 } from "@lib/util/pending-add-to-cart"
 import { HttpTypes } from "@medusajs/types"
-import { Button } from "@modules/common/components/ui"
+import { Button } from "@/components/ui/button"
 import Divider from "@modules/common/components/divider"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
 import { findVariantByOptions, optionsAsKeymap } from "@lib/util/product-variant-options"
@@ -242,7 +242,7 @@ export default function ProductActions({
                 !!disabled ||
                 isAdding
               }
-              className="border border-ui-border-base bg-ui-bg-subtle rounded-md px-3 py-1.5"
+              className="border border-border bg-muted rounded-md px-3 py-1.5"
               data-testid="product-quantity-select"
             >
               {quantityOptions.map((q) => (
@@ -258,7 +258,7 @@ export default function ProductActions({
 
           {selectedVariant && isValidVariant && (
             <p
-              className="text-small-regular text-ui-fg-subtle"
+              className="text-small-regular text-muted-foreground"
               data-testid="product-availability"
             >
               {canBuy ? "มีสินค้า" : "สินค้าหมด"}
@@ -279,7 +279,6 @@ export default function ProductActions({
             }
             // FS-16 (กฎข้อ 21a): รอข้อมูล flash (sold_out/remaining) ก่อนให้กด
             aria-busy={flash.loading}
-            variant="primary"
             className="w-full h-10"
             isLoading={isAdding}
             data-testid="add-product-button"
@@ -292,7 +291,7 @@ export default function ProductActions({
           </Button>
           {addError && (
             <p
-              className="text-small-regular text-ui-fg-error"
+              className="text-small-regular text-destructive"
               role="alert"
               data-testid="add-to-cart-error"
             >

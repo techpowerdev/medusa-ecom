@@ -181,7 +181,7 @@ export function CardFlashView({
     return (
       <>
         <span
-          className="rounded-rounded bg-ui-bg-subtle px-2 py-0.5 text-small-regular text-ui-fg-error"
+          className="rounded-rounded bg-muted px-2 py-0.5 text-small-regular text-destructive"
           data-testid="flash-card-sold-out"
         >
           แฟลชเซลหมดแล้ว
@@ -206,13 +206,13 @@ export function FlashPrice({
   return (
     <span className="flex flex-wrap items-baseline gap-x-2">
       <span
-        className={className ?? "text-ui-fg-interactive"}
+        className={className ?? "text-primary"}
         data-testid="flash-price"
       >
         {money(price.flash_price!)}
       </span>
       <span
-        className="line-through text-ui-fg-subtle"
+        className="line-through text-muted-foreground"
         data-testid="flash-original-price"
       >
         {money(price.original_price)}
@@ -237,11 +237,11 @@ export default function FlashSale({ offer, now }: FlashOfferState) {
     : null
   return (
     <div
-      className="flex flex-col gap-y-2 rounded-rounded border border-ui-fg-interactive p-3"
+      className="flex flex-col gap-y-2 rounded-rounded border border-primary p-3"
       data-testid="flash-sale"
     >
       <p
-        className="text-base-semi text-ui-fg-interactive"
+        className="text-base-semi text-primary"
         data-testid="flash-banner"
       >
         {sale.banner_text || "แฟลชเซล ราคาพิเศษช่วงเวลาจำกัด"}
@@ -253,7 +253,7 @@ export default function FlashSale({ offer, now }: FlashOfferState) {
       )}
       {sale.sold_out ? (
         <p
-          className="text-base-semi text-ui-fg-error"
+          className="text-base-semi text-destructive"
           data-testid="flash-sold-out"
         >
           สินค้าหมด
@@ -263,7 +263,7 @@ export default function FlashSale({ offer, now }: FlashOfferState) {
           <p>
             <FlashPrice
               price={price}
-              className="text-xl-semi text-ui-fg-interactive"
+              className="text-xl-semi text-primary"
             />
           </p>
           {sale.remaining_units != null && (

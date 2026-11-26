@@ -1,5 +1,4 @@
 import { HttpTypes } from "@medusajs/types"
-import { Container } from "@modules/common/components/ui"
 import Image from "next/image"
 
 type ImageGalleryProps = {
@@ -12,9 +11,9 @@ const ImageGallery = ({ images }: ImageGalleryProps) => {
       <div className="flex flex-col flex-1 small:mx-16 gap-y-4">
         {images.map((image, index) => {
           return (
-            <Container
+            <div
               key={image.id}
-              className="relative aspect-[29/34] w-full overflow-hidden bg-ui-bg-subtle"
+              className="relative aspect-[29/34] w-full overflow-hidden rounded-lg bg-muted p-4"
               id={image.id}
             >
               {!!image.url && (
@@ -30,7 +29,7 @@ const ImageGallery = ({ images }: ImageGalleryProps) => {
                   }}
                 />
               )}
-            </Container>
+            </div>
           )
         })}
       </div>
