@@ -48,21 +48,7 @@ const TASKS: Task[] = [
 ]
 
 const PENDING: Partial<Record<Task, string[]>> = {
-  "SFUI-3d": [
-    "src/core-19f-continue-after-timeout.test.ts",
-    "src/lib/constants.tsx",
-    "src/modules/checkout/components/payment-container/index.tsx",
-    "src/modules/checkout/components/payment/index.tsx",
-    "src/pay-14-stale-session.test.ts",
-    "src/pay-16-payment-container.test.ts",
-    "src/pay-16-payment-step-state.test.ts",
-    "src/payment-session-lock-timeout.test.ts",
-  ],
-  "SFUI-3e": [
-    "src/core-4i-b-ui-results.test.ts",
-    "src/modules/checkout/components/shipping/index.tsx",
-    "src/modules/order/components/order-pay/index.tsx",
-  ],
+  "SFUI-3e": ["src/modules/checkout/components/shipping/index.tsx"],
   "SFUI-4": [
     "src/modules/products/components/product-tabs/accordion.tsx",
     "src/modules/store/components/refinement-list/options-picker/index.tsx",

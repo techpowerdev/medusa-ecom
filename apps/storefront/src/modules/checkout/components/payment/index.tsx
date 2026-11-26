@@ -1,5 +1,7 @@
 "use client"
-import { RadioGroup } from "@headlessui/react"
+import { Button } from "@/components/ui/button"
+import { RadioGroup } from "@/components/ui/radio-group"
+import { cn } from "@/lib/utils"
 import { isStripeLike, paymentInfoMap } from "@lib/constants"
 import { initiatePaymentSession, placeOrder } from "@lib/data/cart"
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
@@ -9,21 +11,14 @@ import {
   isPromptPay,
   sessionResetShown,
 } from "@lib/util/payment-session"
-import { CheckCircleSolid, CreditCard } from "@medusajs/icons"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import { PlaceOrderNotice, usePlaceOrder } from "@modules/checkout/components/payment-button"
 import PaymentContainer, {
   StripePaymentContainer,
 } from "@modules/checkout/components/payment-container"
 import Divider from "@modules/common/components/divider"
-import {
-  Button,
-  Container,
-  Heading,
-  Text,
-  clx,
-} from "@modules/common/components/ui"
 import { HttpTypes } from "@medusajs/types"
+import { CircleCheck, CreditCard } from "lucide-react"
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 
@@ -277,10 +272,9 @@ const Payment = ({
   return (
     <div className="bg-white">
       <div className="flex flex-row items-center justify-between mb-6">
-        <Heading
-          level="h2"
-          className={clx(
-            "flex flex-row text-3xl-regular gap-x-2 items-baseline",
+        <h2
+          className={cn(
+            "flex flex-row text-3xl-regular font-semibold gap-x-2 items-baseline",
             {
               "opacity-50 pointer-events-none select-none":
                 !isOpen && !paymentReady,
@@ -289,33 +283,35 @@ const Payment = ({
           data-testid="payment-heading"
         >
           การชำระเงิน
-          {!isOpen && paymentReady && <CheckCircleSolid />}
-        </Heading>
+          {!isOpen && paymentReady && <CircleCheck className="size-4" />}
+        </h2>
         {!isOpen && paymentReady && (
-          <Text>
+          <p className="text-sm leading-[1.4rem]">
             <button
               onClick={handleEdit}
-              className="text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
+              className="text-primary underline-offset-4 hover:underline"
               data-testid="edit-payment-button"
             >
               แก้ไข
             </button>
-          </Text>
+          </p>
         )}
       </div>
       <div>
         <div className={isOpen ? "block" : "hidden"}>
           {!paidByGiftcard && availablePaymentMethods?.length && (
             <>
+              {/* SFUI-3d (spec 09 กฎ 4, 12): RadioGroup ของ shadcn — ลูกศรเปลี่ยนตัวเลือก; ไม่อยู่ใน <form> (ไม่โดน reset ของ form) */}
               <RadioGroup
                 value={selectedPaymentMethod}
-                onChange={(value: string) => setPaymentMethod(value)}
+                onValueChange={(value: string) => setPaymentMethod(value)}
                 disabled={awaitingPaidOrder || paidOrder.busy}
+                className="block"
               >
                 {availablePaymentMethods.map((paymentMethod) => (
                   <div
                     key={paymentMethod.id}
-                    // PAY-14: คลิกตัวเลือกที่เลือกอยู่ไม่เรียก onChange ของ RadioGroup → สร้าง session ใหม่จากที่นี่
+                    // PAY-14: คลิกตัวเลือกที่เลือกอยู่ไม่เรียก onValueChange ของ RadioGroup (Radix เหมือน headless — pay-16-payment-container) → สร้าง session ใหม่จากที่นี่
                     onClick={
                       resetShown && paymentMethod.id === selectedPaymentMethod
                         ? () => renewSession(paymentMethod.id)
@@ -353,15 +349,15 @@ const Payment = ({
 
           {paidByGiftcard && (
             <div className="flex flex-col w-1/3">
-              <Text className="txt-medium-plus text-ui-fg-base mb-1">
+              <p className="text-sm leading-[1.4rem] font-medium text-foreground mb-1">
                 วิธีชำระเงิน
-              </Text>
-              <Text
-                className="txt-medium text-ui-fg-subtle"
+              </p>
+              <p
+                className="text-sm leading-[1.4rem] text-muted-foreground"
                 data-testid="payment-method-summary"
               >
                 บัตรของขวัญ
-              </Text>
+              </p>
             </div>
           )}
 
@@ -379,11 +375,11 @@ const Payment = ({
           />
           {resetShown && (
             <div role="alert" className="pt-2 flex items-center gap-x-3 text-small-regular" data-testid="payment-session-reset-notice">
-              <Text>{SESSION_RESET}</Text>
+              <p className="text-sm leading-[1.4rem]">{SESSION_RESET}</p>
               <button
                 onClick={() => renewSession(selectedPaymentMethod)}
                 disabled={isLoading}
-                className="text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
+                className="text-primary underline-offset-4 hover:underline"
                 data-testid="payment-session-retry"
               >
                 ลองอีกครั้ง
@@ -393,8 +389,9 @@ const Payment = ({
           <PlaceOrderNotice shown={paidOrder.shown} errorTestId="payment-session-order-error" />
 
           <Button
-            size="large"
-            className="mt-6"
+            size="lg"
+            // D-1: คงความสูง 48px ของ size large เดิม — lg (40px) ทำให้คลิกหลังกรอกบัตรตกใน iframe ของ Stripe
+            className="mt-6 h-12"
             onClick={handleSubmit}
             isLoading={isLoading || sessionNotInCartYet}
             disabled={
@@ -414,45 +411,45 @@ const Payment = ({
             // CORE-89 (กฎข้อ 145): < 640px ซ้อนกันเต็มความกว้าง (w-1/3 คู่กันที่ 375px ตัดทีละคำ); ≥ 640px (`sm` ของ Tailwind — `small` ของ starter คือ 1024px) แถวเดียวเหมือนเดิม
             <div className="flex flex-col sm:flex-row items-start gap-y-4 sm:gap-x-1 w-full">
               <div className="flex flex-col w-full sm:w-1/3">
-                <Text className="txt-medium-plus text-ui-fg-base mb-1">
+                <p className="text-sm leading-[1.4rem] font-medium text-foreground mb-1">
                   วิธีชำระเงิน
-                </Text>
-                <Text
-                  className="txt-medium text-ui-fg-subtle"
+                </p>
+                <p
+                  className="text-sm leading-[1.4rem] text-muted-foreground"
                   data-testid="payment-method-summary"
                 >
                   {paymentInfoMap[activeSession?.provider_id]?.title ||
                     activeSession?.provider_id}
-                </Text>
+                </p>
               </div>
               <div className="flex flex-col w-full sm:w-1/3">
-                <Text className="txt-medium-plus text-ui-fg-base mb-1">
+                <p className="text-sm leading-[1.4rem] font-medium text-foreground mb-1">
                   รายละเอียดการชำระเงิน
-                </Text>
+                </p>
                 <div
-                  className="flex gap-2 txt-medium text-ui-fg-subtle items-center"
+                  className="flex gap-2 text-sm leading-[1.4rem] text-muted-foreground items-center"
                   data-testid="payment-details-summary"
                 >
-                  <Container className="flex items-center h-7 w-fit p-2 bg-ui-button-neutral-hover">
+                  <div className="rounded-lg p-2 flex items-center h-7 w-fit bg-muted">
                     {paymentInfoMap[selectedPaymentMethod]?.icon || (
-                      <CreditCard />
+                      <CreditCard className="size-4" />
                     )}
-                  </Container>
-                  <Text>จะมีขั้นตอนเพิ่มเติมปรากฏขึ้น</Text>
+                  </div>
+                  <p className="text-sm leading-[1.4rem]">จะมีขั้นตอนเพิ่มเติมปรากฏขึ้น</p>
                 </div>
               </div>
             </div>
           ) : paidByGiftcard ? (
             <div className="flex flex-col w-1/3">
-              <Text className="txt-medium-plus text-ui-fg-base mb-1">
+              <p className="text-sm leading-[1.4rem] font-medium text-foreground mb-1">
                 วิธีชำระเงิน
-              </Text>
-              <Text
-                className="txt-medium text-ui-fg-subtle"
+              </p>
+              <p
+                className="text-sm leading-[1.4rem] text-muted-foreground"
                 data-testid="payment-method-summary"
               >
                 บัตรของขวัญ
-              </Text>
+              </p>
             </div>
           ) : null}
         </div>

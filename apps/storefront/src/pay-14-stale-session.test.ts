@@ -35,7 +35,7 @@ vi.mock("@modules/checkout/components/payment-container", async () => {
       ]),
   }
 })
-vi.mock("@headlessui/react", async () => {
+vi.mock("@/components/ui/radio-group", async () => {
   const { createElement: h } = await import("react")
   return { RadioGroup: ({ children }: { children: unknown }) => h("div", null, children as never) }
 })
