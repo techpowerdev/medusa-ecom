@@ -30,17 +30,7 @@ const LANGS = ["en", "th"] as const
 const I18N_PENDING: Record<"groupBuy" | "evoucher" | "affiliate", string[]> = {
   // ---- AI18N-2 (ecom-group-buy) ----
   // ไม่อยู่ในรายการแต่ต้องตรวจเอง: lib/group-buy-campaign.ts (`(deleted)`, หน่วยของ target), lib/group-buy.ts (enum สถานะ — กฎ 7)
-  groupBuy: [
-    "routes/group-buying/page.tsx",
-    "routes/group-buying/[id]/page.tsx",
-    "components/group-buy/create-campaign.tsx",
-    "components/group-buy/group-members.tsx",
-    "components/group-buy/groups-section.tsx",
-    "components/group-buy/product-picker.tsx",
-    "lib/group-buy-form.ts",
-    "widgets/flash-sale-options.tsx",
-    "lib/flash-sale-form.ts",
-  ],
+  groupBuy: [],
   // ---- AI18N-3 (ecom-evoucher) ----
   // ไม่อยู่ในรายการแต่ต้องตรวจเอง: lib/evoucher{,-query,-status}.ts (enum `CODE_STATUSES` — กฎ 7)
   evoucher: [

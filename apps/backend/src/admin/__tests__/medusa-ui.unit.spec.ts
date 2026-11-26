@@ -643,9 +643,10 @@ describe("หน้ารายการแคมเปญใช้หัวต�
     const src = read(LIST_PAGE)
     const wrapper = src.slice(src.indexOf('data-testid="gb-campaigns-table"'))
     expect(wrapper).toMatch(/<DataTable\b/)
-    expect(wrapper).toMatch(/heading="Group-buy campaigns"/)
+    // spec 10 AC-7 (AI18N-2): ข้อความเป็น key ของ ecom-group-buy (ค่า en เดิม — i18n-group-buy.unit.spec.ts)
+    expect(wrapper).toMatch(/heading=\{t\("list\.heading"\)\}/)
     expect(wrapper).toMatch(/subHeading=/)
-    expect(wrapper).toMatch(/action=\{\{\s*label: "Create campaign",\s*onClick:/)
+    expect(wrapper).toMatch(/action=\{\{\s*label: t\("list\.create"\),\s*onClick:/)
     expect(src).toMatch(/<CreateCampaign\s+open=\{\w+\}\s+onOpenChange=\{\w+\}/)
   })
 
@@ -815,8 +816,9 @@ describe("ตาราง affiliate / group buy: สถานะ error แทน
   const ERROR_TABLES: [string, string, string, string][] = [
     // ADM-25 (กฎ 29b): ชื่อใน heading มาจาก LOAD_ERROR_NOUN (แท็บ Ledger = "ledger entries")
     ["components/affiliate/list-table.tsx", "affiliate-list-error", "`Could not load \\$\\{LOAD_ERROR_NOUN\\[resource\\]\\}`", "DataTable"],
-    ["components/group-buy/groups-section.tsx", "gb-groups-error", '"Could not load groups"', "DataTable.Table"],
-    ["components/group-buy/group-members.tsx", "gb-memberships-error", '"Could not load members"', "DataTable.Table"],
+    // spec 10 AC-7 (AI18N-2): heading เป็น key ของ ecom-group-buy (ค่า en "Could not load groups/members")
+    ["components/group-buy/groups-section.tsx", "gb-groups-error", 't\\("groups\\.loadError"\\)', "DataTable.Table"],
+    ["components/group-buy/group-members.tsx", "gb-memberships-error", 't\\("members\\.loadError"\\)', "DataTable.Table"],
   ]
   const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 

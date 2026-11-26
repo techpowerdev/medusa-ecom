@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { INT4_MAX } from "../../lib/int4"
+import { t } from "../i18n/t"
 import { BAD_NUMBER_INPUT, fieldErrorMap } from "./form-validation"
 
 // GB-6a: แปลงค่าฟอร์ม "Create campaign" เป็น body ของ POST /admin/group-buy/campaigns
@@ -9,44 +10,71 @@ import { BAD_NUMBER_INPUT, fieldErrorMap } from "./form-validation"
 export type TargetType = "orders" | "units" | "people"
 export type GroupMode = "pool" | "team" | "both"
 
-const INVALID_DATE = "Invalid date"
+// spec 10 กฎ 4d (AI18N-2): ข้อความเป็น function เรียก t ตอน validate (ห้ามเรียกตอนโหลด module) — ค่า en เท่าข้อความเดิม
+// ชื่อช่องในข้อความเป็น key ของตัวเอง (กฎ 3) ส่งต่อเป็นชื่อ key ไม่ใช่ข้อความ
+type FieldName =
+  | "target"
+  | "teamDuration"
+  | "maxTotalOrders"
+  | "maxUnitsPerPerson"
+  | "maxPeoplePerGroup"
+  | "payWithin"
+  | "maxQuantity"
+  | "endDate"
 
-const wholeNumberMessage = (label: string) => `${label} must be a whole number greater than 0`
-const DISCOUNT_VALUE_MESSAGE = "Discount value must be a number greater than 0"
+// key literal ทุกตัว (unit AC-3 ตรวจ key ได้) — เรียกตอน validate เท่านั้น
+const FIELD_NAMES: Record<FieldName, () => string> = {
+  target: () => t("ecom-group-buy", "form.fieldNames.target"),
+  teamDuration: () => t("ecom-group-buy", "form.fieldNames.teamDuration"),
+  maxTotalOrders: () => t("ecom-group-buy", "form.fieldNames.maxTotalOrders"),
+  maxUnitsPerPerson: () => t("ecom-group-buy", "form.fieldNames.maxUnitsPerPerson"),
+  maxPeoplePerGroup: () => t("ecom-group-buy", "form.fieldNames.maxPeoplePerGroup"),
+  payWithin: () => t("ecom-group-buy", "form.fieldNames.payWithin"),
+  maxQuantity: () => t("ecom-group-buy", "form.fieldNames.maxQuantity"),
+  endDate: () => t("ecom-group-buy", "form.fieldNames.endDate"),
+}
+
+const invalidDate = () => t("ecom-group-buy", "form.errors.invalidDate")
+const wholeNumberMessage = (name: FieldName) =>
+  t("ecom-group-buy", "form.errors.wholeNumber", { label: FIELD_NAMES[name]() })
+const discountValueMessage = () => t("ecom-group-buy", "form.errors.discountValue")
 
 // ADM-15 (spec 08 กฎ 19a): ช่องตัวเลขเป็น NumberInput — ค่าที่ไม่ใช่ตัวเลข ("e") มาเป็น BAD_NUMBER_INPUT
 // ปฏิเสธที่ schema ให้ error อยู่ใต้ช่อง (ข้อความเดียวกับ toCampaignBody) ค่าว่างยังผ่านไปให้ toCampaignBody ตัดสิน
 // ADM-32 (spec 08 กฎ 36): รูปค่า (จำนวนเต็ม > 0 และ ≤ INT4_MAX ของ column int4 — GB-17; discount > 0) ตรวจที่นี่ด้วย
 // ให้ error อยู่ใต้ช่องแทน toast — issue เดียวต่อช่อง (ข้อความแรกที่เข้าเงื่อนไข)
-const numberText = (issueOf: (n: number) => string | null, badInput: string) =>
+const numberText = (issueOf: (n: number) => string | null, badInput: () => string) =>
   z.string().superRefine((value, ctx) => {
-    const message = value === BAD_NUMBER_INPUT ? badInput : value.trim() ? issueOf(Number(value)) : null
+    const message = value === BAD_NUMBER_INPUT ? badInput() : value.trim() ? issueOf(Number(value)) : null
     if (message) ctx.addIssue({ code: "custom", message })
   })
 
-const wholeNumberText = (label: string) =>
-  numberText((n) => {
-    if (!Number.isInteger(n) || n <= 0) return wholeNumberMessage(label)
-    return n > INT4_MAX ? `${label} must be at most ${INT4_MAX}` : null
-  }, wholeNumberMessage(label))
+const wholeNumberText = (name: FieldName) =>
+  numberText(
+    (n) => {
+      if (!Number.isInteger(n) || n <= 0) return wholeNumberMessage(name)
+      return n > INT4_MAX ? t("ecom-group-buy", "form.errors.atMost", { label: FIELD_NAMES[name](), max: INT4_MAX }) : null
+    },
+    () => wholeNumberMessage(name)
+  )
 
-const discountText = numberText((n) => (n > 0 ? null : DISCOUNT_VALUE_MESSAGE), DISCOUNT_VALUE_MESSAGE)
+const discountText = numberText((n) => (n > 0 ? null : discountValueMessage()), discountValueMessage)
 
 export const campaignFormSchema = z.object({
   name: z.string(),
   target_type: z.enum(["orders", "units", "people"]),
-  target_value: wholeNumberText("Target"),
+  target_value: wholeNumberText("target"),
   group_mode: z.enum(["pool", "team", "both"]),
-  team_duration_hours: wholeNumberText("Team duration"),
-  max_total_orders: wholeNumberText("Max total orders"),
-  max_units_per_person: wholeNumberText("Max units per person"),
-  max_people_per_group: wholeNumberText("Max people per group"),
-  pay_within_hours: wholeNumberText("Pay within"),
+  team_duration_hours: wholeNumberText("teamDuration"),
+  max_total_orders: wholeNumberText("maxTotalOrders"),
+  max_units_per_person: wholeNumberText("maxUnitsPerPerson"),
+  max_people_per_group: wholeNumberText("maxPeoplePerGroup"),
+  pay_within_hours: wholeNumberText("payWithin"),
   starts_at: z.date().nullable(),
   ends_at: z.date().nullable(),
   discount_type: z.enum(["percentage", "fixed"]),
   discount_value: discountText,
-  max_quantity: wholeNumberText("Max quantity"),
+  max_quantity: wholeNumberText("maxQuantity"),
   product_id: z.string().nullable(), // GB-6e (spec 04 กฎข้อ 30): 1 แคมเปญ = 1 สินค้า จาก product picker — บังคับเลือก
   is_tax_inclusive: z.boolean(), // spec 04 กฎข้อ 12
 })
@@ -54,7 +82,7 @@ export type CampaignForm = z.input<typeof campaignFormSchema>
 
 // z.date() กับ Invalid Date/ค่าที่ไม่ใช่ Date ให้ "Invalid input" — แทนด้วยข้อความของช่อง (ADM-3 fieldErrorMap)
 export const CAMPAIGN_PARSE_OPTIONS = {
-  error: fieldErrorMap({ starts_at: INVALID_DATE, ends_at: INVALID_DATE }),
+  error: fieldErrorMap({ starts_at: invalidDate, ends_at: invalidDate }),
 }
 
 export const emptyCampaignForm = (): CampaignForm => ({
@@ -84,20 +112,20 @@ class FormError extends Error {
   }
 }
 
-const intOrNull = (value: string, label: string) => {
+const intOrNull = (value: string, name: FieldName) => {
   if (!value.trim()) {
     return null
   }
   const n = Number(value)
   if (!Number.isInteger(n) || n <= 0) {
-    throw new FormError(wholeNumberMessage(label))
+    throw new FormError(wholeNumberMessage(name))
   }
   return n
 }
 
-const required = <T>(value: T | null, label: string): T => {
+const required = <T>(value: T | null, name: FieldName): T => {
   if (value === null) {
-    throw new FormError(`${label} is required`)
+    throw new FormError(t("ecom-group-buy", "form.errors.required", { label: FIELD_NAMES[name]() }))
   }
   return value
 }
@@ -105,7 +133,7 @@ const required = <T>(value: T | null, label: string): T => {
 // Date จาก DatePicker ส่งเข้า body ตรงๆ (JSON เป็น ISO UTC; validator ของ backend coerce)
 const validDate = (value: Date | null) => {
   if (value && Number.isNaN(value.getTime())) {
-    throw new FormError(INVALID_DATE)
+    throw new FormError(invalidDate())
   }
   return value
 }
@@ -132,44 +160,44 @@ export const isEndsAtPast = (endsAt: Date | null, now = Date.now()) =>
 const buildBody = (form: CampaignForm) => {
   const name = form.name.trim()
   if (!name) {
-    throw new FormError("Name is required")
+    throw new FormError(t("ecom-group-buy", "form.errors.nameRequired"))
   }
   const starts_at = validDate(form.starts_at)
-  const ends_at = required(validDate(form.ends_at), "End date")
+  const ends_at = required(validDate(form.ends_at), "endDate")
   if (starts_at && starts_at.getTime() >= ends_at.getTime()) {
-    throw new FormError("End date must be after start date")
+    throw new FormError(t("ecom-group-buy", "form.errors.endAfterStart"))
   }
-  const team_duration_hours = intOrNull(form.team_duration_hours, "Team duration")
+  const team_duration_hours = intOrNull(form.team_duration_hours, "teamDuration")
   if (form.group_mode !== "pool" && team_duration_hours === null) {
-    throw new FormError("Team duration is required when teams are allowed")
+    throw new FormError(t("ecom-group-buy", "form.errors.teamDurationRequired"))
   }
   const value = Number(form.discount_value)
   if (!form.discount_value.trim() || !(value > 0)) {
-    throw new FormError(DISCOUNT_VALUE_MESSAGE)
+    throw new FormError(discountValueMessage())
   }
   if (form.discount_type === "percentage" && value > 100) {
-    throw new FormError("Percentage discount cannot exceed 100")
+    throw new FormError(t("ecom-group-buy", "form.errors.percentageMax"))
   }
   if (!form.product_id) {
-    throw new FormError("Select the product of this campaign", "product")
+    throw new FormError(t("ecom-group-buy", "form.errors.product"), "product")
   }
-  const max_units_per_person = intOrNull(form.max_units_per_person, "Max units per person")
-  const max_quantity = required(intOrNull(form.max_quantity, "Max quantity"), "Max quantity")
+  const max_units_per_person = intOrNull(form.max_units_per_person, "maxUnitsPerPerson")
+  const max_quantity = required(intOrNull(form.max_quantity, "maxQuantity"), "maxQuantity")
   // กฎข้อ 15: ไม่เช่นนั้นสมาชิก join ด้วยจำนวนชิ้นที่ส่วนลดไม่ครอบ (ตรวจในฟอร์มเท่านั้น — Q10)
   if (max_units_per_person !== null && max_quantity < max_units_per_person) {
-    throw new FormError("Max discounted quantity must be at least max units per person", "max_quantity")
+    throw new FormError(t("ecom-group-buy", "form.errors.maxQuantityBelowUnits"), "max_quantity")
   }
 
   return {
     name,
     target_type: form.target_type,
-    target_value: required(intOrNull(form.target_value, "Target"), "Target"),
+    target_value: required(intOrNull(form.target_value, "target"), "target"),
     group_mode: form.group_mode,
     team_duration_hours,
-    max_total_orders: intOrNull(form.max_total_orders, "Max total orders"),
+    max_total_orders: intOrNull(form.max_total_orders, "maxTotalOrders"),
     max_units_per_person,
-    max_people_per_group: intOrNull(form.max_people_per_group, "Max people per group"),
-    pay_within_hours: required(intOrNull(form.pay_within_hours, "Pay within"), "Pay within"),
+    max_people_per_group: intOrNull(form.max_people_per_group, "maxPeoplePerGroup"),
+    pay_within_hours: required(intOrNull(form.pay_within_hours, "payWithin"), "payWithin"),
     starts_at,
     ends_at,
     is_tax_inclusive: form.is_tax_inclusive,

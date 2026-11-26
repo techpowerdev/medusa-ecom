@@ -1,14 +1,16 @@
 import { castNumber, optionalInt } from "@medusajs/dashboard/lib"
 import { z } from "zod"
+import { t } from "../i18n/t"
 import { fieldErrorMap, isBlank } from "./form-validation"
 
 // ADM-3 (spec 08 AC-6, กฎ 8): ฟอร์มใน drawer ของ widget "Flash sale options" (FS-5, spec 03)
 
-export const POSITIVE_INT_MESSAGE = "Must be a whole number greater than 0"
+// spec 10 กฎ 4d (AI18N-2): ข้อความเป็น function เรียก t ตอน parse (ไม่เรียกตอนโหลด module)
+export const positiveIntMessage = () => t("ecom-group-buy", "flashSale.errors.positiveInt")
 
 // ว่าง = ไม่จำกัด (null); optionalInt อย่างเดียวรับ "0" และไม่แปลง "" เป็น null จึงต่อด้วย refine + transform
 export const optionalPositiveInt = optionalInt
-  .refine((value) => isBlank(value) || castNumber(value) >= 1, { message: POSITIVE_INT_MESSAGE })
+  .refine((value) => isBlank(value) || castNumber(value) >= 1, { error: positiveIntMessage })
   .transform((value) => (isBlank(value) ? null : castNumber(value)))
 
 export const flashSaleFormSchema = z.object({
@@ -22,7 +24,7 @@ export const flashSaleFormSchema = z.object({
 export type FlashSaleFormValues = z.input<typeof flashSaleFormSchema>
 
 export const FLASH_SALE_PARSE_OPTIONS = {
-  error: fieldErrorMap({ per_customer_limit: POSITIVE_INT_MESSAGE, total_cap: POSITIVE_INT_MESSAGE }),
+  error: fieldErrorMap({ per_customer_limit: positiveIntMessage, total_cap: positiveIntMessage }),
 }
 
 type SavedConfig = {

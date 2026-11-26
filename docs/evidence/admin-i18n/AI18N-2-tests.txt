@@ -1,0 +1,81 @@
+# AI18N-2 — ผลทดสอบ (spec 10, ADR-031) — 2026-11-27 บนเครื่อง builder (node 24.12.0, pnpm 12.15.0)
+
+## Red (ก่อนเขียนโค้ด)
+- lib/__tests__/i18n-group-buy.unit.spec.ts: ล้มทุก test ที่อ่านค่า (key ของ ecom-group-buy ยังไม่มี, positiveIntMessage ยังไม่มี, GroupStatus/MembershipStatus/GroupKind ยังไม่ประกาศ)
+- __tests__/i18n.unit.spec.ts: 9 failed — guard กฎ 14 จับข้อความฮาร์ดโค้ดของ 9 ไฟล์กลุ่ม group buy หลังเอาออกจาก I18N_PENDING
+- group-buy-pages.unit.spec.ts 2 failed, medusa-ui.unit.spec.ts 3 failed (static ที่เปลี่ยนให้ match key แทนข้อความ)
+
+## unit backend: pnpm --filter backend test:unit
+Test Suites: 135 passed, 135 total
+Tests:       2570 passed, 2570 total
+Time:        302.03 s
+
+## unit backend เฉพาะ src/admin
+Test Suites: 26 passed, 26 total
+Tests:       808 passed, 808 total
+
+## unit backend (verbose): lib/__tests__/i18n-group-buy.unit.spec.ts
+PASS src/admin/lib/__tests__/i18n-group-buy.unit.spec.ts
+  ✓ ค่า en ซ้ำกันใน ecom-group-buy มีค่า th เดียวกัน
+  AC-4a ตัวแทน group buy: ข้อความ lazy ตามภาษา (กฎ 4, 8, 11)
+    ✓ toCampaignBody ไม่กรอกชื่อ / campaignFormSchema ends_at Invalid Date: en เดิม → th → de ได้ en (7 ms)
+    ✓ schema: ช่องตัวเลขไม่ใช่จำนวนเต็ม (superRefine) — en เท่าข้อความเดิม th มีอักษรไทย
+    ✓ schema: เกิน INT4_MAX — en เท่าข้อความเดิม th มีอักษรไทย (1 ms)
+    ✓ schema: ส่วนลดไม่ใช่ตัวเลขบวก — en เท่าข้อความเดิม th มีอักษรไทย
+    ✓ toCampaignBody {"ends_at": null} → en "End date is required" และ th มีอักษรไทย
+    ✓ toCampaignBody {"starts_at": 2026-12-31T17:00:00.000Z} → en "End date must be after start date" และ th มีอักษรไทย
+    ✓ toCampaignBody {"group_mode": "team"} → en "Team duration is required when teams are allowed" และ th มีอักษรไทย (1 ms)
+    ✓ toCampaignBody {"discount_value": "101"} → en "Percentage discount cannot exceed 100" และ th มีอักษรไทย
+    ✓ toCampaignBody {"product_id": null} → en "Select the product of this campaign" และ th มีอักษรไทย
+    ✓ toCampaignBody {"max_quantity": "1", "max_units_per_person": "2"} → en "Max discounted quantity must be at least max units per person" และ th มีอักษรไทย
+    ✓ toCampaignBody {"max_people_per_group": "2.5"} → en "Max people per group must be a whole number greater than 0" และ th มีอักษรไทย
+    ✓ flash sale: ข้อความจำนวนเต็มบวก (refine + fieldErrorMap) ตามภาษา (1 ms)
+    ✓ lib/group-buy-campaign: (deleted) และหน่วยของ target แปลตามภาษา
+  AC-3 enum ของ group buy มี key ครบ (กฎ 7)
+    ✓ status: ["draft", "active", "ended"] (1 ms)
+    ✓ groupStatus: ["open", "succeeded", "failed"]
+    ✓ membershipStatus: ["joined", "awaiting_payment", "paid", "cancelled"] (1 ms)
+    ✓ groupKind: ["pool", "team"]
+    ✓ groupMode: ["pool", "team", "both"]
+    ✓ targetType: ["orders", "units", "people"]
+    ✓ targetValue: ["orders", "units", "people"] (1 ms)
+    ✓ progress: ["orders", "units", "people"]
+    ✓ groupMode: ["pool", "team", "both"]
+    ✓ targetType: ["orders", "units", "people"] (1 ms)
+    ✓ discountType: ["percentage", "fixed"]
+    ✓ productStatus: ["draft", "proposed", "published", "rejected"]
+    ✓ ค่า en ของสถานะ/ชนิด = ค่าดิบเดิม (ข้อความที่แสดงในโหมดอังกฤษไม่เปลี่ยน) (1 ms)
+  ค่า en = ข้อความเดิม (กฎ 3)
+    ✓ nav.groupBuying = "Group buying"
+    ✓ list.heading = "Group-buy campaigns"
+    ✓ list.create = "Create campaign"
+    ✓ list.loadError = "Could not load campaigns"
+    ✓ groups.loadError = "Could not load groups"
+    ✓ members.loadError = "Could not load members"
+    ✓ groups.createPool = "Create pool group"
+    ✓ form.title = "Create group-buy campaign" (1 ms)
+    ✓ form.labels.name = "Name *"
+    ✓ flashSale.title = "Flash sale options"
+    ✓ flashSale.fields.totalCap = "Total cap"
+    ✓ flashSale.unlimited = "Unlimited"
+Test Suites: 1 passed, 1 total
+Tests:       39 passed, 39 total
+Snapshots:   0 total
+Time:        1.376 s, estimated 2 s
+Ran all test suites matching /src\/admin\/lib\/__tests__\/i18n-group-buy.unit.spec.ts/i.
+
+## lint / typecheck / build
+pnpm lint: 0 errors (warning เดิมของ backend 4 / storefront 27 — ไม่ใช่ไฟล์ของ task นี้)
+pnpm typecheck: ผ่าน (backend tsc + src/admin/tsconfig.json, storefront)
+NODE_ENV=production pnpm --filter backend build: Backend + Frontend build completed; assert-absent "Development Mode" OK; bundle มี translationNs:"ecom-group-buy"
+
+## e2e (prod build, backend :9321, DB medusa_ai18n2, Redis db 12, lng ล็อกผ่าน ADMIN_UI_OPTIONS/_TH)
+e2e/admin-i18n-group-buy.spec.ts (AC-9): 2 passed (lng=th, lng=en)
+ชุดที่อ้างหน้า group buy / flash sale + admin-i18n-common (15 ไฟล์): 74 passed
+  admin-dialog-title, admin-form-discard-prompt, admin-detail-loader, admin-create-double-submit, admin-form-pilot,
+  admin-modal-return-focus, group-buy-admin-{dates,detail,form,members,pages}, flash-sale-admin-{widget,save},
+  admin-i18n-common, admin-i18n-group-buy
+  (รอบแรก 72 passed + 2 ENOENT ของไฟล์ trace เพราะรัน project unit พร้อมกันจนล้าง test-results/ — รัน admin-create-double-submit ซ้ำเดี่ยว: 12 passed)
+
+## Playwright project unit (storefront)
+221 passed, 1 failed: evidence-budget — admin-i18n/AI18N-1-tests.txt ไม่ผ่าน regex task id (AI18N-*) ของ evidence-rules.ts — มาจาก base AI18N-1 (จะแก้ใน commit ของ AI18N-1)

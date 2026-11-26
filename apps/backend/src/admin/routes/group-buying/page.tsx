@@ -5,11 +5,13 @@ import { Users } from "@medusajs/icons"
 import { Badge, createDataTableColumnHelper, Text } from "@medusajs/ui"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { Container } from "../../components/common/container"
 import { usePageOffset } from "../../components/common/use-page-offset"
 import { PageOffsetGate } from "../../components/common/page-offset-gate"
 import { CreateCampaign } from "../../components/group-buy/create-campaign"
+import { t } from "../../i18n/t"
 import { isUnauthorized } from "../../lib/fetch-error"
 import {
   Campaign,
@@ -21,36 +23,48 @@ import {
 const columnHelper = createDataTableColumnHelper<Campaign>()
 
 // วันเวลาแสดงด้วย useDate ของ Medusa (timezone ของเครื่องแอดมิน — spec 08 กฎ 5)
+// spec 10 กฎ 7 (AI18N-2): สถานะ/หน่วย/โหมดแสดงด้วย key ของค่า (ค่าที่ไม่รู้จักแสดงค่าดิบ) — ค่าที่ส่ง API ไม่เปลี่ยน
 const useColumns = () => {
+  const { t } = useTranslation("ecom-group-buy")
   const { getFullDate } = useDate()
   return useMemo(
     () => [
-      columnHelper.accessor("name", { header: "Campaign" }),
+      columnHelper.accessor("name", { header: t("list.columns.campaign") }),
       columnHelper.accessor("status", {
-        header: "Status",
+        header: t("list.columns.status"),
         cell: ({ getValue }) => (
           <Badge size="2xsmall" color={CAMPAIGN_STATUS_COLOR[getValue()]}>
-            {getValue()}
+            {t(`status.${getValue()}`, { defaultValue: getValue() })}
           </Badge>
         ),
       }),
-      columnHelper.accessor((row) => `${row.target_value} ${row.target_type}`, {
-        id: "target",
-        header: "Target",
+      columnHelper.accessor(
+        (row) =>
+          t(`targetValue.${row.target_type}`, {
+            value: row.target_value,
+            defaultValue: `${row.target_value} ${row.target_type}`,
+          }),
+        {
+          id: "target",
+          header: t("list.columns.target"),
+        }
+      ),
+      columnHelper.accessor("group_mode", {
+        header: t("list.columns.mode"),
+        cell: ({ getValue }) => t(`groupMode.${getValue()}`, { defaultValue: getValue() }),
       }),
-      columnHelper.accessor("group_mode", { header: "Mode" }),
       columnHelper.accessor(
         (row) => (row.campaign?.ends_at ? getFullDate({ date: row.campaign.ends_at, includeTime: true }) : "-"),
-        { id: "ends_at", header: "Ends (ICT)" }
+        { id: "ends_at", header: t("list.columns.endsAt") }
       ),
       // แก้ส่วนลด/scope ที่หน้า promotion ของ Medusa (ADR-011)
       columnHelper.accessor("template_promotion_id", {
-        header: "Template promotion",
+        header: t("list.columns.templatePromotion"),
         cell: ({ getValue, row }) =>
           getValue() ? (
             <Link to={`/promotions/${getValue()}`} onClick={(e) => e.stopPropagation()}>
               <Text size="small" className="text-ui-fg-interactive">
-                {row.original.promotion?.code ?? "Open"}
+                {row.original.promotion?.code ?? t("list.openPromotion")}
               </Text>
             </Link>
           ) : (
@@ -58,7 +72,7 @@ const useColumns = () => {
           ),
       }),
     ],
-    [getFullDate]
+    [getFullDate, t]
   )
 }
 
@@ -68,6 +82,7 @@ const PREFIX = "gb"
 
 // GB-6a: หน้า "Group buying" — รายการแคมเปญ + สร้างแคมเปญ (ADM-6: LayoutComposer + DataTable ของ dashboard; ADM-13: หัวตาราง + ปุ่มสร้างอยู่ที่ DataTable)
 const GroupBuyingPage = () => {
+  const { t } = useTranslation("ecom-group-buy")
   const columns = useColumns()
   const limit = PAGE_SIZE
   const [count, setCount] = useState<number>()
@@ -99,7 +114,7 @@ const GroupBuyingPage = () => {
               {/* spec 04 Q7: ต้นแบบ GBT-* มองเห็นในหน้า Promotions — เตือนห้ามเปิดใช้/เผยแพร่ */}
               <div className="px-6 py-3">
                 <Text size="small" leading="compact" className="text-ui-fg-error" data-testid="gb-template-warning">
-                  Never activate or share GBT- template codes; customers get a GB- code per group.
+                  {t("list.templateWarning")}
                 </Text>
               </div>
               <div data-testid="gb-campaigns-table">
@@ -108,9 +123,9 @@ const GroupBuyingPage = () => {
                   {/* backend ไม่รองรับค้นหา (q) → ปิด search */}
                   <PageOffsetGate prefix={PREFIX}>
                     <DataTable
-                      heading="Group-buy campaigns"
-                      subHeading="Discount and product scope live on each campaign's template promotion (GBT-…); edits apply only to groups created afterwards."
-                      action={{ label: "Create campaign", onClick: () => setCreateOpen(true) }}
+                      heading={t("list.heading")}
+                      subHeading={t("list.subHeading")}
+                      action={{ label: t("list.create"), onClick: () => setCreateOpen(true) }}
                       data={data?.campaigns ?? []}
                       columns={columns}
                       getRowId={(campaign) => campaign.id}
@@ -124,10 +139,10 @@ const GroupBuyingPage = () => {
                       rowHref={(campaign) => `/group-buying/${campaign.id}`}
                       emptyState={{
                         empty: loadFailed
-                          ? { heading: "Could not load campaigns", description: error?.message }
+                          ? { heading: t("list.loadError"), description: error?.message }
                           : {
-                              heading: "No group-buy campaigns yet",
-                              description: "Create a campaign to start selling in groups.",
+                              heading: t("list.emptyHeading"),
+                              description: t("list.emptyDescription"),
                             },
                       }}
                     />
@@ -143,12 +158,15 @@ const GroupBuyingPage = () => {
   )
 }
 
+// spec 10 กฎ 9 (AI18N-2): label เป็น key + translationNs (string literal ทั้งคู่ — admin-vite-plugin อ่านเฉพาะ literal)
 export const config = defineRouteConfig({
-  label: "Group buying",
+  label: "nav.groupBuying",
+  translationNs: "ecom-group-buy",
   icon: Users,
 })
 
 // ADM-6: createRouteMap ของ dashboard สร้าง route "group-buying" เป็นพ่อของ ":id" → breadcrumb "Group buying › <ชื่อแคมเปญ>"
-export const handle = { breadcrumb: () => "Group buying" }
+// spec 10 กฎ 4b: breadcrumb นอก component ใช้ helper t (เรียกตอน render ของ Shell)
+export const handle = { breadcrumb: () => t("ecom-group-buy", "nav.groupBuying") }
 
 export default GroupBuyingPage

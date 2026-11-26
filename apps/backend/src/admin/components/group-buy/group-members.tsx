@@ -12,6 +12,7 @@ import {
 } from "@medusajs/ui"
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { canSetGroupOutcome, customerLabel, orderAdminPath } from "../../lib/group-buy-campaign"
 import { isUnauthorized } from "../../lib/fetch-error"
@@ -20,33 +21,24 @@ import { createSingleFlight } from "../../lib/single-flight"
 
 type Outcome = "succeed" | "fail"
 
-const PROMPTS: Record<Outcome, { title: string; description: string; confirmText: string }> = {
-  succeed: {
-    title: "Mark group as succeeded?",
-    description: "Members get a payment request for their draft orders. This cannot be undone.",
-    confirmText: "Succeed",
-  },
-  fail: {
-    title: "Mark group as failed?",
-    description: "All member draft orders are canceled. This cannot be undone.",
-    confirmText: "Fail",
-  },
-}
-
 const columnHelper = createDataTableColumnHelper<Membership>()
 // วันเวลาแสดงด้วย useDate ของ Medusa (timezone ของเครื่องแอดมิน — spec 08 กฎ 5)
+// spec 10 กฎ 7 (AI18N-2): สถานะ membership แสดงด้วย key ของค่า; payment_status เป็นค่าของ Medusa จาก backend แสดงตามเดิม
 const useColumns = () => {
+  const { t } = useTranslation("ecom-group-buy")
   const { getFullDate } = useDate()
   return useMemo(
     () => [
-      columnHelper.accessor(customerLabel, { id: "customer", header: "Customer" }),
-      columnHelper.accessor("units", { header: "Units" }),
+      columnHelper.accessor(customerLabel, { id: "customer", header: t("members.columns.customer") }),
+      columnHelper.accessor("units", { header: t("members.columns.units") }),
       columnHelper.accessor("status", {
-        header: "Status",
-        cell: ({ getValue }) => <Badge size="2xsmall">{getValue()}</Badge>,
+        header: t("members.columns.status"),
+        cell: ({ getValue }) => (
+          <Badge size="2xsmall">{t(`membershipStatus.${getValue()}`, { defaultValue: getValue() })}</Badge>
+        ),
       }),
       columnHelper.accessor("order_id", {
-        header: "Order",
+        header: t("members.columns.order"),
         cell: ({ row }) => (
           <Link to={orderAdminPath(row.original)} data-testid="gb-membership-order-link">
             <Text size="small" className="text-ui-fg-interactive">
@@ -55,13 +47,16 @@ const useColumns = () => {
           </Link>
         ),
       }),
-      columnHelper.accessor((m) => m.order?.payment_status ?? "-", { id: "payment_status", header: "Payment" }),
+      columnHelper.accessor((m) => m.order?.payment_status ?? "-", {
+        id: "payment_status",
+        header: t("members.columns.payment"),
+      }),
       columnHelper.accessor((m) => (m.joined_at ? getFullDate({ date: m.joined_at, includeTime: true }) : "-"), {
         id: "joined_at",
-        header: "Joined (ICT)",
+        header: t("members.columns.joinedAt"),
       }),
     ],
-    [getFullDate]
+    [getFullDate, t]
   )
 }
 
@@ -75,6 +70,7 @@ export const GroupMembers = ({
   campaignId: string
   onClose: () => void
 }) => {
+  const { t } = useTranslation("ecom-group-buy")
   const queryClient = useQueryClient()
   const prompt = usePrompt()
   const columns = useColumns()
@@ -92,7 +88,8 @@ export const GroupMembers = ({
   const [outcomeOnce] = useState(createSingleFlight)
   const outcome = useMutation({
     mutationFn: (action: Outcome) => groupBuyApi.setOutcome(group.id, action),
-    onSuccess: (_, action) => toast.success(action === "succeed" ? "Group succeeded" : "Group failed"),
+    onSuccess: (_, action) =>
+      toast.success(action === "succeed" ? t("members.toast.succeeded") : t("members.toast.failed")),
     onError: (e: Error) => toast.error(e.message),
     // GB-6d (กฎข้อ 23): refetch ทั้งตอนสำเร็จและล้ม — ล้ม (4xx) มักแปลว่ากลุ่มเปลี่ยนสถานะไปแล้ว ตารางต้องตรง DB
     onSettled: () => {
@@ -100,9 +97,22 @@ export const GroupMembers = ({
       queryClient.invalidateQueries({ queryKey: groupBuyKeys.memberships(group.id) })
     },
   })
+  // spec 10 กฎ 4e (AI18N-2): ข้อความ prompt ย้ายจากค่าคงที่ระดับ module เข้า component เพื่อเรียก t ตอน render
+  const prompts: Record<Outcome, { title: string; description: string; confirmText: string }> = {
+    succeed: {
+      title: t("members.prompts.succeed.title"),
+      description: t("members.prompts.succeed.description"),
+      confirmText: t("members.prompts.succeed.confirm"),
+    },
+    fail: {
+      title: t("members.prompts.fail.title"),
+      description: t("members.prompts.fail.description"),
+      confirmText: t("members.prompts.fail.confirm"),
+    },
+  }
   const onOutcome = (action: Outcome) =>
     outcomeOnce(async () => {
-      if (await prompt({ ...PROMPTS[action], cancelText: "Cancel" })) {
+      if (await prompt({ ...prompts[action], cancelText: t("actions.cancel", { ns: "translation" }) })) {
         await outcome.mutateAsync(action).catch(() => undefined)
       }
     })
@@ -127,7 +137,7 @@ export const GroupMembers = ({
     <div className="flex flex-col">
       <div className="flex items-center justify-between px-6 py-4">
         <Text size="small" leading="compact" weight="plus">
-          Members of {group.name ?? group.join_token}
+          {t("members.title", { name: group.name ?? group.join_token })}
         </Text>
         <div className="flex items-center gap-x-2">
           {canSetGroupOutcome(group) && (
@@ -139,7 +149,7 @@ export const GroupMembers = ({
                 onClick={() => onOutcome("succeed")}
                 disabled={outcome.isPending}
               >
-                Mark succeeded
+                {t("members.markSucceeded")}
               </Button>
               <Button
                 size="small"
@@ -148,12 +158,12 @@ export const GroupMembers = ({
                 onClick={() => onOutcome("fail")}
                 disabled={outcome.isPending}
               >
-                Mark failed
+                {t("members.markFailed")}
               </Button>
             </>
           )}
           <Button size="small" variant="transparent" data-testid="gb-memberships-close" onClick={onClose}>
-            Close
+            {t("members.close")}
           </Button>
         </div>
       </div>
@@ -164,8 +174,8 @@ export const GroupMembers = ({
             <DataTable.Table
               emptyState={{
                 empty: loadFailed
-                  ? { heading: "Could not load members", description: error?.message }
-                  : { heading: "No members yet" },
+                  ? { heading: t("members.loadError"), description: error?.message }
+                  : { heading: t("members.emptyHeading") },
               }}
             />
             {/* spec 08 กฎ 29a: ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results") */}

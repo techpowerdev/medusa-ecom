@@ -1,5 +1,5 @@
 import { POOL_FORM_DEFAULTS, POOL_PARSE_OPTIONS, poolFormSchema } from "../evoucher-pool-form"
-import { FLASH_SALE_PARSE_OPTIONS, POSITIVE_INT_MESSAGE, flashSaleFormSchema, toFlashSaleFormValues } from "../flash-sale-form"
+import { FLASH_SALE_PARSE_OPTIONS, flashSaleFormSchema, toFlashSaleFormValues } from "../flash-sale-form"
 import { BAD_NUMBER_INPUT, numberInputValue } from "../form-validation"
 
 // ADM-12 (spec 08 AC-16, กฎ 15): <input type="number"> ที่พิมพ์ "e"/"1e" ได้ value "" แต่ validity.badInput = true
@@ -25,7 +25,7 @@ describe("schema ปฏิเสธ BAD_NUMBER_INPUT ด้วยข้อคว
   it.each(["per_customer_limit", "total_cap"] as const)("flash sale %s", (name) => {
     const values = { ...toFlashSaleFormValues(null), [name]: BAD_NUMBER_INPUT }
     expect(issuesOf(flashSaleFormSchema.safeParse(values, FLASH_SALE_PARSE_OPTIONS))).toEqual({
-      [name]: POSITIVE_INT_MESSAGE,
+      [name]: "Must be a whole number greater than 0", // spec 10 กฎ 4d (AI18N-2): ข้อความเป็น function — ค่า en เดิม
     })
   })
 
