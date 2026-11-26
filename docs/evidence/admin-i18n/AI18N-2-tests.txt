@@ -78,4 +78,12 @@ e2e/admin-i18n-group-buy.spec.ts (AC-9): 2 passed (lng=th, lng=en)
   (รอบแรก 72 passed + 2 ENOENT ของไฟล์ trace เพราะรัน project unit พร้อมกันจนล้าง test-results/ — รัน admin-create-double-submit ซ้ำเดี่ยว: 12 passed)
 
 ## Playwright project unit (storefront)
-221 passed, 1 failed: evidence-budget — admin-i18n/AI18N-1-tests.txt ไม่ผ่าน regex task id (AI18N-*) ของ evidence-rules.ts — มาจาก base AI18N-1 (จะแก้ใน commit ของ AI18N-1)
+(ก่อนเรียง stack) 221 passed, 1 failed: evidence-budget — regex task id ยังไม่รับ AI18N-* (แก้แล้วใน 2bc72327 ของ AI18N-1 — ดูหัวข้อหลังเรียง stack)
+
+## หลังเรียง stack (2026-11-27): rebase --onto 2bc72327 (AI18N-1 หลัง review) — commit task 13540745 + แก้ AC-9 ใน spec 186dd1c5
+range-diff d028ba90 → 13540745: เหมือนเดิมทุกบรรทัด (=)
+TEST_TYPE=unit jest src/admin: Test Suites: 26 passed, 26 total / Tests: 808 passed, 808 total
+pnpm typecheck: ผ่าน
+ที่ปลาย stack (AI18N-4 รวม 1+2+3+4): pnpm --filter backend test:unit 137 suites / 2600 passed; Playwright project unit 226 passed (รวม evidence-budget);
+  pnpm lint 0 errors; pnpm typecheck ผ่าน; NODE_ENV=production build ผ่าน (assert-absent OK, bundle มี translationNs ของ ecom-group-buy/ecom-evoucher/ecom-affiliate)
+e2e ไม่ได้รันซ้ำหลังเรียง stack (qa รันชุดเต็มที่ปลาย stack)
