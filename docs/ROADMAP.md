@@ -151,7 +151,7 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 | AI18N-4 | 10 | แปล affiliate (`ecom-affiliate`) + e2e ไทย; `I18N_PENDING` ว่างทั้งหมด | AI18N-1 (stack) | ✓ | ☑ #597 |
 
 - ลำดับ: 1 → (2 ∥ 3 ∥ 4) · merge จริง 1 → 2 → 3 → 4 (#594 → #597, 2026-11-27) · reviewer APPROVE ทุกตัว, CI เขียว,
-  qa ผ่าน AC-1..11 ไม่มี defect (`docs/evidence/admin-i18n/AI18N-{1..4}/REPORT.md`) · nit กฎ 7 แก้ใน PR ปิดรอบ; nit ที่เหลือ (ตัวแปร `t` ซ้อน, camelCase ใน `create-campaign.tsx`, `productStatus.proposed` = "เสนอ", ข้อความ error ของ `evidenceDir`) อยู่ใน backlog ยังไม่มี task
+  qa ผ่าน AC-1..11 ไม่มี defect (`docs/evidence/admin-i18n/AI18N-{1..4}/REPORT.md`) · nit กฎ 7 แก้ใน PR ปิดรอบ; nit ที่เหลือ (ตัวแปร `t` ซ้อน, camelCase ใน `create-campaign.tsx`, `productStatus.proposed` = "เสนอ", ข้อความ error ของ `evidenceDir`, locator breadcrumb ใน e2e) → task AI18N-N1 (owner สั่ง 2026-11-27)
 - **ไฟล์ร่วม**: `src/admin/__tests__/i18n.unit.spec.ts` (แต่ละ task แก้บรรทัด key ของกลุ่มตัวเองใน `I18N_PENDING`) · `medusa-ui.unit.spec.ts` (assertion ของกลุ่มตัวเอง) ·
   `i18n/index.ts`, `e2e/support/admin.ts`, `package.json`/lockfile = AI18N-1 เท่านั้น
 - เริ่มได้เมื่อ PR เอกสารรอบ 46 (รวมแก้ CLAUDE.md หัวข้อ Language ตาม ADR-031) พร้อม — stack ไม่ต้องรอ merge · Q1 = ก: ไม่ตั้งไทยเป็นค่าเริ่มต้น (กฎ 15/AC-12 ไม่ทำ)

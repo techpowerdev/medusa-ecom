@@ -107,6 +107,21 @@ test.describe("evidence-rules", () => {
     }
   })
 
+  // AI18N-N1 (nit review รอบ 46): ข้อความ error อธิบายรูปแบบตาม regex จริง — prefix มีตัวเลขได้, รูป XX-Nn และตัวอย่างทุกตัวผ่าน
+  test("evidenceDir: ข้อความ error ระบุรูปแบบครบและตัวอย่างใช้ได้จริง", () => {
+    let message = ""
+    try {
+      evidenceDir("/repo", { feature: "core", taskId: "core-4a" })
+    } catch (e) {
+      message = (e as Error).message
+    }
+    expect(message).toContain("XX-Nn")
+    expect(message).toMatch(/ตัวเลข/)
+    const examples = message.match(/เช่น (.+):/)?.[1].split(", ") ?? []
+    for (const taskId of ["CORE-4a", "GB-6b1", "GB-7a2a", "GB-N1", "AI18N-1"]) expect(examples).toContain(taskId)
+    for (const taskId of examples) expect(() => evidenceDir("/repo", { feature: "core", taskId })).not.toThrow()
+  })
+
   // CORE-5b AC-21: ตรวจงบกับชุดไฟล์หลังเขียน ก่อนเขียนจริง
   const fivePngs = Array.from({ length: EVIDENCE_MAX_FILES }, (_, i) => ({
     name: `0${i + 1}-existing.png`,

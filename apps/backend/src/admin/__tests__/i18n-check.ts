@@ -130,6 +130,50 @@ const calleeName = (call: ts.CallExpression | ts.NewExpression) =>
       ? call.expression.name.text
       : undefined
 
+/** ชื่อเรียก t ในไฟล์: `t` และ alias ของ helper `import { t as tNs } from ".../i18n/t"` (AI18N-N1 — กันซ้อนชื่อกับ t ของ useTranslation) */
+const translateNames = (sf: ts.SourceFile) => {
+  const names = new Set(["t"])
+  for (const statement of sf.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue
+    if (!/(^|\/)i18n\/t$/.test(statement.moduleSpecifier.text)) continue
+    const bindings = statement.importClause?.namedBindings
+    if (bindings && ts.isNamedImports(bindings))
+      for (const el of bindings.elements) if ((el.propertyName ?? el.name).text === "t") names.add(el.name.text)
+  }
+  return names
+}
+
+/**
+ * บรรทัดที่ประกาศ `t` ในไฟล์ที่ import helper เป็นชื่อ `t` ตรงๆ (ว่าง = ผ่าน) — ชื่อซ้อนกับ `const { t } = useTranslation(...)` ฯลฯ
+ * ให้ import helper แบบ alias (`import { t as tNs } from ".../i18n/t"`) แทน (AI18N-N1)
+ */
+export const shadowedHelperLines = (fileName: string, src: string): number[] => {
+  const sf = parse(fileName, src)
+  const helperAsT = sf.statements.some(
+    (s) =>
+      ts.isImportDeclaration(s) &&
+      ts.isStringLiteral(s.moduleSpecifier) &&
+      /(^|\/)i18n\/t$/.test(s.moduleSpecifier.text) &&
+      !!s.importClause?.namedBindings &&
+      ts.isNamedImports(s.importClause.namedBindings) &&
+      s.importClause.namedBindings.elements.some((el) => el.name.text === "t")
+  )
+  if (!helperAsT) return []
+  const lines: number[] = []
+  const visit = (node: ts.Node) => {
+    if (
+      (ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isBindingElement(node) || ts.isFunctionDeclaration(node)) &&
+      node.name &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === "t"
+    )
+      lines.push(sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1)
+    ts.forEachChild(node, visit)
+  }
+  visit(sf)
+  return lines
+}
+
 /**
  * key literal ที่ไฟล์ใช้แต่ไม่มีจริง (กฎ 6; ว่าง = ผ่าน) — `t("<key>", { ns? })` ของ `useTranslation("<ns>")`,
  * helper `t("<ns>", "<key>")` (namespace ของเรา) และ `defineRouteConfig({ label, translationNs })`;
@@ -141,10 +185,13 @@ export const keyIssues = (fileName: string, src: string, resources: Resources): 
   const issues: string[] = []
   const namespaces = new Set<string>()
   const calls: { key: string; ns?: string }[] = []
+  const sf = parse(fileName, src)
+  const tNames = translateNames(sf)
 
   const visit = (node: ts.Node) => {
     if (ts.isCallExpression(node)) {
-      const name = calleeName(node)
+      const callee = calleeName(node)
+      const name = callee && tNames.has(callee) ? "t" : callee
       const [a0, a1] = node.arguments
       if (name === "useTranslation") {
         const ns = stringArg(a0)
@@ -167,7 +214,7 @@ export const keyIssues = (fileName: string, src: string, resources: Resources): 
     }
     ts.forEachChild(node, visit)
   }
-  visit(parse(fileName, src))
+  visit(sf)
 
   if (namespaces.size > 1) issues.push(`useTranslation หลาย namespace: ${[...namespaces].join(", ")}`)
   const fileNs = [...namespaces][0]
@@ -297,9 +344,9 @@ const enclosingFunction = (node: ts.Node) => {
   return undefined
 }
 
-const isTranslateCall = (node: ts.CallExpression) => {
+const isTranslateCall = (node: ts.CallExpression, tNames: Set<string>) => {
   const name = calleeName(node)
-  return name === "t" || name === "useTranslation"
+  return (!!name && tNames.has(name)) || name === "useTranslation"
 }
 
 export type GuardOptions = {
@@ -315,6 +362,7 @@ export type GuardOptions = {
  */
 export const guardIssues = (fileName: string, src: string, { pending = false, errorShownToUser = false }: GuardOptions = {}) => {
   const sf = parse(fileName, src)
+  const tNames = translateNames(sf)
   const isLib = /^lib\/[^/]+\.ts$/.test(fileName)
   const issues: GuardIssue[] = []
   const add = (rule: GuardRule, node: ts.Node, text: string) =>
@@ -330,7 +378,7 @@ export const guardIssues = (fileName: string, src: string, { pending = false, er
     if (ts.isCallExpression(node)) {
       const name = calleeName(node)
       // (f) ทุกไฟล์
-      if (isTranslateCall(node) && !insideFunction(node)) add("f", node, node.getText(sf))
+      if (isTranslateCall(node, tNames) && !insideFunction(node)) add("f", node, node.getText(sf))
       // (g) ทุกไฟล์
       if (name === "defineRouteConfig" && node.arguments[0] && ts.isObjectLiteralExpression(node.arguments[0])) {
         const ns = objectProp(node.arguments[0], "translationNs")

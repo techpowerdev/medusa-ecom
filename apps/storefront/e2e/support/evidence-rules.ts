@@ -24,7 +24,7 @@ export function evidenceDir(repoRoot: string, target: EvidenceTarget): string {
   }
   if (!TASK_ID_RE.test(target.taskId)) {
     throw new Error(
-      `task id ต้องอยู่ในรูป XX-n, XX-na หรือ XX-nan เช่น CORE-5, CORE-4a, GB-6b1, AI18N-1: "${target.taskId}"`
+      `task id ต้องอยู่ในรูป XX-n, XX-na, XX-nan, XX-nana หรือ XX-Nn (XX ขึ้นต้นตัวใหญ่ ตามด้วยตัวใหญ่/ตัวเลขได้; n = ตัวเลข, a = ตัวเล็กหนึ่งตัว, nan/nana ใช้ตัวเลขหนึ่งหลักหลังตัวเล็ก) เช่น CORE-5, CORE-4a, GB-6b1, GB-7a2a, GB-N1, AI18N-1: "${target.taskId}"`
     )
   }
   return path.join(repoRoot, "docs", "evidence", target.feature, target.taskId)

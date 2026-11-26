@@ -103,6 +103,8 @@ async function run(page: Page, request: APIRequestContext, lng: Lng, step: (titl
     await page.goto(`${BACKEND_URL}/app/group-buying/${groupBuyId}`)
     const status = page.getByTestId("gb-campaign-status")
     await expect(status).toHaveText(text(lng, "status.draft"))
+    // AI18N-N1: Breadcrumbs ของ dashboard 2.22.1 (shell.tsx) เป็น <ol> ไม่มี nav/aria-label และ Topbar ไม่มี role — หาด้วย role + ชื่อ
+    // ภายใน container ไม่ได้ (link ชื่อเดียวกันอยู่ใน <nav> ของ sidebar) จึงคง <ol> แรกของหน้า (sidebar ไม่มี <ol>)
     const first = page.locator("ol").first().locator("li").first()
     await expect(first).toHaveText(text(lng, "nav.groupBuying"))
     expectLang(lng, `${await first.textContent()} ${await status.textContent()}`)

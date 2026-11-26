@@ -10,7 +10,7 @@ import { Link, LoaderFunctionArgs, UIMatch, useLoaderData, useNavigate, useParam
 import { Container } from "../../../components/common/container"
 import { Header } from "../../../components/common/header"
 import { GroupsSection } from "../../../components/group-buy/groups-section"
-import { t } from "../../../i18n/t"
+import { t as tNs } from "../../../i18n/t"
 import { campaignActions } from "../../../lib/group-buy-campaign"
 import { CAMPAIGN_STATUS_COLOR, groupBuyApi, groupBuyKeys } from "../../../lib/group-buy"
 import { createSingleFlight } from "../../../lib/single-flight"
@@ -203,9 +203,9 @@ export const loader = async ({ params }: LoaderFunctionArgs): Promise<CampaignLo
   groupBuyApi.getCampaign(params.id!).catch(() => null)
 
 export const handle = {
-  // spec 10 กฎ 4b, 9: ชื่อแคมเปญจาก loader คงเดิม; fallback แปลด้วย helper t ตอนรัน
+  // spec 10 กฎ 4b, 9: ชื่อแคมเปญจาก loader คงเดิม; fallback แปลด้วย helper t (alias tNs — AI18N-N1) ตอนรัน
   breadcrumb: ({ loaderData }: UIMatch<CampaignLoaderData>) =>
-    loaderData?.campaign.name ?? t("ecom-group-buy", "breadcrumb.campaign"),
+    loaderData?.campaign.name ?? tNs("ecom-group-buy", "breadcrumb.campaign"),
 }
 
 export default GroupBuyCampaignPage

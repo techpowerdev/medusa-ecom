@@ -19,6 +19,7 @@ import {
   keyIssues,
   missingEnumKeys,
   parityIssues,
+  shadowedHelperLines,
   unionLiterals,
 } from "./i18n-check"
 
@@ -114,6 +115,9 @@ describe("key ที่ใช้ในโค้ดมีจริง (AC-3, ก�
     expect(keyIssues("components/x.tsx", missing, res)).toEqual(["ecom-common:nope.key"])
     const helper = `import { t } from "../i18n/t"\nexport const f = () => t("ecom-common", "nope.helper")`
     expect(keyIssues("lib/x.ts", helper, res)).toEqual(["ecom-common:nope.helper"])
+    // AI18N-N1: helper ที่ import แบบ alias (กันชื่อซ้อนกับ t ของ useTranslation) ยังถูกตรวจ key
+    const alias = `import { t as tNs } from "../i18n/t"\nexport const f = () => tNs("ecom-common", "nope.alias")`
+    expect(keyIssues("lib/x.ts", alias, res)).toEqual(["ecom-common:nope.alias"])
     const medusa = `const C = () => { const { t } = useTranslation("ecom-common"); return [t("actions.save", { ns: "translation" }), t("actions.foo", { ns: "translation" })] }`
     expect(keyIssues("components/x.tsx", medusa, res)).toEqual(["translation:actions.foo ไม่อยู่ในรายการ MEDUSA_KEYS"])
     const two = `const A = () => useTranslation("ecom-common"); const B = () => useTranslation("ecom-evoucher")`
@@ -205,6 +209,18 @@ describe("guard static (AC-5, กฎ 9, 14)", () => {
     expect(issues.map((i) => `${i.rule}:${i.line} ${i.text}`)).toEqual([])
   })
 
+  // AI18N-N1 (nit review รอบ 46): helper t ที่ import ตรงๆ ห้ามซ้อนชื่อกับ t ในไฟล์ (เช่น t ของ useTranslation) — ใช้ alias `t as tNs`
+  it.each(adminFiles.filter((f) => !f.startsWith("i18n/")))("%s ไม่มี t ซ้อนชื่อกับ helper", (file) => {
+    expect(shadowedHelperLines(file, read(file))).toEqual([])
+  })
+
+  it("fixture: helper t ซ้อนกับ t ของ useTranslation → ล้ม; alias หรือไม่มี t อื่น → ผ่าน", () => {
+    const body = `\nconst C = () => { const { t } = useTranslation("ecom-common"); return t("x") }`
+    expect(shadowedHelperLines("routes/x/page.tsx", `import { t } from "../../i18n/t"${body}`)).toEqual([2])
+    expect(shadowedHelperLines("routes/x/page.tsx", `import { t as tNs } from "../../i18n/t"${body}`)).toEqual([])
+    expect(shadowedHelperLines("lib/x.ts", `import { t } from "../i18n/t"\nexport const f = () => t("ecom-common", "a")`)).toEqual([])
+  })
+
   it.each(adminFiles.filter((f) => f.startsWith("i18n/")))("%s ไม่เรียก t ตอนโหลด (f)", (file) => {
     expect(guardIssues(file, read(file), { pending: true })).toEqual([])
   })
@@ -232,6 +248,7 @@ describe("guard static (AC-5, กฎ 9, 14)", () => {
     ["e", "lib/x.ts", `export function activeChangeType(type?: string) { if (!type) return "order change"; return type }`],
     ["f", "components/x.tsx", `const X = t("ecom-common", "a")`],
     ["f", "components/x.tsx", `const { t } = useTranslation("ecom-common")`],
+    ["f", "routes/x/page.tsx", `import { t as tNs } from "../../i18n/t"\nconst X = tNs("ecom-common", "a")`],
     ["g", "routes/x/page.tsx", `export const config = defineRouteConfig({ label: LABEL, translationNs: NS })`],
   ])("fixture (%s) ถูกจับ: %s %s", (rule, file, src) => {
     expect(rules(file, src)).toContain(rule)

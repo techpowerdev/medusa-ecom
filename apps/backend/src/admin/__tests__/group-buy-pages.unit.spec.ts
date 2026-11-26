@@ -53,8 +53,10 @@ describe("รายการแคมเปญ (spec 08 AC-9)", () => {
   })
 
   // spec 10 กฎ 9 (AI18N-2): breadcrumb เรียก helper t ตอนรัน (ค่า en "Group buying")
+  // AI18N-N1: helper import แบบ alias ไม่ซ้อนชื่อกับ t ของ useTranslation
   it("export handle.breadcrumb เป็น \"Group buying\" (breadcrumb 2 ระดับร่วมกับหน้ารายละเอียด)", () => {
-    expect(src).toMatch(/export const handle\s*=\s*{\s*breadcrumb:\s*\(\)\s*=>\s*t\("ecom-group-buy", "nav\.groupBuying"\)/)
+    expect(src).toMatch(/import \{ t as tNs \} from "\.\.\/\.\.\/i18n\/t"/)
+    expect(src).toMatch(/export const handle\s*=\s*{\s*breadcrumb:\s*\(\)\s*=>\s*tNs\("ecom-group-buy", "nav\.groupBuying"\)/)
   })
 })
 
@@ -76,6 +78,9 @@ describe("รายละเอียดแคมเปญ (spec 08 AC-9)", () =
   it("export loader และ handle.breadcrumb (ชื่อแคมเปญ)", () => {
     expect(src).toMatch(/export const loader\b/)
     expect(src).toMatch(/export const handle\s*=\s*{[^}]*\bbreadcrumb\b/)
+    // AI18N-N1: fallback ใช้ helper แบบ alias ไม่ซ้อนชื่อกับ t ของ useTranslation
+    expect(src).toMatch(/import \{ t as tNs \} from "\.\.\/\.\.\/\.\.\/i18n\/t"/)
+    expect(src).toMatch(/\?\? tNs\("ecom-group-buy", "breadcrumb\.campaign"\)/)
   })
 })
 
