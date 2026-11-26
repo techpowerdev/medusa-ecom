@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test"
+import fs from "node:fs"
+import path from "node:path"
 
 import baseline from "./support/sfui-baseline.json"
 import {
+  STOREFRONT,
   extractTestIds,
   extractThai,
   readSource,
@@ -11,10 +14,25 @@ import {
 
 // SFUI (spec 09 กฎ 9–10, AC-5): data-testid และข้อความไทยทุกค่าที่มีใน src/** ก่อนเริ่มย้าย (baseline สร้างจาก origin/develop
 // ก่อนแก้ใดๆ ใน SFUI-1a) ต้องยังพบใน src/** — เทียบหลังลบช่องว่างทั้งหมด (ไม่สนการตัดบรรทัด)
-// แก้ e2e/support/sfui-baseline.json ได้เฉพาะเมื่อ spec 09 ระบุข้อยกเว้น (ยังไม่มี)
+// แก้ e2e/support/sfui-baseline.json ได้เฉพาะเมื่อ spec 09 ระบุข้อยกเว้น — ข้อยกเว้นอยู่ใน EXCEPTIONS (ไม่แก้ไฟล์ baseline)
 const corpus = squash(sourceFiles().map(readSource).join("\n"))
 
-const missing = (values: string[]) => values.filter((value) => !corpus.includes(squash(value)))
+// spec 09 AC-5 ข้อยกเว้น (SFUI-6): ค่า default `radio-button` ของ `common/components/radio` ที่ AC-16 สั่งลบ — component นี้
+// ไม่มีผู้ใช้ตั้งแต่บน develop (ไม่มีไฟล์ใด import) และไม่มี e2e ใดอ้าง testid นี้
+const EXCEPTIONS = ["radio-button"]
+
+const missing = (values: string[]) =>
+  values.filter((value) => !EXCEPTIONS.includes(value) && !corpus.includes(squash(value)))
+
+test("AC-5: ข้อยกเว้นอยู่ใน baseline จริง และไม่มี e2e ใดอ้าง", () => {
+  for (const value of EXCEPTIONS) expect(baseline.testids, value).toContain(value)
+  const e2eDir = path.join(STOREFRONT, "e2e")
+  const specs = fs.readdirSync(e2eDir).filter((name) => /\.spec\.ts$/.test(name) && name !== "sfui-baseline.unit.spec.ts")
+  for (const value of EXCEPTIONS) {
+    const users = specs.filter((name) => fs.readFileSync(path.join(e2eDir, name), "utf8").includes(`"${value}"`))
+    expect(users, value).toEqual([])
+  }
+})
 
 test("AC-5: baseline ไม่ว่าง (กันผ่านแบบว่างเปล่า)", () => {
   expect(baseline.testids.length).toBeGreaterThan(400)

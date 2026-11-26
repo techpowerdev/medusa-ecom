@@ -1,0 +1,83 @@
+SFUI-6 — ปิดงานย้าย storefront ไป shadcn/ui (spec 09 AC-1 ขั้น 6, AC-16, กฎ 1, 15, 16, 19)
+branch feat/SFUI-6-cleanup (stack บน feat/SFUI-5e-features ce560d3e) · 2026-11-26 · Node 24.12.0 (ในเครื่อง), pnpm 12.15.0
+
+== Red (ก่อนลบ legacy/dependency) ==
+     × ขึ้นต้นด้วย @import "tailwindcss" และไม่ import ชั้นเข้ากันได้ legacy-medusa.css แล้ว (SFUI-6) 3ms
+     × ขอบเริ่มต้นของทุก element เป็น --border ของ shadcn (* { border-border }) ไม่ใช่ currentColor ของ v4 8ms
+     × ไม่มีสี/เงา ui-* ของ preset และ ring ที่ไม่ระบุสีเป็นค่าเริ่มต้นของ v4 (ไม่มีผู้ใช้ ring เปล่า) 8ms
+     × ไม่มี token/animation ที่ไม่มีผู้ใช้ (accordion-* ของ v3, --chart-*, --sidebar-*) 0ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  4 failed | 15 passed (19)
+  ✘   7 [unit] › e2e/sfui-deps.unit.spec.ts:66:5 › AC-1 (6): ไม่มี @medusajs/icons, @headlessui/react, @radix-ui/react-*, clsx (1ms)
+  ✘   1 [unit] › e2e/sfui-legacy.unit.spec.ts:22:5 › AC-6 (a) / AC-16: ไม่มีไฟล์ใดใน src/** ที่มี pattern ต้องห้ามของกฎ 15 (PENDING ว่าง) (151ms)
+  ✘   8 [unit] › e2e/sfui-legacy.unit.spec.ts:29:5 › AC-16: ไม่มี legacy-medusa.css, shim common/components/{ui,radio,modal} และ globals.css ไม่ import legacy (3ms)
+  3 failed
+  9 passed (1.2s)
+
+== pnpm install (หลังถอด 5 dependency) — lockfile ลบอย่างเดียว 116 บรรทัด, ไม่แตะ pnpm-workspace.yaml ==
+Packages: -10 · Done
+
+== pnpm --filter storefront lint == exit 0 — ✖ 27 problems (0 errors, 27 warnings) — warning เดิมของ stack (react-hooks; SFUI-5d มี 28) ไม่มีตัวใหม่จาก SFUI-6
+== pnpm --filter storefront typecheck == exit 0
+== pnpm --filter storefront test:unit ==
+ Test Files  131 passed (131)
+      Tests  2009 passed (2009)
+== pnpm --filter storefront test:e2e:unit (static ทั้ง project unit) ==
+  197 passed (1.4s)
+✓   50 [unit] › e2e/sfui-deps.unit.spec.ts:16:5 › AC-1 (1a): tailwindcss และ @tailwindcss/postcss เป็น 4.3.5 แบบ exact ใน devDependencies (0ms)
+✓   52 [unit] › e2e/sfui-deps.unit.spec.ts:23:5 › AC-1 (1a): ไม่มี @medusajs/ui-preset, tailwindcss-radix, autoprefixer (1ms)
+✓   64 [unit] › e2e/sfui-baseline.unit.spec.ts:27:5 › AC-5: ข้อยกเว้นอยู่ใน baseline จริง และไม่มี e2e ใดอ้าง (8ms)
+✓   54 [unit] › e2e/sfui-deps.unit.spec.ts:29:5 › AC-1 (กฎ 1): ไม่มีไฟล์ tailwind.config.* และ postcss config มี plugin เดียวคือ @tailwindcss/postcss (78ms)
+✓   67 [unit] › e2e/sfui-baseline.unit.spec.ts:37:5 › AC-5: baseline ไม่ว่าง (กันผ่านแบบว่างเปล่า) (1ms)
+✓   69 [unit] › e2e/sfui-deps.unit.spec.ts:40:5 › AC-1 (กฎ 1): globals.css ขึ้นต้นด้วย @import "tailwindcss" (ไม่นับ comment) (1ms)
+✓   72 [unit] › e2e/sfui-deps.unit.spec.ts:47:5 › AC-1 (1b): dependency ของ shadcn pin exact ตาม ADR-030 ข้อ 10 (1ms)
+✓   74 [unit] › e2e/sfui-deps.unit.spec.ts:66:5 › AC-1 (6): ไม่มี @medusajs/icons, @headlessui/react, @radix-ui/react-*, clsx (0ms)
+✓   71 [unit] › e2e/sfui-baseline.unit.spec.ts:42:5 › AC-5: data-testid ทุกค่าใน baseline ยังอยู่ใน src/** (63ms)
+✓   90 [unit] › e2e/sfui-baseline.unit.spec.ts:46:5 › AC-5: ข้อความไทยทุกค่าใน baseline ยังอยู่ใน src/** (41ms)
+✓  101 [unit] › e2e/sfui-baseline.unit.spec.ts:51:5 › AC-5: ตัวดึง testid รองรับ JSX, {"…"}, template literal, ternary และ object key (4ms)
+✓  104 [unit] › e2e/sfui-baseline.unit.spec.ts:71:5 › AC-5: ตัวดึงข้อความไทยเก็บสตริงและข้อความ JSX ที่มีอักษรไทย ไม่เก็บ comment/ละติน (1ms)
+✓   87 [unit] › e2e/sfui-legacy.unit.spec.ts:22:5 › AC-6 (a) / AC-16: ไม่มีไฟล์ใดใน src/** ที่มี pattern ต้องห้ามของกฎ 15 (PENDING ว่าง) (149ms)
+✓  126 [unit] › e2e/sfui-legacy.unit.spec.ts:29:5 › AC-16: ไม่มี legacy-medusa.css, shim common/components/{ui,radio,modal} และ globals.css ไม่ import legacy (1ms)
+✓  128 [unit] › e2e/sfui-legacy.unit.spec.ts:45:5 › AC-6: ตัวจับ class ของ preset แยก variant/important/opacity และไม่นับ class ของ Tailwind ปกติ (2ms)
+✓  131 [unit] › e2e/sfui-legacy.unit.spec.ts:67:5 › AC-6: ตัวแปรดิบของ preset var(--fg-*/--bg-*/--border-*) ในไฟล์ที่ไม่ใช่ test นับเป็น pattern ต้องห้าม (1ms)
+✓  135 [unit] › e2e/sfui-legacy.unit.spec.ts:76:5 › AC-6: ไฟล์ที่อ้าง var(--fg-*) อยู่ใน PENDING ของ task เจ้าของไฟล์ (หรือย้ายเสร็จแล้ว — ไม่มี pattern) (1ms)
+✓  139 [unit] › e2e/sfui-legacy.unit.spec.ts:93:5 › AC-16: ทุก var(--…) ที่ src/** อ้างตรงมีนิยามใน src/styles/*.css (ยกเว้นของ Tailwind/next/font/Radix) (17ms)
+
+== pnpm --filter storefront build (prod, NODE_ENV=production next build) == exit 0
+
+== bundle (Next 16 ไม่พิมพ์ First Load JS → ผลรวม .next/static) ==
+base origin/develop c21b0502 (Tailwind v3 + preset + headlessui + @medusajs/icons):
+  JS  .next/static/chunks/**/*.js : 48 ไฟล์ 1,613,492 B (gzip -9 รวม 490,073 B)
+  CSS .next/static/**/*.css       : 57,903 B (gzip -9 รวม 10,882 B)
+ปลาย SFUI-6 (Tailwind v4 + shadcn/Radix + lucide):
+  JS  : 50 ไฟล์ 1,749,890 B (gzip -9 รวม 508,556 B)  → +136,398 B (+8.5%), gzip +18,483 B (+3.8%)
+  CSS : 77,398 B (gzip -9 รวม 14,408 B)             → +19,495 B, gzip +3,526 B
+
+== e2e storefront (prod build, backend :9170 DB medusa_sfui6 Redis db 12, storefront :8170, Stripe sk_test_ หลอก) ==
+-- รอบแรกบน DB สะอาด: e2e/sfui-mobile-390.spec.ts
+  1 passed (35.8s)
+-- ชุดกว้าง (35 ไฟล์, --workers=2):
+e2e/core-22-account-fixes.spec.ts e2e/core-23-profile-order.spec.ts e2e/core-23b-account-progress.spec.ts e2e/core-23c-account-forms.spec.ts e2e/core-26-cart-dropdown-total.spec.ts e2e/core-32-shipping-profile-filter.spec.ts e2e/core-38-mobile-layout.spec.ts e2e/core-42-cart-voucher-layout.spec.ts e2e/core-47-cart-375-long-title.spec.ts e2e/core-50-nav-narrow.spec.ts e2e/core-52-checkout-guards.spec.ts e2e/core-91-cart-dropdown-known.spec.ts e2e/flash-sale-fs14.spec.ts e2e/flash-sale-fs19.spec.ts e2e/group-buy-join.spec.ts e2e/sfui-2-brand.spec.ts e2e/sfui-3a-dialog.spec.ts e2e/sfui-3b-sheet.spec.ts e2e/sfui-3c-select.spec.ts e2e/sfui-3d-payment.spec.ts e2e/sfui-3e-shipping.spec.ts e2e/sfui-4-store.spec.ts e2e/sfui-5a-common.spec.ts e2e/sfui-5b-catalog.spec.ts e2e/sfui-5c-checkout-heading.spec.ts e2e/sfui-5d-account-order.spec.ts e2e/sfui-5e-features.spec.ts e2e/sfui-6-parity.spec.ts e2e/store-content.spec.ts e2e/thai-ui-account.spec.ts e2e/thai-ui-cart-order.spec.ts e2e/thai-ui-checkout.spec.ts e2e/thai-ui-pages.spec.ts e2e/thai-ui-shell.spec.ts e2e/ui-preset-font.spec.ts 
+  2 failed
+  101 passed (2.3m)
+    [chromium] › e2e/core-50-nav-narrow.spec.ts:171:7 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1280×800: ชื่อร้านกึ่งกลาง nav-account-link แสดง ตำแหน่ง/ขนาดเท่า develop 
+    [chromium] › e2e/sfui-4-store.spec.ts:9:5 › AC-14: Enter บนหัว filter เปิด/ปิดเนื้อหา และ ArrowRight บน thumb ช่วงราคาเปลี่ยนค่า 
+  · core-50-nav-narrow 1280×800 ล้ม ~1.27px บน macOS — เรื่องเดิม (ล้มบน develop เช่นกัน)
+  · sfui-4-store AC-14: strict mode — หัว filter option มี 3 กลุ่มเพราะ spec อื่นในชุด (group-buy/flash) สร้างสินค้าที่มี option เพิ่มใน DB เดียวกัน
+    (ไม่เกี่ยวกับ SFUI-6) → reset DB + seed ใหม่แล้วรันเดี่ยว:
+  2 passed (4.1s)
+
+== งานเพิ่มจาก review SFUI-5d: ค่าที่ชนะบน develop (compile Tailwind v3 ของ origin/develop c21b0502 ใน scratchpad v3-SFUI-6) ==
+Container ของ shim = clsx("bg-white rounded-lg p-4", className) — ลำดับ rule ใน CSS v3 (เลข = ลำดับ rule):
+  checkout/payment (กล่อง icon)   : bg-ui-button-neutral-hover@407 < bg-white@409, p-2@423 < p-4@425 → พื้นขาว p-4  (แก้: bg-muted p-2 → bg-card p-4)
+  checkout/shipping-address        : p-4@425 < p-5@426 → p-5 พื้นขาว (ปลายเดิม rounded-lg bg-card p-5 ถูกแล้ว — ไม่แก้)
+  products/image-gallery           : bg-ui-bg-subtle@405 < bg-white@409 → พื้นขาว (แก้: bg-muted → bg-card)
+  products/thumbnail               : bg-ui-bg-subtle@405 < bg-white@409 → พื้นขาว; rounded-large@354 < rounded-lg@355 (มุมคง rounded-lg ตามกฎ 20) (แก้: bg-muted → bg-card)
+  skeletons/skeleton-product-preview: bg-gray-100@386 < bg-ui-bg-subtle@405 < bg-white@409 → พื้นขาว (แก้: bg-muted → bg-card)
+  account/overview, order/payment-details: แก้แล้วใน SFUI-5d (82849be4) — ผลตรงกัน (bg-gray-50@388 < bg-white@409)
+Table.Cell/HeaderCell ของ shim ไม่มี whitespace-nowrap และหัวตาราง h-12 (shadcn: nowrap + h-10):
+  cart/components/item (5 cell), skeleton-cart-item (5), skeleton-line-item (5) → + whitespace-normal
+  cart/templates/items (5 th), skeleton-cart-page (5 th) → + h-12 whitespace-normal
+  order/components/item → แก้แล้วใน SFUI-5d; cart/templates/preview, order/components/items ใช้แค่ Table/TableBody (ค่าเท่าเดิม)
+e2e ใหม่ e2e/sfui-6-parity.spec.ts (อยู่ในชุดกว้างด้านบน — ผ่าน 2/2):
+  store thumbnail + PDP image gallery: พื้นขาว, padding 16px · /cart: th สูง 48px + white-space normal, td ทุกตัว white-space normal

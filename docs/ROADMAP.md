@@ -61,7 +61,7 @@ OPS-36, PAY-23, PAY-24 merge ใน train #557 · OPS-39 เพิ่มหล�
 | Task | spec | งาน (สั้น) | Depends | UI/qa | สถานะ |
 |---|---|---|---|---|---|
 | CORE-96 | 01 | สรุปขั้น payment ไม่ตัดคำทุกความกว้าง + บัตรของขวัญ + `renewedFrom` | — | ✓ | ☐ |
-| CORE-97 | 01 | nav ตะกร้า: ลิงก์ไม่ซ้อนปุ่ม, ป้ายไม่ค้างหลัง logout, backend ล่มไม่บอก (0) — ⚠️ ชน SFUI-3c (`cart-dropdown` → Radix `Popover`); ตัวที่ merge ทีหลังต้องเขียน static check ของ AC-194 ใหม่ให้อ้าง `PopoverTrigger` แทน `PopoverButton` | — | ✓ | ☐ |
+| CORE-97 | 01 | nav ตะกร้า: ลิงก์ไม่ซ้อนปุ่ม, ป้ายไม่ค้างหลัง logout, backend ล่มไม่บอก (0) — ⚠️ ชน SFUI-3c (`cart-dropdown` → Radix `Popover`); ตัวที่ merge ทีหลังต้องเขียน static check ของ AC-194 ใหม่ให้อ้าง `PopoverAnchor` แทน `PopoverButton` (SFUI-3c ครอบลิงก์ `nav-cart-link` ด้วย `PopoverAnchor` — spec 09 กฎ 4b) | — | ✓ | ☐ |
 | CORE-98 | 01 | overview GB-8 ล้ม/`<ul>` ว่าง + a11y `SearchPagination` + จำนวน toggle ลดราคา | — | ✓ | ☐ |
 | CORE-99 | 01 | a11y ลิงก์/ปุ่ม: static ครอบทุกรูป, "." ปุ่มสลับ, testid `cart-sign-in-link` | — | ✓ | ☐ |
 | CORE-100 | 01 | hygiene storefront: purity 3 ไฟล์, coverage/`COMPARE`, e2e chip, unit กฎ 151e | — | — | ☐ |
@@ -80,7 +80,7 @@ OPS-36, PAY-23, PAY-24 merge ใน train #557 · OPS-39 เพิ่มหล�
 - integration หนัก: GB-33 — จำกัดพร้อมกันตามเครื่อง
 - ไม่ทำ/backlog ของรอบนี้ (พร้อมเหตุผล): history หัวข้อ "รอบ 42 — ผลจริง"
 
-## รอบ 44 — storefront เป็น shadcn/ui (spec 09, ADR-030) (☐ owner อนุมัติ 2026-11-26)
+## รอบ 44 — storefront เป็น shadcn/ui (spec 09, ADR-030) (◐ owner อนุมัติ 2026-11-26; ทำครบทั้ง stack แล้ว — รอเปิด PR ทั้งชุด)
 
 ที่มา: owner 2026-11-26 — แทนชั้น UI ของ Medusa ใน storefront ทั้ง 4 ชั้น, อัป Tailwind v4 ก่อน, หน้าตาเปลี่ยนได้แต่คงสี brand (ADR-008) ·
 ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 — ข้อยกเว้นของ "ห้ามแตก branch จาก PR ที่ยังไม่ merge" เฉพาะชุด SFUI): แต่ละ task แตก branch ต่อจาก branch
@@ -88,21 +88,21 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 
 | Task | spec | งาน (สั้น) | Depends | UI/qa | สถานะ |
 |---|---|---|---|---|---|
-| SFUI-1a | 09 | Tailwind v4 (CSS-first `@theme`) + ชั้นเข้ากันได้ `legacy-medusa.css` + ถอด preset/`tailwindcss-radix`/`autoprefixer` + test ฟอนต์/brand ใหม่ + baseline testid/ข้อความไทย + guard `PENDING` + e2e 390px | branch เอกสารรอบ 44 (stack; PR เอกสาร merge ลำดับแรก) | ✓ | ☐ |
-| SFUI-1b | 09 | `shadcn init -b radix` (`components.json`, `@/*`, `cn`, token neutral, `--primary`/`--ring` → brand) | SFUI-1a | — | ☐ |
-| SFUI-2 | 09 | shadcn button/input/label/badge/table/checkbox/radio-group/native-select + shim ส่งต่อ (`isLoading`) | SFUI-1b | ✓ | ☐ |
-| SFUI-3a | 09 | modal ที่อยู่ → `Dialog` (ลบ `common/modal`) | SFUI-2 | ✓ | ☐ ∥ |
-| SFUI-3b | 09 | side menu / search drawer / mobile actions → `Sheet` | SFUI-2 | ✓ | ☐ ∥ |
-| SFUI-3c | 09 | cart dropdown → `Popover`, country/address select → `Select`, account-info → `Collapsible` | SFUI-2 | ✓ | ☐ ∥ |
-| SFUI-3d | 09 | ขั้นชำระเงิน → `RadioGroup` + unit 5 ไฟล์เลิก mock headlessui | SFUI-2 | ✓ | ☐ ∥ |
-| SFUI-3e | 09 | ตัวเลือกจัดส่ง + หน้าจ่าย order → `RadioGroup` | SFUI-2 | ✓ | ☐ ∥ |
-| SFUI-4 | 09 | accordion/slider ของ store + แท็บ PDP → shadcn `Accordion`/`Slider` | SFUI-2 | ✓ | ☐ ∥ |
-| SFUI-5a | 09 | ย้าย class/icon/import: common + layout + หน้าคงที่ | SFUI-2 | ✓ | ☐ ∥ |
-| SFUI-5b | 09 | ย้าย class/icon/import: catalog (products/store/home/categories/collections/search) | SFUI-2 | ✓ | ☐ ∥ |
-| SFUI-5c | 09 | ย้าย class/icon/import: checkout + cart + returns | SFUI-2 | ✓ | ☐ ∥ |
-| SFUI-5d | 09 | ย้าย class/icon/import: account + order | SFUI-2 | ✓ | ☐ ∥ |
-| SFUI-5e | 09 | ย้าย class/icon/import: group buy + affiliate + evoucher | SFUI-2 | ✓ | ☐ ∥ |
-| SFUI-6 | 09 | ลบ shim/radio/ชั้นเข้ากันได้/dependency เก่า, guard ว่าง, CLAUDE.md Stack | SFUI-1a..5e ทั้งหมด | ✓ | ☐ |
+| SFUI-1a | 09 | Tailwind v4 (CSS-first `@theme`) + ชั้นเข้ากันได้ `legacy-medusa.css` + ถอด preset/`tailwindcss-radix`/`autoprefixer` + test ฟอนต์/brand ใหม่ + baseline testid/ข้อความไทย + guard `PENDING` + e2e 390px | branch เอกสารรอบ 44 (stack; PR เอกสาร merge ลำดับแรก) | ✓ | ◐ |
+| SFUI-1b | 09 | `shadcn init -b radix` (`components.json`, `@/*`, `cn`, token neutral, `--primary`/`--ring` → brand) | SFUI-1a | — | ◐ |
+| SFUI-2 | 09 | shadcn button/input/label/badge/table/checkbox/radio-group + shim ส่งต่อ (`isLoading`) | SFUI-1b | ✓ | ◐ |
+| SFUI-3a | 09 | modal ที่อยู่ → `Dialog` (ลบ `common/modal`) | SFUI-2 | ✓ | ◐ ∥ |
+| SFUI-3b | 09 | side menu / search drawer / mobile actions → `Sheet` | SFUI-2 | ✓ | ◐ ∥ |
+| SFUI-3c | 09 | cart dropdown → `Popover`, country/address select → `Select`, account-info → `Collapsible` | SFUI-2 | ✓ | ◐ ∥ |
+| SFUI-3d | 09 | ขั้นชำระเงิน → `RadioGroup` + unit 5 ไฟล์เลิก mock headlessui | SFUI-2 | ✓ | ◐ ∥ |
+| SFUI-3e | 09 | ตัวเลือกจัดส่ง + หน้าจ่าย order → `RadioGroup` | SFUI-2 | ✓ | ◐ ∥ |
+| SFUI-4 | 09 | accordion/slider ของ store + แท็บ PDP → shadcn `Accordion`/`Slider` | SFUI-2 | ✓ | ◐ ∥ |
+| SFUI-5a | 09 | ย้าย class/icon/import: common + layout + หน้าคงที่ | SFUI-2 | ✓ | ◐ ∥ |
+| SFUI-5b | 09 | ย้าย class/icon/import: catalog (products/store/home/categories/collections/search) | SFUI-2 | ✓ | ◐ ∥ |
+| SFUI-5c | 09 | ย้าย class/icon/import: checkout + cart + returns | SFUI-2 | ✓ | ◐ ∥ |
+| SFUI-5d | 09 | ย้าย class/icon/import: account + order | SFUI-2 | ✓ | ◐ ∥ |
+| SFUI-5e | 09 | ย้าย class/icon/import: group buy + affiliate + evoucher | SFUI-2 | ✓ | ◐ ∥ |
+| SFUI-6 | 09 | ลบ shim/radio/ชั้นเข้ากันได้/dependency เก่า, guard ว่าง, CLAUDE.md Stack | SFUI-1a..5e ทั้งหมด | ✓ | ◐ |
 
 - ลำดับ: 1a → 1b → 2 → (3a ∥ 3b ∥ 3c ∥ 3d ∥ 3e ∥ 4 ∥ 5a ∥ 5b ∥ 5c ∥ 5d ∥ 5e) → 6
 - **ไฟล์ร่วม** (ตัวที่ merge ทีหลัง sync): `e2e/sfui-legacy.unit.spec.ts` (แต่ละ task ลบ key `PENDING` ของตัวเอง) · `package.json`/lockfile แก้เฉพาะ 1a, 1b, 6 · `globals.css` 1a → 1b → 6
@@ -160,7 +160,7 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 | Release v0.3.0 (รอบ 40) | 01–08 | 🚀 | 32 🚀 | รวม CORE-75 #465 |
 | รอบ 41 | 01–08 | 🚀 | 36 🚀 + 1 ✕ | ✕ PAY-13 (ปิดโดย hotfix #468) |
 | รอบ 42 | 01–08 | 🚀 | 21 🚀 | v0.3.1 (#561); ADR-029 |
-| รอบ 44 storefront shadcn/ui | 09 | ☐ | 15 ☐ | ADR-030 accepted 2026-11-26; stack, งด release ระหว่าง SFUI-2..6 |
+| รอบ 44 storefront shadcn/ui | 09 | ◐ | 15 ◐ | ADR-030 accepted 2026-11-26; stack, งด release ระหว่าง SFUI-2..6 |
 | รอบ 43 | 01, 03, 04, 06–08 | ◐ | 4 🚀 + 1 ☑ + 14 ☐ | 4 🚀 (3 train #557 + OPS-39 #559) ใน v0.3.1; OPS-40 ☑ #562 ก่อน go-live (ไม่อยู่ใน v0.3.1); 14 ตัวหลัง go-live (รวม OPS-41) |
 
 จำนวน task นับจากตารางใน history.md ณ 2026-11-24 และตารางรอบ 43 ด้านบน ณ 2026-11-25 (task ที่อยู่หลาย milestone นับที่ milestone หลักของ spec)
