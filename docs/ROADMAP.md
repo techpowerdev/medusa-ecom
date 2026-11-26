@@ -1,6 +1,6 @@
 # ROADMAP — milestone, ลำดับ PR, สถานะ
 
-อัปเดตล่าสุด: 2026-11-27 (รอบ 46 admin ภาษาไทย ☑ merge ครบ #593–#597 — spec 10, ADR-031; รอบ 44 ☑ #565–#581, รอบ 45 ☑ #583–#590; ยังไม่ release) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
+อัปเดตล่าสุด: 2026-11-27 (รอบ 47 แก้ข้อค้นพบทดสอบ manual ก่อน v0.4.0 — AI18N-N2, EV-27; รอบ 46 ☑ #593–#599; ยังไม่ release) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
 [`docs/roadmap/history.md`](roadmap/history.md) และ follow-up เก่า (รอบ 13–39) อยู่ที่
 [`docs/roadmap/followups-archive.md`](roadmap/followups-archive.md)
 
@@ -8,11 +8,11 @@
 
 - **ตอนนี้**: **release v0.3.1 แล้ว (2026-11-25)** — #561 `develop → main` (merge commit `88bb0b63`, tag `v0.3.1`): รอบ 42 (21 task) +
   รอบ 43 ส่วน v0.3.1 (OPS-36 #554, PAY-23 #555, PAY-24 #556, OPS-39 #559) เป็น 🚀 · OPS-40 (PII ค่าเดี่ยวจาก review #559) ☑ #562 (merge 2026-11-26 — ข้อยกเว้น d1/d2/d3 ของกฎ 22d + กรณีรู้แล้ว `cart_13rjFZ` → OPS-41), **ไม่อยู่ใน v0.3.1**
-- **ยังไม่ release หลัง v0.3.1**: OPS-40 + รอบ 44 (SFUI, 16 task) + รอบ 45 (7 task) + รอบ 46 (admin ไทย, 4 task — ☑ 2026-11-27) อยู่ใน `develop` เท่านั้น ·
+- **ยังไม่ release หลัง v0.3.1**: OPS-40 + รอบ 44 (SFUI, 16 task) + รอบ 45 (7 task) + รอบ 46 (admin ไทย, 4 task + AI18N-N1 #599 + เอกสาร #598 — ☑ 2026-11-27) อยู่ใน `develop` เท่านั้น ·
   owner **ยังไม่ go-live** (release `develop → main` เป็นของ owner)
-- **รอบปัจจุบัน**: ไม่มี — รอบ 46 ปิดแล้ว ไม่มี PR งานค้าง; รอบ 43 กลุ่ม "หลัง go-live" (14 task) รอ owner สั่ง
+- **รอบปัจจุบัน**: รอบ 47 — แก้ข้อค้นพบจากทดสอบ manual ก่อน release v0.4.0 (AI18N-N2, EV-27); รอบ 43 กลุ่ม "หลัง go-live" (14 task) รอ owner สั่ง
 - **รอ owner ตัดสิน**: ไม่มีคำถามค้างของรอบ 43 — เหลือเฉพาะเรื่องก่อน go-live (Stripe live, ค่าส่ง, staging); รอบ 44: ไม่มีคำถามค้าง (ADR-030 accepted, Q1/Q2 ตอบแล้ว 2026-11-26); รอบ 45: ไม่มีคำถามค้าง (owner สั่ง "เก็บต่อเลย" 2026-11-26);
-  รอบ 46: ไม่มีคำถามค้าง (ADR-031 accepted, Q1 = ก 2026-11-26)
+  รอบ 46: ไม่มีคำถามค้าง (ADR-031 accepted, Q1 = ก 2026-11-26); รอบ 47: ไม่มีคำถามค้าง (Q15 = ข, Q16 = ก 2026-11-27)
 - **ขั้นต่อไป**: go-live (checklist ข้อ 1–16) → **v1.0.0** (ร้านเปิดจริงครั้งแรก)
 
 ### Release
@@ -23,7 +23,7 @@
 | v0.2.0 | 🚀 | 2026-11-19 | #423 (`e274d387`), tag `v0.2.0` | task ใน milestone/Admin UI ที่ merge หลัง v0.1.0 ถึงรอบ 39 |
 | v0.3.0 | 🚀 | 2026-11-24 | #521 (`47c3e545`), tag `v0.3.0`, [GitHub Release](https://github.com/techpowerdev/medusa-ecom/releases/tag/v0.3.0) | แก้จากการทดสอบ manual (รอบ 40 = 32 task) + รอบ 41 (36 task; PAY-13 ✕) |
 | v0.3.1 | 🚀 | 2026-11-25 | #561 (`88bb0b63`), tag `v0.3.1` | รอบ 42 (21 task 🚀 — history หัวข้อ "รอบ 42 — ผลจริง") + 4 task ก่อน go-live ของรอบ 43 (3 🚀 train #557 + OPS-39 🚀 #559; Q-R43-ฉ = ก แก้เพิ่ม + OPS-39 owner 2026-11-25) |
-| (ยังไม่ release) | ☑ ใน develop | — | — | OPS-40 #562 + รอบ 44 (#565–#581) + รอบ 45 (#583–#590) + รอบ 46 (#593–#597) — รอ owner |
+| (ยังไม่ release → v0.4.0) | ☑ ใน develop | — | — | OPS-40 #562 + รอบ 44 (#565–#581) + รอบ 45 (#583–#590) + รอบ 46 (#593–#599) + รอบ 47 เมื่อ merge — รอ owner |
 | go-live | ☐ owner ยังไม่ go-live | — | — | หลัง v0.3.1 + OPS-40 (☑ #562) + Go-live checklist ข้อ 1–16 |
 | v1.0.0 | ☐ | — | — | release แรกที่เปิดร้านจริง: Go-live checklist ครบ + smoke test บน production ผ่าน (Q-R43-จ owner 2026-11-25) |
 | หลัง go-live | ☐ รอ owner สั่ง | — | — | รอบ 43 อีก 14 task (รวม OPS-41) |
@@ -137,7 +137,7 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 - **ไฟล์ร่วม**: `globals.css` 8 → 10 เท่านั้น · กลุ่มขนานไม่มีไฟล์ร่วม (`option-select.tsx`/`product-actions/index.tsx` เป็นของ 9b; SFUI-8 ไม่แตะ)
 - ค่าที่คาดใน e2e ของ 9x/8 วัดที่ commit ที่ branch แตกออกมา (ก่อนแก้) ไม่ใช่คำนวณจากชื่อ class — spec ใหม่ของ 9x ต้องผ่านทั้งก่อนและหลังแก้
 
-## รอบ 46 — หน้า admin ของเราเป็นภาษาไทย (spec 10, ADR-031 accepted 2026-11-26) (☑ merge ครบ 2026-11-27: เอกสาร #593 → #594…#597)
+## รอบ 46 — หน้า admin ของเราเป็นภาษาไทย (spec 10, ADR-031 accepted 2026-11-26) (☑ merge ครบ 2026-11-27: เอกสาร #593 → #594…#597, #598, AI18N-N1 #599)
 
 ที่มา: owner 2026-11-26 ทาง "ข" — หน้า/widget ใน `src/admin/**` แสดงไทยเมื่อผู้ใช้เลือกไทยใน Settings → Profile ผ่าน i18n ของ Medusa admin ·
 "แค่ปรับเพิ่มภาษา" (โหมดอังกฤษเหมือนเดิมทุกตัวอักษร) · task ไม่ย่อยเกินไป (diff เกิน ~400 LOC ได้ — คำแปล/`t()` แบบกลไก) ·
@@ -151,13 +151,28 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 | AI18N-4 | 10 | แปล affiliate (`ecom-affiliate`) + e2e ไทย; `I18N_PENDING` ว่างทั้งหมด | AI18N-1 (stack) | ✓ | ☑ #597 |
 
 - ลำดับ: 1 → (2 ∥ 3 ∥ 4) · merge จริง 1 → 2 → 3 → 4 (#594 → #597, 2026-11-27) · reviewer APPROVE ทุกตัว, CI เขียว,
-  qa ผ่าน AC-1..11 ไม่มี defect (`docs/evidence/admin-i18n/AI18N-{1..4}/REPORT.md`) · nit กฎ 7 แก้ใน PR ปิดรอบ; nit ที่เหลือ (ตัวแปร `t` ซ้อน, camelCase ใน `create-campaign.tsx`, `productStatus.proposed` = "เสนอ", ข้อความ error ของ `evidenceDir`, locator breadcrumb ใน e2e) → task AI18N-N1 (owner สั่ง 2026-11-27)
+  qa ผ่าน AC-1..11 ไม่มี defect (`docs/evidence/admin-i18n/AI18N-{1..4}/REPORT.md`) · nit กฎ 7 แก้ใน PR ปิดรอบ; nit ที่เหลือ (ตัวแปร `t` ซ้อน, camelCase ใน `create-campaign.tsx`, `productStatus.proposed` = "เสนอ", ข้อความ error ของ `evidenceDir`, locator breadcrumb ใน e2e) → AI18N-N1 ☑ #599 (owner สั่ง 2026-11-27; เอกสารบันทึก merge #598)
 - **ไฟล์ร่วม**: `src/admin/__tests__/i18n.unit.spec.ts` (แต่ละ task แก้บรรทัด key ของกลุ่มตัวเองใน `I18N_PENDING`) · `medusa-ui.unit.spec.ts` (assertion ของกลุ่มตัวเอง) ·
   `i18n/index.ts`, `e2e/support/admin.ts`, `package.json`/lockfile = AI18N-1 เท่านั้น
 - เริ่มได้เมื่อ PR เอกสารรอบ 46 (รวมแก้ CLAUDE.md หัวข้อ Language ตาม ADR-031) พร้อม — stack ไม่ต้องรอ merge · Q1 = ก: ไม่ตั้งไทยเป็นค่าเริ่มต้น (กฎ 15/AC-12 ไม่ทำ)
 - จุดเสี่ยงที่ต้องผ่าน (review เอกสาร): ห้ามเรียก `t` ตอนโหลด module (กฎ 4, AC-4c, guard 14f) · jest ใช้ i18next instance แยก ไม่ init instance กลาง (กฎ 16, AC-4b)
 
+## รอบ 47 — แก้ข้อค้นพบจากทดสอบ manual ก่อน release v0.4.0 (รอบปัจจุบัน)
+
+ที่มา: owner ทดสอบ manual 2026-11-27 แล้วอนุมัติแก้ · **คำตัดสิน owner 2026-11-27**: ช่องวันที่ใน admin คงเป็น พ.ศ. ตาม Medusa (ไม่แก้ — ไม่มี task)
+
+| Task | spec | งาน (สั้น) | Depends | UI/qa | สถานะ |
+|---|---|---|---|---|---|
+| AI18N-N2 | 10 | ตัวแบ่งหน้าของ `DataTable` ใน 3 component ของ group buy ยังเป็นอังกฤษ → แปลไทย | — | ✓ | ☑ #600 |
+| EV-27 | 02 | กด Create pool แล้วตรวจเงื่อนไข → ไม่ครบแสดงรายการไทย/อังกฤษ + ลิงก์ไปหน้า Medusa แทนฟอร์ม ไม่ยิง POST (กฎข้อ 43, AC-57..59, Q15 = ข) | PR เอกสาร EV-27 | ✓ | ☐ |
+
+- ∥ ทั้งสองตัว · ไฟล์ร่วมที่อาจชน: `src/admin/i18n/json/{en,th}/*.json` (ตัวหลัง sync เก็บทั้งสองฝั่ง) · backend validation ของ e-voucher คงเดิม
+- EV-27 แก้ fixture ของ e2e admin เดิมที่เปิด Create pool (กฎข้อ 43g) — รัน e2e ทุก spec ที่อ้าง widget ก่อน push
+
 ## คำถามที่รอ owner
+
+- **รอบ 47**: ไม่มีคำถามค้าง — ~~Q16~~ = ก (owner 2026-11-27): pool ที่มีแล้วแต่ไม่ผ่านเงื่อนไข import ไม่ทำตอนนี้ ·
+  ~~Q15~~ = ข (owner 2026-11-27): ปุ่ม Create pool กดได้เสมอ ไม่ครบ → รายการเงื่อนไขแทนฟอร์ม ไม่ยิง POST
 
 - **รอบ 46**: ไม่มีคำถามค้าง — owner 2026-11-26: ADR-031 = accepted · ~~Q1~~ = ก (ภาษาเริ่มต้นตาม Medusa) · อนุมัติแก้ CLAUDE.md หัวข้อ Language
 
@@ -215,7 +230,8 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 | รอบ 42 | 01–08 | 🚀 | 21 🚀 | v0.3.1 (#561); ADR-029 |
 | รอบ 44 storefront shadcn/ui | 09 | ☑ | 16 ☑ (#566–#581; เอกสาร #565) | ADR-030 accepted 2026-11-26; stack; งด release ระหว่าง SFUI-2..6 สิ้นสุดแล้ว |
 | รอบ 45 เก็บกวาดหลัง SFUI-7 | 09 | ☑ | 7 ☑ (#584–#590; เอกสาร #583) | ฟอนต์ `text-*-regular/semi` + floating label; stack แบบรอบ 44; ไม่งด release |
-| รอบ 46 admin ภาษาไทย | 10 | ☑ | 4 ☑ (#594–#597; เอกสาร #593) | ADR-031 accepted 2026-11-26; stack แบบรอบ 44; Q1 = ก; ยังไม่ release |
+| รอบ 46 admin ภาษาไทย | 10 | ☑ | 5 ☑ (#594–#597 + AI18N-N1 #599; เอกสาร #593, #598) | ADR-031 accepted 2026-11-26; stack แบบรอบ 44; Q1 = ก; ยังไม่ release |
+| รอบ 47 ทดสอบ manual ก่อน v0.4.0 | 02, 10 | ◐ | 1 ☑ (#600) + 1 ☐ | AI18N-N2, EV-27; วันที่ admin คง พ.ศ. (owner 2026-11-27) |
 | รอบ 43 | 01, 03, 04, 06–08 | ◐ | 4 🚀 + 1 ☑ + 14 ☐ | 4 🚀 (3 train #557 + OPS-39 #559) ใน v0.3.1; OPS-40 ☑ #562 ก่อน go-live (ไม่อยู่ใน v0.3.1); 14 ตัวหลัง go-live (รวม OPS-41) |
 
 จำนวน task นับจากตารางใน history.md ณ 2026-11-24 และตารางรอบ 43 ด้านบน ณ 2026-11-25 (task ที่อยู่หลาย milestone นับที่ milestone หลักของ spec)
