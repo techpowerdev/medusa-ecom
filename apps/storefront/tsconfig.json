@@ -20,6 +20,9 @@
     "incremental": true,
     "baseUrl": "./src",
     "paths": {
+      "@/*": [
+        "*"
+      ],
       "@lib/*": [
         "lib/*"
       ],

@@ -42,3 +42,21 @@ test("AC-1 (กฎ 1): globals.css ขึ้นต้นด้วย @import \"t
   const firstStatement = css.replace(/\/\*[\s\S]*?\*\//g, "").trim().split("\n")[0]
   expect(firstStatement).toBe('@import "tailwindcss";')
 })
+
+// ขั้น 1b (SFUI-1b): dependency ของ shadcn/ui แบบ Radix
+test("AC-1 (1b): dependency ของ shadcn pin exact ตาม ADR-030 ข้อ 10", () => {
+  expect(pkg.devDependencies["tw-animate-css"]).toBe("1.4.0")
+  expect(pkg.dependencies["tw-animate-css"]).toBeUndefined()
+  const runtime: Record<string, string> = {
+    "radix-ui": "1.8.1",
+    "class-variance-authority": "0.7.1",
+    cn: "0.5.2",
+    "lucide-react": "1.80.0",
+  }
+  for (const [name, version] of Object.entries(runtime)) {
+    expect(pkg.dependencies[name], name).toBe(version)
+    expect(pkg.devDependencies[name], name).toBeUndefined()
+  }
+  // CLI ใช้ผ่าน pnpm dlx เท่านั้น ไม่เป็น dependency
+  expect(all.shadcn).toBeUndefined()
+})
