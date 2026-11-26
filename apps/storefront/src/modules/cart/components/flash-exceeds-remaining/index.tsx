@@ -12,7 +12,7 @@ export default function CartFlashExceedsRemaining({
   }
   return (
     <p
-      className="txt-small text-ui-fg-error w-full"
+      className="text-sm text-destructive w-full"
       data-testid="cart-flash-exceeds-remaining"
     >
       {remaining > 0
@@ -36,7 +36,7 @@ export function CartFlashExceedsCustomerLimit({
   }
   return (
     <p
-      className="txt-small text-ui-fg-error w-full"
+      className="text-sm text-destructive w-full"
       data-testid="cart-flash-exceeds-customer-limit"
     >
       {remaining > 0

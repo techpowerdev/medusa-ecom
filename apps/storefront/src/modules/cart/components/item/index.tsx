@@ -1,6 +1,7 @@
 "use client"
 
-import { Table, Text, clx } from "@modules/common/components/ui"
+import { TableCell, TableRow } from "@/components/ui/table"
+import { cn } from "@/lib/utils"
 import { updateLineItem } from "@lib/data/cart"
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { cartQuantityOptions } from "@lib/util/cart-quantity-options"
@@ -73,22 +74,23 @@ const Item = ({
   const card = type === "full"
 
   return (
-    <Table.Row
-      className={clx("w-full", {
+    <TableRow
+      className={cn("w-full", {
         "max-small:grid max-small:grid-cols-[auto_minmax(0,1fr)_auto] max-small:items-center":
           card,
       })}
       data-testid="product-row"
     >
-      {/* CORE-42 (กฎข้อ 100a): < small ลด padding ของช่องรูป/ชื่อสินค้า/จำนวน ให้คอลัมน์ "รวม" อยู่ในจอ 375 (รวมยอดหลักหมื่นมีทศนิยม — qa #278 D-1) — ≥ small คงเดิม */}
-      <Table.Cell
-        className={clx("pl-0! p-4 pr-2 small:pr-4 w-24", {
+      {/* CORE-42 (กฎข้อ 100a): < small ลด padding ของช่องรูป/ชื่อสินค้า/จำนวน ให้คอลัมน์ "รวม" อยู่ในจอ 375 (รวมยอดหลักหมื่นมีทศนิยม — qa #278 D-1) — ≥ small คงเดิม
+          SFUI-5c: shadcn TableCell เริ่มที่ p-2 — ทุก cell ใส่ p-4 เดิมของ shim เอง (spec 09 กฎ 21, core-42/47) */}
+      <TableCell
+        className={cn("pl-0! p-4 pr-2 small:pr-4 w-24", {
           "max-small:block max-small:w-auto max-small:row-span-2": card,
         })}
       >
         <LocalizedClientLink
           href={`/products/${item.product_handle}`}
-          className={clx("flex", {
+          className={cn("flex", {
             "w-16": type === "preview",
             "small:w-24 w-12": type === "full",
           })}
@@ -99,26 +101,26 @@ const Item = ({
             size="square"
           />
         </LocalizedClientLink>
-      </Table.Cell>
+      </TableCell>
 
-      <Table.Cell
-        className={clx("text-left px-2 small:px-4", {
+      <TableCell
+        className={cn("p-4 text-left px-2 small:px-4", {
           "max-small:block max-small:col-span-2 max-small:min-w-0 max-small:break-words":
             card,
         })}
       >
-        <Text
-          className="txt-medium-plus text-ui-fg-base"
+        <p
+          className="text-sm leading-[1.4rem] font-medium text-foreground"
           data-testid="product-title"
         >
           {item.product_title}
-        </Text>
+        </p>
         <LineItemOptions variant={item.variant} data-testid="product-variant" />
-      </Table.Cell>
+      </TableCell>
 
       {type === "full" && (
-        <Table.Cell
-          className={clx("px-2 small:px-4", {
+        <TableCell
+          className={cn("p-4 px-2 small:px-4", {
             "max-small:block max-small:min-w-0 max-small:pt-0": card,
           })}
         >
@@ -147,35 +149,35 @@ const Item = ({
           <ErrorMessage error={error} data-testid="product-error-message" />
           <CartFlashExceedsRemaining remaining={flashRemaining} />
           <CartFlashExceedsCustomerLimit remaining={flashCustomerRemaining} />
-        </Table.Cell>
+        </TableCell>
       )}
 
       {type === "full" && (
-        <Table.Cell className="hidden small:table-cell">
+        <TableCell className="p-4 hidden small:table-cell">
           <LineItemUnitPrice
             item={item}
             style="tight"
             currencyCode={currencyCode}
           />
-        </Table.Cell>
+        </TableCell>
       )}
 
-      <Table.Cell
-        className={clx("pr-0!", {
+      <TableCell
+        className={cn("p-4 pr-0!", {
           "max-small:block max-small:pl-2 max-small:pt-0 max-small:whitespace-nowrap":
             card,
         })}
       >
         <span
-          className={clx("pr-0!", {
+          className={cn("pr-0!", {
             "flex flex-col items-end h-full justify-center": type === "preview",
           })}
         >
           {type === "preview" && (
             <span className="flex gap-x-1 ">
-              <Text className="text-ui-fg-muted">
+              <p className="text-sm leading-[1.4rem] text-muted-foreground">
                 <span data-testid="product-quantity">{item.quantity}</span>x{" "}
-              </Text>
+              </p>
               {/* CORE-66 (spec 01 กฎข้อ 124): preview ชิ้นเดียว ราคาต่อหน่วย = ราคารวม → ไม่แสดงซ้ำ; /cart (type="full") คงเดิม */}
               {item.quantity > 1 && (
                 <LineItemUnitPrice
@@ -192,8 +194,8 @@ const Item = ({
             currencyCode={currencyCode}
           />
         </span>
-      </Table.Cell>
-    </Table.Row>
+      </TableCell>
+    </TableRow>
   )
 }
 

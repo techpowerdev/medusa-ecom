@@ -102,8 +102,8 @@ describe("globals.css — ฟอนต์ (AC-3 ส่วน CSS, กฎ 8)", ()
   })
 
   it("class typography ของ preset (txt-*) ใช้ var(--font-sans) — ไม่ fix Inter", async () => {
-    const root = await compile(["txt-medium", "txt-small-plus"])
-    for (const cls of [".txt-medium", ".txt-small-plus"]) {
+    const root = await compile(["txt-medium", "txt-medium-plus"])
+    for (const cls of [".txt-medium", ".txt-medium-plus"]) {
       expect(declsOf(root, cls)["font-family"], cls).toBe("var(--font-sans)")
     }
   })
@@ -165,13 +165,14 @@ describe("legacy-medusa.css — ชั้นเข้ากันได้ขอ
     expect(declsOf(root, ".shadow-borders-base")["--tw-shadow"]).toBeDefined()
   })
 
-  it("ring ที่ไม่ระบุสีเป็น blue-500/50 แบบ v3 และตัวแปรดิบ --fg-* ของ preset อยู่ใน :root", async () => {
+  it("ring ที่ไม่ระบุสีเป็น blue-500/50 แบบ v3 และตัวแปรดิบ --fg-* ของ preset ไม่เหลือใน :root (ผู้ใช้ย้ายครบใน SFUI-5a/5c)", async () => {
     const root = await compile(["ring-2"])
     expect(declsOf(root, ".ring-2")["--tw-ring-shadow"]).toContain("rgb(59 130 246 / 0.5)")
     const rootDecls = declsOf(root, ":root")
     // SFUI-5a: --fg-interactive ไม่มีผู้ใช้แล้ว (not-found/InteractiveLink ใช้ token ของ shadcn) — ลบตาม AC-2
     expect(rootDecls["--fg-interactive"]).toBeUndefined()
-    expect(rootDecls["--fg-muted"]).toBe("rgba(113, 113, 122, 1)")
+    // SFUI-5c: --fg-muted ไม่มีผู้ใช้แล้ว (discount-code ใช้ token ของ shadcn) — ลบตาม AC-2
+    expect(rootDecls["--fg-muted"]).toBeUndefined()
   })
 
   it("ขอบเริ่มต้นเป็นสี --color-ui-border-base แบบ preset เดิม (v4 เริ่มต้นเป็น currentColor)", async () => {

@@ -48,35 +48,6 @@ const TASKS: Task[] = [
 ]
 
 const PENDING: Partial<Record<Task, string[]>> = {
-  "SFUI-5c": [
-    "src/app/[countryCode]/(checkout)/layout.tsx",
-    "src/app/[countryCode]/(checkout)/not-found.tsx",
-    "src/app/[countryCode]/(main)/cart/not-found.tsx",
-    "src/modules/cart/components/cart-error-notice/index.tsx",
-    "src/modules/cart/components/cart-item-select/index.tsx",
-    "src/modules/cart/components/empty-cart-message/index.tsx",
-    "src/modules/cart/components/flash-code-notice/index.tsx",
-    "src/modules/cart/components/flash-exceeds-remaining/index.tsx",
-    "src/modules/cart/components/item/index.tsx",
-    "src/modules/cart/components/sign-in-prompt/index.tsx",
-    "src/modules/cart/templates/items.tsx",
-    "src/modules/cart/templates/preview.tsx",
-    "src/modules/cart/templates/summary.tsx",
-    "src/modules/checkout/components/addresses/index.tsx",
-    "src/modules/checkout/components/country-select/index.tsx",
-    "src/modules/checkout/components/discount-code/index.tsx",
-    "src/modules/checkout/components/payment-button/index.tsx",
-    "src/modules/checkout/components/payment-test/index.tsx",
-    "src/modules/checkout/components/promptpay-payment/index.tsx",
-    "src/modules/checkout/components/promptpay-payment/order-delayed.tsx",
-    "src/modules/checkout/components/promptpay-payment/qr-panel.tsx",
-    "src/modules/checkout/components/refunded-go-to-cart/index.tsx",
-    "src/modules/checkout/components/review/index.tsx",
-    "src/modules/checkout/components/shipping-address/index.tsx",
-    "src/modules/checkout/components/submit-button/index.tsx",
-    "src/modules/checkout/templates/checkout-summary/index.tsx",
-    "src/modules/returns/components/return-request-form/index.tsx",
-  ],
   "SFUI-5d": [
     "src/modules/account/components/account-nav/index.tsx",
     "src/modules/account/components/add-variant-error/index.tsx",
@@ -179,8 +150,12 @@ test("AC-6: ตัวแปรดิบของ preset var(--fg-*/--bg-*/--bord
 
 test("AC-6: ไฟล์ที่อ้าง var(--fg-*) อยู่ใน PENDING ของ task เจ้าของไฟล์ (หรือย้ายเสร็จแล้ว — ไม่มี pattern)", () => {
   // SFUI-5a ย้ายเสร็จ: not-found/InteractiveLink ใช้ token ของ shadcn แทน var(--fg-interactive)
-  for (const file of ["src/app/not-found.tsx", "src/modules/common/components/interactive-link/index.tsx"]) {
+  // SFUI-5c ย้ายเสร็จ: discount-code ใช้ token ของ shadcn แทน var(--fg-muted)
+  for (const file of [
+    "src/app/not-found.tsx",
+    "src/modules/common/components/interactive-link/index.tsx",
+    "src/modules/checkout/components/discount-code/index.tsx",
+  ]) {
     expect(hasForbiddenPattern(file, readSource(file)), file).toBe(false)
   }
-  expect(PENDING["SFUI-5c"]).toContain("src/modules/checkout/components/discount-code/index.tsx")
 })

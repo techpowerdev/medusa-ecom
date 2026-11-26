@@ -28,7 +28,7 @@ export default async function FlashCodeNotice({
 
   return (
     <p
-      className="txt-medium rounded-rounded bg-ui-bg-subtle p-3 text-ui-fg-subtle"
+      className="text-sm leading-[1.4rem] rounded-rounded bg-muted p-3 text-muted-foreground"
       data-testid="flash-not-combinable"
     >
       ราคาแฟลชเซลใช้ร่วมกับโค้ดส่วนลดไม่ได้ — ลบโค้ดออกเพื่อรับราคาแฟลชเซล

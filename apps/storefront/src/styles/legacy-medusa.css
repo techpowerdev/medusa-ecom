@@ -5,11 +5,6 @@
   - task เจ้าของไฟล์ (SFUI-2..5e) ย้าย class ไปเป็น token ของ shadcn ตามตารางกฎ 21; SFUI-6 ลบทั้งไฟล์และ @import ใน globals.css
 */
 
-/* preset ใส่ตัวแปรดิบ (light) ใน :root ด้วย addBase — โค้ดที่อ้าง var(--fg-*) ตรง (prop color ของ icon ใน discount-code — SFUI-5c) */
-:root {
-  --fg-muted: rgba(113, 113, 122, 1);
-}
-
 /* ring ที่ไม่ระบุสี: v3 = blue-500 ที่ opacity 0.5 (v4 เริ่มต้นเป็น currentColor) — shadcn (SFUI-2) มาแทน */
 @theme {
   --default-ring-color: rgb(59 130 246 / 0.5);
@@ -40,7 +35,6 @@
   --color-ui-fg-disabled: rgba(161, 161, 170, 1);
   --color-ui-fg-error: rgba(225, 29, 72, 1);
   --color-ui-fg-interactive: rgba(59, 130, 246, 1);
-  --color-ui-fg-interactive-hover: rgba(37, 99, 235, 1);
   --color-ui-fg-muted: rgba(113, 113, 122, 1);
   --color-ui-fg-subtle: rgba(82, 82, 91, 1);
 
@@ -48,20 +42,6 @@
   --shadow-borders-base: 0px 1px 2px 0px rgba(0, 0, 0, 0.12), 0px 0px 0px 1px rgba(0, 0, 0, 0.08);
   --shadow-borders-interactive-with-focus: 0px 1px 2px 0px rgba(30, 58, 138, 0.5), 0px 0px 0px 1px rgba(37, 99, 235, 1), 0px 0px 0px 2px rgba(255, 255, 255, 1), 0px 0px 0px 4px rgba(37, 99, 235, 0.6);
   --shadow-details-contrast-on-bg-interactive: 0px 1px 2px 0px rgba(30, 58, 138, 0.6);
-}
-
-@utility txt-compact-small {
-  font-size: 0.8125rem;
-  line-height: 1.25rem;
-  font-weight: 400;
-  font-family: var(--font-sans);
-}
-
-@utility txt-compact-xlarge-plus {
-  font-size: 1.125rem;
-  line-height: 1.25rem;
-  font-weight: 500;
-  font-family: var(--font-sans);
 }
 
 @utility txt-medium {
@@ -75,26 +55,5 @@
   font-size: 0.875rem;
   line-height: 1.399999976158142rem;
   font-weight: 500;
-  font-family: var(--font-sans);
-}
-
-@utility txt-small {
-  font-size: 0.8125rem;
-  line-height: 1.3000000715255737rem;
-  font-weight: 400;
-  font-family: var(--font-sans);
-}
-
-@utility txt-small-plus {
-  font-size: 0.8125rem;
-  line-height: 1.3000000715255737rem;
-  font-weight: 500;
-  font-family: var(--font-sans);
-}
-
-@utility txt-xlarge {
-  font-size: 1.125rem;
-  line-height: 1.8000000715255737rem;
-  font-weight: 400;
   font-family: var(--font-sans);
 }

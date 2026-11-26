@@ -1,21 +1,20 @@
-import { buttonClassName, Heading, Text } from "@modules/common/components/ui"
+import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 const SignInPrompt = () => {
   return (
     <div className="bg-white flex items-center justify-between">
       <div>
-        <Heading level="h2" className="txt-xlarge">
-          มีบัญชีอยู่แล้วใช่ไหม
-        </Heading>
-        <Text className="txt-medium text-ui-fg-subtle mt-2">
+        <h2 className="font-semibold text-2xl">มีบัญชีอยู่แล้วใช่ไหม</h2>
+        <p className="text-sm leading-[1.4rem] text-muted-foreground mt-2">
           เข้าสู่ระบบเพื่อประสบการณ์ที่ดียิ่งขึ้น
-        </Text>
+        </p>
       </div>
       <div>
         <LocalizedClientLink
           href="/account"
-          className={buttonClassName({ variant: "secondary" }, "h-10")}
+          className={cn(buttonVariants({ variant: "outline" }), "h-10")}
           data-testid="sign-in-button"
         >
           เข้าสู่ระบบ
