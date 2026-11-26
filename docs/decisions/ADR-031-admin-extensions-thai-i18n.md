@@ -59,9 +59,9 @@ C. ไลบรารี/ตัวเลือกภาษาของเรา�
 3. ค่า `en` = ข้อความอังกฤษปัจจุบัน**ตรงตัว** (ไม่แก้ถ้อยคำ) → e2e/unit เดิมผ่านโดยไม่แก้; ค่า `th` ตาม glossary ใน spec 10
 4. component ใช้ `useTranslation("<ns>")`; ข้อความนอก component ใช้ helper ทาง **ก** (`src/admin/i18n/t.ts` — ใช้จริง 3 กลุ่มขึ้นไปจึงไม่ขัดกฎ abstraction) เรียกตอนรันเท่านั้น:
    ห้ามเรียก `t`/helper ระดับบนสุดของไฟล์; ค่าคงที่ข้อความระดับ module เป็น function; schema zod ระดับ module ใช้ `{ error: () => t(...) }` ของ zod 4.2.0;
-   ตรวจด้วย unit (`require` ทุก `lib/*.ts` ใน `jest.isolateModules` ที่ยังไม่ init ต้องไม่ throw) + guard static แบบ AST สำหรับ `.tsx` (jest ไม่ transform `.tsx`) — spec 10 กฎ 4, 14
+   ตรวจด้วย unit (`require` ทุก `lib/*.ts` ยกเว้น `client.ts` ใน `jest.isolateModules` ที่ยังไม่ init โดย mock `lib/client` เป็น `{ sdk: {} }` ต้องไม่ throw) + guard static แบบ AST สำหรับ `.tsx` (jest ไม่ transform `.tsx`) — spec 10 กฎ 4, 14
 5. ข้อความจาก backend ทาง **ก** — แสดงตามที่ได้รับ; status/enum แสดงด้วย key ต่อค่า (ค่าที่ไม่รู้จักแสดงค่าดิบ) ค่าที่ส่ง API/อยู่ใน URL ไม่เปลี่ยน
-6. เมนูด้านข้าง/ชื่อหน้า: `defineRouteConfig({ label: "<key>", translationNs: "<ns>" })` ของ Medusa (ทั้งสองค่าเป็น string literal); breadcrumb ใช้ helper ข้อ 4;
+6. เมนูด้านข้าง/ชื่อหน้า: `defineRouteConfig({ label: "<key>", translationNs: "<ns>" })` ของ Medusa (ทั้งสองค่าเป็น string literal — `translationNs` เพราะ plugin อ่านด้วย `isStringLiteral`, `label` เพื่อให้ guard ตรวจ key ได้); breadcrumb ใช้ helper ข้อ 4;
    คำทั่วไปที่ Medusa มี key แล้วและค่า `en` เท่าข้อความเดิมใช้ key ของ Medusa (`actions.*`, `general.unsavedChangesTitle/Description`)
 7. เงิน/วันเวลา: คงตาม ADR-018 (`getLocaleAmount` ตาม locale ของ browser, `useDate` ตามภาษาของ admin — โหมดไทยได้ชื่อเดือนไทยตามพฤติกรรม Medusa)
 8. test: e2e admin ทุกไฟล์**ล็อก `lng=en`** ผ่าน `ADMIN_UI_OPTIONS` (cookie + localStorage ของ origin backend) ข้อยกเว้น 4 ข้อของการหาด้วยชื่อ (ADR-018/CLAUDE.md) จึงยังใช้ชื่ออังกฤษ;

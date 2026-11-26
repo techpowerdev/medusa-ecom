@@ -101,16 +101,18 @@ none
    อ้าง key ของ Medusa ได้เฉพาะ `t("<key>", { ns: "translation" })` ที่ key มีใน `en.json` ของ dashboard และค่า `en` เท่าข้อความเดิม — ใช้แล้ว: `actions.save/cancel/edit/delete/create`,
    `general.unsavedChangesTitle`, `general.unsavedChangesDescription` (prompt ใน `components/common/use-confirm-discard.ts` — `ecom-common` เหลือ "Leave"/"Continue editing")
 7. status/enum: แสดงด้วย `t(\`<prefix>.${value}\`, { defaultValue: value })` — ค่าที่ไม่รู้จักแสดงค่าดิบ; ทุกค่าใน array ค่าคงที่ของ enum (`CODE_STATUSES`, `ACTIVE_ORDER_CHANGE_STATUSES`,
-   สถานะแคมเปญ/membership/โปรแกรม/payout ที่ lib ประกาศ) มี key ครบ; ค่าที่ส่ง API, ค่าใน URL (`<prefix>_status` ฯลฯ) และ `value` ของ filter ไม่เปลี่ยน;
+   สถานะแคมเปญ/membership/โปรแกรม/payout ที่ lib ประกาศ — ค่าที่ประกาศเป็น type union (`CampaignStatus`, `ProgramStatus` ฯลฯ) อ่าน literal ของ union ด้วย TS compiler API ชุดเดียวกับ guard กฎ 14;
+   array ใน lib ที่ import `./client` โหลดด้วย mock `client` แบบ AC-4c) มี key ครบ; ค่าที่ส่ง API, ค่าใน URL (`<prefix>_status` ฯลฯ) และ `value` ของ filter ไม่เปลี่ยน;
    `activeChangeType` (`lib/order-refund-blocked.ts`) คืนข้อความที่แปลแล้วของชนิด change (`return_request` → key ของชนิดนั้น, ไม่มีชนิด → key "order change") — `en` เท่าเดิม
 8. ข้อความจาก backend (`error.message` ของ API) แสดงตามที่ได้รับ; ข้อความ fallback/คำนำ/ข้อความ validation/คำเตือนที่ฝั่ง admin สร้างแปลตามภาษา
    (`REFUND_BLOCKED_MESSAGE` เป็นข้อความของ admin — ค่า `en` ต้องเท่ากับถ้อยคำของ middleware PAY-8 ต่อไป)
-9. เมนูด้านข้าง: `defineRouteConfig({ label: "<key>", translationNs: "<ns>" })` — **`label` และ `translationNs` เป็น string literal** (`admin-vite-plugin` อ่านด้วย `isStringLiteral`
-   ค่าอื่นถูกทิ้งเงียบ); breadcrumb (`handle.breadcrumb`) ใช้ `t` ของกฎ 4b (ชื่อแคมเปญ/pool จาก loader คงเดิม)
+9. เมนูด้านข้าง: `defineRouteConfig({ label: "<key>", translationNs: "<ns>" })` — **`label` และ `translationNs` เป็น string literal** (`translationNs`: `admin-vite-plugin` อ่านด้วย `isStringLiteral`
+   ค่าอื่นถูกทิ้งเงียบ; `label`: plugin อ่านค่าตอน runtime ได้ แต่เราบังคับ literal ให้ guard กฎ 14g/AC-3 ตรวจ key ได้); breadcrumb (`handle.breadcrumb`) ใช้ `t` ของกฎ 4b (ชื่อแคมเปญ/pool จาก loader คงเดิม)
 10. ไม่เปลี่ยน: `data-testid`, โครง JSX/ลำดับ element, className, พฤติกรรม/การกันกดซ้ำ, request, เงิน (`getLocaleAmount`), วันเวลา (`useDate`/`DatePicker`)
 11. ภาษาอื่นที่ผู้ใช้เลือก (เช่น `de`) → ข้อความของเรา fallback เป็น `en` (ไม่แสดง key ดิบ)
 12. e2e admin ทุกไฟล์รันด้วย `lng=en` (cookie `lng` + localStorage `lng` ของ origin backend ผ่าน `storageState` ใน `ADMIN_UI_OPTIONS`) เพิ่มจาก `locale`/`timezoneId` ของ spec 08 กฎ 12 —
     ข้อยกเว้น 4 ข้อของการหาด้วยชื่อ (CLAUDE.md, ADR-018) ใช้ชื่อจาก `en`; e2e ห้ามเปลี่ยนภาษาของผู้ใช้กลางทาง (spec 08 AC-3)
+    หมายเหตุ: cookie ไม่แยกตาม port — บน `localhost` storefront (:8000) เห็น cookie `lng` ที่ e2e admin ตั้งด้วย; ตอนนี้ไม่มีผล (storefront ไม่มี i18n — ADR-014) ถ้า storefront มี i18n ในอนาคตต้องทบทวน
 13. e2e ภาษาไทยใช้ `ADMIN_UI_OPTIONS_TH` (เหมือนกฎ 12 แต่ `lng=th`) และสร้างค่าที่คาดจากไฟล์ `json/th/<ns>.json` ของเรา หรือจาก `th.json` ของ dashboard สำหรับ key ของ Medusa
     (อ่านไฟล์ผ่าน `require.resolve("@medusajs/dashboard/package.json", { paths: [<apps/backend>] })`) ผ่าน helper ใน `support/admin.ts` (ไม่ hard-code ประโยคไทย)
     + ตรวจอักษรไทย `/[฀-๿]/`; เคส `lng=en` ของ element เดียวกันต้องไม่มีอักษรไทย
@@ -147,7 +149,7 @@ none
   `campaignFormSchema.safeParse` ที่ `ends_at` เป็น Invalid Date ผ่าน `CAMPAIGN_PARSE_OPTIONS`; e-voucher: `poolFormSchema.safeParse` ที่ไม่เลือก partner; affiliate: `toPayoutBody` ที่ไม่เลือก affiliate)
   Then ได้ข้อความอังกฤษเดิมตรงตัว (ค่าที่ unit เดิม assert); When `changeLanguage("th")` แล้วเรียกซ้ำ Then ได้ค่าจาก `th` (มีอักษรไทย); When `changeLanguage("de")` Then ได้ค่า `en`;
   (b) ใน jest ที่ setup ตามกฎ 16 `optionalInt.safeParse("1.5")` ของ `@medusajs/dashboard/lib` ยังได้ issue `"Invalid input"` (ไม่ถูก instance ของเราเปลี่ยน) และ `i18next.isInitialized` ของ instance กลางเป็น `false`;
-  (c) **โหลด module ก่อน init**: ใน `jest.isolateModules` (registry ใหม่ → `getI18n()` ของ `react-i18next` คืน `undefined`) `require` ทุกไฟล์ `src/admin/lib/*.ts` และ `src/admin/i18n/t.ts` ต้องไม่ throw;
+  (c) **โหลด module ก่อน init**: ใน `jest.isolateModules` (registry ใหม่ → `getI18n()` ของ `react-i18next` คืน `undefined`) `jest.doMock(<path ของ src/admin/lib/client>, () => ({ sdk: {} }))` ก่อน แล้ว `require` ทุกไฟล์ `src/admin/lib/*.ts` (ยกเว้น `client.ts` — ใช้ `import.meta.env` ซึ่ง jest แบบ CommonJS ของเรา compile ไม่ได้ และไม่มีข้อความ UI) และ `src/admin/i18n/t.ts` ต้องไม่ throw;
   เคส fixture โมดูลที่เรียก helper ระดับบนสุด → throw (พิสูจน์ว่าเคส (c) จับได้);
   unit เดิมทั้งหมดผ่านโดยไม่แก้ assertion ข้อความ
 - AC-5 (AI18N-1..4, กฎ 9, 14) guard static ผ่าน; fixture ในตัว test ทุกรูปแบบถูกจับ: (a) `<Text>Hello world</Text>`; (b) `label: "Edit"`, `heading: "Could not load codes"`; (c) `toast.success("Saved")`;
@@ -177,7 +179,7 @@ none
 ## Non-functional (concurrency, idempotency, scale, observability)
 - bundle: JSON คำแปล ~2 × 30KB รวมใน admin bundle; ไม่มี request เพิ่ม
 - ความทนทาน: ไม่มีการเรียก `t` ตอนโหลด module (กฎ 4c, AC-4c, AC-5f) — ไม่เช่นนั้น admin ทั้งก้อนพังก่อน render
-- การเปลี่ยนภาษาไม่ reload หน้า: component ที่ใช้ `useTranslation` render ใหม่เอง; ข้อความจาก lib คำนวณใหม่ตอนเรียกครั้งถัดไป (error ที่แสดงอยู่แล้วคงภาษาเดิมจนกว่าจะ validate ใหม่ — ยอมรับ)
+- การเปลี่ยนภาษาไม่ reload หน้า: component ที่ใช้ `useTranslation` render ใหม่เอง; ข้อความจาก lib คำนวณใหม่ตอนเรียกครั้งถัดไป (error ที่แสดงอยู่แล้วคงภาษาเดิมจนกว่าจะ validate ใหม่ และ breadcrumb เปลี่ยนภาษาเมื่อ `Shell` render ใหม่ เช่นตอนเปลี่ยนหน้า — ยอมรับ ไม่นับเป็น defect)
 - concurrency/idempotency: none (ไม่แตะ request)
 
 ## Test plan: unit / integration / e2e, mapped to AC numbers
