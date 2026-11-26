@@ -11,7 +11,9 @@ test("AC-14: Enter บนหัว filter เปิด/ปิดเนื้อ�
   step,
   evidence,
 }) => {
-  const heading = page.getByTestId("option-refinement-title").first()
+  // หัว filter ของ option "ขนาด" จาก seed (CORE-2) — filter จัดกลุ่มตามชื่อ option จึงมีหัวเดียว; spec อื่นในรอบเดียวกัน (flash-sale-*,
+  // group-buy-*) สร้างสินค้าที่มี option ชื่ออื่น (Size/Value) ทำให้ `.first()` ใน `filter({ has })` ได้หลายปุ่ม (review SFUI-6)
+  const heading = page.getByTestId("option-refinement-title").filter({ hasText: /^ขนาด$/ })
   const trigger = page.getByRole("button").filter({ has: heading })
 
   await step("เปิด /store และรอหัว filter ของ option", async () => {

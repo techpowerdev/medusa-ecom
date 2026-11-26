@@ -146,3 +146,16 @@
 
 # core-50 AC-145 1280×800: nav-menu-button width ต่าง 1.27px (> 1) — ปัญหาเดิมบน macOS (ไม่ใช่ไฟล์ของ task; ล้มที่ item แรกของ loop)
 #   วัด nav-cart-link แยก: ขอบขวา 1256 = baseline 1195+61 (ความกว้างต่างตามป้ายจำนวน) — ตำแหน่ง cart ไม่เปลี่ยน
+
+## D-1 (qa SFUI): ปุ่ม lg ที่เดิมเป็น large คง h-12 (2026-11-26)
+### red — e2e/sfui-button-lg.unit.spec.ts (ก่อนแก้ cart-dropdown)
+  ✓  1 [unit] › e2e/sfui-button-lg.unit.spec.ts › D-1: ตัวตรวจจับ size lg ที่ไม่มี h-12 (positive/negative control)
+  ✘  2 [unit] › e2e/sfui-button-lg.unit.spec.ts › D-1: ปุ่ม size lg ใน src/** (นอก components/ui ของ shadcn) คงความสูง h-12 ของ large เดิม
+    + "src/modules/layout/components/cart-dropdown/index.tsx:284"
+### green
+  2 passed (sfui-button-lg.unit.spec.ts)
+tsc --noEmit exit 0
+✖ 27 problems (0 errors, 27 warnings)
+ Test Files  129 passed (129)
+      Tests  2004 passed (2004)
+test:e2e:unit 194 passed

@@ -10,7 +10,7 @@ const RefundedGoToCart = ({ text, noticeTestId, linkTestId }: { text: string; no
     <p className="text-sm leading-[1.4rem] text-muted-foreground mb-2" data-testid={noticeTestId}>
       {text}
     </p>
-    <LocalizedClientLink href="/cart" className={buttonVariants({ size: "lg" })} data-testid={linkTestId}>
+    <LocalizedClientLink href="/cart" className={buttonVariants({ size: "lg", className: "h-12" })} data-testid={linkTestId}>
       ไปที่ตะกร้า
     </LocalizedClientLink>
   </>
