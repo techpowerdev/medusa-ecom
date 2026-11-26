@@ -46,7 +46,8 @@ test("AC-2: มีไฟล์ legacy-medusa.css และ globals.css import �
 })
 
 test("AC-2: ทุก class ของ preset ที่ใช้ใน src/** มีนิยามใน legacy-medusa.css", () => {
-  expect(used.size, "กันผ่านแบบว่างเปล่า").toBeGreaterThan(20)
+  // กันผ่านแบบว่างเปล่า: จำนวนลดลงตามที่ task เจ้าของไฟล์ย้าย (เดิม > 20 ตอน SFUI-1a) — ก่อน SFUI-6 ยังต้องเจออย่างน้อยหนึ่งชื่อ
+  expect(used.size, "กันผ่านแบบว่างเปล่า").toBeGreaterThan(0)
   const defs = definitions(fs.readFileSync(LEGACY_CSS, "utf8"))
   const undefinedNames = Array.from(used)
     .filter((name) => !NO_STYLE_IN_PRESET.includes(name))
