@@ -42,7 +42,7 @@ const NativeSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
           onFocus={() => innerRef.current?.focus()}
           onBlur={() => innerRef.current?.blur()}
           className={cn(
-            "relative flex items-center text-base-regular",
+            "relative flex items-center text-sm leading-6 font-normal",
             className,
             {
               "text-muted-foreground": isPlaceholder,

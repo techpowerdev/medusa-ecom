@@ -94,7 +94,7 @@ export default function CopyButton({
       {/* CORE-42 (กฎข้อ 100b): "row" — ระยะห่างจากแถวอยู่ที่ margin เมื่อมีเนื้อหา; span ว่างยังอยู่ใน DOM (live region ห้าม display:none) */}
       <span
         aria-live="polite"
-        className={`text-small-regular text-muted-foreground ${layout === "row" ? "min-w-0 basis-full [&:not(:empty)]:mt-1" : ""}`}
+        className={`text-xs leading-5 font-normal text-muted-foreground ${layout === "row" ? "min-w-0 basis-full [&:not(:empty)]:mt-1" : ""}`}
         data-testid={statusTestId}
       >
         {status?.message}
