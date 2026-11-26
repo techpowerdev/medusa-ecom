@@ -33,6 +33,7 @@
 | 7 | Scale & ops | `07-scaling-ops.md` | Worker mode, Redis modules, DB indexes, CDN, observability |
 | 8 | Admin UI ใช้ของ Medusa | `08-admin-ui-medusa-components.md` | ปรับหน้า/widget ใน `src/admin/` ให้ใช้ export ของ `@medusajs/dashboard` + `@medusajs/ui` เป็นฐาน (ADR-018) |
 | 9 | Storefront UI เป็น shadcn/ui | `09-storefront-shadcn-ui.md` | อัป Tailwind v4 แล้วแทนชั้น UI ของ Medusa ใน storefront (preset, shim, icons, headlessui) ด้วย shadcn/ui แบบ Radix; ชั้น commerce ของ starter คงเดิม (ADR-030 — accepted 2026-11-26) |
+| 10 | หน้า admin ของเราเป็นภาษาไทย | `10-admin-thai-i18n.md` | i18n ของ Medusa admin (`src/admin/i18n` + `useTranslation` + `translationNs`) ให้หน้า/widget ใน `src/admin/` แสดงไทย/อังกฤษตามภาษาที่ผู้ใช้เลือกใน Settings → Profile (ADR-031 — accepted 2026-11-26) |
 
 ## Milestones (ดู `docs/ROADMAP.md`)
 M0 Scaffold → M1 ร้านค้าหลักใช้งานได้ (test mode) → M2 Payments (Stripe cards + PromptPay) →

@@ -14,6 +14,7 @@ Goal (owner's words, 2026-10-28): "หลังบ้าน admin ทั้ง�
 อย่าสร้างซ้ำกับที่มีแล้ว ถ้าไม่มีที่ใช้ได้จริงๆค่อยสร้างเพิ่ม"
 Out of scope: เปลี่ยน backend/API, เปลี่ยนพฤติกรรมทางธุรกิจของหน้า admin, แปล admin เป็นไทย (admin คงอังกฤษตาม CLAUDE.md), เปลี่ยน `data-testid`/label ที่ e2e ใช้
 (ยกเว้นปุ่มต่อแถวที่ย้ายเข้า `ActionMenu`, ช่องวันเวลาที่เป็น `DatePicker` และปุ่มสร้างที่ย้ายเข้า `action` ของ `DataTable` — กฎ 7), หน้า admin ของ Medusa เอง (เราไม่ override), เวลาของ storefront (คงเวลาไทยตาม spec 01 กฎ 42)
+— หมายเหตุ 2026-11-26: การแปลหน้า admin ของเราเป็นไทยย้ายไป spec 10 (ADR-031 — accepted 2026-11-26) ภาษาอังกฤษเดิมเป็นค่า `en`; กฎ 12 เพิ่มการล็อก `lng=en` (spec 10 กฎ 12)
 
 ผลตรวจทีละไฟล์และเหตุผล: ADR-018 (accepted)
 
@@ -81,7 +82,8 @@ none (ใช้ admin route เดิมทั้งหมด; `GET /admin/evouc
     `usePrompt` ยืนยันเหมือนเดิม; ปุ่มระดับ section/หน้า (Create, Save, `evoucher-resend`, `gb-campaign-*`, `gb-group-succeed`/`-fail`, `gb-create-pool-group`) คงเป็น `Button` + testid
     ยกเว้นปุ่มสร้างของหน้า list ที่ย้ายเข้า `action` ของ `DataTable` ตามกฎ 18
 11. รายการที่เคยดึงแบบมีเพดาน (`partners` `limit: 100`, scope `limit: 200`) ต้องแบ่งหน้า/ค้นหาได้ ไม่ตัดข้อมูลเงียบ
-12. e2e admin ทุกไฟล์รันด้วย Playwright `locale: "en-US"` และ `timezoneId: "Asia/Bangkok"` (ผลของกฎ 5–6 ตายตัว)
+12. e2e admin ทุกไฟล์รันด้วย Playwright `locale: "en-US"` และ `timezoneId: "Asia/Bangkok"` (ผลของกฎ 5–6 ตายตัว) — (2026-11-26, spec 10 กฎ 12) และภาษาของ admin `lng=en`
+    ผ่าน `storageState` ของ `ADMIN_UI_OPTIONS` ยกเว้น e2e ภาษาไทยของ spec 10 ที่ใช้ `ADMIN_UI_OPTIONS_TH`
 
 ## Acceptance criteria (Given/When/Then, numbered AC-1..n)
 - AC-1 (ADM-1, กฎ 2–3) unit `src/admin/__tests__/deps.unit.spec.ts`: Given `require("@medusajs/dashboard/package.json")` When เทียบกับ `apps/backend/package.json` Then ทุกชื่อในกฎ 3

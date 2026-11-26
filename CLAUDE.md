@@ -9,7 +9,7 @@
   ที่ไม่มีคำไทยที่ใช้กันทั่วไป (ใส่ทับศัพท์ได้ เช่น workflow, middleware)
 - ข้อความ UI ของ storefront เป็น**ภาษาไทยเขียนตรงในโค้ด** (ADR-014; ยังไม่มี i18n) label อังกฤษในเครื่องหมายคำพูดใน spec
   เป็นเพียงชื่อเรียก element; test/screenshot หา element ด้วย `data-testid` เสมอ (ยกเว้น 4 ข้อใน admin — ADR-018: menuitem ของ `ActionMenu`, ปุ่มใน `action` และ searchbox ของ `DataTable` (`getByTestId("<wrapper>").getByRole("searchbox")`) ที่หาด้วย role ภายใน wrapper ที่มี testid และ element ในหน้าของ `@medusajs/dashboard` ที่ extension ใส่ testid ไม่ได้ ที่หาด้วย role + ชื่อภายใน container ที่แคบที่สุด) ไม่ match ด้วยข้อความ และตรวจความเป็นไทยด้วย
-  regex อักษรไทย admin (`src/admin/`) คงภาษาอังกฤษ
+  regex อักษรไทย admin (`src/admin/`) ข้อความ UI ผ่าน i18n ของ Medusa admin (`useTranslation` + `src/admin/i18n/json/{en,th}`) — `en` = ข้อความเดิม, `th` = คำแปล; e2e admin ล็อก `lng=en` ชื่ออังกฤษในข้อยกเว้น 4 ข้อมาจาก `en` (ADR-031)
 
 ## โปรเจกต์นี้คืออะไร
 ร้านค้า e-commerce ระดับ production ที่สร้าง **บน Medusa v2** (backend + admin) ร่วมกับ
