@@ -263,6 +263,7 @@ const StripePaymentButton = ({
         disabled={disabled || notReady || busy}
         onClick={handlePayment}
         size="lg"
+        className="h-12"
         isLoading={submitting || shown?.kind === "processing"}
         data-testid={dataTestId}
       >
@@ -307,6 +308,7 @@ const ManualTestPaymentButton = ({
         isLoading={submitting || shown?.kind === "processing"}
         onClick={handlePayment}
         size="lg"
+        className="h-12"
         data-testid="submit-order-button"
       >
         ยืนยันคำสั่งซื้อ
