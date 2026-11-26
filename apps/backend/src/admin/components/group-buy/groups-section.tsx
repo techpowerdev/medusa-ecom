@@ -12,6 +12,7 @@ import { type KeyboardEvent, useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Container } from "../common/container"
 import { Header } from "../common/header"
+import { usePaginationTranslations } from "../common/use-pagination-translations"
 import { isUnauthorized } from "../../lib/fetch-error"
 import { createSingleFlight } from "../../lib/single-flight"
 import { campaignActions, groupProgress } from "../../lib/group-buy-campaign"
@@ -24,6 +25,7 @@ const columnHelper = createDataTableColumnHelper<Group>()
 // GB-6b (spec 04 Admin UI, AC-31): ตารางกลุ่มของแคมเปญ + สร้าง pool group
 export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
   const { t } = useTranslation("ecom-group-buy")
+  const paginationTranslations = usePaginationTranslations()
   const queryClient = useQueryClient()
   const { getFullDate } = useDate()
   const [pagination, setPagination] = useState<DataTablePaginationState>({ pageIndex: 0, pageSize: 20 })
@@ -158,7 +160,7 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
               }}
             />
             {/* spec 08 กฎ 29a: ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results") */}
-            {!loadFailed && <DataTable.Pagination />}
+            {!loadFailed && <DataTable.Pagination translations={paginationTranslations} />}
           </DataTable>
         </div>
       </div>

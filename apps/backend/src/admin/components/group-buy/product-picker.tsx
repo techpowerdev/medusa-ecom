@@ -12,6 +12,7 @@ import { keepPreviousData } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { selectSingleProduct } from "../../lib/group-buy-form"
+import { usePaginationTranslations } from "../common/use-pagination-translations"
 
 type Product = Pick<HttpTypes.AdminProduct, "id" | "title" | "status">
 
@@ -30,6 +31,7 @@ export const ProductPicker = ({
   error?: string | null
 }) => {
   const { t } = useTranslation("ecom-group-buy")
+  const paginationTranslations = usePaginationTranslations()
   // spec 10 กฎ 4e (AI18N-2): column ย้ายเข้า component เพื่อเรียก t; สถานะสินค้าแสดงด้วย key ของค่า (กฎ 7)
   const columns = useMemo(
     () => [
@@ -97,7 +99,7 @@ export const ProductPicker = ({
             <DataTable.Search placeholder={t("picker.search")} />
           </DataTable.Toolbar>
           <DataTable.Table />
-          <DataTable.Pagination />
+          <DataTable.Pagination translations={paginationTranslations} />
         </DataTable>
       </div>
     </div>
