@@ -10,7 +10,7 @@ import { Header } from "../../../../components/common/header"
 import { CodesTable } from "../../../../components/evoucher/codes-table"
 import { ImportCodes } from "../../../../components/evoucher/import-codes"
 import { PoolDeleteMenu, PoolStockBadge } from "../../../../components/evoucher/pool-delete"
-// helper t ของ breadcrumb (นอก component) — ใน PoolPage ถูกบังด้วย t ของ useTranslation (ชื่อ t ให้ unit ตรวจ key ได้ — spec 10 กฎ 6)
+// helper t ของ breadcrumb (นอก component) — import เป็น tNs ไม่ซ้อนกับ t ของ useTranslation; guard ใน __tests__/i18n-check.ts รู้จัก alias นี้ (spec 10 กฎ 6, AI18N-N1)
 import { t as tNs } from "../../../../i18n/t"
 import { CODE_STATUSES, evoucherApi, evoucherKeys, STATUS_COLOR } from "../../../../lib/evoucher"
 import { createSingleFlight } from "../../../../lib/single-flight"
