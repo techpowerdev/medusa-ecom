@@ -374,7 +374,7 @@ const Payment = ({
             data-testid="payment-session-pending-error"
           />
           {resetShown && (
-            <div role="alert" className="pt-2 flex items-center gap-x-3 text-small-regular" data-testid="payment-session-reset-notice">
+            <div role="alert" className="pt-2 flex items-center gap-x-3 text-xs leading-5 font-normal" data-testid="payment-session-reset-notice">
               <p className="text-sm leading-[1.4rem]">{SESSION_RESET}</p>
               <button
                 onClick={() => renewSession(selectedPaymentMethod)}

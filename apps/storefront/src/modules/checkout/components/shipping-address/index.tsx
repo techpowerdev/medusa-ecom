@@ -121,7 +121,7 @@ const ShippingAddress = ({
           className="rounded-lg bg-card mb-6 flex flex-col gap-y-4 p-5"
           data-testid="saved-address-greeting"
         >
-          <p className="text-small-regular">
+          <p className="text-xs leading-5 font-normal">
             {`สวัสดีคุณ ${customer.first_name} ต้องการใช้ที่อยู่ที่บันทึกไว้หรือไม่?`}
           </p>
           <AddressSelect
