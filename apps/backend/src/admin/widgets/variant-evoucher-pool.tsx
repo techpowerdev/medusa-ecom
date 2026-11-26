@@ -6,6 +6,7 @@ import { Badge, Button, FocusModal, Heading, Input, Select, Text, Textarea, toas
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { Container } from "../components/common/container"
 import { Header } from "../components/common/header"
 import { NumberInput } from "../components/common/number-input"
@@ -25,6 +26,7 @@ const PARTNER_SELECT_QUERY = { limit: 100, offset: 0 }
 
 // EV-6: "Voucher pool" บนหน้า variant — พาร์ทเนอร์, face value, สต็อกจาก pool; ยังไม่มี pool → สร้างได้ที่นี่
 const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpTypes.AdminProductVariant>) => {
+  const { t } = useTranslation("ecom-evoucher")
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   // ADM-3 (spec 08 กฎ 8): Form + KeyboundForm ของ dashboard + zod — error แสดงใต้ช่อง, ⌘/Ctrl+Enter ส่งได้
@@ -57,7 +59,7 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: evoucherKeys.poolByVariant(variant.id) })
       queryClient.invalidateQueries({ queryKey: evoucherKeys.pools })
-      toast.success("Voucher pool created")
+      toast.success(t("variantWidget.created"))
       setOpen(false)
       form.reset(POOL_FORM_DEFAULTS)
     },
@@ -103,13 +105,13 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
   return (
     <Container>
       <Header
-        title="Voucher pool"
+        title={t("variantWidget.title")}
         actions={
           pool
             ? [
                 {
                   type: "button",
-                  props: { variant: "secondary", children: "Manage codes" },
+                  props: { variant: "secondary", children: t("variantWidget.manageCodes") },
                   link: { to: `/evouchers/pools/${pool.id}` },
                 },
               ]
@@ -123,7 +125,7 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
                         submitOnce.release()
                         setOpen(true)
                       },
-                      children: "Create pool",
+                      children: t("variantWidget.createPool"),
                     },
                   },
                 ]
@@ -132,34 +134,34 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
       />
       {isLoading ? (
         <Text size="small" leading="compact" className="text-ui-fg-subtle px-6 py-4">
-          Loading…
+          {t("general.loading")}
         </Text>
       ) : isError ? (
         <Text size="small" leading="compact" className="text-ui-fg-error px-6 py-4">
-          Could not load voucher pool: {error.message}
+          {t("variantWidget.loadError", { message: error.message })}
         </Text>
       ) : !pool ? (
         <Text size="small" leading="compact" className="text-ui-fg-subtle px-6 py-4">
-          This variant is not an e-voucher.
+          {t("variantWidget.notEvoucher")}
         </Text>
       ) : (
         <>
-          <SectionRow title="Partner" value={pool.partner.name} />
-          <SectionRow title="Face value" value={pool.face_value?.toString() ?? "-"} />
+          <SectionRow title={t("fields.partner")} value={pool.partner.name} />
+          <SectionRow title={t("fields.faceValue")} value={pool.face_value?.toString() ?? "-"} />
           <SectionRow
-            title="Available codes"
+            title={t("variantWidget.availableCodes")}
             value={
               <span className="flex items-center gap-x-2">
                 {pool.code_counts.available}
                 {pool.low_stock && (
                   <Badge size="2xsmall" color="red">
-                    Low stock
+                    {t("stock.lowShort")}
                   </Badge>
                 )}
               </span>
             }
           />
-          <SectionRow title="Delivered" value={pool.code_counts.delivered.toString()} />
+          <SectionRow title={t("variantWidget.delivered")} value={pool.code_counts.delivered.toString()} />
         </>
       )}
 
@@ -170,25 +172,25 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
               <FocusModal.Header>
                 <div className="flex items-center justify-end gap-x-2">
                   <Button size="small" type="submit" disabled={submitLocked} isLoading={create.isPending}>
-                    Save
+                    {t("actions.save", { ns: "translation" })}
                   </Button>
                 </div>
               </FocusModal.Header>
               <FocusModal.Body className="flex flex-1 justify-center overflow-auto py-16">
                 <div className="flex w-full max-w-lg flex-col gap-y-4">
                   <FocusModal.Title asChild>
-                    <Heading>Create voucher pool for {variant.title}</Heading>
+                    <Heading>{t("variantWidget.createTitle", { title: variant.title ?? "" })}</Heading>
                   </FocusModal.Title>
                   <Form.Field
                     control={form.control}
                     name="partner_id"
                     render={({ field: { value, onChange, ref, name, disabled } }) => (
                       <Form.Item>
-                        <Form.Label>Partner *</Form.Label>
+                        <Form.Label>{t("fields.partnerRequired")}</Form.Label>
                         <Select size="small" name={name} value={value} onValueChange={onChange} disabled={disabled}>
                           <Form.Control>
                             <Select.Trigger ref={ref}>
-                              <Select.Value placeholder="Select partner" />
+                              <Select.Value placeholder={t("fields.selectPartner")} />
                             </Select.Trigger>
                           </Form.Control>
                           <Select.Content>
@@ -203,13 +205,13 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
                       </Form.Item>
                     )}
                   />
-                  {field("name", "Name *")}
+                  {field("name", t("fields.nameRequired"))}
                   <Form.Field
                     control={form.control}
                     name="how_to_use"
                     render={({ field }) => (
                       <Form.Item>
-                        <Form.Label>How to use * (shown in the delivery email)</Form.Label>
+                        <Form.Label>{t("fields.howToUseRequired")}</Form.Label>
                         <Form.Control>
                           <Textarea {...field} />
                         </Form.Control>
@@ -217,9 +219,9 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
                       </Form.Item>
                     )}
                   />
-                  {field("face_value", "Face value", true)}
-                  {field("validity_note", "Validity note")}
-                  {field("low_stock_threshold", "Low-stock threshold", true)}
+                  {field("face_value", t("fields.faceValue"), true)}
+                  {field("validity_note", t("fields.validityNote"))}
+                  {field("low_stock_threshold", t("fields.lowStockThreshold"), true)}
                 </div>
               </FocusModal.Body>
             </KeyboundForm>

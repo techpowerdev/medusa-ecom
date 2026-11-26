@@ -4,6 +4,7 @@ import { GiftCards } from "@medusajs/icons"
 import { Container } from "../../components/common/container"
 import { PartnersSection } from "../../components/evoucher/partners-section"
 import { PoolsTable } from "../../components/evoucher/pools-table"
+import { t } from "../../i18n/t"
 
 // EV-6: หน้า "E-vouchers" — pool (สต็อก code ต่อสถานะ + low-stock) และพาร์ทเนอร์
 // การสร้าง pool ทำจาก widget บนหน้า variant (รู้ variant_id อยู่แล้ว)
@@ -32,12 +33,14 @@ const EvouchersPage = () => {
   )
 }
 
+// spec 10 กฎ 9: label = key ใน ecom-evoucher (string literal ทั้ง label และ translationNs)
 export const config = defineRouteConfig({
-  label: "E-vouchers",
+  label: "nav.evouchers",
+  translationNs: "ecom-evoucher",
   icon: GiftCards,
 })
 
-// ADM-11 (spec 08 กฎ 14): breadcrumb ระดับแรกของหน้า pool = "E-vouchers" (ลิงก์ไป /evouchers)
-export const handle = { breadcrumb: () => "E-vouchers" }
+// ADM-11 (spec 08 กฎ 14): breadcrumb ระดับแรกของหน้า pool = "E-vouchers" (ลิงก์ไป /evouchers) — spec 10 กฎ 4b: helper t ตอนรัน
+export const handle = { breadcrumb: () => t("ecom-evoucher", "nav.evouchers") }
 
 export default EvouchersPage

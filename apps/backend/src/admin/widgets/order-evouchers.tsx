@@ -4,6 +4,7 @@ import { DetailWidgetProps, HttpTypes } from "@medusajs/framework/types"
 import { Badge, StatusBadge, Table, Text, toast } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Container } from "../components/common/container"
 import { Header } from "../components/common/header"
 import { evoucherApi, evoucherKeys, STATUS_COLOR } from "../lib/evoucher"
@@ -15,6 +16,7 @@ import { createSingleFlight } from "../lib/single-flight"
 // EV-6: ส่วน "E-vouchers" บนหน้า order — code ของ order แบบ masked
 // (Medusa admin ไม่มี tab บนหน้า order จึงใช้ widget) + ปุ่มส่งอีเมลซ้ำ (EV-5b)
 const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.AdminOrder>) => {
+  const { t } = useTranslation("ecom-evoucher")
   const queryClient = useQueryClient()
   const { getFullDate } = useDate()
   const { data, isLoading, isError, error } = useQuery({
@@ -27,7 +29,7 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
   const resend = useMutation({
     mutationFn: () => evoucherApi.resendOrderEmail(order.id),
     onSuccess: ({ code_count }) => {
-      toast.success(`E-voucher email resent with ${code_count} code${code_count === 1 ? "" : "s"}`)
+      toast.success(t("orderWidget.resent", { count: code_count }))
       queryClient.invalidateQueries({ queryKey: evoucherKeys.orderCodes(order.id) })
     },
     onError: (err: Error) => {
@@ -64,7 +66,7 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
   return (
     <Container data-testid="evoucher-order-widget">
       <Header
-        title="E-vouchers"
+        title={t("nav.evouchers")}
         actions={[
           ...(backordered.length
             ? [
@@ -76,7 +78,7 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
                     disabled: allocate.isPending,
                     isLoading: allocate.isPending,
                     onClick: onAllocate,
-                    children: "Retry allocation",
+                    children: t("orderWidget.retryAllocation"),
                   },
                 },
               ]
@@ -91,7 +93,7 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
                     disabled: resend.isPending,
                     isLoading: resend.isPending,
                     onClick: onResend,
-                    children: "Resend email",
+                    children: t("orderWidget.resendEmail"),
                   },
                 },
               ]
@@ -104,17 +106,17 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
             {item.title}
           </Text>
           <StatusBadge color="orange" data-testid="evoucher-backordered-badge" className="shrink-0">
-            Backordered — codes pending
+            {t("orderWidget.backordered")}
           </StatusBadge>
         </div>
       ))}
       {isLoading ? (
         <Text size="small" leading="compact" className="text-ui-fg-subtle px-6 py-4">
-          Loading…
+          {t("general.loading")}
         </Text>
       ) : isError ? (
         <Text size="small" leading="compact" className="text-ui-fg-error px-6 py-4">
-          Could not load e-vouchers: {error.message}
+          {t("orderWidget.loadError", { message: error.message })}
         </Text>
       ) : !data?.codes.length ? null : (
         // EV-13 (AC-32): ตารางกว้างกว่าคอลัมน์ของหน้า → เลื่อนแนวนอนภายใน widget แทนการล้นขอบ
@@ -122,11 +124,11 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
           <Table>
             <Table.Header>
               <Table.Row>
-                <Table.HeaderCell>Pool</Table.HeaderCell>
-                <Table.HeaderCell>Code</Table.HeaderCell>
-                <Table.HeaderCell>Status</Table.HeaderCell>
-                <Table.HeaderCell>Delivered to</Table.HeaderCell>
-                <Table.HeaderCell>Expires</Table.HeaderCell>
+                <Table.HeaderCell>{t("fields.pool")}</Table.HeaderCell>
+                <Table.HeaderCell>{t("fields.code")}</Table.HeaderCell>
+                <Table.HeaderCell>{t("fields.status")}</Table.HeaderCell>
+                <Table.HeaderCell>{t("fields.deliveredTo")}</Table.HeaderCell>
+                <Table.HeaderCell>{t("fields.expires")}</Table.HeaderCell>
               </Table.Row>
             </Table.Header>
             <Table.Body>
@@ -136,7 +138,7 @@ const OrderEvouchersWidget = ({ data: order }: DetailWidgetProps<HttpTypes.Admin
                   <Table.Cell className="font-mono">{code.code}</Table.Cell>
                   <Table.Cell>
                     <Badge size="2xsmall" color={STATUS_COLOR[code.status]}>
-                      {code.status}
+                      {t(`codeStatus.${code.status}`, { defaultValue: code.status })}
                     </Badge>
                   </Table.Cell>
                   <Table.Cell>{code.delivered_to_email ?? "-"}</Table.Cell>

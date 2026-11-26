@@ -1,1 +1,162 @@
-{}
+{
+  "nav": {
+    "evouchers": "E-vouchers"
+  },
+  "general": {
+    "loading": "Loading…"
+  },
+  "codeStatus": {
+    "available": "available",
+    "allocated": "allocated",
+    "delivered": "delivered",
+    "void": "void"
+  },
+  "orderChangeStatus": {
+    "pending": "pending",
+    "requested": "requested"
+  },
+  "fields": {
+    "name": "Name",
+    "nameRequired": "Name *",
+    "partner": "Partner",
+    "partnerRequired": "Partner *",
+    "selectPartner": "Select partner",
+    "faceValue": "Face value",
+    "howToUse": "How to use",
+    "howToUseRequired": "How to use * (shown in the delivery email)",
+    "validityNote": "Validity note",
+    "lowStockThreshold": "Low-stock threshold",
+    "logoUrl": "Logo URL",
+    "termsUrl": "Terms URL",
+    "supportContact": "Support contact",
+    "pool": "Pool",
+    "code": "Code",
+    "pin": "PIN",
+    "status": "Status",
+    "expires": "Expires",
+    "order": "Order",
+    "deliveredTo": "Delivered to"
+  },
+  "form": {
+    "errors": {
+      "nameRequired": "Name is required",
+      "httpUrl": "Must be an http:// or https:// URL"
+    }
+  },
+  "pools": {
+    "heading": "E-voucher pools",
+    "subHeading": "Create a pool from a product variant page (Voucher pool widget), then import partner codes here.",
+    "columns": {
+      "available": "Available",
+      "allocated": "Allocated",
+      "delivered": "Delivered",
+      "void": "Void",
+      "stock": "Stock"
+    },
+    "loadError": "Could not load voucher pools",
+    "emptyHeading": "No voucher pools yet",
+    "emptyDescription": "Open a product variant and create a voucher pool from the Voucher pool widget."
+  },
+  "stock": {
+    "noCodes": "No codes",
+    "low": "Low stock (< {{threshold}})",
+    "lowShort": "Low stock",
+    "ok": "OK"
+  },
+  "pool": {
+    "breadcrumb": "Pool",
+    "allPools": "All pools",
+    "deleted": "Voucher pool deleted",
+    "deleteTitle": "Delete {{name}}?",
+    "deleteNoCodes": "This pool has no codes.",
+    "deleteCodes_one": "This also deletes {{count}} code in the pool and lowers the variant stock.",
+    "deleteCodes_other": "This also deletes {{count}} codes in the pool and lowers the variant stock.",
+    "deleteDescription": "{{codes}} Pools with codes already sent to customers cannot be deleted. This cannot be undone.",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "errors": {
+      "partner": "Select a partner",
+      "howToUse": "How to use is required",
+      "faceValue": "Must be a number of 0 or more",
+      "lowStockThreshold": "Must be a whole number of 0 or more"
+    }
+  },
+  "codes": {
+    "heading": "Codes",
+    "loadError": "Could not load codes",
+    "emptyHeading": "No codes",
+    "emptyDescription": "Import a CSV to add codes.",
+    "filteredDescription": "No codes match the selected status.",
+    "reveal": "Reveal",
+    "revealTitle": "Reveal code?",
+    "revealDescription": "The real code and PIN will be shown. This action is recorded in the audit log.",
+    "revealedTitle": "Revealed code",
+    "revealedNote": "Expires {{date}} · This reveal was recorded in the audit log."
+  },
+  "import": {
+    "title": "Import codes",
+    "subtitle": "CSV columns: code, pin (optional), expires_at (optional, YYYY-MM-DD). Duplicates are skipped.",
+    "fileLabel": "CSV file",
+    "submit": "Import",
+    "toast": "Imported {{inserted}} codes",
+    "result": "Imported {{inserted}} codes, skipped {{skipped}} duplicates",
+    "batch": "Batch {{batch}}"
+  },
+  "partners": {
+    "heading": "Partners",
+    "create": "Create partner",
+    "edit": "Edit partner",
+    "deleteTitle": "Delete {{name}}?",
+    "deleteDescription": "Partners that still have pools cannot be deleted.",
+    "deleted": "Partner deleted",
+    "created": "Partner created",
+    "updated": "Partner updated",
+    "loadError": "Could not load partners",
+    "emptyTitle": "No partners yet",
+    "emptyMessage": "Create a partner before creating voucher pools."
+  },
+  "orderWidget": {
+    "retryAllocation": "Retry allocation",
+    "resendEmail": "Resend email",
+    "backordered": "Backordered — codes pending",
+    "loadError": "Could not load e-vouchers: {{message}}",
+    "resent_one": "E-voucher email resent with {{count}} code",
+    "resent_other": "E-voucher email resent with {{count}} codes"
+  },
+  "allocate": {
+    "backordered": "Still backordered — import more codes first",
+    "stuck": "Some codes were allocated but not emailed — use Resend email",
+    "success": "Codes allocated",
+    "error": "Could not allocate e-voucher codes. {{hint}}"
+  },
+  "resend": {
+    "hint": "Try again or check the server logs.",
+    "error": "Could not resend the e-voucher email. {{hint}}"
+  },
+  "variantWidget": {
+    "title": "Voucher pool",
+    "manageCodes": "Manage codes",
+    "createPool": "Create pool",
+    "loadError": "Could not load voucher pool: {{message}}",
+    "notEvoucher": "This variant is not an e-voucher.",
+    "availableCodes": "Available codes",
+    "delivered": "Delivered",
+    "created": "Voucher pool created",
+    "createTitle": "Create voucher pool for {{title}}"
+  },
+  "refundBlocked": {
+    "message": "Refunds are blocked while this order has an active return, claim, exchange or edit. Confirm or cancel it first.",
+    "pending": "Pending: {{type}}",
+    "orderChange": "order change",
+    "changeType": {
+      "return_request": "return request",
+      "return_receive": "return receive",
+      "exchange": "exchange",
+      "claim": "claim",
+      "edit": "edit",
+      "transfer": "transfer",
+      "update_order": "update order",
+      "credit_line": "credit line"
+    }
+  }
+}

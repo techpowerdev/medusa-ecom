@@ -1,5 +1,5 @@
 import {
-  HTTP_URL_MESSAGE,
+  httpUrlMessage,
   PARTNER_PARSE_OPTIONS,
   partnerFormSchema,
   toPartnerFormValues,
@@ -56,8 +56,8 @@ describe("partnerFormSchema", () => {
   it.each(["javascript:alert(1)", "data:text/html,x", "ftp://example.com/file", "example.com", "vbscript:msgbox(1)", "https//x"])(
     "URL %p ไม่ใช่ http(s) → error ใต้ช่องนั้น",
     (url) => {
-      expect(errorsOf({ ...filled, name: "A", logo_url: url })).toEqual({ logo_url: HTTP_URL_MESSAGE })
-      expect(errorsOf({ ...filled, name: "A", terms_url: url })).toEqual({ terms_url: HTTP_URL_MESSAGE })
+      expect(errorsOf({ ...filled, name: "A", logo_url: url })).toEqual({ logo_url: httpUrlMessage() })
+      expect(errorsOf({ ...filled, name: "A", terms_url: url })).toEqual({ terms_url: httpUrlMessage() })
     }
   )
 

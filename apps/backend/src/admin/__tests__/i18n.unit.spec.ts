@@ -33,24 +33,7 @@ const I18N_PENDING: Record<"groupBuy" | "evoucher" | "affiliate", string[]> = {
   groupBuy: [],
   // ---- AI18N-3 (ecom-evoucher) ----
   // ไม่อยู่ในรายการแต่ต้องตรวจเอง: lib/evoucher{,-query,-status}.ts (enum `CODE_STATUSES` — กฎ 7)
-  evoucher: [
-    "routes/evouchers/page.tsx",
-    "routes/evouchers/pools/[id]/page.tsx",
-    "components/evoucher/codes-table.tsx",
-    "components/evoucher/import-codes.tsx",
-    "components/evoucher/partners-section.tsx",
-    "components/evoucher/pool-delete.tsx",
-    "components/evoucher/pools-table.tsx",
-    "lib/evoucher-allocate.ts",
-    "lib/evoucher-partner-form.ts",
-    "lib/evoucher-pool-delete.ts",
-    "lib/evoucher-pool-form.ts",
-    "lib/evoucher-resend.ts",
-    "widgets/order-evouchers.tsx",
-    "widgets/variant-evoucher-pool.tsx",
-    "widgets/order-refund-blocked.tsx",
-    "lib/order-refund-blocked.ts",
-  ],
+  evoucher: [],
   // ---- AI18N-4 (ecom-affiliate) ----
   // ไม่อยู่ในรายการแต่ต้องตรวจเอง: lib/affiliate{,-names}.ts (enum สถานะ — กฎ 7)
   affiliate: [
