@@ -10,7 +10,7 @@
   รอบ 43 ส่วน v0.3.1 (OPS-36 #554, PAY-23 #555, PAY-24 #556, OPS-39 #559) เป็น 🚀 · OPS-40 (PII ค่าเดี่ยวจาก review #559) ☑ #562 (merge 2026-11-26 — ข้อยกเว้น d1/d2/d3 ของกฎ 22d + กรณีรู้แล้ว `cart_13rjFZ` → OPS-41), **ไม่อยู่ใน v0.3.1**
 - **ยังไม่ release หลัง v0.3.1**: OPS-40 + รอบ 44 (SFUI, 16 task) + รอบ 45 (7 task) + รอบ 46 (admin ไทย, 4 task — ☑ 2026-11-27) อยู่ใน `develop` เท่านั้น ·
   owner **ยังไม่ go-live** (release `develop → main` เป็นของ owner)
-- **รอบปัจจุบัน**: ไม่มี — รอบ 46 ปิดแล้ว ไม่มี PR งานค้าง; ตัวถัดไปคือรอบ 43 หลัง go-live (14 task) เมื่อ owner สั่ง
+- **รอบปัจจุบัน**: ไม่มี — รอบ 46 ปิดแล้ว ไม่มี PR งานค้าง; รอบ 43 (14 task) รอ owner สั่ง — ไม่ขึ้นกับ go-live/release
 - **รอ owner ตัดสิน**: ไม่มีคำถามค้างของรอบ 43 — เหลือเฉพาะเรื่องก่อน go-live (Stripe live, ค่าส่ง, staging); รอบ 44: ไม่มีคำถามค้าง (ADR-030 accepted, Q1/Q2 ตอบแล้ว 2026-11-26); รอบ 45: ไม่มีคำถามค้าง (owner สั่ง "เก็บต่อเลย" 2026-11-26);
   รอบ 46: ไม่มีคำถามค้าง (ADR-031 accepted, Q1 = ก 2026-11-26)
 - **ขั้นต่อไป**: go-live (checklist ข้อ 1–16) → **v1.0.0** (ร้านเปิดจริงครั้งแรก)
@@ -151,7 +151,7 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 | AI18N-4 | 10 | แปล affiliate (`ecom-affiliate`) + e2e ไทย; `I18N_PENDING` ว่างทั้งหมด | AI18N-1 (stack) | ✓ | ☑ #597 |
 
 - ลำดับ: 1 → (2 ∥ 3 ∥ 4) · merge จริง 1 → 2 → 3 → 4 (#594 → #597, 2026-11-27) · reviewer APPROVE ทุกตัว, CI เขียว,
-  qa ผ่าน AC-1..11 ไม่มี defect (`docs/evidence/admin-i18n/AI18N-{1..4}/REPORT.md`) · ไม่มี follow-up ค้าง (nit กฎ 7 แก้ใน PR ปิดรอบ)
+  qa ผ่าน AC-1..11 ไม่มี defect (`docs/evidence/admin-i18n/AI18N-{1..4}/REPORT.md`) · nit กฎ 7 แก้ใน PR ปิดรอบ; nit ที่เหลือ (ตัวแปร `t` ซ้อน, camelCase ใน `create-campaign.tsx`, `productStatus.proposed` = "เสนอ", ข้อความ error ของ `evidenceDir`) อยู่ใน backlog ยังไม่มี task
 - **ไฟล์ร่วม**: `src/admin/__tests__/i18n.unit.spec.ts` (แต่ละ task แก้บรรทัด key ของกลุ่มตัวเองใน `I18N_PENDING`) · `medusa-ui.unit.spec.ts` (assertion ของกลุ่มตัวเอง) ·
   `i18n/index.ts`, `e2e/support/admin.ts`, `package.json`/lockfile = AI18N-1 เท่านั้น
 - เริ่มได้เมื่อ PR เอกสารรอบ 46 (รวมแก้ CLAUDE.md หัวข้อ Language ตาม ADR-031) พร้อม — stack ไม่ต้องรอ merge · Q1 = ก: ไม่ตั้งไทยเป็นค่าเริ่มต้น (กฎ 15/AC-12 ไม่ทำ)
