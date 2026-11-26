@@ -95,7 +95,7 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 | SFUI-3b | 09 | side menu / search drawer / mobile actions → `Sheet` | SFUI-2 | ✓ | ☑ #571 |
 | SFUI-3c | 09 | cart dropdown → `Popover`, country/address select → `Select`, account-info → `Collapsible` | SFUI-2 | ✓ | ☑ #570 |
 | SFUI-3d | 09 | ขั้นชำระเงิน → `RadioGroup` + unit 5 ไฟล์เลิก mock headlessui | SFUI-2 | ✓ | ☑ #572 |
-| SFUI-3e | 09 | ตัวเลือกจัดส่ง + หน้าจ่าย order → `RadioGroup` | SFUI-2 | ✓ | ☑ #573 |
+| SFUI-3e | 09 | ตัวเลือกจัดส่ง → `RadioGroup` (order-pay ย้ายไป 3d) | SFUI-3d | ✓ | ☑ #573 |
 | SFUI-4 | 09 | accordion/slider ของ store + แท็บ PDP → shadcn `Accordion`/`Slider` | SFUI-2 | ✓ | ☑ #574 |
 | SFUI-5a | 09 | ย้าย class/icon/import: common + layout + หน้าคงที่ | SFUI-2 | ✓ | ☑ #575 |
 | SFUI-5b | 09 | ย้าย class/icon/import: catalog (products/store/home/categories/collections/search) | SFUI-2 | ✓ | ☑ #576 |
@@ -107,11 +107,11 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 
 - ลำดับ: 1a → 1b → 2 → (3a ∥ 3b ∥ 3c ∥ 3d ∥ 3e ∥ 4 ∥ 5a ∥ 5b ∥ 5c ∥ 5d ∥ 5e) → 6 → 7
 - **ไฟล์ร่วม** (ตัวที่ merge ทีหลัง sync): `e2e/sfui-legacy.unit.spec.ts` (แต่ละ task ลบ key `PENDING` ของตัวเอง) · `package.json`/lockfile แก้เฉพาะ 1a, 1b, 6 · `globals.css` 1a → 1b → 6
-- ~~**งด release `develop → main`** ระหว่าง SFUI-2..SFUI-7 merge~~ ยกเลิกแล้ว — SFUI merge ครบ 2026-11-26 (เดิม: ยกเว้น hotfix (owner 2026-11-26 — spec 09 Q2); browser ขั้นต่ำของ Tailwind v4 owner ยอมรับ (Q1)
+- ~~**งด release `develop → main`** ตั้งแต่ SFUI-2 merge จนถึง SFUI-6 merge ยกเว้น hotfix (owner 2026-11-26 — spec 09 Q2; ขยายถึง SFUI-7 ที่เพิ่มภายหลัง)~~ สิ้นสุดแล้ว — SFUI merge ครบ 2026-11-26 · browser ขั้นต่ำของ Tailwind v4 owner ยอมรับ (Q1 — ยังมีผล)
 
 ## คำถามที่รอ owner
 
-- **รอบ 44**: ไม่มีคำถามค้าง — owner 2026-11-26: ADR-030 = accepted · ~~Q1~~ = ยอมรับ browser ขั้นต่ำของ Tailwind v4 · ~~Q2~~ = งด release ระหว่าง SFUI-2..6 (ยกเว้น hotfix) · ทำแบบ stack ได้
+- **รอบ 44**: ไม่มีคำถามค้าง — owner 2026-11-26: ADR-030 = accepted · ~~Q1~~ = ยอมรับ browser ขั้นต่ำของ Tailwind v4 · ~~Q2~~ = งด release ระหว่าง SFUI-2..6 (ยกเว้น hotfix — สิ้นสุดแล้ว 2026-11-26) · ทำแบบ stack ได้
 
 - **รอบ 43**: ไม่มีคำถามค้าง — คำตัดสิน owner 2026-11-25:
   - ~~Q-R43-ฉ~~ = ก (owner 2026-11-25) แก้เพิ่ม: 3 task (OPS-36, PAY-23, PAY-24) รวมใน v0.3.1 ไม่แยก v0.3.2 — v0.3.1 รอ 3 task นี้ merge ก่อน owner merge `develop → main`;
@@ -161,7 +161,7 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 | Release v0.3.0 (รอบ 40) | 01–08 | 🚀 | 32 🚀 | รวม CORE-75 #465 |
 | รอบ 41 | 01–08 | 🚀 | 36 🚀 + 1 ✕ | ✕ PAY-13 (ปิดโดย hotfix #468) |
 | รอบ 42 | 01–08 | 🚀 | 21 🚀 | v0.3.1 (#561); ADR-029 |
-| รอบ 44 storefront shadcn/ui | 09 | ☑ | 17 ☑ (#565–#581) | ADR-030 accepted 2026-11-26; stack, งด release ระหว่าง SFUI-2..6 |
+| รอบ 44 storefront shadcn/ui | 09 | ☑ | 16 ☑ (#566–#581; เอกสาร #565) | ADR-030 accepted 2026-11-26; stack; งด release ระหว่าง SFUI-2..6 สิ้นสุดแล้ว |
 | รอบ 43 | 01, 03, 04, 06–08 | ◐ | 4 🚀 + 1 ☑ + 14 ☐ | 4 🚀 (3 train #557 + OPS-39 #559) ใน v0.3.1; OPS-40 ☑ #562 ก่อน go-live (ไม่อยู่ใน v0.3.1); 14 ตัวหลัง go-live (รวม OPS-41) |
 
 จำนวน task นับจากตารางใน history.md ณ 2026-11-24 และตารางรอบ 43 ด้านบน ณ 2026-11-25 (task ที่อยู่หลาย milestone นับที่ milestone หลักของ spec)
