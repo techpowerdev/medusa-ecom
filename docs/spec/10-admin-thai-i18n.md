@@ -168,7 +168,7 @@ none
   `general.unsavedChangesTitle`/`general.unsavedChangesDescription` ใน `th.json` ของ dashboard และปุ่มยืนยัน/ยกเลิกเท่าค่า `th` ของ `ecom-common` (หา element ด้วย role ภายใน dialog — ข้อยกเว้นข้อ 4)
   และมีอักษรไทย; Given `lng=en` Then เท่าค่า `en` (ของ dashboard/ของเรา) และไม่มีอักษรไทย; Given `lng=th` Then ลิงก์ Settings ของ Medusa ในเมนูเป็นไทย (ยืนยันว่าเลือกภาษาผ่านกลไก Medusa จริง)
 - AC-9 (AI18N-2, กฎ 7, 9, 13) e2e `admin-i18n-group-buy.spec.ts` (`lng=th`): ลิงก์เมนูด้านข้างของ group buying มีชื่อเท่าค่า `th`; หน้า `/group-buying` heading ของตารางเท่าค่า `th`;
-  เปิด modal สร้างแคมเปญ (`FocusModal.Title` + label ช่องชื่อเป็นค่า `th`) กด Create โดยไม่กรอกชื่อ → error ใต้ช่องชื่อ (testid เดิม) เท่าค่า `th`; หน้า `/group-buying/:id` breadcrumb แรกและ badge สถานะ
+  เปิด modal สร้างแคมเปญ (`FocusModal.Title` + label ช่องชื่อเป็นค่า `th`) กรอก Target value เป็น `0` แล้วกด Create → error ใต้ช่องที่มี testid เดิม `gb-target-value-error` (ข้อความจาก zod แบบ lazy) เท่าค่า `th`; กด Create โดยไม่กรอกชื่อ → toast "Name is required" (จาก `toCampaignBody` — ช่องชื่อไม่มี error ใต้ช่อง/testid มาแต่เดิม, กฎ 10) เท่าค่า `th`; หน้า `/group-buying/:id` breadcrumb แรกและ badge สถานะ
   เป็นค่า `th`; หน้า campaign ที่มี widget `flash-sale-options` หัว widget และ title ของแถว Total cap เป็นค่า `th`; เคส `lng=en` ของ element เดียวกันไม่มีอักษรไทย
 - AC-10 (AI18N-3, กฎ 7, 9, 13) e2e `admin-i18n-evoucher.spec.ts` (`lng=th`): เมนู + breadcrumb `/evouchers`, heading ตาราง Partners/Pools, หน้า pool (heading ตาราง Codes + label filter สถานะ +
   ป้ายสถานะ `available` เท่าค่า `th`), widget `variant-evoucher-pool` บนหน้า variant และ widget `order-evouchers` บนหน้า order ที่มี code เป็นค่า `th`; เคส `lng=en` ไม่มีอักษรไทย
