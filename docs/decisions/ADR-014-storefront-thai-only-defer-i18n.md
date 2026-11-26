@@ -32,6 +32,7 @@ C. ทำ i18n ต่อแบบ locale ใน URL (`/[countryCode]/[locale]/..
 5. backend CORE-7 (Translation module + store locales `th-TH`, `en-US`) **คงไว้ไม่ถอด** แต่ storefront ไม่ใช้: ไม่มี cookie จึงไม่ส่ง header
    `x-medusa-locale` → Medusa คืนเนื้อหาต้นฉบับ (ภาษาไทย ตามข้อตัดสิน owner ใน spec 01 CORE-4 ข้อ 1)
 6. Admin dashboard และ admin extension (`src/admin/`) อยู่นอก ADR นี้ (คงภาษาอังกฤษตาม Medusa admin)
+   — หมายเหตุ 2026-11-26: [ADR-031](ADR-031-admin-extensions-thai-i18n.md) (เสนอ) ให้ admin extension สองภาษา en/th ตามภาษาที่เลือกใน Medusa admin; storefront ไม่กระทบ
 
 ### เงื่อนไขที่จะกลับมาทำ i18n
 ต้องมี **ADR ใหม่** ที่เลือกระหว่างทางเลือก B (dynamic SSR — ต้องวัดผลกระทบ cache/latency ของ home/PDP) หรือ C (locale ใน URL — ดีต่อ
