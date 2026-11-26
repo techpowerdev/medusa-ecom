@@ -1,5 +1,6 @@
 # 10 หน้า admin ของเราแสดงภาษาไทยผ่าน i18n ของ Medusa admin (AI18N)
-Status: accepted (owner 2026-11-26 — ADR-031 accepted, Q1 = ก; แก้ตาม review PR เอกสาร: blocker 1–3 + nit)
+Status: done — AI18N-1..4 ☑ (#594–#597, merge 2026-11-27; เอกสาร #593) · AC-1..11 ☑ (qa ไม่พบ defect — `docs/evidence/admin-i18n/AI18N-{1..4}/REPORT.md`)
+(accepted owner 2026-11-26 — ADR-031 accepted, Q1 = ก; แก้ตาม review PR เอกสาร: blocker 1–3 + nit)
 Goal (owner's words, 2026-11-26): ทาง "ข" — หน้า admin หลักของ Medusa มีไทยในตัวแล้ว ให้**หน้า/widget ที่เราเขียนเอง**แสดงไทยเมื่อผู้ใช้เลือกไทย (และอังกฤษเมื่อเลือกอังกฤษ)
 ด้วย i18n ของ Medusa admin · "แค่ปรับเพิ่มภาษา" ไม่เปลี่ยน layout/พฤติกรรม/โครง component · task ไม่ย่อยเกินไป · ทำแบบ stack ได้
 Out of scope: หน้าหลักของ Medusa (ไทยในตัวแล้ว), storefront (ADR-014), แก้ถ้อยคำภาษาอังกฤษเดิม, แปลข้อความ error จาก backend (ADR-031 ข้อ 5), อีเมล/notification,
@@ -103,7 +104,9 @@ none
 7. status/enum: แสดงด้วย `t(\`<prefix>.${value}\`, { defaultValue: value })` — ค่าที่ไม่รู้จักแสดงค่าดิบ; ทุกค่าใน array ค่าคงที่ของ enum (`CODE_STATUSES`, `ACTIVE_ORDER_CHANGE_STATUSES`,
    สถานะแคมเปญ/membership/โปรแกรม/payout ที่ lib ประกาศ — ค่าที่ประกาศเป็น type union (`CampaignStatus`, `ProgramStatus` ฯลฯ) อ่าน literal ของ union ด้วย TS compiler API ชุดเดียวกับ guard กฎ 14;
    array ใน lib ที่ import `./client` โหลดด้วย mock `client` แบบ AC-4c) มี key ครบ; ค่าที่ส่ง API, ค่าใน URL (`<prefix>_status` ฯลฯ) และ `value` ของ filter ไม่เปลี่ยน;
-   `activeChangeType` (`lib/order-refund-blocked.ts`) คืนข้อความที่แปลแล้วของชนิด change (`return_request` → key ของชนิดนั้น, ไม่มีชนิด → key "order change") — `en` เท่าเดิม
+   ข้อยกเว้นด้านการแสดงผล: `ACTIVE_ORDER_CHANGE_STATUSES` (`lib/order-refund-blocked.ts`) มี key `orderChangeStatus.<status>` ครบตามกฎนี้ (AC-3) แต่ใช้เป็นเงื่อนไขเท่านั้น —
+   UI (widget refund-blocked) **ไม่แสดงสถานะ** ของ change แต่แสดง**ชนิด** ของ change ผ่าน `activeChangeType` ซึ่งคืนข้อความที่แปลแล้วของชนิด change
+   (`return_request` → key `refundBlocked.changeType.<type>`, ชนิดที่ไม่มี key → ค่าดิบที่แทน `_` ด้วยช่องว่าง, ไม่มีชนิด → key "order change") — `en` เท่าเดิม
 8. ข้อความจาก backend (`error.message` ของ API) แสดงตามที่ได้รับ; ข้อความ fallback/คำนำ/ข้อความ validation/คำเตือนที่ฝั่ง admin สร้างแปลตามภาษา
    (`REFUND_BLOCKED_MESSAGE` เป็นข้อความของ admin — ค่า `en` ต้องเท่ากับถ้อยคำของ middleware PAY-8 ต่อไป)
 9. เมนูด้านข้าง: `defineRouteConfig({ label: "<key>", translationNs: "<ns>" })` — **`label` และ `translationNs` เป็น string literal** (`translationNs`: `admin-vite-plugin` อ่านด้วย `isStringLiteral`
@@ -137,14 +140,14 @@ none
     เรียก `i18next.t("validation.mustBeInt")` ตอนโหลด module และ unit เดิมพึ่งผล `"Invalid input"` (`lib/__tests__/form-validation.unit.spec.ts:33-34`, `evoucher-pool-form.unit.spec.ts:63,68`)
 
 ## Acceptance criteria (Given/When/Then, numbered AC-1..n)
-- AC-1 (AI18N-1, กฎ 1–2) unit: Given `src/admin/i18n/index.ts` When import ใน jest Then key ระดับบน = `["en","th"]` และแต่ละภาษามี namespace ตรง 4 ตัวของ ADR-031 ข้อ 2 ไม่มี `translation`;
+- AC-1 (AI18N-1, กฎ 1–2) ☑ #594 unit: Given `src/admin/i18n/index.ts` When import ใน jest Then key ระดับบน = `["en","th"]` และแต่ละภาษามี namespace ตรง 4 ตัวของ ADR-031 ข้อ 2 ไม่มี `translation`;
   ไฟล์ JSON 8 ไฟล์มีอยู่และ parse ได้
-- AC-2 (AI18N-1, กฎ 5) unit parity: Given ไฟล์ `en`/`th` ของแต่ละ namespace Then ชุด key (หลัง normalize plural) เท่ากัน, ชุด `{{var}}` ต่อ key เท่ากัน, ค่า `th` มีอักษรไทย (ยกเว้น allowlist);
+- AC-2 (AI18N-1, กฎ 5) ☑ #594 unit parity: Given ไฟล์ `en`/`th` ของแต่ละ namespace Then ชุด key (หลัง normalize plural) เท่ากัน, ชุด `{{var}}` ต่อ key เท่ากัน, ค่า `th` มีอักษรไทย (ยกเว้น allowlist);
   เคสลบ key หนึ่งตัวออกจาก fixture `th` ในตัว test → ฟังก์ชันตรวจคืน key นั้น
-- AC-3 (AI18N-1..4, กฎ 4a, 6, 7) unit: ทุก key literal ใน `src/admin/**` มีใน `en` ของ namespace ของไฟล์ (หาจาก `useTranslation("<ns>")` ของไฟล์ หรือ `{ ns }` ใน call; ไฟล์ที่เรียก
+- AC-3 (AI18N-1..4, กฎ 4a, 6, 7) ☑ #594–#597 unit: ทุก key literal ใน `src/admin/**` มีใน `en` ของ namespace ของไฟล์ (หาจาก `useTranslation("<ns>")` ของไฟล์ หรือ `{ ns }` ใน call; ไฟล์ที่เรียก
   `useTranslation` ด้วย namespace ต่างกัน > 1 ตัว → ล้ม); key ที่อ้าง `ns: "translation"` มีใน `en.json` ของ dashboard และค่าเท่ากับข้อความเดิมในตารางของ test (รวม
   `general.unsavedChangesTitle/Description`); ทุกค่าใน array enum ของกฎ 7 มี key ใน `en` (เคส fixture เพิ่มค่าใหม่ใน array โดยไม่มี key → ล้ม); เคส fixture key ไม่มีอยู่ → ฟังก์ชันตรวจคืน key นั้น
-- AC-4 (AI18N-1..4, กฎ 4, 8, 11, 16) unit lazy + instance:
+- AC-4 (AI18N-1..4, กฎ 4, 8, 11, 16) ☑ #594–#597 unit lazy + instance:
   (a) Given jest setup ตามกฎ 16 (`lng=en`) When เรียกตัวแทนของกลุ่ม (common: `t("ecom-common", <key "Leave">)`; group buy: `toCampaignBody({ ...emptyCampaignForm(), name: "" })` และ
   `campaignFormSchema.safeParse` ที่ `ends_at` เป็น Invalid Date ผ่าน `CAMPAIGN_PARSE_OPTIONS`; e-voucher: `poolFormSchema.safeParse` ที่ไม่เลือก partner; affiliate: `toPayoutBody` ที่ไม่เลือก affiliate)
   Then ได้ข้อความอังกฤษเดิมตรงตัว (ค่าที่ unit เดิม assert); When `changeLanguage("th")` แล้วเรียกซ้ำ Then ได้ค่าจาก `th` (มีอักษรไทย); When `changeLanguage("de")` Then ได้ค่า `en`;
@@ -152,27 +155,27 @@ none
   (c) **โหลด module ก่อน init**: ใน `jest.isolateModules` (registry ใหม่ → `getI18n()` ของ `react-i18next` คืน `undefined`) `jest.doMock(<path ของ src/admin/lib/client>, () => ({ sdk: {} }))` ก่อน แล้ว `require` ทุกไฟล์ `src/admin/lib/*.ts` (ยกเว้น `client.ts` — ใช้ `import.meta.env` ซึ่ง jest แบบ CommonJS ของเรา compile ไม่ได้ และไม่มีข้อความ UI) และ `src/admin/i18n/t.ts` ต้องไม่ throw;
   เคส fixture โมดูลที่เรียก helper ระดับบนสุด → throw (พิสูจน์ว่าเคส (c) จับได้);
   unit เดิมทั้งหมดผ่านโดยไม่แก้ assertion ข้อความ
-- AC-5 (AI18N-1..4, กฎ 9, 14) guard static ผ่าน; fixture ในตัว test ทุกรูปแบบถูกจับ: (a) `<Text>Hello world</Text>`; (b) `label: "Edit"`, `heading: "Could not load codes"`; (c) `toast.success("Saved")`;
+- AC-5 (AI18N-1..4, กฎ 9, 14) ☑ #594–#597 (`I18N_PENDING` ว่างทั้งหมดหลัง #597) guard static ผ่าน; fixture ในตัว test ทุกรูปแบบถูกจับ: (a) `<Text>Hello world</Text>`; (b) `label: "Edit"`, `heading: "Could not load codes"`; (c) `toast.success("Saved")`;
   (d) `z.string().min(1, "Select a partner")`, `.refine(fn, { message: "Name is required" })`, `fieldErrorMap({ starts_at: "Invalid date" })`;
   (e) `const INVALID_DATE = "Invalid date"` ใน lib, `` `${label} is required` ``, `return "order change"`; (f) `const X = t("ecom-common", "a")` ระดับบนสุดของไฟล์ `.tsx`;
   (g) `defineRouteConfig({ label: LABEL, translationNs: NS })` — และไม่จับ: `t("x")` ใน function, `{ error: () => t("ecom-evoucher", "x") }`, `displayName = "NumberInput"`, `method: "POST"`;
   หลัง AI18N-4 `I18N_PENDING` ทุก key ว่าง
-- AC-6 (AI18N-1, กฎ 12, 16) unit: `ADMIN_UI_OPTIONS.storageState` มี cookie `lng=en` และ localStorage `lng=en` ของ origin `BACKEND_URL`; `ADMIN_UI_OPTIONS_TH` ต่างกันเฉพาะค่า `th`;
+- AC-6 (AI18N-1, กฎ 12, 16) ☑ #594 unit: `ADMIN_UI_OPTIONS.storageState` มี cookie `lng=en` และ localStorage `lng=en` ของ origin `BACKEND_URL`; `ADMIN_UI_OPTIONS_TH` ต่างกันเฉพาะค่า `th`;
   ทุกไฟล์ e2e ที่ `loginAdmin` ใช้ `ADMIN_UI_OPTIONS` หรือ `ADMIN_UI_OPTIONS_TH` (ข้อตรวจเดิมของ `admin-options.unit.spec.ts` ขยาย); `deps.unit.spec.ts`: `i18next` อยู่ใน `devDependencies`
   (ไม่อยู่ใน `dependencies`) และเท่ากับเวอร์ชันใน `@medusajs/dashboard/package.json`, `react-i18next` อยู่ใน `dependencies` และเท่ากับของ dashboard
-- AC-7 (AI18N-1..4, กฎ 3, 8, 10) e2e admin เดิมทั้งชุด (`apps/storefront/e2e/*admin*.spec.ts` และไฟล์อื่นที่ใช้ `ADMIN_UI_OPTIONS`) ผ่านโดย `git diff` ของไฟล์ spec เหล่านั้นว่าง
+- AC-7 (AI18N-1..4, กฎ 3, 8, 10) ☑ #594–#597 e2e admin เดิมทั้งชุด (`apps/storefront/e2e/*admin*.spec.ts` และไฟล์อื่นที่ใช้ `ADMIN_UI_OPTIONS`) ผ่านโดย `git diff` ของไฟล์ spec เหล่านั้นว่าง
   (ยกเว้น `support/admin.ts`, `support/admin-options.unit.spec.ts`); static test เดิมใน `src/admin/__tests__` ที่ match ข้อความอังกฤษใน source (เช่น `"Group buying"`, `"Create campaign"`,
   `"Could not load codes"`) แก้ให้ match key แทนโดยคงเจตนาเดิม; `lib/__tests__/order-refund-blocked.unit.spec.ts` คงเจตนาว่า**ค่า `en`** ของข้อความเตือน refund เท่าถ้อยคำของ
   middleware PAY-8 (`ACTIVE_ORDER_CHANGE_REFUND_MESSAGE`) และ `activeChangeType` ใน `en` คืน `"return request"`/`"exchange"`/`"order change"` เหมือนเดิม
-- AC-8 (AI18N-1, กฎ 6, 13) e2e `admin-i18n-common.spec.ts`: Given `lng=th` When เปิดฟอร์มสร้าง partner ที่ `/evouchers` พิมพ์ชื่อแล้วกด Escape Then prompt แสดงหัวข้อ/คำอธิบายเท่าค่า
+- AC-8 (AI18N-1, กฎ 6, 13) ☑ #594 e2e `admin-i18n-common.spec.ts`: Given `lng=th` When เปิดฟอร์มสร้าง partner ที่ `/evouchers` พิมพ์ชื่อแล้วกด Escape Then prompt แสดงหัวข้อ/คำอธิบายเท่าค่า
   `general.unsavedChangesTitle`/`general.unsavedChangesDescription` ใน `th.json` ของ dashboard และปุ่มยืนยัน/ยกเลิกเท่าค่า `th` ของ `ecom-common` (หา element ด้วย role ภายใน dialog — ข้อยกเว้นข้อ 4)
   และมีอักษรไทย; Given `lng=en` Then เท่าค่า `en` (ของ dashboard/ของเรา) และไม่มีอักษรไทย; Given `lng=th` Then ลิงก์ Settings ของ Medusa ในเมนูเป็นไทย (ยืนยันว่าเลือกภาษาผ่านกลไก Medusa จริง)
-- AC-9 (AI18N-2, กฎ 7, 9, 13) e2e `admin-i18n-group-buy.spec.ts` (`lng=th`): ลิงก์เมนูด้านข้างของ group buying มีชื่อเท่าค่า `th`; หน้า `/group-buying` heading ของตารางเท่าค่า `th`;
+- AC-9 (AI18N-2, กฎ 7, 9, 13) ☑ #595 e2e `admin-i18n-group-buy.spec.ts` (`lng=th`): ลิงก์เมนูด้านข้างของ group buying มีชื่อเท่าค่า `th`; หน้า `/group-buying` heading ของตารางเท่าค่า `th`;
   เปิด modal สร้างแคมเปญ (`FocusModal.Title` + label ช่องชื่อเป็นค่า `th`) กรอก Target value เป็น `0` แล้วกด Create → error ใต้ช่องที่มี testid เดิม `gb-target-value-error` (ข้อความจาก zod แบบ lazy) เท่าค่า `th`; กด Create โดยไม่กรอกชื่อ → toast "Name is required" (จาก `toCampaignBody` — ช่องชื่อไม่มี error ใต้ช่อง/testid มาแต่เดิม, กฎ 10) เท่าค่า `th`; หน้า `/group-buying/:id` breadcrumb แรกและ badge สถานะ
   เป็นค่า `th`; หน้า campaign ที่มี widget `flash-sale-options` หัว widget และ title ของแถว Total cap เป็นค่า `th`; เคส `lng=en` ของ element เดียวกันไม่มีอักษรไทย
-- AC-10 (AI18N-3, กฎ 7, 9, 13) e2e `admin-i18n-evoucher.spec.ts` (`lng=th`): เมนู + breadcrumb `/evouchers`, heading ตาราง Partners/Pools, หน้า pool (heading ตาราง Codes + label filter สถานะ +
+- AC-10 (AI18N-3, กฎ 7, 9, 13) ☑ #596 e2e `admin-i18n-evoucher.spec.ts` (`lng=th`): เมนู + breadcrumb `/evouchers`, heading ตาราง Partners/Pools, หน้า pool (heading ตาราง Codes + label filter สถานะ +
   ป้ายสถานะ `available` เท่าค่า `th`), widget `variant-evoucher-pool` บนหน้า variant และ widget `order-evouchers` บนหน้า order ที่มี code เป็นค่า `th`; เคส `lng=en` ไม่มีอักษรไทย
-- AC-11 (AI18N-4, กฎ 7, 9, 13) e2e `admin-i18n-affiliate.spec.ts` (`lng=th`): เมนู `/affiliate`, ชื่อแท็บ 4 แท็บ, heading ตารางของแต่ละแท็บ, ฟอร์มสร้างโปรแกรมส่งโดยไม่กรอกชื่อ → error ใต้ช่องเป็นค่า `th`,
+- AC-11 (AI18N-4, กฎ 7, 9, 13) ☑ #597 e2e `admin-i18n-affiliate.spec.ts` (`lng=th`): เมนู `/affiliate`, ชื่อแท็บ 4 แท็บ, heading ตารางของแต่ละแท็บ, ฟอร์มสร้างโปรแกรมส่งโดยไม่กรอกชื่อ → error ใต้ช่องเป็นค่า `th`,
   เมนูต่อแถวของ affiliate `pending` มี menuitem ชื่อเท่าค่า `th` ของ "Approve"; เคส `lng=en` ไม่มีอักษรไทย
 - ~~AC-12~~ ไม่ทำ (Q1 = ก — กฎ 15)
 
@@ -198,10 +201,10 @@ qa เก็บ evidence ทุก task (หน้าโหมดไทย ≤ 5
 
 | Task | งาน — ไฟล์ที่เป็นเจ้าของ | AC | Depends | ประมาณ diff |
 |---|---|---|---|---|
-| AI18N-1 | โครง i18n + ล็อกภาษาใน test + ส่วนร่วม: `src/admin/i18n/{index.ts,t.ts}`, `json/{en,th}/*.json` ทั้ง 8 ไฟล์ (`ecom-common` เต็ม, อีก 3 ns เป็น `{}`), `components/common/**` (prompt ใช้ key ของ Medusa + "Leave"/"Continue editing"), `lib/{fetch-error,form-validation,page-offset,single-flight,combobox-escape}.ts` (`fieldErrorMap` รับ function ต่อช่อง — กฎ 4d), `src/admin/__tests__/{i18n.unit.spec.ts,i18n-setup.ts,deps.unit.spec.ts}` (guard AST กฎ 14 a–g + `I18N_PENDING` ทุกไฟล์ของกลุ่ม 2–4 + AC-4b/4c), `apps/backend/jest.config.js` (setup เฉพาะ `unit`), `apps/backend/package.json` + `pnpm-lock.yaml` (`i18next` dev), `apps/storefront/e2e/support/{admin.ts,admin-options.unit.spec.ts}`, `e2e/admin-i18n-common.spec.ts` | AC-1..6, AC-7 (ชุดเดิม), AC-8 | PR เอกสารรอบ 46 (stack) | ~650 |
-| AI18N-2 | group buy + flash sale: ไฟล์กลุ่ม `ecom-group-buy` ในตาราง "ขอบเขต" (รวม `INVALID_DATE`/`DISCOUNT_VALUE_MESSAGE`/template ของ `group-buy-form.ts` → function + `{ error: () => … }`) + `json/{en,th}/ecom-group-buy.json` + ลบ key `groupBuy` ใน `I18N_PENDING` + แก้ static เดิมที่ match ข้อความ (`group-buy-pages.unit.spec.ts`, จุดของกลุ่มใน `medusa-ui.unit.spec.ts`) + `lib/__tests__/i18n-group-buy.unit.spec.ts` + `e2e/admin-i18n-group-buy.spec.ts` | AC-3, AC-4, AC-5, AC-7, AC-9 | AI18N-1 (stack) ∥ 3, 4 | ~700 |
-| AI18N-3 | e-voucher + widget order/variant/refund-blocked: ไฟล์กลุ่ม `ecom-evoucher` (รวม zod positional message ของ `evoucher-pool-form.ts`/`evoucher-partner-form.ts`, `REFUND_BLOCKED_MESSAGE` + `activeChangeType` ของ `order-refund-blocked.ts`) + JSON ของตัวเอง + key `evoucher` ใน `I18N_PENDING` + static เดิมของกลุ่มใน `medusa-ui.unit.spec.ts` + `order-refund-blocked.unit.spec.ts` (AC-7) + `lib/__tests__/i18n-evoucher.unit.spec.ts` + `e2e/admin-i18n-evoucher.spec.ts` | AC-3, AC-4, AC-5, AC-7, AC-10 | AI18N-1 (stack) ∥ 2, 4 | ~700 |
-| AI18N-4 | affiliate: ไฟล์กลุ่ม `ecom-affiliate` (รวม `fieldErrorMap` ของ `affiliate-program-form.ts`, ค่าคงที่ของ `affiliate-payout.ts`) + JSON ของตัวเอง + key `affiliate` ใน `I18N_PENDING` + static เดิมของกลุ่ม + `lib/__tests__/i18n-affiliate.unit.spec.ts` + `e2e/admin-i18n-affiliate.spec.ts` | AC-3, AC-4, AC-5 (PENDING ว่างทั้งหมดหลัง merge), AC-7, AC-11 | AI18N-1 (stack) ∥ 2, 3 | ~750 |
+| AI18N-1 | ☑ #594 — โครง i18n + ล็อกภาษาใน test + ส่วนร่วม: `src/admin/i18n/{index.ts,t.ts}`, `json/{en,th}/*.json` ทั้ง 8 ไฟล์ (`ecom-common` เต็ม, อีก 3 ns เป็น `{}`), `components/common/**` (prompt ใช้ key ของ Medusa + "Leave"/"Continue editing"), `lib/{fetch-error,form-validation,page-offset,single-flight,combobox-escape}.ts` (`fieldErrorMap` รับ function ต่อช่อง — กฎ 4d), `src/admin/__tests__/{i18n.unit.spec.ts,i18n-setup.ts,deps.unit.spec.ts}` (guard AST กฎ 14 a–g + `I18N_PENDING` ทุกไฟล์ของกลุ่ม 2–4 + AC-4b/4c), `apps/backend/jest.config.js` (setup เฉพาะ `unit`), `apps/backend/package.json` + `pnpm-lock.yaml` (`i18next` dev), `apps/storefront/e2e/support/{admin.ts,admin-options.unit.spec.ts}`, `e2e/admin-i18n-common.spec.ts` | AC-1..6, AC-7 (ชุดเดิม), AC-8 | PR เอกสารรอบ 46 (stack) | ~650 |
+| AI18N-2 | ☑ #595 — group buy + flash sale: ไฟล์กลุ่ม `ecom-group-buy` ในตาราง "ขอบเขต" (รวม `INVALID_DATE`/`DISCOUNT_VALUE_MESSAGE`/template ของ `group-buy-form.ts` → function + `{ error: () => … }`) + `json/{en,th}/ecom-group-buy.json` + ลบ key `groupBuy` ใน `I18N_PENDING` + แก้ static เดิมที่ match ข้อความ (`group-buy-pages.unit.spec.ts`, จุดของกลุ่มใน `medusa-ui.unit.spec.ts`) + `lib/__tests__/i18n-group-buy.unit.spec.ts` + `e2e/admin-i18n-group-buy.spec.ts` | AC-3, AC-4, AC-5, AC-7, AC-9 | AI18N-1 (stack) ∥ 3, 4 | ~700 |
+| AI18N-3 | ☑ #596 — e-voucher + widget order/variant/refund-blocked: ไฟล์กลุ่ม `ecom-evoucher` (รวม zod positional message ของ `evoucher-pool-form.ts`/`evoucher-partner-form.ts`, `REFUND_BLOCKED_MESSAGE` + `activeChangeType` ของ `order-refund-blocked.ts`) + JSON ของตัวเอง + key `evoucher` ใน `I18N_PENDING` + static เดิมของกลุ่มใน `medusa-ui.unit.spec.ts` + `order-refund-blocked.unit.spec.ts` (AC-7) + `lib/__tests__/i18n-evoucher.unit.spec.ts` + `e2e/admin-i18n-evoucher.spec.ts` | AC-3, AC-4, AC-5, AC-7, AC-10 | AI18N-1 (stack) ∥ 2, 4 | ~700 |
+| AI18N-4 | ☑ #597 — affiliate: ไฟล์กลุ่ม `ecom-affiliate` (รวม `fieldErrorMap` ของ `affiliate-program-form.ts`, ค่าคงที่ของ `affiliate-payout.ts`) + JSON ของตัวเอง + key `affiliate` ใน `I18N_PENDING` + static เดิมของกลุ่ม + `lib/__tests__/i18n-affiliate.unit.spec.ts` + `e2e/admin-i18n-affiliate.spec.ts` | AC-3, AC-4, AC-5 (PENDING ว่างทั้งหมดหลัง merge), AC-7, AC-11 | AI18N-1 (stack) ∥ 2, 3 | ~750 |
 
 - **ไฟล์ร่วม** (ตัวที่ merge ทีหลัง sync): `src/admin/__tests__/i18n.unit.spec.ts` (แต่ละ task แก้เฉพาะบรรทัด key ของกลุ่มตัวเองใน `I18N_PENDING`) ·
   `src/admin/__tests__/medusa-ui.unit.spec.ts` (แต่ละ task แก้เฉพาะ assertion ของไฟล์กลุ่มตัวเอง) · `src/admin/i18n/index.ts`, `support/admin.ts`, `package.json`/lockfile = AI18N-1 เท่านั้น
