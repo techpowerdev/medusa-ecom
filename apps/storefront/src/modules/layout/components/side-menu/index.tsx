@@ -52,7 +52,6 @@ const SideMenu = ({ regions, storeName }: SideMenuProps) => {
 
             <SheetContent
               side="left"
-              showCloseButton={false}
               overlayProps={{ "data-testid": "side-menu-backdrop" }}
               // เต็มจอบนมือถือเหมือนเดิม (แผงเดิม w-full) — w-3/4 ของ Sheet แคบกว่ารายการประเทศ (min-w 320px) จนลูกศรหลุดจอ
               className="w-full justify-between gap-0 p-6 text-sm sm:max-w-sm"

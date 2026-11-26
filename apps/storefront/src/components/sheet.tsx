@@ -1,25 +1,24 @@
 "use client"
 
 import * as React from "react"
-import { XIcon } from "lucide-react"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
-// SFUI-7 (spec 09 กฎ 3, 9, 10): SheetContent ของ shadcn + `overlayProps` (เช่น testid `side-menu-backdrop` ของ side menu เดิม)
-// และปุ่มปิดในตัวชื่อภาษาไทย — ของ CLI ไม่เปิด prop ของ overlay (และไม่ export SheetPortal/SheetOverlay) ส่วนปุ่มปิดมีข้อความ "Close"
-// จึงประกอบจาก primitive ของ Radix ด้วย class เดียวกับ src/components/ui/sheet.tsx (wrappers.test.tsx เทียบ DOM กับของ CLI)
+// SFUI-7 (spec 09 กฎ 3, 9): SheetContent ของ shadcn + `overlayProps` (เช่น testid `side-menu-backdrop` ของ side menu เดิม) — ของ CLI
+// ไม่เปิด prop ของ overlay (และไม่ export SheetPortal/SheetOverlay) จึงประกอบจาก primitive ของ Radix ด้วย class เดียวกับ
+// src/components/ui/sheet.tsx (wrappers.test.tsx เทียบ DOM กับของ CLI); ไม่มีปุ่มปิดในตัว — ผู้เรียกใส่ `SheetClose` ชื่อไทยเอง
 // ส่วนอื่นของ Sheet (Sheet, SheetTrigger, SheetClose, SheetTitle ฯลฯ) ใช้จาก @/components/ui/sheet ตรง
+// ใช้ `cn` ของ `@/lib/utils` (ต่างจากไฟล์ใน ui/ ที่ใช้ package `cn` ตามผล CLI) — แต่ utility ขนาดฟอนต์ของ globals.css
+// ยังห้ามส่งเข้า wrapper นี้เหมือน ui/ (e2e/sfui-7-ui-pristine.unit.spec.ts, spec 09 กฎ 2)
 function SheetContent({
   className,
   children,
   side = "right",
-  showCloseButton = true,
   overlayProps,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
-  showCloseButton?: boolean
   overlayProps?: React.ComponentProps<typeof SheetPrimitive.Overlay> & { "data-testid"?: string }
 }) {
   return (
@@ -49,12 +48,6 @@ function SheetContent({
         {...props}
       >
         {children}
-        {showCloseButton && (
-          <SheetPrimitive.Close className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-secondary">
-            <XIcon className="size-4" />
-            <span className="sr-only">ปิด</span>
-          </SheetPrimitive.Close>
-        )}
       </SheetPrimitive.Content>
     </SheetPrimitive.Portal>
   )

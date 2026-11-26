@@ -14,8 +14,6 @@ import { Slider as UiSlider } from "@/components/ui/slider"
 // children ของ radio) โดย DOM ส่วนอื่นเท่ากับของ shadcn — ถ้า `shadcn add --overwrite` เปลี่ยน class ของ primitive test นี้จะเตือนให้ตามแก้ wrapper
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-const THAI = /[฀-๿]/
-
 let container: HTMLDivElement
 let root: Root
 
@@ -60,9 +58,9 @@ describe("SheetContent (wrapper src/components/sheet.tsx)", () => {
   const portal = () => normalize(document.body.querySelector("[data-slot=sheet-content]")!.parentElement!.innerHTML)
 
   for (const side of ["left", "right", "top", "bottom"] as const) {
-    it(`side="${side}" ไม่มีปุ่มปิด → DOM เท่ากับ SheetContent ของ shadcn`, () => {
-      const props = { side, showCloseButton: false, className: "w-full p-6", "data-testid": "panel" }
-      render(sheet(<UiSheetContent {...props}>{body()}</UiSheetContent>))
+    it(`side="${side}" → DOM เท่ากับ SheetContent ของ shadcn ที่ปิดปุ่มปิดในตัว (wrapper ไม่มีปุ่มนี้)`, () => {
+      const props = { side, className: "w-full p-6", "data-testid": "panel" }
+      render(sheet(<UiSheetContent {...props} showCloseButton={false}>{body()}</UiSheetContent>))
       const ui = portal()
       act(() => root.unmount())
       root = createRoot(container)
@@ -74,21 +72,13 @@ describe("SheetContent (wrapper src/components/sheet.tsx)", () => {
   it("overlayProps ถึง overlay (testid side-menu-backdrop ของ side menu เดิม)", () => {
     render(
       sheet(
-        <SheetContent side="left" showCloseButton={false} overlayProps={{ "data-testid": "side-menu-backdrop" }}>
+        <SheetContent side="left" overlayProps={{ "data-testid": "side-menu-backdrop" }}>
           {body()}
         </SheetContent>
       )
     )
     const overlay = document.body.querySelector("[data-slot=sheet-overlay]")!
     expect(overlay.getAttribute("data-testid")).toBe("side-menu-backdrop")
-  })
-
-  it("ปุ่มปิดในตัว (ค่าเริ่มต้นเหมือน shadcn) มีชื่อภาษาไทย ไม่มี Close", () => {
-    render(sheet(<SheetContent>{body()}</SheetContent>))
-    const content = document.body.querySelector("[data-slot=sheet-content]")!
-    const close = content.querySelector("button")!
-    expect(close.textContent).toMatch(THAI)
-    expect(content.textContent).not.toMatch(/Close/)
   })
 })
 

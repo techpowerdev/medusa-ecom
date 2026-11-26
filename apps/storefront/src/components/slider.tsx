@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils"
 // SFUI-7 (spec 09 กฎ 3, 10): Slider ของ shadcn + `thumbLabels` — ไม่ตั้งชื่อ thumb แล้ว Radix ใส่ aria-label "Minimum"/"Maximum"
 // ภาษาอังกฤษ; ของ CLI ไม่ส่ง prop ถึง thumb จึงประกอบจาก primitive ของ Radix ด้วย class เดียวกับ src/components/ui/slider.tsx
 // (wrappers.test.tsx เทียบ DOM กับของ CLI)
+// ใช้ `cn` ของ `@/lib/utils` (ต่างจากไฟล์ใน ui/ ที่ใช้ package `cn` ตามผล CLI) — แต่ utility ขนาดฟอนต์ของ globals.css
+// ยังห้ามส่งเข้า wrapper นี้เหมือน ui/ (e2e/sfui-7-ui-pristine.unit.spec.ts, spec 09 กฎ 2)
 function Slider({
   className,
   defaultValue,

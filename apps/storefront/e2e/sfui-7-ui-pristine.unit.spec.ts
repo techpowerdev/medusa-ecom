@@ -8,8 +8,8 @@ import manifest from "./support/shadcn-ui.json"
 import { STOREFRONT, readSource, sourceFiles } from "./support/sfui-source"
 
 // SFUI-7 (spec 09 กฎ 2, 3, 5, AC-19): `src/components/ui/*` = ผลของ shadcn CLI ตรงตัว (ห้ามแก้) — ปรับด้วย wrapper ใน
-// `src/components/*` หรือส่ง className/props; hash ใน `e2e/support/shadcn-ui.json` มาจาก `node scripts/shadcn-ui-verify.mjs --write`
-// (ต้องใช้เน็ต — test นี้ไม่ต้อง)
+// `src/components/*` หรือส่ง className/props; hash ใน `e2e/support/shadcn-ui.json` = `shasum -a 256` ของผล `shadcn@4.23.1 add --overwrite`
+// (test นี้ไม่ต้องใช้เน็ต; ตรวจกับ CLI จริงในเครื่องด้วย `pnpm dlx shadcn@4.23.1 add <name> --dry-run --diff` ทีละตัว → "No changes.")
 
 const UI_DIR = path.join(STOREFRONT, "src/components/ui")
 const uiFiles = () => fs.readdirSync(UI_DIR).sort()
@@ -127,7 +127,7 @@ test("AC-19 (กฎ 2): className/argument ที่ส่งเข้า compon
 })
 
 // ปุ่มปิดในตัวของ DialogContent/SheetContent/DialogFooter ของ CLI มีข้อความ "Close" (กฎ 10) — ใช้ของ ui ต้องปิดปุ่มนั้น;
-// ต้องการปุ่มปิดในตัว → ใช้ wrapper `@/components/sheet` (ข้อความ "ปิด")
+// ต้องการปุ่มปิด → ใส่ `DialogClose`/`SheetClose` ที่มีชื่อภาษาไทยเอง
 test("AC-19 (กฎ 10): DialogContent/SheetContent ของ @/components/ui ตั้ง showCloseButton={false} และ DialogFooter ไม่เปิดปุ่มปิดในตัว", () => {
   const offenders: string[] = []
   for (const file of sourceFiles().filter((f) => f.endsWith(".tsx") && !f.startsWith("src/components/ui/"))) {

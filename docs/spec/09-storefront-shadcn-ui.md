@@ -51,13 +51,15 @@ none
    ใช้ utility มาตรฐานที่ได้ค่าเท่ากัน (ตาม `@apply` ใน `globals.css`): `xsmall-*` → `text-[10px] leading-4`, `small-*` → `text-xs leading-5`, `base-*` → `text-sm leading-6`, `large-*` → `text-base leading-6`,
    `xl-*` → `text-2xl leading-[36px]`, `2xl-*` → `text-[30px] leading-[48px]`, `3xl-*` → `text-[32px] leading-[44px]` + `font-normal` (`-regular`) / `font-semibold` (`-semi`) — AC-19
 3. component ของ shadcn เพิ่มด้วย `pnpm dlx shadcn@4.23.1 add <name>` ลง `src/components/ui/` เท่านั้น และเฉพาะตัวที่ task ระบุ (ตาราง Tasks); add ตัวที่มีอยู่แล้วซ้ำใช้ `--overwrite`;
-   **ห้ามแก้ไฟล์ใน `src/components/ui/`** — ต้องตรงกับผลของ CLI ตามตัวอักษร (SFUI-7, owner 2026-11-26; hash อยู่ใน `e2e/support/shadcn-ui.json` สร้างด้วย
-   `node scripts/shadcn-ui-verify.mjs --write [<name>]` และตรวจกับ CLI จริงในเครื่องด้วย `node scripts/shadcn-ui-verify.mjs` — ต้องใช้เน็ต; สคริปต์รัน CLI ใน temp dir จึงไม่แก้
-   `package.json`/lockfile/`globals.css` ของโปรเจกต์); ปรับด้วย className/props ที่ primitive รับ หรือ **wrapper** `src/components/<name>.tsx` (ชื่อไฟล์และชื่อ export เดียวกับใน `ui/`
+   **ห้ามแก้ไฟล์ใน `src/components/ui/`** — ต้องตรงกับผลของ CLI ตามตัวอักษร (SFUI-7, owner 2026-11-26): ตรวจกับ CLI จริงในเครื่อง (ต้องใช้เน็ต) ด้วย
+   `pnpm dlx shadcn@4.23.1 add <name> --dry-run --diff` ทีละตัวครบทุกไฟล์ใน `ui/` ต้องได้ "No changes." ทุกตัว (ไม่เขียนไฟล์; ใส่หลายตัวในคำสั่งเดียว CLI แสดง diff แค่ 5 ไฟล์แรก);
+   hash ของแต่ละไฟล์อยู่ใน `e2e/support/shadcn-ui.json` (test offline ของ AC-19) — add/`--overwrite` แล้วอัปเดตด้วย `shasum -a 256 src/components/ui/<name>.tsx`
+   (test พิมพ์ hash จริงเมื่อไม่ตรง) และห้ามรับการแก้ `package.json`/lockfile/`globals.css` ที่ CLI เสนอ (ADR-030 ข้อ 3, 7); ปรับด้วย className/props ที่ primitive รับ หรือ **wrapper** `src/components/<name>.tsx` (ชื่อไฟล์และชื่อ export เดียวกับใน `ui/`
    เปลี่ยนแค่ path import) ที่ประกอบจาก export ของ `ui/*` ก่อน — ถ้า `ui/*` ไม่เปิด prop ที่ต้องใช้ ประกอบจาก primitive ของ `radix-ui` ด้วย class เดียวกับไฟล์ใน `ui/` พร้อม test เทียบ DOM
-   กับของ CLI (`src/components/wrappers.test.tsx`); wrapper ปัจจุบัน: `button` (`isLoading` — กฎ 20), `sheet` (`SheetContent` + `overlayProps`, ปุ่มปิดในตัวชื่อ "ปิด"), `slider` (`thumbLabels`),
+   กับของ CLI (`src/components/wrappers.test.tsx`); wrapper ปัจจุบัน: `button` (`isLoading` — กฎ 20), `sheet` (`SheetContent` + `overlayProps`; ไม่มีปุ่มปิดในตัว — ผู้เรียกใส่ `SheetClose` เอง), `slider` (`thumbLabels`),
    `radio-group` (`RadioGroupItem` render `children`); ผู้เรียกที่ไม่ใช้ความสามารถเพิ่มใช้ `@/components/ui/*` ตรง; ปุ่มปิดในตัวของ `DialogContent`/`SheetContent`/`DialogFooter` จาก CLI
-   มีข้อความ "Close" → ใช้จาก `ui/` ต้องส่ง `showCloseButton={false}` (ต้องการปุ่มปิดในตัว → wrapper); test ของ component อยู่นอก `ui/` (AC-19);
+   มีข้อความ "Close" → ใช้จาก `ui/` ต้องส่ง `showCloseButton={false}` แล้วใส่ปุ่มปิดชื่อไทยเอง (`DialogClose`/`SheetClose`); wrapper ใช้ `cn` ของ `@/lib/utils` (ต่างจาก `ui/` ที่ใช้ package `cn`)
+   แต่ utility ขนาดฟอนต์ของ `globals.css` ห้ามส่งเข้า wrapper เช่นเดียวกับ `ui/` (กฎ 2); test ของ component อยู่นอก `ui/` (AC-19);
    ห้ามสร้างไฟล์ใน `src/components/ui/` ที่ไม่มาจาก registry ของ shadcn; task 2–5 ห้ามแก้ `package.json`/`pnpm-lock.yaml`
    (component ต้องการ dependency ใหม่ → หยุดรายงาน planner)
 4. map primitive (ADR-030 ข้อ 5): modal ที่อยู่ → `Dialog`; side menu → `Sheet side="left"`, search drawer → `Sheet side="top"`, mobile actions → `Sheet side="bottom"`;
@@ -158,7 +160,7 @@ none
   — reviewer ตรวจ (ไม่ใช่ static): task ที่จะ merge ลบ key ของตัวเองออกจาก `PENDING` ครบ และไม่ลบ key ของ task อื่น
 - AC-7 (SFUI-1b, กฎ 2) static: `components.json` มีค่าตามกฎ 2 ทุก field; `tsconfig.json` มี `@/*`; `src/lib/utils.ts` export `cn` (สร้างด้วย `createCn` ตามกฎ 2 และทุก utility ขนาดฟอนต์ใน `globals.css` อยู่ใน `FONT_SIZE_UTILITIES`); `vitest.config.mts` มี alias `"@"` → `src` และ `include` ครอบ `src/**/*.test.ts` + `src/**/*.test.tsx`;
   unit `src/lib/utils.test.ts` ที่ `import { cn } from "@/lib/utils"` (ผ่าน alias ไม่ใช่ path สัมพัทธ์) ผ่าน: `cn("px-2", "px-4") === "px-4"`
-- AC-8 (SFUI-2, กฎ 3, 14, 20) unit (jsdom) `src/components/ui/button.test.tsx` (SFUI-7 ย้ายเป็น `src/components/button.test.tsx` ทดสอบ wrapper `src/components/button.tsx`) — ต้อง**ถูกรันจริง** (ปรากฏในผล `pnpm --filter storefront test:unit` ของ PR; include `*.test.tsx` จาก SFUI-1b) — ของ `src/components/ui/button.tsx`: `isLoading` → ปุ่ม disabled และข้อความมีอักษรไทย; `buttonVariants({ variant: "outline", size: "sm" })` คืน string;
+- AC-8 (SFUI-2, กฎ 3, 14, 20) unit (jsdom) `src/components/ui/button.test.tsx` (SFUI-7 ย้ายเป็น `src/components/button.test.tsx` ทดสอบ wrapper `src/components/button.tsx`) — ต้อง**ถูกรันจริง** (ปรากฏในผล `pnpm --filter storefront test:unit` ของ PR; include `*.test.tsx` จาก SFUI-1b) — ของ `src/components/button.tsx` (SFUI-2–6 อยู่ใน `src/components/ui/button.tsx`): `isLoading` → ปุ่ม disabled และข้อความมีอักษรไทย; `buttonVariants({ variant: "outline", size: "sm" })` คืน string;
   shim `Button`/`Badge`/`Label`/`Input`/`Table`/`IconButton`/`buttonClassName`/`clx` ส่งต่อไป shadcn (`Button` ที่ render มี `data-slot="button"`); e2e AC-4 ข้อ (2);
   `e2e/core-90-link-button.unit.spec.ts` (AC-187) ผ่าน
 - AC-9 (SFUI-3a, กฎ 4, 9, 11) e2e ใหม่ `e2e/sfui-3a-dialog.spec.ts` (ลูกค้าที่ login): Given `/<cc>/account/addresses` When กด `add-address-button` Then `getByRole("dialog")` มีชื่อที่เข้าถึงได้และเป็นภาษาไทย
@@ -188,7 +190,7 @@ none
 - AC-19 (SFUI-7, กฎ 2, 3, 5, 10) static `e2e/sfui-7-ui-pristine.unit.spec.ts`: ไฟล์ใน `src/components/ui/` มีชุดชื่อและ sha256 ตรงกับ `e2e/support/shadcn-ui.json` (ผล `shadcn@4.23.1 add --overwrite`),
   ไม่มี `SFUI:`/import `@/lib/utils`/ไฟล์ test; `radix-ui` ถูก import เฉพาะใน `src/components/**`; className/argument ที่ส่งเข้า `@/components/**` (รวมค่าคงที่ในไฟล์เดียวกัน) ไม่มี utility ขนาดฟอนต์ของ `globals.css`;
   `DialogContent`/`SheetContent` จาก `ui/` มี `showCloseButton={false}` และ `DialogFooter` ไม่เปิดปุ่มปิด; unit `src/components/button.test.tsx` (ย้ายจาก `ui/` — AC-8) และ `src/components/wrappers.test.tsx`
-  (wrapper ที่ไม่ใช้ความสามารถเพิ่มได้ DOM เท่ากับของ CLI, `overlayProps`/`thumbLabels`/`children` ถึง DOM, ปุ่มปิดในตัวเป็นภาษาไทย); `node scripts/shadcn-ui-verify.mjs` ผ่านในเครื่อง (บันทึกใน evidence);
+  (wrapper ที่ไม่ใช้ความสามารถเพิ่มได้ DOM เท่ากับของ CLI, `overlayProps`/`thumbLabels`/`children` ถึง DOM); `pnpm dlx shadcn@4.23.1 add <name> --dry-run --diff` ทุกไฟล์ใน `ui/` ได้ "No changes." (บันทึกใน evidence);
   e2e ที่อ้างหน้าที่แตะผ่านโดยไม่แก้ (กฎ 19)
 
 ## Non-functional (concurrency, idempotency, scale, observability)
@@ -229,7 +231,7 @@ qa เก็บ evidence ทุก task ที่มี UI (ทุก task ย�
 | SFUI-5d | account + order: `src/modules/{account,order}/**` (ยกเว้นไฟล์ของ 3a/3c/3e), `src/app/[countryCode]/(main)/{account,order}/**` (ยกเว้น `account/@dashboard/vouchers/**` ของ 5e) | — | AC-15 | SFUI-2 | ∥ |
 | SFUI-5e | ฟีเจอร์: `src/modules/{group-buy,affiliate,evoucher}/**`, `src/app/[countryCode]/(main)/{affiliate,g}/**`, `src/app/[countryCode]/(main)/account/@dashboard/vouchers/**` | — | AC-15 | SFUI-2 | ∥ |
 | SFUI-6 | ปิดงาน: ลบ shim `common/components/ui/`, `common/components/radio/`, `legacy-medusa.css` + `@import`, dependency ขั้น 6 (`package.json`/lockfile), `e2e/sfui-legacy.unit.spec.ts` เหลือข้อ (a) รายการว่าง, `e2e/sfui-legacy-css.unit.spec.ts` (ลบ), `CLAUDE.md` หัวข้อ Stack (+ ข้อความ storefront ที่อ้าง preset ถ้ามี — owner อนุมัติใน review), บันทึก bundle ก่อน/หลัง | — | AC-1 (ขั้น 6), AC-16 | SFUI-1a..SFUI-5e ทั้งหมด | — |
-| SFUI-7 | ไฟล์ใน `ui/` = ผล CLI ตรงตัว (owner 2026-11-26): `src/components/ui/*` (คืนเป็นผล `shadcn add --overwrite`), wrapper ใหม่ `src/components/{button,sheet,slider,radio-group}.tsx`, ย้าย `src/components/ui/button.test.tsx` → `src/components/button.test.tsx`, ใหม่ `src/components/wrappers.test.tsx`, `scripts/shadcn-ui-verify.mjs`, `e2e/support/shadcn-ui.json`, `e2e/sfui-7-ui-pristine.unit.spec.ts`, แก้ `e2e/sfui-4-store.unit.spec.ts` (AC-14 ข้อ import Slider/`cn` ตามกฎใหม่), ผู้เรียก wrapper และจุดที่ส่ง utility ขนาดฟอนต์เข้า primitive (`account-info`, `address-select`, `country-select`, `search/drawer`, `shipping`), กฎ 2/3/5, ADR-030 ข้อ 3–4, `CLAUDE.md` หัวข้อ Stack | ทุกตัวใน `ui/` (`--overwrite`) | AC-19 | SFUI-6 | — |
+| SFUI-7 | ไฟล์ใน `ui/` = ผล CLI ตรงตัว (owner 2026-11-26): `src/components/ui/*` (คืนเป็นผล `shadcn add --overwrite`), wrapper ใหม่ `src/components/{button,sheet,slider,radio-group}.tsx`, ย้าย `src/components/ui/button.test.tsx` → `src/components/button.test.tsx`, ใหม่ `src/components/wrappers.test.tsx`, `e2e/support/shadcn-ui.json`, `e2e/sfui-7-ui-pristine.unit.spec.ts`, แก้ `e2e/sfui-4-store.unit.spec.ts` (AC-14 ข้อ import Slider/`cn` ตามกฎใหม่), ผู้เรียก wrapper และจุดที่ส่ง utility ขนาดฟอนต์เข้า primitive (`account-info`, `address-select`, `country-select`, `search/drawer`, `shipping`), กฎ 2/3/5, ADR-030 ข้อ 3–4, `CLAUDE.md` หัวข้อ Stack | ทุกตัวใน `ui/` (`--overwrite`) | AC-19 | SFUI-6 | — |
 
 ลำดับ: SFUI-1a → SFUI-1b → SFUI-2 → (SFUI-3a ∥ 3b ∥ 3c ∥ 3d ∥ 3e ∥ SFUI-4 ∥ 5a ∥ 5b ∥ 5c ∥ 5d ∥ 5e) → SFUI-6 → SFUI-7
 - ไฟล์ร่วมของกลุ่มขนาน: `e2e/sfui-legacy.unit.spec.ts` (ต่างคนต่างลบ key ของตัวเอง — ตัวที่ merge ทีหลัง sync), `src/components/ui/*` (แต่ละ task เพิ่มคนละไฟล์ตามคอลัมน์ shadcn add)
