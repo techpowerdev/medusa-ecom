@@ -47,7 +47,7 @@ const LineItemPrice = ({
           </>
         )}
         <span
-          className={cn("text-base-regular", {
+          className={cn("text-sm leading-6 font-normal", {
             "text-primary": hasReducedPrice,
           })}
           data-testid="product-price"

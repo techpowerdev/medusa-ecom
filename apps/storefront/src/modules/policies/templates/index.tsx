@@ -13,11 +13,11 @@ export const PolicyPage = ({
   children: React.ReactNode
 }) => (
   <div className="content-container py-12 max-w-3xl" data-testid="policy-page">
-    <h1 className="text-2xl-semi mb-8" data-testid="policy-title">
+    <h1 className="text-[30px] leading-[48px] font-semibold mb-8" data-testid="policy-title">
       {title}
     </h1>
     <div
-      className="flex flex-col gap-6 text-base-regular text-foreground"
+      className="flex flex-col gap-6 text-sm leading-6 font-normal text-foreground"
       data-testid="policy-content"
     >
       {children}

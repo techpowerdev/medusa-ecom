@@ -1,0 +1,66 @@
+# SFUI-8 — floating label (spec 09 กฎ 23, AC-22, AC-23, AC-25)
+ฐาน: e2a3ffa9 (b2b27ccc + docs รอบ 45) · Node 22.23.3 · Tailwind 4.3.5 · storefront prod build (`next build` + `next start`) · Playwright --workers=1
+
+## การแก้
+- globals.css: ลบ rule `input:focus ~ label, input:not(:placeholder-shown) ~ label { @apply -translate-y-3 text-xsmall-regular }`
+  และ `input:focus ~ label { @apply left-0 transition-all duration-300 }` (ไม่เหลือ token 13 ตัวใน rule ป้ายลอย)
+- common/components/input: `peer` ใน className ของ `Input` จาก ui/ (ไม่แก้ ui/*); label ได้
+  `peer-focus:{-translate-y-3,text-[10px],leading-4,font-normal,left-0,transition-all,duration-300}` +
+  `peer-not-placeholder-shown:{-translate-y-3,text-[10px],leading-4,font-normal}` (ค่าตรง ไม่ใช้ token)
+- ยืนยัน compile (Tailwind 4.3.5, CSS ใน .next/static/chunks/*.css):
+  `.peer-not-placeholder-shown\:text-\[10px\]:is(:where(.peer):not(:placeholder-shown)~*){font-size:10px}` (ทำนองเดียวกันทุก class)
+  `.peer-focus\:duration-300:is(:where(.peer):focus~*){--tw-duration:.3s;transition-duration:.3s}`; selector `~ label` แบบไม่กำกับใน CSS ที่ compile = 0
+- ไม่มีผู้เรียก `<Input>` ที่ส่ง className (ซึ่งจะทับ `peer`) — ตรวจทุกไฟล์ที่ import common/components/input
+
+## label ที่ selector เดิมจับ (document.querySelectorAll ของ `input:focus ~ label` ∪ `input:not(:placeholder-shown) ~ label`)
+หน้าที่ตรวจ (ลูกค้า login + cart 1 ชิ้น เว้นแต่ระบุ): /th/account (ยังไม่ login: login + register), /th, /th/store, PDP /th/products/t-shirt, /th/cart,
+/th/checkout?step=address|delivery|payment|review (delivery–review ใช้ cart ที่พร้อมจ่าย — RadioGroup ใน form), /th/account, /orders, /profile,
+/addresses, /vouchers, /th/search?q=shirt, /th/contact, /th/g/<token> (team และ pool)
+| หน้า | label | input พี่น้องที่นำหน้า | ก่อน (base) | หลัง |
+|---|---|---|---|---|
+| PDP | option-button L/M/S (text-small-regular) | radio.sr-only | 10px/16px/400, translate 0px -12px | 12px/20px/400, translate none |
+| PDP | label ที่ครอบ product-quantity-select (text-small-regular) | input hidden ×2 | 10px/16px/400, translate 0px -12px | 12px/20px/400, translate none |
+| /th/g/<token> team, pool | option-button L/M/S (component เดียวกับ PDP) | radio.sr-only | 10px/16px/400, translate 0px -12px | 12px/20px/400, translate none |
+| checkout step=address | ป้ายลอย "อีเมล" (ค่าเติมจากบัญชี) | email | 10px/16px/400, 0px -12px, left 0px | เท่าเดิม |
+| account/profile | ป้ายลอย "ชื่อ", "นามสกุล" (ค่าเติม) | text | 10px/16px/400, 0px -12px, left 0px | เท่าเดิม |
+- หน้าอื่นที่ตรวจ: ไม่พบ label ที่ selector จับ (Checkbox ของ common/components/checkbox ห่อ input ซ่อนของ Radix ใน <span> แล้ว — SFUI-5a;
+  RadioGroup ของ checkout delivery/payment และ store refinements ไม่มี <label> พี่น้องหลัง input) → ไม่มี label ใดที่ค่าหลังไม่ตรง className ของตัวเอง
+
+## Red (บน commit ฐาน ก่อนแก้)
+$ npx playwright test e2e/sfui-8-floating-label.unit.spec.ts --project=unit → 3 failed (AC-22: พบ selector `input:focus ~ label` ฯลฯ, input ยังไม่มี peer)
+$ npx playwright test e2e/sfui-8-floating-label.spec.ts --project=chromium --workers=1
+✓  1 [chromium] › e2e/sfui-8-floating-label.spec.ts:76:5 › AC-23 (1): ป้ายลอยของ login / register เท่าค่าเดิม (ว่าง, focus, กรอกแล้ว blur) (2.4s)
+✓  2 [chromium] › e2e/sfui-8-floating-label.spec.ts:105:5 › AC-23 (1): ป้ายลอยของ checkout step=address เท่าค่าเดิม (ค่าที่เติมจากบัญชี, ว่าง → focus → กรอก) (6.2s)
+✘  3 [chromium] › e2e/sfui-8-floating-label.spec.ts:126:5 › AC-23 (2)(3): PDP และหน้า group buy — option-button และ label ของจำนวน 12px/20px/400 ไม่เลื่อน ไม่ทับ legend (3.6s)
+-   "lineHeight": "20px",
+-   "size": "12px",
+-   "translate": "none",
++   "lineHeight": "16px",
++   "size": "10px",
++   "translate": "0px -12px",
+1 failed
+2 passed (12.9s)
+(ข้อ 1 ผ่านบนฐาน = ค่าที่ assert คือค่าที่วัดที่ปลาย develop; ข้อ 2/3 ล้มเพราะบั๊กที่แก้)
+
+## Green (หลังแก้)
+$ npx playwright test e2e/sfui-8-floating-label.unit.spec.ts --project=unit
+3 passed
+$ npx playwright test e2e/sfui-8-floating-label.spec.ts --project=chromium --workers=1
+✓  1 [chromium] › e2e/sfui-8-floating-label.spec.ts:76:5 › AC-23 (1): ป้ายลอยของ login / register เท่าค่าเดิม (ว่าง, focus, กรอกแล้ว blur) (2.7s)
+✓  2 [chromium] › e2e/sfui-8-floating-label.spec.ts:105:5 › AC-23 (1): ป้ายลอยของ checkout step=address เท่าค่าเดิม (ค่าที่เติมจากบัญชี, ว่าง → focus → กรอก) (5.3s)
+✓  3 [chromium] › e2e/sfui-8-floating-label.spec.ts:126:5 › AC-23 (2)(3): PDP และหน้า group buy — option-button และ label ของจำนวน 12px/20px/400 ไม่เลื่อน ไม่ทับ legend (3.5s)
+3 passed (12.3s)
+
+## Verify
+- lint: 0 errors (27 warnings เดิม ไม่มีในไฟล์ของ task) · typecheck: ผ่าน · test:unit (vitest): Tests  2024 passed (2024) · build prod: ผ่าน
+- test:e2e:unit (ทั้ง project): 208 passed (2.8s)
+- DB สะอาด: sfui-mobile-390: 1 passed (36.6s)
+- spec ที่อ้างหน้า/testid ในขอบเขต (Input ทุกฟอร์ม, option-button, product-quantity-select, product-options) ที่ไม่ใช้ Stripe — 42 ไฟล์: 132 passed (5.5m)
+  affiliate-last-click.spec.ts core-14-buy-login.spec.ts core-14b-add-variant.spec.ts core-14c-login-foreign-cart.spec.ts core-14d-cart-after-login.spec.ts core-19a-nav-cart-search.spec.ts core-22-account-fixes.spec.ts core-23-profile-order.spec.ts core-23b-account-progress.spec.ts core-23c-account-forms.spec.ts core-24-pdp-quantity.spec.ts core-25-pdp-option-reset.spec.ts core-29-restore-cart.spec.ts core-30-login-return.spec.ts core-32-shipping-profile-filter.spec.ts core-38-mobile-layout.spec.ts core-41-checkout-first-step.spec.ts core-4e-checkout-polish.spec.ts core-4f-auth-errors.spec.ts core-4g-checkout-polish.spec.ts core-4h-auth-reason.spec.ts core-4j-checkout-discount-address.spec.ts core-52-checkout-guards.spec.ts core-63-address-invisible.spec.ts core-73-register-existing-email.spec.ts core-79-login-link-mobile.spec.ts core-store.spec.ts ev-7c-digital-only-checkout.spec.ts ev-7d-digital-only-totals.spec.ts flash-sale-fs15.spec.ts fs-21-customer-limit.spec.ts fs-23-pdp-cart-aware-limit.spec.ts group-buy-join.spec.ts group-buy-ui-polish.spec.ts pay-12-cart-error-notice.spec.ts sfui-3a-dialog.spec.ts sfui-3b-sheet.spec.ts sfui-3c-select.spec.ts sfui-5a-common.spec.ts sfui-8-floating-label.spec.ts thai-ui-account.spec.ts thai-ui-checkout.spec.ts
+- affiliate (ฟอร์ม Input ของ portal) 5 ไฟล์: 20 passed (22.4s)
+  affiliate-portal-polish affiliate-header-overflow affiliate-profile-overflow affiliate-portal affiliate-portal-pages
+- ใช้ Stripe (test key + stripe listen) 21 ไฟล์: 62 passed, 1 skipped (pay-19 ต้องมี E2E_PROMPTPAY_REFUND_EMAIL), 3 failed รอบแรก
+  (pay-9:74, payments:109, payments:136 — ค้างที่ step=payment หลังคลิก submit-payment-button = flake เดิมของ develop) รันซ้ำ: 3 passed
+  core-19b-continue-to-review.spec.ts core-19f-switch-payment-method.spec.ts core-60-cart-subtotal-label.spec.ts core-57-cart-totals.spec.ts core-95-payment-received-notice.spec.ts group-buy-account-orders.spec.ts fs-24-card-race-refund.spec.ts pay-11-promptpay-refund-reason.spec.ts pay-19-promptpay-refunded-reload.spec.ts fs-22-refunded-notice.spec.ts pay-15-promptpay-go-to-cart.spec.ts pay-17-stripe-error-thai.spec.ts payments-promptpay-fallback-cap.spec.ts payments-promptpay-already-paid.spec.ts payments.spec.ts sfui-3d-payment.spec.ts payments-order-pay.spec.ts pay-14-stale-session.spec.ts payments-promptpay-race.spec.ts payments-refund.spec.ts pay-9-refunded-cart-repay.spec.ts
+- AC-25: git diff --stat ของ apps/backend, apps/storefront/src/components/ui, apps/storefront/package.json, pnpm-lock.yaml = ว่าง
+- assertion เดิมที่ยึดค่าบั๊ก (กฎ 25): ไม่พบ — ไม่มี e2e/unit เดิมถูกแก้

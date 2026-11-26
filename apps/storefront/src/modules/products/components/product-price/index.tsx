@@ -27,7 +27,7 @@ export default function ProductPrice({
   return (
     <div className="flex flex-col text-foreground">
       <span
-        className={cn("text-xl-semi", {
+        className={cn("text-2xl leading-[36px] font-semibold", {
           "text-primary": selectedPrice.price_type === "sale",
         })}
       >

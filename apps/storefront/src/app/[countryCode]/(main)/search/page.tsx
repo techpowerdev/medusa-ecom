@@ -57,7 +57,7 @@ export default async function SearchPage(props: Props) {
 
   return (
     <div className="content-container py-6" data-testid="search-container">
-      <h1 className="text-2xl-semi mb-6" data-testid="search-page-title">
+      <h1 className="text-[30px] leading-[48px] font-semibold mb-6" data-testid="search-page-title">
         {query ? `ผลการค้นหา "${query}"` : "ค้นหาสินค้า"}
       </h1>
       <SearchForm
@@ -67,7 +67,7 @@ export default async function SearchPage(props: Props) {
       />
       {query && (
         <p
-          className="text-small-regular text-muted-foreground mb-6"
+          className="text-xs leading-5 font-normal text-muted-foreground mb-6"
           data-testid="search-result-count"
         >
           พบสินค้า {response.count} รายการ
