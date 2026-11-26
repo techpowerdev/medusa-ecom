@@ -1,4 +1,4 @@
-import { buttonClassName } from "@modules/common/components/ui"
+import { buttonVariants } from "@/components/ui/button"
 import { useMemo } from "react"
 import { orderPreview } from "@lib/util/order-preview"
 
@@ -28,7 +28,7 @@ const OrderCard = ({ order }: OrderCardProps) => {
       <div className="uppercase text-large-semi mb-1">
         #<span data-testid="order-display-id">{order.display_id}</span>
       </div>
-      <div className="flex items-center divide-x divide-gray-200 text-small-regular text-ui-fg-base">
+      <div className="flex items-center divide-x divide-gray-200 text-small-regular text-foreground">
         <span className="pr-2" data-testid="order-created-at">
           {formatDate(order.created_at)}
         </span>
@@ -49,9 +49,9 @@ const OrderCard = ({ order }: OrderCardProps) => {
               data-testid="order-item"
             >
               <Thumbnail thumbnail={i.thumbnail} images={[]} size="full" />
-              <div className="flex items-center text-small-regular text-ui-fg-base">
+              <div className="flex items-center text-small-regular text-foreground">
                 <span
-                  className="text-ui-fg-base font-semibold"
+                  className="text-foreground font-semibold"
                   data-testid="item-title"
                 >
                   {i.title}
@@ -64,17 +64,17 @@ const OrderCard = ({ order }: OrderCardProps) => {
         })}
         {moreCount > 0 && (
           <div className="w-full h-full flex flex-col items-center justify-center">
-            <span className="text-small-regular text-ui-fg-base">
+            <span className="text-small-regular text-foreground">
               + <span data-testid="order-card-more-count">{moreCount}</span>
             </span>
-            <span className="text-small-regular text-ui-fg-base">รายการ</span>
+            <span className="text-small-regular text-foreground">รายการ</span>
           </div>
         )}
       </div>
       <div className="flex justify-end">
         <LocalizedClientLink
           href={`/account/orders/details/${order.id}`}
-          className={buttonClassName({ variant: "secondary" })}
+          className={buttonVariants({ variant: "outline" })}
           data-testid="order-details-link"
         >
           ดูรายละเอียด

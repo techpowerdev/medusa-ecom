@@ -24,7 +24,7 @@ const AccountLayout: React.FC<AccountLayoutProps> = ({
         <div className="flex flex-col small:flex-row items-end justify-between small:border-t border-gray-200 py-12 gap-8">
           <div data-testid="account-help">
             <h3 className="text-xl-semi mb-4">มีคำถาม?</h3>
-            <span className="txt-medium">
+            <span className="text-sm leading-[1.4rem]">
               ดูคำถามที่พบบ่อยและคำตอบได้ที่หน้าบริการลูกค้า
             </span>
           </div>

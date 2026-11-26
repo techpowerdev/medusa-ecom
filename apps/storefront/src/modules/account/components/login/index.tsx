@@ -29,12 +29,12 @@ const Login = ({ setCurrentView, defaultEmail, notice }: Props) => {
       data-testid="login-page"
     >
       <h1 className="text-large-semi uppercase mb-6">ยินดีต้อนรับกลับมา</h1>
-      <p className="text-center text-base-regular text-ui-fg-base mb-8">
+      <p className="text-center text-base-regular text-foreground mb-8">
         เข้าสู่ระบบเพื่อรับประสบการณ์การช้อปปิ้งที่ดียิ่งขึ้น
       </p>
       {message?.state === "verification_required" && (
         <div
-          className="w-full mb-6 text-center text-base-regular text-ui-fg-base bg-ui-bg-subtle border border-ui-border-base rounded-rounded p-4"
+          className="w-full mb-6 text-center text-base-regular text-foreground bg-muted border border-border rounded-rounded p-4"
           data-testid="login-verification-message"
         >
           เราได้ส่งลิงก์ยืนยันไปที่ <strong>{message.email}</strong> แล้ว
@@ -85,7 +85,7 @@ const Login = ({ setCurrentView, defaultEmail, notice }: Props) => {
           เข้าสู่ระบบ
         </SubmitButton>
       </form>
-      <span className="text-center text-ui-fg-base text-small-regular mt-6">
+      <span className="text-center text-foreground text-small-regular mt-6">
         ยังไม่เป็นสมาชิก?{" "}
         <button
           type="button"

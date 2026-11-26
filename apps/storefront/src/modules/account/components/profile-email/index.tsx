@@ -11,7 +11,7 @@ const ProfileEmail = ({ customer }: MyInformationProps) => {
   return (
     <div className="text-small-regular w-full" data-testid="account-email">
       <div className="flex flex-col">
-        <span className="uppercase text-ui-fg-base">อีเมล</span>
+        <span className="uppercase text-foreground">อีเมล</span>
         <span className="font-semibold" data-testid="current-info">
           {customer.email}
         </span>

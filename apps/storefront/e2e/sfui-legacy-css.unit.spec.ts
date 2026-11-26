@@ -13,7 +13,6 @@ const LEGACY_CSS = path.join(SRC, "styles", "legacy-medusa.css")
 const NO_STYLE_IN_PRESET = [
   "txt-compact-plus",
   "txt-ui-fg-base",
-  "text-ui-fg-medium-plus",
   "shadow-borders-interactive",
   "shadow-borders-strong-with-shadow",
 ]

@@ -1,7 +1,7 @@
 "use client"
 
-import { ArrowRightOnRectangle } from "@medusajs/icons"
-import { clx } from "@modules/common/components/ui"
+import { cn } from "@/lib/utils"
+import { LogOut } from "lucide-react"
 import { useLinkStatus } from "next/link"
 import { useParams, usePathname } from "next/navigation"
 
@@ -114,7 +114,7 @@ const AccountNav = ({
                     data-testid="logout-button"
                   >
                     <div className="flex items-center gap-x-2">
-                      <ArrowRightOnRectangle />
+                      <LogOut className="size-[15px]" />
                       <span>ออกจากระบบ</span>
                     </div>
                     <ChevronDown className="transform -rotate-90" />
@@ -213,8 +213,8 @@ const AccountNavLink = ({
   return (
     <LocalizedClientLink
       href={href}
-      className={clx("text-ui-fg-subtle hover:text-ui-fg-base", {
-        "text-ui-fg-base font-semibold": active,
+      className={cn("text-muted-foreground hover:text-foreground", {
+        "text-foreground font-semibold": active,
       })}
       data-testid={dataTestId}
     >
@@ -232,7 +232,7 @@ const NavPending = () => {
     <span
       role="status"
       aria-label="กำลังโหลด"
-      className="ml-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-ui-fg-muted border-t-transparent align-middle"
+      className="ml-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent align-middle"
       data-testid="account-nav-pending"
     />
   )
