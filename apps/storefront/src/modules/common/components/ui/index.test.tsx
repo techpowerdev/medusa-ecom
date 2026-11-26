@@ -56,8 +56,26 @@ describe("shim @modules/common/components/ui ส่งต่อไป shadcn", (
       cn(buttonVariants({ variant: "outline", size: "sm" }), "w-full")
     )
     expect(shim.buttonClassName({ variant: "transparent", size: "large" })).toBe(
-      cn(buttonVariants({ variant: "ghost", size: "lg" }))
+      cn(buttonVariants({ variant: "ghost", size: "lg" }), "h-12")
     )
+  })
+
+  // D-1 (qa SFUI): `large` ของ shim เดิมสูง 48px (`h-12`) — `lg` ของ shadcn สูง 40px ทำให้คลิก `submit-payment-button`
+  // หลังกรอกบัตรตกใน iframe ของ Stripe; กฎ 19 ชนะกฎ 20 → คงความสูงเดิม
+  it("Button / buttonClassName size large คงความสูง h-12 ของ shim เดิม (D-1)", () => {
+    const el = render(
+      <shim.Button size="large" data-testid="x-large">
+        ชำระเงิน
+      </shim.Button>
+    )
+    const classes = el.querySelector('[data-testid="x-large"]')!.className.split(" ")
+    expect(classes).toContain("h-12")
+    expect(classes).not.toContain("h-10")
+    expect(classes).toContain("px-6")
+    const link = shim.buttonClassName({ size: "large" }, "w-full").split(" ")
+    expect(link).toContain("h-12")
+    expect(link).not.toContain("h-10")
+    expect(link).toContain("w-full")
   })
 
   it("IconButton → Button ghost/icon ของ shadcn", () => {
