@@ -1,0 +1,116 @@
+# SFUI-10 — ลบ @utility ขนาดฟอนต์ของ starter 13 ตัว + cn มาตรฐาน (spec 09 กฎ 24, AC-24, AC-25)
+# branch feat/SFUI-10-drop-font-utilities แตกจาก feat/SFUI-9e-features-font 2583379b (รวม docs + SFUI-8 + 9a..9e แล้ว)
+# Node 22, macOS; storefront prod build (next start :8130) + backend prod build (:9130), DB medusa_sfui10, Redis db 13
+
+## Red — guard ใหม่ก่อนแก้ (npx playwright test --project=unit e2e/sfui-10-font-utilities.unit.spec.ts)
+  ✓  1 [unit] › e2e/sfui-10-font-utilities.unit.spec.ts:27:5 › AC-24: ตัวจับ token จับครบ 13 ตัวและไม่นับ utility มาตรฐาน (control)
+  ✘  2 [unit] › e2e/sfui-10-font-utilities.unit.spec.ts:38:5 › AC-24 (a): ไม่มีไฟล์ใดใน src/** (รวม .css, test, comment) ที่มี utility ขนาดฟอนต์ของ starter
+  ✘  3 [unit] › e2e/sfui-10-font-utilities.unit.spec.ts:50:5 › AC-24 (b): globals.css ไม่มี `@utility text-`
+  ✘  4 [unit] › e2e/sfui-10-font-utilities.unit.spec.ts:54:5 › AC-24 (c): src/lib/utils.ts มีเพียง re-export cn จาก package cn และไม่มีไฟล์ใน src/ ที่อ้าง cn/config, createCn, FONT_SIZE_UTILITIES
+  3 failed
+  1 passed
+(a) ล้มเพราะ globals.css 13 จุด + utils.test.ts 14 จุด + theme-css.test.ts 4 จุด; (b) มี @utility text-*; (c) utils.ts ยัง import createCn จาก cn/config
+Red (vitest src/lib/utils.test.ts): 'เป็น cn ของ package cn ตรงตัว' ล้ม — expected [Function] to be [Function] (cn ยังเป็น createCn)
+
+## Green — static + unit ที่แก้
+  ✓   2 [unit] › e2e/sfui-10-font-utilities.unit.spec.ts:27:5 › AC-24: ตัวจับ token จับครบ 13 ตัวและไม่นับ utility มาตรฐาน (control)
+  ✓   3 [unit] › e2e/sfui-shadcn-init.unit.spec.ts:19:5 › AC-7: components.json มีค่าตามกฎ 2 ทุก field
+  ✓   5 [unit] › e2e/sfui-shadcn-init.unit.spec.ts:43:5 › AC-7: tsconfig.json มี "@/*": ["*"] บน baseUrl src และคง alias เดิม
+  ✓   6 [unit] › e2e/sfui-shadcn-init.unit.spec.ts:55:5 › AC-7: src/lib/utils.ts export cn จาก package cn (re-export ตรง)
+  ✓   7 [unit] › e2e/sfui-shadcn-init.unit.spec.ts:71:5 › AC-7: vitest.config.mts มี alias "@" → src และ include ครอบ src/**/*.test.ts + src/**/*.test.tsx
+  ✓   4 [unit] › e2e/sfui-10-font-utilities.unit.spec.ts:38:5 › AC-24 (a): ไม่มีไฟล์ใดใน src/** (รวม .css, test, comment) ที่มี utility ขนาดฟอนต์ของ starter
+  ✓   8 [unit] › e2e/sfui-10-font-utilities.unit.spec.ts:50:5 › AC-24 (b): globals.css ไม่มี `@utility text-`
+  ✓   9 [unit] › e2e/sfui-10-font-utilities.unit.spec.ts:54:5 › AC-24 (c): src/lib/utils.ts มีเพียง re-export cn จาก package cn และไม่มีไฟล์ใน src/ ที่อ้าง cn/config, createCn, FONT_SIZE_UTILITIES
+  ✓   1 [unit] › e2e/sfui-legacy.unit.spec.ts:22:5 › AC-6 (a) / AC-16: ไม่มีไฟล์ใดใน src/** ที่มี pattern ต้องห้ามของกฎ 15 (PENDING ว่าง)
+  ✓  10 [unit] › e2e/sfui-legacy.unit.spec.ts:29:5 › AC-16: ไม่มี legacy-medusa.css, shim common/components/{ui,radio,modal} และ globals.css ไม่ import legacy
+  ✓  11 [unit] › e2e/sfui-legacy.unit.spec.ts:45:5 › AC-6: ตัวจับ class ของ preset แยก variant/important/opacity และไม่นับ class ของ Tailwind ปกติ
+  ✓  12 [unit] › e2e/sfui-legacy.unit.spec.ts:67:5 › AC-6: ตัวแปรดิบของ preset var(--fg-*/--bg-*/--border-*) ในไฟล์ที่ไม่ใช่ test นับเป็น pattern ต้องห้าม
+  ✓  13 [unit] › e2e/sfui-legacy.unit.spec.ts:76:5 › AC-6: ไฟล์ที่อ้าง var(--fg-*) อยู่ใน PENDING ของ task เจ้าของไฟล์ (หรือย้ายเสร็จแล้ว — ไม่มี pattern)
+  ✓  14 [unit] › e2e/sfui-legacy.unit.spec.ts:93:5 › AC-16: ทุก var(--…) ที่ src/** อ้างตรงมีนิยามใน src/styles/*.css (ยกเว้นของ Tailwind/next/font/Radix)
+  14 passed
+vitest src/lib/utils.test.ts src/styles/theme-css.test.ts: Test Files 2 passed, Tests 22 passed
+
+## ชุดคำสั่ง (apps/storefront)
+pnpm typecheck  → exit 0
+pnpm lint       → exit 0
+pnpm test:unit  → Test Files 132 passed (132); Tests 2022 passed (2022)  (ก่อนแก้ 2024: ลบ test ของ FONT_SIZE_UTILITIES 3 ตัว เพิ่ม 1)
+pnpm test:e2e:unit → 212 passed (1.5s)  (ก่อนแก้ 208 + guard ใหม่ 4)
+pnpm build (NEXT_PUBLIC_BASE_URL=http://localhost:8130, prod) → exit 0; ✓ Compiled successfully in 1032ms
+
+## e2e (chromium, prod build, --workers=1)
+### sfui-mobile-390 ก่อน บน DB สะอาด
+  ✓  1 [chromium] › e2e/sfui-mobile-390.spec.ts:20:5 › AC-17: หน้าแรก, store, PDP, cart, checkout, account, orders ที่ 390px ไม่ล้นแนวนอน
+  1 passed
+
+### sfui-* ทั้งหมด (รวม sfui-8-floating-label, sfui-9a..9e-font), thai-ui-*, core-38/42/47/50, ui-preset-font — 29 spec
+  ✓   1 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (375px)
+  ✓   2 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (1280px)
+  ✓   3 [chromium] › e2e/core-38-mobile-layout.spec.ts:124:5 › AC-132: checkout — label ของฟอร์มที่อยู่ไม่ทับค่า, สรุปที่อยู่ 375 เรียงแนวตั้งและอีเมลยาวไม่ล้น, 1280 แถวเดียว
+  ✓   4 [chromium] › e2e/core-38-mobile-layout.spec.ts:202:5 › AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่าง + billing ต่างกัน → ข้อความอยู่ในกล่องของตัวเองที่ 375/640/1280
+  ✓   5 [chromium] › e2e/core-38-mobile-layout.spec.ts:247:5 › AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่างอยู่ในกล่องของตัวเองที่ 375/640/1280
+  ✓   6 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:85:5 › AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 (จำนวน 1 และ 99 + ส่วนลด) และ layout ที่ 1280 คงเดิม
+  ✓   7 [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:242:5 › AC-136b: แถวรหัสของการ์ด voucher ไม่มีช่องว่างเมื่อสถานะว่าง และสถานะคัดลอกล้มอยู่ในแถวใต้ปุ่ม
+  ✓   8 [chromium] › e2e/core-47-cart-375-long-title.spec.ts:125:5 › AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90 ตัวอ่านได้ ยอด 7 หลักไม่ถูกตัด, ≥ 1024 ตารางเดิม, preview ไม่เปลี่ยน
+  ✓   9 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 320×640: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64
+  ✓  10 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 375×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64
+  ✓  11 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 639×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64
+  ✓  12 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1023×800: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64
+  ✘  13 [chromium] › e2e/core-50-nav-narrow.spec.ts:171:7 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1280×800: ชื่อร้านกึ่งกลาง nav-account-link แสดง ตำแหน่ง/ขนาดเท่า develop
+  ✓  14 [chromium] › e2e/sfui-2-brand.spec.ts:8:5 › AC-4 (2): ปุ่ม add-product-button บน PDP มีสีพื้น brand-900 ผ่าน --primary
+  ✓  15 [chromium] › e2e/sfui-3a-dialog.spec.ts:82:7 › AC-9 › modal เพิ่มที่อยู่: dialog มีชื่อ/คำอธิบายไทย, Tab วนใน dialog, Escape ปิดและ focus กลับปุ่ม
+  ✓  16 [chromium] › e2e/sfui-3a-dialog.spec.ts:118:7 › AC-9 › modal แก้ไขที่อยู่: dialog มีชื่อ/คำอธิบายไทย, Tab วนใน dialog, Escape ปิดและ focus กลับปุ่ม
+  ✓  17 [chromium] › e2e/sfui-3b-sheet.spec.ts:49:5 › AC-10: side menu และ search drawer เป็น Sheet ที่มีชื่อไทย, Tab วนใน sheet, Escape ปิดแล้ว focus กลับปุ่มที่เปิด
+  ✓  18 [chromium] › e2e/sfui-3b-sheet.spec.ts:138:7 › viewport 390×844 › AC-10: mobile-actions-modal เป็น Sheet ชื่อไทย, Escape ปิดแล้ว focus กลับ mobile-actions-button; แถบ mobile-actions ยัง opacity 1
+  ✓  19 [chromium] › e2e/sfui-3b-sheet.spec.ts:209:5 › AC-10 (review SFUI-3c): รายการประเทศใน side menu เปิด/เลือกด้วยคีย์บอร์ดโดย Sheet ไม่ปิด และลูกศรสะท้อนสถานะเปิดจริง
+  ✓  20 [chromium] › e2e/sfui-3c-select.spec.ts:29:5 › AC-11: เลือกที่อยู่ที่บันทึกไว้ด้วย ArrowDown + Enter และ Escape ไม่เปลี่ยนค่า
+  ✓  21 [chromium] › e2e/sfui-3c-select.spec.ts:97:5 › AC-11: กดแก้ไขเบอร์โทร → edit-panel ของเบอร์โทร data-open=true แผงอื่น false (Collapsible)
+  ✓  22 [chromium] › e2e/sfui-3c-select.spec.ts:132:5 › กฎ 4b: ชี้ nav-cart-link → nav-cart-dropdown เป็น PopoverContent ภาษาไทย, ออกจากพื้นที่ → ปิด
+  ✓  23 [chromium] › e2e/sfui-3c-select.spec.ts:165:5 › กฎ 4: ตัวเลือกประเทศใน side menu เป็น Select — คลิกเปิดรายการภาษาไทย/ประเทศ, Escape ปิด
+  ✓  24 [chromium] › e2e/sfui-3d-payment.spec.ts:9:5 › AC-12: focus ตัวเลือกบัตรแล้วกด ArrowDown → พร้อมเพย์ถูกเลือก (aria-checked)
+  ✓  25 [chromium] › e2e/sfui-3e-shipping.spec.ts:16:5 › AC-13: ขั้น delivery — ตัวเลือกเป็น role=radio ที่ยังไม่ติ๊ก และหัวขั้นจัดส่ง/ชำระเงินขนาด 24px/32px semibold
+  ✓  26 [chromium] › e2e/sfui-4-store.spec.ts:9:5 › AC-14: Enter บนหัว filter เปิด/ปิดเนื้อหา และ ArrowRight บน thumb ช่วงราคาเปลี่ยนค่า
+  ✓  27 [chromium] › e2e/sfui-4-store.spec.ts:66:5 › AC-14: แท็บบน PDP เป็น Accordion — ปุ่มมีชื่อไทย และ Enter เปิดเนื้อหา
+  ✓  28 [chromium] › e2e/sfui-5a-common.spec.ts:23:5 › label ลอยของช่องกรอก (common/components/input) มองเห็นได้ทั้งก่อนและหลังกรอก
+  ✓  29 [chromium] › e2e/sfui-5a-common.spec.ts:50:5 › 404: ลูกศรของลิงก์กลับหน้าแรกมองเห็นและใช้สีเดียวกับข้อความ (token ของ shadcn)
+  ✓  30 [chromium] › e2e/sfui-5b-catalog.spec.ts:17:5 › AC-15: หน้าแรก, store, PDP และหน้าค้นหาคงขนาดตัวอักษร/ระยะบรรทัดเดิมหลังย้ายไป shadcn
+  ✓  31 [chromium] › e2e/sfui-5c-checkout-heading.spec.ts:15:5 › AC-15: หัวข้อขั้น checkout คงขนาด 24px/32px semibold เท่า develop
+  ✓  32 [chromium] › e2e/sfui-5c-checkout-heading.spec.ts:49:5 › AC-15: หัวข้อตะกร้าว่างคงขนาด 32px/44px semibold เท่า develop
+  ✓  33 [chromium] › e2e/sfui-5d-account-order.spec.ts:45:5 › order: ตาราง/ตัวอักษร/หัวข้อ/ไอคอน คงค่าเดิมทั้งหน้า confirmed และรายละเอียด order ใน account
+  ✓  34 [chromium] › e2e/sfui-5e-features.spec.ts:9:5 › หน้ากลุ่ม: ส่วนลด ลิงก์แชร์ และแถบความคืบหน้าใช้สี primary; ปุ่มเพิ่มในรายการเป็น outline ของ shadcn
+  ✓  35 [chromium] › e2e/sfui-6-parity.spec.ts:28:5 › AC-16 (กฎ 19): thumbnail และ image gallery พื้นขาว padding 16px เท่า develop
+  ✓  36 [chromium] › e2e/sfui-6-parity.spec.ts:49:5 › AC-16 (กฎ 19): ตารางตะกร้า — เซลล์ตัดบรรทัดได้ (white-space normal) และหัวตารางสูง 48px เท่า develop
+  ✓  37 [chromium] › e2e/sfui-6-parity.spec.ts:91:5 › AC-16 (กฎ 21): ชื่อบนการ์ดที่อยู่ (address-name) 24px/32px/600 เท่า develop
+  ✓  38 [chromium] › e2e/sfui-8-floating-label.spec.ts:76:5 › AC-23 (1): ป้ายลอยของ login / register เท่าค่าเดิม (ว่าง, focus, กรอกแล้ว blur)
+  ✓  39 [chromium] › e2e/sfui-8-floating-label.spec.ts:105:5 › AC-23 (1): ป้ายลอยของ checkout step=address เท่าค่าเดิม (ค่าที่เติมจากบัญชี, ว่าง → focus → กรอก)
+  ✓  40 [chromium] › e2e/sfui-8-floating-label.spec.ts:126:5 › AC-23 (2)(3): PDP และหน้า group buy — option-button และ label ของจำนวน 12px/20px/400 ไม่เลื่อน ไม่ทับ legend
+  ✓  41 [chromium] › e2e/sfui-9a-font.spec.ts:73:5 › AC-21: หน้า 404, นโยบาย, skeleton ของ store และ footer คงขนาดตัวอักษร/ระยะบรรทัด/น้ำหนักเดิม
+  ✓  42 [chromium] › e2e/sfui-9a-font.spec.ts:118:5 › AC-21: cart dropdown, หน้า cart, select ที่อยู่ใบเสร็จ คงขนาดตัวอักษร/ระยะบรรทัด/น้ำหนักเดิม
+  ✓  43 [chromium] › e2e/sfui-9a-font.spec.ts:172:5 › AC-21: cart dropdown ของลูกค้าที่ยังไม่มีสินค้า: หัวข้อ 16px/24px/600 และป้ายจำนวน 0 เป็น 12px/20px/400
+  ✓  44 [chromium] › e2e/sfui-9b-font.spec.ts:51:5 › AC-21: store, category, collection, PDP และหน้าค้นหาคงขนาด/ระยะบรรทัด/น้ำหนักเดิม
+  ✓  45 [chromium] › e2e/sfui-9b-font.spec.ts:95:5 › AC-21: PDP ของสินค้า flash — banner 14px/24px/600, ราคา flash 24px/36px/600, นับถอยหลังและจำนวนคงเหลือ 12px/20px/400
+  ✓  46 [chromium] › e2e/sfui-9b-font.spec.ts:130:7 › viewport 390×844 › AC-21: แถบปุ่มมือถือ (mobile-actions) 16px/24px/400
+  ✓  47 [chromium] › e2e/sfui-9c-font.spec.ts:46:5 › AC-21: checkout (not-found, ที่อยู่, จัดส่ง, ชำระเงิน) และตะกร้าว่าง คงขนาดตัวอักษร/ระยะบรรทัด/น้ำหนักเดิม
+  ✓  48 [chromium] › e2e/sfui-9d-font.spec.ts:34:5 › AC-21: หน้า login/register, ภาพรวมบัญชี, โปรไฟล์, ที่อยู่, รายการ/รายละเอียด order คงขนาดตัวอักษร/ระยะบรรทัด/น้ำหนักเดิม
+  ✓  49 [chromium] › e2e/sfui-9e-font.spec.ts:37:5 › AC-21: หน้ากลุ่ม /g/<token> คงขนาด/ระยะบรรทัด/น้ำหนักเดิม
+  ✓  50 [chromium] › e2e/sfui-9e-font.spec.ts:54:5 › AC-21: คำสั่งซื้อแบบกลุ่มในหน้า account คงขนาด/ระยะบรรทัด/น้ำหนักเดิม
+  ✓  51 [chromium] › e2e/sfui-9e-font.spec.ts:68:5 › AC-21: affiliate portal (login, earnings) คงขนาด/ระยะบรรทัด/น้ำหนักเดิม
+  ✓  52 [chromium] › e2e/sfui-9e-font.spec.ts:88:5 › AC-21: หน้าบัตรกำนัล (ยังไม่มีรายการ) คงขนาด/ระยะบรรทัด/น้ำหนักเดิม
+  ✓  53 [chromium] › e2e/thai-ui-account.spec.ts:16:5 › AC-48: หน้า login และ register เป็นภาษาไทย
+  ✓  54 [chromium] › e2e/thai-ui-account.spec.ts:30:5 › AC-48: หน้า account ของลูกค้าที่ login แล้วเป็นภาษาไทย
+  ✓  55 [chromium] › e2e/thai-ui-account.spec.ts:68:5 › AC-48: หน้า verify-account (ลิงก์ไม่มี token) เป็นภาษาไทย
+  ✓  56 [chromium] › e2e/thai-ui-cart-order.spec.ts:80:5 › AC-48: หน้า policy ทั้ง 5 เป็นภาษาไทย
+  ✓  57 [chromium] › e2e/thai-ui-cart-order.spec.ts:96:5 › AC-48, AC-78: cart, order confirmed, order detail และรายการ orders เป็นภาษาไทย ไม่มี hydration mismatch
+  ✓  58 [chromium] › e2e/thai-ui-checkout.spec.ts:22:5 › AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษาไทย
+  ✓  59 [chromium] › e2e/thai-ui-pages.spec.ts:13:5 › AC-48: หน้า store และ PDP เป็นภาษาไทย
+  ✓  60 [chromium] › e2e/thai-ui-pages.spec.ts:37:5 › AC-48: หน้า /search เป็นภาษาไทย
+  ✓  61 [chromium] › e2e/thai-ui-pages.spec.ts:53:5 › AC-48: หน้า category และ collection เป็นภาษาไทย
+  ✓  62 [chromium] › e2e/thai-ui-shell.spec.ts:10:5 › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai
+  ✓  63 [chromium] › e2e/thai-ui-shell.spec.ts:61:5 › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย
+  ✓  64 [chromium] › e2e/ui-preset-font.spec.ts:9:5 › AC-3: body, h1, h2, p, button, input และ class txt-*/*-webs บนหน้าแรกใช้ Noto Sans Thai ก่อน Inter
+  1 failed
+  63 passed (2.1m)
+หมายเหตุ: core-50-nav-narrow 1280×800 ล้ม width ต่าง 1.265625px (เกณฑ์ ≤ 1) — เรื่องเดิมของ macOS (ฟอนต์ render) ที่บันทึกไว้ตั้งแต่ SFUI รอบ 44 — ให้ CI (Linux) ยืนยัน
+
+## AC-24 (a) grep ปลาย branch: grep -rnoE "text-(xsmall|small|base|large|xl|2xl|3xl)-(regular|semi)" apps/storefront/src → 0 บรรทัด
+## AC-24 (c) grep -rlE 'cn/config|createCn|FONT_SIZE_UTILITIES' apps/storefront/src → 0 ไฟล์
+## AC-25: git diff origin/develop --stat -- apps/backend apps/storefront/src/components/ui apps/storefront/package.json pnpm-lock.yaml → 0 บรรทัด (ว่าง)

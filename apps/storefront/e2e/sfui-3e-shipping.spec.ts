@@ -10,7 +10,7 @@ import {
 
 // SFUI-3e (spec 09 กฎ 4, 9, 19–20, AC-13): ขั้น delivery — ตัวเลือกจัดส่งเป็นปุ่ม role="radio" ของ RadioGroup (shadcn)
 // และหัวขั้น "การจัดส่ง"/"การชำระเงิน" คงขนาดเดิมของ develop (`Heading` h2 = text-2xl font-semibold → 24px/32px, 600)
-// — review 5c: `text-3xl-regular` อยู่ใน @layer components จึงแพ้ text-2xl บน develop; ห้ามกลายเป็น 32px/44px
+// — review 5c: utility ฟอนต์ 3xl/regular ของ starter (ลบใน SFUI-10) อยู่ใน @layer components จึงแพ้ text-2xl บน develop; ห้ามกลายเป็น 32px/44px
 test.use({ evidenceTarget: { feature: "storefront-ui", taskId: "SFUI-3e" } })
 
 test("AC-13: ขั้น delivery — ตัวเลือกเป็น role=radio ที่ยังไม่ติ๊ก และหัวขั้นจัดส่ง/ชำระเงินขนาด 24px/32px semibold", async ({

@@ -49,7 +49,7 @@ test("AC-6: ตัวจับ class ของ preset แยก variant/importan
   expect(legacyNamesOfClass("bg-ui-bg-base/50")).toEqual(["bg-ui-bg-base"])
   expect(legacyNamesOfClass("group-radix-state-open:rotate-180")).toEqual(["group-radix-state-open"])
   expect(legacyNamesOfClass("data-[state=open]:h1-webs")).toEqual(["h1-webs"])
-  for (const plain of ["text-small-regular", "text-gray-700", "shadow-sm", "bg-white", "rounded-rounded", "h-1"]) {
+  for (const plain of ["text-sm", "text-gray-700", "shadow-sm", "bg-white", "rounded-rounded", "h-1"]) {
     expect(legacyNamesOfClass(plain), plain).toEqual([])
   }
   expect(legacyClassNames("x.tsx", '// txt-medium ใน comment\nconst a = <p className="txt-medium" />')).toEqual([
