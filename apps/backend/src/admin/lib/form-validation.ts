@@ -3,7 +3,7 @@
  * ซึ่งยังไม่ init จึงได้ `undefined` และ zod แสดง "Invalid input" — ข้อความต่อช่องจึงใส่ผ่าน error map ตอน parse
  * (ใช้กับ issue ที่ไม่มีข้อความเท่านั้น; ข้อความที่ schema ระบุเองไม่ถูกแทน) ส่งเป็น schemaOptions ของ `zodResolver`
  * spec 10 กฎ 4d: ข้อความต่อช่องเป็น function (`{ starts_at: invalidDate }`) เรียกตอน parse ให้ได้ภาษาปัจจุบัน
- * — ยังรับ string ระหว่างที่ไฟล์ของกลุ่มอื่นยังไม่แปล (`I18N_PENDING`; guard กฎ 14d จับ literal ในไฟล์ที่แปลแล้ว)
+ * — รับ string ได้ด้วย (ค่าที่ไม่ใช่ข้อความแปล); guard กฎ 14d จับ literal ข้อความในไฟล์ที่แปลแล้ว
  */
 export const fieldErrorMap =
   (messages: Record<string, string | (() => string)>) =>

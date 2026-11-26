@@ -87,8 +87,6 @@ const ERROR_SHOWN_TO_USER: string[] = []
 /** key ของ th ที่คงละตินได้ (กฎ 5) ต่อ namespace */
 const LATIN_KEYS: Record<string, string[]> = {}
 
-/** enum ของกฎ 7: { ns, prefix, values } — task ของกลุ่มเพิ่มเองใน unit ของกลุ่ม; ecom-common ไม่มี enum */
-
 // ไฟล์ .ts/.tsx ของ src/admin (ยกเว้น test) เป็น path สัมพัทธ์
 const adminFiles = (readdirSync(ADMIN_DIR, { recursive: true }) as string[])
   .map((f) => f.split("\\").join("/"))

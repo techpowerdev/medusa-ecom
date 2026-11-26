@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test"
 import { readdirSync, readFileSync } from "fs"
 import { join } from "path"
 
-import { ADMIN_UI_OPTIONS, ADMIN_UI_OPTIONS_TH, adminLabel, adminText } from "./admin"
+import { ADMIN_UI_OPTIONS, ADMIN_UI_OPTIONS_TH, adminLabel, adminText, pickLabel } from "./admin"
 import { BACKEND_URL } from "./fixtures"
 import { THAI } from "./thai-text"
 
@@ -64,5 +64,20 @@ test.describe("adminLabel (spec 10 กฎ 13)", () => {
     expect(adminLabel("en", "ecom-common", "Leave")).toBe("Leave")
     expect(adminLabel("th", "ecom-common", "Leave")).toBe(adminText("th", "ecom-common", "confirmDiscard.leave"))
     expect(adminLabel("th", "ecom-common", "Not a translated label")).toBe("Not a translated label")
+  })
+})
+
+test.describe("pickLabel (spec 10 กฎ 13 — nit review AI18N-1)", () => {
+  const en = { "a.create": "Create", "b.create": "Create", "c.save": "Save", "d.save": "Save" }
+
+  test("ค่า en ซ้ำหลาย key แต่ค่าเป้าหมายเท่ากัน → คืนค่านั้น; ไม่มีค่า en → ข้อความเดิม", () => {
+    const th = { "a.create": "สร้าง", "b.create": "สร้าง", "c.save": "บันทึก", "d.save": "เก็บ" }
+    expect(pickLabel(en, th, "Create")).toBe("สร้าง")
+    expect(pickLabel(en, th, "Missing")).toBe("Missing")
+  })
+
+  test("ค่า en ซ้ำหลาย key และค่าเป้าหมายต่างกัน → throw (ไม่เดา key แรก)", () => {
+    const th = { "a.create": "สร้าง", "b.create": "สร้าง", "c.save": "บันทึก", "d.save": "เก็บ" }
+    expect(() => pickLabel(en, th, "Save")).toThrow(/c\.save.*d\.save|กำกวม/)
   })
 })

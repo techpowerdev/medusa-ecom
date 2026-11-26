@@ -81,7 +81,10 @@ export const hasKey = (resources: Resources, ns: string, key: string) => {
   return key in flat || `${key}_one` in flat || `${key}_other` in flat
 }
 
-/** ค่าใน array/union ของ enum ที่ไม่มี key `<prefix>.<value>` ใน `en` (กฎ 7) */
+/**
+ * ค่าใน array/union ของ enum ที่ไม่มี key `<prefix>.<value>` ใน `en` (กฎ 7) — unit ของแต่ละกลุ่ม (AI18N-2..4) เรียกกับ enum
+ * ของกลุ่มตัวเอง (array ค่าคงที่ หรือ `unionLiterals` ของ type union); ecom-common ไม่มี enum
+ */
 export const missingEnumKeys = (resources: Resources, ns: string, prefix: string, values: readonly string[]) =>
   values.filter((value) => !hasKey(resources, ns, `${prefix}.${value}`))
 

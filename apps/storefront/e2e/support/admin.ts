@@ -79,8 +79,21 @@ export function adminText(lng: Lng, ns: string, key: string) {
  * ใน namespace แล้วคืนค่าของ `lng`; ยังไม่มี key (กลุ่มนั้นยังไม่แปล) → ข้อความอังกฤษเดิม ให้ spec ทำงานได้ทั้งก่อนและหลังแปลกลุ่มนั้น
  */
 export function adminLabel(lng: Lng, ns: string, en: string) {
-  const key = Object.entries(translations("en", ns)).find(([, value]) => value === en)?.[0]
-  return key ? adminText(lng, ns, key) : en
+  return pickLabel(translations("en", ns), translations(lng, ns), en)
+}
+
+/**
+ * ส่วน pure ของ `adminLabel`: key ทุกตัวที่ค่า `en` เท่า `text` ต้องให้ค่าเป้าหมายเดียวกัน — ต่างกัน = กำกวม → throw
+ * (ไม่เดา key แรก) ให้ spec ใช้ `adminText` ด้วย key ตรงแทน; ไม่มี key → `text` เดิม
+ */
+export function pickLabel(en: Flat, target: Flat, text: string) {
+  const keys = Object.keys(en).filter((key) => en[key] === text)
+  if (keys.length === 0) return text
+  const values = keys.map((key) => target[key]).filter((value, i, all) => all.indexOf(value) === i)
+  if (values.length > 1 || values[0] === undefined) {
+    throw new Error(`adminLabel: "${text}" กำกวม/ไม่มีค่าเป้าหมาย (${keys.join(", ")}) — ใช้ adminText ด้วย key ตรง`)
+  }
+  return values[0]
 }
 
 const env = (key: string, fallback: string) => {

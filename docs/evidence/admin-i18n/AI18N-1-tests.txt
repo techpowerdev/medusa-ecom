@@ -5,10 +5,14 @@
 - deps.unit.spec.ts: i18next ใน devDependencies Expected "23.7.11" Received undefined
 - admin-options.unit.spec.ts: 5 failed (storageState/ADMIN_UI_OPTIONS_TH/adminText/adminLabel ยังไม่มี)
 
-## unit backend: pnpm --filter backend test:unit
+## unit backend: pnpm --filter backend test:unit (commit 4b9e94fa)
 Test Suites: 134 passed, 134 total
 Tests:       2531 passed, 2531 total
 Time:        161.266 s
+
+## unit backend ส่วน admin (jest src/admin) — รอบแก้ review
+Test Suites: 25 passed, 25 total
+Tests:       769 passed, 769 total
 
 ## unit backend (verbose): i18n.unit.spec.ts + deps.unit.spec.ts (+ medusa-ui.unit.spec.ts ในยอดรวม)
 PASS src/admin/__tests__/i18n.unit.spec.ts
@@ -202,8 +206,10 @@ PASS src/admin/__tests__/deps.unit.spec.ts
 Test Suites: 3 passed, 3 total
 Tests:       440 passed, 440 total
 
-## unit storefront: playwright --project=unit (ทั้งหมด)
-221 passed
+## unit storefront: playwright --project=unit (ทั้งหมด) — รอบแก้ review (commit ถัดจาก 4b9e94fa)
+223 passed (รวม evidence-rules เคส AI18N-1 + pickLabel)
+pnpm --filter storefront test:e2e:unit evidence-budget: 1 passed
+(red ก่อนแก้: evidence-budget ล้ม "admin-i18n/AI18N-1-tests.txt ไม่อนุญาตที่ระดับ feature", evidence-rules AC-20 ล้ม, pickLabel 2 ล้ม)
 
 ## e2e admin (chromium, prod build backend :9311, DB medusa_ai18n1)
   ✓  1 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้าง partner — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (2.8s)
