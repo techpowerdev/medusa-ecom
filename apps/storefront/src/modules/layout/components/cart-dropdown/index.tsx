@@ -1,23 +1,23 @@
 "use client"
 
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Popover,
-  PopoverButton,
-  PopoverPanel,
-  Transition,
-} from "@headlessui/react"
+  PopoverAnchor,
+  PopoverContent,
+} from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 import { retrieveCart } from "@lib/data/cart"
 import { CART_UPDATED_EVENT } from "@lib/util/cart-events"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
-import { Button, buttonClassName } from "@modules/common/components/ui"
 import DeleteButton from "@modules/common/components/delete-button"
 import LineItemOptions from "@modules/common/components/line-item-options"
 import LineItemPrice from "@modules/common/components/line-item-price"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Thumbnail from "@modules/products/components/thumbnail"
 import { usePathname } from "next/navigation"
-import { Fragment, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 const countItems = (cart?: HttpTypes.StoreCart | null) =>
   cart?.items?.reduce((acc, item) => acc + item.quantity, 0) || 0
@@ -137,175 +137,177 @@ const CartDropdown = ({
     // CORE-26 (กฎข้อ 81c): ชี้ที่ปุ่มตะกร้าเท่านั้นที่ยกเลิกการปิดเอง — panel ที่เปิดเองทับปุ่มที่ลูกค้าเพิ่งกด
     // จึงต้องปิดเองใน 5 วินาทีแม้ mouse ค้างอยู่ใต้ panel
     <div className="h-full z-50" onMouseLeave={close}>
-      <Popover className="relative h-full">
-        <PopoverButton className="h-full" onMouseEnter={openAndCancel}>
-          <LocalizedClientLink
-            className="hover:text-ui-fg-base whitespace-nowrap"
-            href="/cart"
-            data-testid="nav-cart-link"
-            aria-busy={loading || undefined}
-          >
-            {countUnknown ? "ตะกร้า" : `ตะกร้า (${totalItems})`}
-          </LocalizedClientLink>
-        </PopoverButton>
-        <Transition
-          show={cartDropdownOpen}
-          as={Fragment}
-          enter="transition ease-out duration-200"
-          enterFrom="opacity-0 translate-y-1"
-          enterTo="opacity-100 translate-y-0"
-          leave="transition ease-in duration-150"
-          leaveFrom="opacity-100 translate-y-0"
-          leaveTo="opacity-0 translate-y-1"
+      {/* SFUI-3c (spec 09 กฎ 4b): Popover ที่ควบคุมด้วย state เดิม (modal={false}) — anchor ครอบลิงก์ (ไม่ห่อลิงก์ด้วยปุ่ม)
+          content mount เฉพาะตอนเปิด (ไม่ forceMount); Escape/คลิกนอกแผงเรียก close เดิม */}
+      <Popover
+        open={cartDropdownOpen}
+        onOpenChange={(next) => (next ? open() : close())}
+        modal={false}
+      >
+        <PopoverAnchor asChild>
+          <div className="relative h-full flex items-center" onMouseEnter={openAndCancel}>
+            <LocalizedClientLink
+              className="hover:text-foreground whitespace-nowrap"
+              href="/cart"
+              data-testid="nav-cart-link"
+              aria-busy={loading || undefined}
+            >
+              {countUnknown ? "ตะกร้า" : `ตะกร้า (${totalItems})`}
+            </LocalizedClientLink>
+          </div>
+        </PopoverAnchor>
+        <PopoverContent
+          align="end"
+          sideOffset={1}
+          // เปิดเองหลังเพิ่มสินค้า/เมื่อ hover ต้องไม่ดึง focus ออกจากปุ่มที่ลูกค้าเพิ่งกด
+          onOpenAutoFocus={(event) => event.preventDefault()}
+          onCloseAutoFocus={(event) => event.preventDefault()}
+          className="hidden small:block w-[420px] p-0 rounded-none border-x border-b border-t-0 shadow-none bg-background text-foreground"
+          data-testid="nav-cart-dropdown"
         >
-          <PopoverPanel
-            static
-            className="hidden small:block absolute top-[calc(100%+1px)] right-0 bg-white border-x border-b border-gray-200 w-[420px] text-ui-fg-base"
-            data-testid="nav-cart-dropdown"
-          >
-            <div className="p-4 flex items-center justify-center">
-              <h3 className="text-large-semi">ตะกร้า</h3>
-            </div>
-            {countUnknown ? (
-              // CORE-91 (กฎข้อ 147a): ยังไม่รู้ (กำลังโหลด/อ่านล้ม) → ไม่บอกว่าตะกร้าว่าง
-              <div className="flex py-16 flex-col gap-y-4 items-center justify-center">
-                {loading ? (
-                  <span data-testid="nav-cart-dropdown-loading" aria-busy="true">
-                    กำลังโหลดตะกร้า…
+          <div className="p-4 flex items-center justify-center">
+            <h3 className="text-large-semi">ตะกร้า</h3>
+          </div>
+          {countUnknown ? (
+            // CORE-91 (กฎข้อ 147a): ยังไม่รู้ (กำลังโหลด/อ่านล้ม) → ไม่บอกว่าตะกร้าว่าง
+            <div className="flex py-16 flex-col gap-y-4 items-center justify-center">
+              {loading ? (
+                <span data-testid="nav-cart-dropdown-loading" aria-busy="true">
+                  กำลังโหลดตะกร้า…
+                </span>
+              ) : (
+                <>
+                  <span data-testid="nav-cart-dropdown-error">
+                    ยังโหลดตะกร้าไม่ได้
                   </span>
-                ) : (
-                  <>
-                    <span data-testid="nav-cart-dropdown-error">
-                      ยังโหลดตะกร้าไม่ได้
-                    </span>
-                    <LocalizedClientLink
-                      href="/cart"
-                      className={buttonClassName()}
-                    >
-                      ดูตะกร้า
-                    </LocalizedClientLink>
-                  </>
-                )}
-              </div>
-            ) : cartState && cartState.items?.length ? (
-              <>
-                <div className="overflow-y-scroll max-h-[402px] px-4 grid grid-cols-1 gap-y-8 no-scrollbar p-px">
-                  {cartState.items
-                    .sort((a, b) => {
-                      return (a.created_at ?? "") > (b.created_at ?? "")
-                        ? -1
-                        : 1
-                    })
-                    .map((item) => (
-                      <div
-                        className="grid grid-cols-[122px_1fr] gap-x-4"
-                        key={item.id}
-                        data-testid="cart-item"
-                      >
-                        <LocalizedClientLink
-                          href={`/products/${item.product_handle}`}
-                          className="w-24"
-                        >
-                          <Thumbnail
-                            thumbnail={item.thumbnail}
-                            images={item.variant?.product?.images}
-                            size="square"
-                          />
-                        </LocalizedClientLink>
-                        <div className="flex flex-col justify-between flex-1">
-                          <div className="flex flex-col flex-1">
-                            <div className="flex items-start justify-between">
-                              <div className="flex flex-col text-ellipsis whitespace-nowrap mr-4 w-[180px]">
-                                <h3 className="text-base-regular overflow-hidden text-ellipsis">
-                                  <LocalizedClientLink
-                                    href={`/products/${item.product_handle}`}
-                                    data-testid="product-link"
-                                  >
-                                    {item.title}
-                                  </LocalizedClientLink>
-                                </h3>
-                                <LineItemOptions
-                                  variant={item.variant}
-                                  data-testid="cart-item-variant"
-                                  data-value={item.variant}
-                                />
-                                <span
-                                  data-testid="cart-item-quantity"
-                                  data-value={item.quantity}
-                                >
-                                  จำนวน: {item.quantity}
-                                </span>
-                              </div>
-                              <div className="flex justify-end">
-                                <LineItemPrice
-                                  item={item}
-                                  style="tight"
-                                  currencyCode={cartState.currency_code}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                          <DeleteButton
-                            id={item.id}
-                            className="mt-1"
-                            data-testid="cart-item-remove-button"
-                          >
-                            ลบ
-                          </DeleteButton>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-                <div className="p-4 flex flex-col gap-y-4 text-small-regular">
-                  <div className="flex items-center justify-between">
-                    <span
-                      className="text-ui-fg-base font-semibold"
-                      data-testid="cart-subtotal-label"
-                    >
-                      ยอดรวมสินค้า{" "}
-                      {/* eslint-disable-next-line no-restricted-syntax -- "VAT" เป็นคำย่อที่ลูกค้าไทยใช้ ป้ายตาม Q-C1 ที่ owner ตัดสิน (spec 01 กฎข้อ 81a) */}
-                      <span className="font-normal">(รวม VAT)</span>
-                    </span>
-                    <span
-                      className="text-large-semi"
-                      data-testid="cart-subtotal"
-                      data-value={itemTotal}
-                    >
-                      {convertToLocale({
-                        amount: itemTotal,
-                        currency_code: cartState.currency_code,
-                      })}
-                    </span>
-                  </div>
                   <LocalizedClientLink
                     href="/cart"
-                    className={buttonClassName({ size: "large" }, "w-full")}
-                    data-testid="go-to-cart-button"
+                    className={cn(buttonVariants())}
                   >
-                    ไปที่ตะกร้า
+                    ดูตะกร้า
                   </LocalizedClientLink>
+                </>
+              )}
+            </div>
+          ) : cartState && cartState.items?.length ? (
+            <>
+              <div className="overflow-y-scroll max-h-[402px] px-4 grid grid-cols-1 gap-y-8 no-scrollbar p-px">
+                {cartState.items
+                  .sort((a, b) => {
+                    return (a.created_at ?? "") > (b.created_at ?? "")
+                      ? -1
+                      : 1
+                  })
+                  .map((item) => (
+                    <div
+                      className="grid grid-cols-[122px_1fr] gap-x-4"
+                      key={item.id}
+                      data-testid="cart-item"
+                    >
+                      <LocalizedClientLink
+                        href={`/products/${item.product_handle}`}
+                        className="w-24"
+                      >
+                        <Thumbnail
+                          thumbnail={item.thumbnail}
+                          images={item.variant?.product?.images}
+                          size="square"
+                        />
+                      </LocalizedClientLink>
+                      <div className="flex flex-col justify-between flex-1">
+                        <div className="flex flex-col flex-1">
+                          <div className="flex items-start justify-between">
+                            <div className="flex flex-col text-ellipsis whitespace-nowrap mr-4 w-[180px]">
+                              <h3 className="text-base-regular overflow-hidden text-ellipsis">
+                                <LocalizedClientLink
+                                  href={`/products/${item.product_handle}`}
+                                  data-testid="product-link"
+                                >
+                                  {item.title}
+                                </LocalizedClientLink>
+                              </h3>
+                              <LineItemOptions
+                                variant={item.variant}
+                                data-testid="cart-item-variant"
+                                data-value={item.variant}
+                              />
+                              <span
+                                data-testid="cart-item-quantity"
+                                data-value={item.quantity}
+                              >
+                                จำนวน: {item.quantity}
+                              </span>
+                            </div>
+                            <div className="flex justify-end">
+                              <LineItemPrice
+                                item={item}
+                                style="tight"
+                                currencyCode={cartState.currency_code}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <DeleteButton
+                          id={item.id}
+                          className="mt-1"
+                          data-testid="cart-item-remove-button"
+                        >
+                          ลบ
+                        </DeleteButton>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+              <div className="p-4 flex flex-col gap-y-4 text-small-regular">
+                <div className="flex items-center justify-between">
+                  <span
+                    className="text-foreground font-semibold"
+                    data-testid="cart-subtotal-label"
+                  >
+                    ยอดรวมสินค้า{" "}
+                    {/* eslint-disable-next-line no-restricted-syntax -- "VAT" เป็นคำย่อที่ลูกค้าไทยใช้ ป้ายตาม Q-C1 ที่ owner ตัดสิน (spec 01 กฎข้อ 81a) */}
+                    <span className="font-normal">(รวม VAT)</span>
+                  </span>
+                  <span
+                    className="text-large-semi"
+                    data-testid="cart-subtotal"
+                    data-value={itemTotal}
+                  >
+                    {convertToLocale({
+                      amount: itemTotal,
+                      currency_code: cartState.currency_code,
+                    })}
+                  </span>
                 </div>
-              </>
-            ) : (
-              <div>
-                <div className="flex py-16 flex-col gap-y-4 items-center justify-center">
-                  <div className="bg-gray-900 text-small-regular flex items-center justify-center w-6 h-6 rounded-full text-white">
-                    <span>0</span>
-                  </div>
-                  <span>ตะกร้าของคุณยังว่างอยู่</span>
-                  <div>
-                    <LocalizedClientLink href="/store">
-                      <>
-                        <span className="sr-only">ไปที่หน้าสินค้าทั้งหมด</span>
-                        <Button onClick={close}>เลือกดูสินค้า</Button>
-                      </>
+                <LocalizedClientLink
+                  href="/cart"
+                  className={cn(buttonVariants({ size: "lg" }), "h-12 w-full")}
+                  data-testid="go-to-cart-button"
+                >
+                  ไปที่ตะกร้า
+                </LocalizedClientLink>
+              </div>
+            </>
+          ) : (
+            <div>
+              <div className="flex py-16 flex-col gap-y-4 items-center justify-center">
+                <div className="bg-gray-900 text-small-regular flex items-center justify-center w-6 h-6 rounded-full text-white">
+                  <span>0</span>
+                </div>
+                <span>ตะกร้าของคุณยังว่างอยู่</span>
+                <div>
+                  {/* spec 09 กฎ 14: ลิงก์ที่หน้าตาเป็นปุ่ม — ไม่ซ้อน <Button> ใน <a> */}
+                  <Button asChild>
+                    <LocalizedClientLink href="/store" onClick={close}>
+                      <span className="sr-only">ไปที่หน้าสินค้าทั้งหมด</span>
+                      เลือกดูสินค้า
                     </LocalizedClientLink>
-                  </div>
+                  </Button>
                 </div>
               </div>
-            )}
-          </PopoverPanel>
-        </Transition>
+            </div>
+          )}
+        </PopoverContent>
       </Popover>
     </div>
   )
