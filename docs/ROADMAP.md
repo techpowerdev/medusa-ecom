@@ -1,6 +1,6 @@
 # ROADMAP — milestone, ลำดับ PR, สถานะ
 
-อัปเดตล่าสุด: 2026-11-26 (OPS-40 ☑ #562 merge เข้า develop; เพิ่ม OPS-41 หลัง go-live; รอบ 44 storefront shadcn/ui ☑ merge ครบ #565–#581 — spec 09, ADR-030; รอบ 45 เก็บกวาดหลัง SFUI-7 ☑ merge ครบ #583–#590; รอบ 46 admin ภาษาไทย ☐ เสนอ — spec 10, ADR-031) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
+อัปเดตล่าสุด: 2026-11-26 (OPS-40 ☑ #562 merge เข้า develop; เพิ่ม OPS-41 หลัง go-live; รอบ 44 storefront shadcn/ui ☑ merge ครบ #565–#581 — spec 09, ADR-030; รอบ 45 เก็บกวาดหลัง SFUI-7 ☑ merge ครบ #583–#590; รอบ 46 admin ภาษาไทย ☐ — spec 10, ADR-031 accepted) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
 [`docs/roadmap/history.md`](roadmap/history.md) และ follow-up เก่า (รอบ 13–39) อยู่ที่
 [`docs/roadmap/followups-archive.md`](roadmap/followups-archive.md)
 
@@ -9,7 +9,7 @@
 - **ตอนนี้**: **release v0.3.1 แล้ว (2026-11-25)** — #561 `develop → main` (merge commit `88bb0b63`, tag `v0.3.1`): รอบ 42 (21 task) +
   รอบ 43 ส่วน v0.3.1 (OPS-36 #554, PAY-23 #555, PAY-24 #556, OPS-39 #559) เป็น 🚀 · OPS-40 (PII ค่าเดี่ยวจาก review #559) ☑ #562 (merge 2026-11-26 — ข้อยกเว้น d1/d2/d3 ของกฎ 22d + กรณีรู้แล้ว `cart_13rjFZ` → OPS-41), **ไม่อยู่ใน v0.3.1**
 - **รอ owner ตัดสิน**: ไม่มีคำถามค้างของรอบ 43 — เหลือเฉพาะเรื่องก่อน go-live (Stripe live, ค่าส่ง, staging); รอบ 44: ไม่มีคำถามค้าง (ADR-030 accepted, Q1/Q2 ตอบแล้ว 2026-11-26); รอบ 45: ไม่มีคำถามค้าง (owner สั่ง "เก็บต่อเลย" 2026-11-26);
-  รอบ 46: ADR-031 (เสนอ) + Q1 ภาษาเริ่มต้นของ admin
+  รอบ 46: ไม่มีคำถามค้าง (ADR-031 accepted, Q1 = ก 2026-11-26)
 - **ขั้นต่อไป**: go-live (checklist ข้อ 1–16) → **v1.0.0** (ร้านเปิดจริงครั้งแรก)
 
 ### Release
@@ -132,7 +132,7 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 - **ไฟล์ร่วม**: `globals.css` 8 → 10 เท่านั้น · กลุ่มขนานไม่มีไฟล์ร่วม (`option-select.tsx`/`product-actions/index.tsx` เป็นของ 9b; SFUI-8 ไม่แตะ)
 - ค่าที่คาดใน e2e ของ 9x/8 วัดที่ commit ที่ branch แตกออกมา (ก่อนแก้) ไม่ใช่คำนวณจากชื่อ class — spec ใหม่ของ 9x ต้องผ่านทั้งก่อนและหลังแก้
 
-## รอบ 46 — หน้า admin ของเราเป็นภาษาไทย (spec 10, ADR-031 เสนอ) (☐)
+## รอบ 46 — หน้า admin ของเราเป็นภาษาไทย (spec 10, ADR-031 accepted 2026-11-26) (☐)
 
 ที่มา: owner 2026-11-26 ทาง "ข" — หน้า/widget ใน `src/admin/**` แสดงไทยเมื่อผู้ใช้เลือกไทยใน Settings → Profile ผ่าน i18n ของ Medusa admin ·
 "แค่ปรับเพิ่มภาษา" (โหมดอังกฤษเหมือนเดิมทุกตัวอักษร) · task ไม่ย่อยเกินไป (diff เกิน ~400 LOC ได้ — คำแปล/`t()` แบบกลไก) ·
@@ -148,12 +148,12 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 - ลำดับ: 1 → (2 ∥ 3 ∥ 4) · merge 1 → 2 → 3 → 4 (sync `develop` ก่อนแต่ละตัว)
 - **ไฟล์ร่วม**: `src/admin/__tests__/i18n.unit.spec.ts` (แต่ละ task แก้บรรทัด key ของกลุ่มตัวเองใน `I18N_PENDING`) · `medusa-ui.unit.spec.ts` (assertion ของกลุ่มตัวเอง) ·
   `i18n/index.ts`, `e2e/support/admin.ts`, `package.json`/lockfile = AI18N-1 เท่านั้น
-- เริ่มได้เมื่อ owner accept ADR-031 + ตอบ Q1 (ถ้า Q1 = ข เพิ่มกฎ 15/AC-12 ใน AI18N-1) · หลัง accept session หลักแก้ CLAUDE.md หัวข้อ Language ตาม ADR-031 "ผลต่อเอกสารเดิม"
+- เริ่มได้เมื่อ PR เอกสารรอบ 46 (รวมแก้ CLAUDE.md หัวข้อ Language ตาม ADR-031) พร้อม — stack ไม่ต้องรอ merge · Q1 = ก: ไม่ตั้งไทยเป็นค่าเริ่มต้น (กฎ 15/AC-12 ไม่ทำ)
+- จุดเสี่ยงที่ต้องผ่าน (review เอกสาร): ห้ามเรียก `t` ตอนโหลด module (กฎ 4, AC-4c, guard 14f) · jest ใช้ i18next instance แยก ไม่ init instance กลาง (กฎ 16, AC-4b)
 
 ## คำถามที่รอ owner
 
-- **รอบ 46**: (1) accept ADR-031 (กลไก, namespace, helper `t.ts`, error จาก backend คงอังกฤษ, glossary ใน spec 10) ·
-  (2) spec 10 **Q1** ภาษาเริ่มต้นของเครื่องที่ยังไม่เลือก: ก = อังกฤษตาม Medusa (แนะนำ) / ข = ไทยเป็นค่าเริ่มต้น · (3) อนุมัติแก้ CLAUDE.md บรรทัด "admin คงภาษาอังกฤษ"
+- **รอบ 46**: ไม่มีคำถามค้าง — owner 2026-11-26: ADR-031 = accepted · ~~Q1~~ = ก (ภาษาเริ่มต้นตาม Medusa) · อนุมัติแก้ CLAUDE.md หัวข้อ Language
 
 - **รอบ 45**: ไม่มีคำถามค้าง
 
@@ -209,7 +209,7 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 | รอบ 42 | 01–08 | 🚀 | 21 🚀 | v0.3.1 (#561); ADR-029 |
 | รอบ 44 storefront shadcn/ui | 09 | ☑ | 16 ☑ (#566–#581; เอกสาร #565) | ADR-030 accepted 2026-11-26; stack; งด release ระหว่าง SFUI-2..6 สิ้นสุดแล้ว |
 | รอบ 45 เก็บกวาดหลัง SFUI-7 | 09 | ☑ | 7 ☑ (#584–#590; เอกสาร #583) | ฟอนต์ `text-*-regular/semi` + floating label; stack แบบรอบ 44; ไม่งด release |
-| รอบ 46 admin ภาษาไทย | 10 | ☐ | 4 ☐ | ADR-031 เสนอ; stack แบบรอบ 44; รอ Q1 |
+| รอบ 46 admin ภาษาไทย | 10 | ☐ | 4 ☐ | ADR-031 accepted 2026-11-26; stack แบบรอบ 44; Q1 = ก |
 | รอบ 43 | 01, 03, 04, 06–08 | ◐ | 4 🚀 + 1 ☑ + 14 ☐ | 4 🚀 (3 train #557 + OPS-39 #559) ใน v0.3.1; OPS-40 ☑ #562 ก่อน go-live (ไม่อยู่ใน v0.3.1); 14 ตัวหลัง go-live (รวม OPS-41) |
 
 จำนวน task นับจากตารางใน history.md ณ 2026-11-24 และตารางรอบ 43 ด้านบน ณ 2026-11-25 (task ที่อยู่หลาย milestone นับที่ milestone หลักของ spec)
