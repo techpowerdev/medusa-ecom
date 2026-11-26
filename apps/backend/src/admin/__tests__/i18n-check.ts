@@ -144,6 +144,37 @@ const translateNames = (sf: ts.SourceFile) => {
 }
 
 /**
+ * บรรทัดที่ประกาศ `t` ในไฟล์ที่ import helper เป็นชื่อ `t` ตรงๆ (ว่าง = ผ่าน) — ชื่อซ้อนกับ `const { t } = useTranslation(...)` ฯลฯ
+ * ให้ import helper แบบ alias (`import { t as tNs } from ".../i18n/t"`) แทน (AI18N-N1)
+ */
+export const shadowedHelperLines = (fileName: string, src: string): number[] => {
+  const sf = parse(fileName, src)
+  const helperAsT = sf.statements.some(
+    (s) =>
+      ts.isImportDeclaration(s) &&
+      ts.isStringLiteral(s.moduleSpecifier) &&
+      /(^|\/)i18n\/t$/.test(s.moduleSpecifier.text) &&
+      !!s.importClause?.namedBindings &&
+      ts.isNamedImports(s.importClause.namedBindings) &&
+      s.importClause.namedBindings.elements.some((el) => el.name.text === "t")
+  )
+  if (!helperAsT) return []
+  const lines: number[] = []
+  const visit = (node: ts.Node) => {
+    if (
+      (ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isBindingElement(node) || ts.isFunctionDeclaration(node)) &&
+      node.name &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === "t"
+    )
+      lines.push(sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1)
+    ts.forEachChild(node, visit)
+  }
+  visit(sf)
+  return lines
+}
+
+/**
  * key literal ที่ไฟล์ใช้แต่ไม่มีจริง (กฎ 6; ว่าง = ผ่าน) — `t("<key>", { ns? })` ของ `useTranslation("<ns>")`,
  * helper `t("<ns>", "<key>")` (namespace ของเรา) และ `defineRouteConfig({ label, translationNs })`;
  * `ns: "translation"` ต้องอยู่ใน `MEDUSA_KEYS` และค่า `en` ของ dashboard เท่าข้อความเดิม; key ที่ไม่ใช่ literal (enum) ตรวจด้วย `missingEnumKeys`

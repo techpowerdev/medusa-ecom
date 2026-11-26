@@ -11,7 +11,7 @@ import { CodesTable } from "../../../../components/evoucher/codes-table"
 import { ImportCodes } from "../../../../components/evoucher/import-codes"
 import { PoolDeleteMenu, PoolStockBadge } from "../../../../components/evoucher/pool-delete"
 // helper t ของ breadcrumb (นอก component) — ใน PoolPage ถูกบังด้วย t ของ useTranslation (ชื่อ t ให้ unit ตรวจ key ได้ — spec 10 กฎ 6)
-import { t } from "../../../../i18n/t"
+import { t as tNs } from "../../../../i18n/t"
 import { CODE_STATUSES, evoucherApi, evoucherKeys, STATUS_COLOR } from "../../../../lib/evoucher"
 import { createSingleFlight } from "../../../../lib/single-flight"
 
@@ -114,10 +114,10 @@ type PoolLoaderData = Awaited<ReturnType<typeof evoucherApi.retrievePool>>
 export const loader = async ({ params }: LoaderFunctionArgs) =>
   evoucherApi.retrievePool(params.id!)
 
-// spec 10 กฎ 4b: fallback แปลด้วย helper t ตอนรัน (ชื่อ pool จาก loader คงเดิม)
+// spec 10 กฎ 4b: fallback แปลด้วย helper t (alias tNs ไม่ซ้อนกับ t ของ useTranslation — AI18N-N1) ตอนรัน (ชื่อ pool จาก loader คงเดิม)
 export const handle = {
   breadcrumb: ({ loaderData }: UIMatch<PoolLoaderData>) =>
-    loaderData?.pool.name ?? t("ecom-evoucher", "pool.breadcrumb"),
+    loaderData?.pool.name ?? tNs("ecom-evoucher", "pool.breadcrumb"),
 }
 
 export default PoolPage

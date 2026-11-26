@@ -19,6 +19,7 @@ import {
   keyIssues,
   missingEnumKeys,
   parityIssues,
+  shadowedHelperLines,
   unionLiterals,
 } from "./i18n-check"
 
@@ -206,6 +207,18 @@ describe("guard static (AC-5, กฎ 9, 14)", () => {
       errorShownToUser: ERROR_SHOWN_TO_USER.includes(file),
     })
     expect(issues.map((i) => `${i.rule}:${i.line} ${i.text}`)).toEqual([])
+  })
+
+  // AI18N-N1 (nit review รอบ 46): helper t ที่ import ตรงๆ ห้ามซ้อนชื่อกับ t ในไฟล์ (เช่น t ของ useTranslation) — ใช้ alias `t as tNs`
+  it.each(adminFiles.filter((f) => !f.startsWith("i18n/")))("%s ไม่มี t ซ้อนชื่อกับ helper", (file) => {
+    expect(shadowedHelperLines(file, read(file))).toEqual([])
+  })
+
+  it("fixture: helper t ซ้อนกับ t ของ useTranslation → ล้ม; alias หรือไม่มี t อื่น → ผ่าน", () => {
+    const body = `\nconst C = () => { const { t } = useTranslation("ecom-common"); return t("x") }`
+    expect(shadowedHelperLines("routes/x/page.tsx", `import { t } from "../../i18n/t"${body}`)).toEqual([2])
+    expect(shadowedHelperLines("routes/x/page.tsx", `import { t as tNs } from "../../i18n/t"${body}`)).toEqual([])
+    expect(shadowedHelperLines("lib/x.ts", `import { t } from "../i18n/t"\nexport const f = () => t("ecom-common", "a")`)).toEqual([])
   })
 
   it.each(adminFiles.filter((f) => f.startsWith("i18n/")))("%s ไม่เรียก t ตอนโหลด (f)", (file) => {

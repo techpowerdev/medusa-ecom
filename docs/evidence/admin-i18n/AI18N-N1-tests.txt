@@ -87,3 +87,52 @@ Backend build completed successfully · Frontend build completed successfully
   ✓  65 [chromium] › e2e/group-buy-admin-pages.spec.ts:370:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › กฎ 24d: Create pool group แล้ว refetch groups ล้ม → ตารางเดิมคงอยู่ ไม่มี gb-groups-error
   ✓  66 [chromium] › e2e/group-buy-admin-form.spec.ts:597:7 › ADM-32: error ใต้ช่องตัวเลขของฟอร์มสร้างแคมเปญ › AC-37c: 400 ที่ schema ไม่ครอบ → toast ข้อความของ backend 1 ตัว ไม่มี error ใต้ช่อง และ modal ยังเปิด
   66 passed (1.3m)
+
+## รอบเพิ่ม (session หลักสั่ง): routes/evouchers/pools/[id]/page.tsx ใช้ alias tNs + unit shadowedHelperLines
+### Red — jest src/admin/__tests__/i18n.unit.spec.ts (หลังเพิ่ม unit ก่อนแก้หน้า pool)
+✕ routes/evouchers/pools/[id]/page.tsx ไม่มี t ซ้อนชื่อกับ helper
+Tests: 1 failed, 231 passed, 232 total
+(สแกน AST ทุกไฟล์ใน src/admin ที่ import helper: ไฟล์ที่ซ้อนเหลือเฉพาะหน้า pool)
+### Green
+jest src/admin: Test Suites: 28 passed, 28 total · Tests: 903 passed, 903 total
+pnpm lint: 0 errors (storefront 27 warnings เดิม) · pnpm typecheck: ผ่าน
+NODE_ENV=production pnpm --filter backend build: Backend/Frontend build completed successfully
+### e2e (chromium) บน prod build — spec ที่เปิดหน้า pool detail ของ e-voucher ใน admin (backend :9361, DB medusa_ai18nn1, Redis db 11)
+  ✓   2 [chromium] › e2e/admin-row-menu-escape.spec.ts:69:5 › AC-38: e-voucher partners — Escape ครั้งเดียวปิดเมนูต่อแถว
+  ✓   1 [chromium] › e2e/admin-i18n-evoucher.spec.ts:102:7 › lng=th › AC-10: เมนู/breadcrumb/ตาราง e-voucher, หน้า pool และ widget variant/order เป็นค่า th
+  ✓   4 [chromium] › e2e/admin-create-double-submit.spec.ts:318:7 › AC-44: Create partner (backend จริง — ADM-B1) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้
+  ✓   3 [chromium] › e2e/admin-detail-loader.spec.ts:75:5 › AC-15: หน้ารายละเอียดใช้ผลของ loader (ไม่ GET ซ้ำ), คลิกจากรายการเร็วขึ้น และ breadcrumb E-vouchers
+  ✓   5 [chromium] › e2e/admin-row-menu-escape.spec.ts:93:5 › AC-38: e-voucher codes — Escape ครั้งเดียวปิดเมนูต่อแถว
+  ✓   8 [chromium] › e2e/evoucher-admin-pool-delete.spec.ts:31:5 › AC-51: ลบ pool ที่ยังไม่ส่ง code จากตาราง → prompt บอกจำนวน code → dblclick ยืนยัน = DELETE 1 ครั้ง, toast และแถวหาย
+  ✓   6 [chromium] › e2e/admin-i18n-evoucher.spec.ts:112:7 › lng=en › AC-10: element เดียวกันเป็นค่า en (ข้อความเดิม) ไม่มีอักษรไทย
+  ✓   9 [chromium] › e2e/admin-row-menu-escape.spec.ts:103:5 › AC-38: affiliate programs — Escape ครั้งเดียวปิดเมนูต่อแถว
+  ✓   7 [chromium] › e2e/admin-create-double-submit.spec.ts:318:7 › AC-44: Create program (backend จริง) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้
+  ✓  10 [chromium] › e2e/evoucher-admin-pool-delete.spec.ts:77:5 › AC-51: pool ที่มี code ส่งแล้ว → ลบจากหน้า pool ได้ toast error ข้อความจาก API และ pool ยังอยู่
+  ✓  12 [chromium] › e2e/admin-row-menu-escape.spec.ts:130:5 › AC-38: affiliate affiliates — Escape ครั้งเดียวปิดเมนูต่อแถว
+  ✓  13 [chromium] › e2e/admin-create-double-submit.spec.ts:318:7 › AC-44: Create payout (mock สำเร็จ — payout จริงต้องมี commission entry ใหม่ทุกครั้ง) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้
+  ✓  14 [chromium] › e2e/evoucher-admin-pool-delete.spec.ts:116:5 › AC-51: pool ใหม่ไม่มี code → badge No codes (ไม่ใช่ Low stock) ทั้งตารางและหน้า pool; ลบจากหน้า pool แล้วกลับรายการ
+  ✓  15 [chromium] › e2e/admin-row-menu-escape.spec.ts:143:5 › AC-38: affiliate payouts — Escape ครั้งเดียวปิดเมนูต่อแถว
+  ✓  11 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:27:5 › AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu
+  ✓  17 [chromium] › e2e/evoucher-admin-pool-delete.spec.ts:159:7 › D1: dblclick ยืนยันลบในตาราง pools ที่มีแถวใต้ปุ่ม › AC-51: dblclick ปุ่ม Delete ใน prompt → DELETE 1 ครั้ง และไม่ถูกพาไปหน้า pool ของแถวใต้ปุ่ม
+  ✓  18 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:143:7 › ADM-10: offset ใน URL ที่ผิดรูป › AC-14: codes_offset = abc / -50 / 99999999 และ pools_offset = abc ถูก normalize/clamp
+  ✓  16 [chromium] › e2e/admin-create-double-submit.spec.ts:318:7 › AC-44: Create campaign (mock สำเร็จ — แคมเปญลบผ่าน API ไม่ได้) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้
+  ✓  19 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:209:7 › ADM-10: offset ใน URL ที่ผิดรูป › AC-14: offset ผิดรูปไม่ถึง DataTable — Next หลังตารางแสดงไปหน้า 2 เสมอ
+  ✓  20 [chromium] › e2e/admin-create-double-submit.spec.ts:318:7 › AC-44: Create pool บนหน้า variant (mock สำเร็จ — pool จริงสร้างได้ครั้งเดียวต่อ variant) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้
+  ✓  22 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create partner (backend จริง — ADM-B1) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่
+  ✓  21 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:249:7 › ADM-16: empty state ไม่กระพริบตอน offset เกิน › AC-20: ?codes_offset=99999999 + GET /codes หน่วง 800ms → ไม่มี empty state ตลอด 2 วินาทีแรก และจบที่ codes_offset=50 10 แถว
+  ✓  23 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create program (backend จริง) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่
+  ✓  24 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:323:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 500 → evoucher-codes-error แทน empty state คงหัวตาราง
+  ✓  25 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create payout (mock สำเร็จ — payout จริงต้องมี commission entry ใหม่ทุกครั้ง) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่
+  ✓  26 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:332:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes network ล้ม (route.abort) → evoucher-codes-error
+  ✓  27 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create pool บนหน้า variant (mock สำเร็จ — pool จริงสร้างได้ครั้งเดียวต่อ variant) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่
+  ✓  29 [chromium] › e2e/admin-create-double-submit.spec.ts:503:5 › AC-44: Create pool group (ปุ่มบนหน้าแคมเปญ ไม่มี modal) — ดับเบิลคลิกเว้น 100ms = POST 1 ครั้ง; 500 แล้วกดใหม่ได้; คลิกแยกครั้งใหม่สร้างได้
+  ✓  28 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:339:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 500 ขณะกรองสถานะ (?codes_status=void) → evoucher-codes-error ไม่ใช่ "No codes match"
+  ✓  30 [chromium] › e2e/admin-create-double-submit.spec.ts:546:5 › AC-51 (b): Create pool group — กด Enter ค้าง (keydown repeat) = POST 1 ครั้ง; คลิกแยก 2 ครั้งหลัง response = 2 group
+  ✓  31 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:355:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-30: ?codes_offset=50 และ GET codes ตอบ 500 → evoucher-codes-error ไม่มี "2 of 1 pages"
+  ✓  33 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:370:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 401 → ErrorBoundary พาไป /app/login
+  ✓  32 [chromium] › e2e/admin-create-double-submit.spec.ts:593:5 › AC-44: Import codes (หน้า pool) — ดับเบิลคลิกเว้น 100ms = POST 1 ครั้ง; 500 แล้วกดใหม่ได้; เลือกไฟล์ใหม่ import ได้
+  ✓  34 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:379:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบรายการว่าง → empty state เดิม ไม่มี evoucher-codes-error
+  ✓  35 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:402:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ หน้าแรก) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓  36 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:402:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ ?codes_offset=50) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓  37 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:449:7 › ADM-25: refetch ของ Codes ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Import CSV แล้ว GET codes ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี evoucher-codes-error
+  37 passed (1.2m)
