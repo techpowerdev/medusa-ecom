@@ -67,7 +67,7 @@ const PriceRange = ({ currencyCode }: { currencyCode: string }) => {
           {value.map((_, index) => (
             <Slider.Thumb
               key={index}
-              className="block h-4 w-4 rounded-full border border-ui-border-interactive bg-ui-bg-base shadow-elevation-card-rest outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
+              className="block h-4 w-4 rounded-full border border-ui-border-interactive bg-ui-bg-base shadow-elevation-card-rest outline-hidden focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
               aria-label={index === 0 ? "ราคาต่ำสุด" : "ราคาสูงสุด"}
             />
           ))}

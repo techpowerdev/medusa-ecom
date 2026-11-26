@@ -1,0 +1,82 @@
+# SFUI-1a — ผล test ในเครื่อง (2026-11-26, Node 24.12.0, pnpm 12.15.0)
+# spec: docs/spec/09-storefront-shadcn-ui.md (AC-1..AC-6, AC-17, AC-18), ADR-030
+
+## pnpm --filter storefront test:e2e:unit (project unit ทั้งหมด)
+  ✓   56 [unit] › e2e/sfui-deps.unit.spec.ts:16:5 › AC-1 (1a): tailwindcss และ @tailwindcss/postcss เป็น 4.3.5 แบบ exact ใน devDependencies (0ms)
+  ✓   58 [unit] › e2e/sfui-baseline.unit.spec.ts:19:5 › AC-5: baseline ไม่ว่าง (กันผ่านแบบว่างเปล่า) (0ms)
+  ✓   57 [unit] › e2e/sfui-deps.unit.spec.ts:23:5 › AC-1 (1a): ไม่มี @medusajs/ui-preset, tailwindcss-radix, autoprefixer (0ms)
+  ✓   61 [unit] › e2e/sfui-legacy-css.unit.spec.ts:44:5 › AC-2: มีไฟล์ legacy-medusa.css และ globals.css import ไฟล์นี้ (0ms)
+  ✓   62 [unit] › e2e/sfui-legacy-css.unit.spec.ts:51:5 › AC-2: ทุก class ของ preset ที่ใช้ใน src/** มีนิยามใน legacy-medusa.css (0ms)
+  ✓   59 [unit] › e2e/sfui-baseline.unit.spec.ts:24:5 › AC-5: data-testid ทุกค่าใน baseline ยังอยู่ใน src/** (57ms)
+  ✓   63 [unit] › e2e/sfui-legacy-css.unit.spec.ts:63:5 › AC-2: legacy-medusa.css ไม่มีชื่อที่ไม่ถูกใช้ใน src/** (0ms)
+  ✓   65 [unit] › e2e/sfui-legacy-css.unit.spec.ts:76:5 › AC-2: ชื่อใน NO_STYLE_IN_PRESET ยังถูกใช้จริง (ลบออกเมื่อ task เจ้าของไฟล์ย้ายเสร็จ) (0ms)
+  ✓   66 [unit] › e2e/sfui-legacy-css.unit.spec.ts:80:5 › AC-2: map class → นิยามที่ต้องมี (0ms)
+  ✓   60 [unit] › e2e/sfui-deps.unit.spec.ts:29:5 › AC-1 (กฎ 1): ไม่มีไฟล์ tailwind.config.* และ postcss config มี plugin เดียวคือ @tailwindcss/postcss (65ms)
+  ✓   67 [unit] › e2e/sfui-deps.unit.spec.ts:40:5 › AC-1 (กฎ 1): globals.css ขึ้นต้นด้วย @import "tailwindcss" (ไม่นับ comment) (0ms)
+  ✓   64 [unit] › e2e/sfui-baseline.unit.spec.ts:28:5 › AC-5: ข้อความไทยทุกค่าใน baseline ยังอยู่ใน src/** (39ms)
+  ✓   76 [unit] › e2e/sfui-baseline.unit.spec.ts:33:5 › AC-5: ตัวดึง testid รองรับ JSX, {"…"}, template literal, ternary และ object key (4ms)
+  ✓   82 [unit] › e2e/sfui-baseline.unit.spec.ts:53:5 › AC-5: ตัวดึงข้อความไทยเก็บสตริงและข้อความ JSX ที่มีอักษรไทย ไม่เก็บ comment/ละติน (1ms)
+  ✓   70 [unit] › e2e/sfui-legacy.unit.spec.ts:229:5 › AC-6 (a): ทุกไฟล์ที่มี pattern ต้องห้ามอยู่ใน PENDING ของ task ใด task หนึ่ง (119ms)
+  ✓  103 [unit] › e2e/sfui-legacy.unit.spec.ts:234:5 › AC-6 (b): ทุกไฟล์ใน PENDING ยังมีอยู่และยังมี pattern (ย้ายเสร็จแล้วต้องลบออกจากรายการ) (12ms)
+  ✓  111 [unit] › e2e/sfui-legacy.unit.spec.ts:246:5 › AC-6 (c): key ของ PENDING เป็น task ที่ยังไม่ merge เท่านั้น และไม่มีไฟล์ซ้ำข้าม task (1ms)
+  ✓  114 [unit] › e2e/sfui-legacy.unit.spec.ts:252:5 › AC-6: ตัวจับ class ของ preset แยก variant/important/opacity และไม่นับ class ของ Tailwind ปกติ (2ms)
+  183 passed (1.4s)
+
+## pnpm --filter storefront test:unit (Vitest ทั้งหมด) + theme-css.test.ts
+ ✓ src/styles/theme-css.test.ts > globals.css — brand / grey tokens (AC-4 ขั้น 1a, กฎ 7) > มี --color-brand และ --color-brand-50..900 ค่า hex เดิมทุกตัว 1ms
+ ✓ src/styles/theme-css.test.ts > globals.css — brand / grey tokens (AC-4 ขั้น 1a, กฎ 7) > มี --color-grey-0..90 ค่าเดิม 0ms
+ ✓ src/styles/theme-css.test.ts > globals.css — brand / grey tokens (AC-4 ขั้น 1a, กฎ 7) > ไม่มี selector .dark (ไม่มี dark mode) 0ms
+ ✓ src/styles/theme-css.test.ts > globals.css — brand / grey tokens (AC-4 ขั้น 1a, กฎ 7) > class ของ brand ใช้ได้จริงหลัง compile (bg-brand-900 → --color-brand-900) 23ms
+ ✓ src/styles/theme-css.test.ts > globals.css — ฟอนต์ (AC-3 ส่วน CSS, กฎ 8) > --font-sans ค่าตัวแรกคือ var(--font-noto-sans-thai) 0ms
+ ✓ src/styles/theme-css.test.ts > globals.css — ฟอนต์ (AC-3 ส่วน CSS, กฎ 8) > body ใช้ font-sans (@theme inline → ค่าของ --font-sans ที่ขึ้นต้นด้วย Noto Sans Thai) 7ms
+ ✓ src/styles/theme-css.test.ts > globals.css — ฟอนต์ (AC-3 ส่วน CSS, กฎ 8) > class typography ของ preset (txt-*) ใช้ var(--font-sans) — ไม่ fix Inter 9ms
+ ✓ src/styles/theme-css.test.ts > globals.css — Tailwind v4 CSS-first คงค่า theme เดิม (กฎ 1) > ขึ้นต้นด้วย @import "tailwindcss" และ import ชั้นเข้ากันได้ legacy-medusa.css 0ms
+ ✓ src/styles/theme-css.test.ts > globals.css — Tailwind v4 CSS-first คงค่า theme เดิม (กฎ 1) > breakpoint, radius, max-w-8xl, text-3xl, animation เดิม generate ได้ 8ms
+ ✓ src/styles/theme-css.test.ts > globals.css — Tailwind v4 CSS-first คงค่า theme เดิม (กฎ 1) > class ใน globals.css เดิม (text-*-regular/semi, content-container, no-scrollbar) ยังใช้ได้เป็น utility 7ms
+ ✓ src/styles/theme-css.test.ts > legacy-medusa.css — ชั้นเข้ากันได้ของ preset (กฎ 16) > สี/เงา ui-* และ variant radix-state-* generate ได้ 7ms
+ ✓ src/styles/theme-css.test.ts > legacy-medusa.css — ชั้นเข้ากันได้ของ preset (กฎ 16) > ขอบเริ่มต้นเป็นสี --color-ui-border-base แบบ preset เดิม (v4 เริ่มต้นเป็น currentColor) 6ms
+ Test Files  125 passed (125)
+      Tests  1960 passed (1960)
+
+## pnpm --filter storefront typecheck
+ผ่าน (exit 0)
+
+## pnpm --filter storefront lint
+✖ 28 problems (0 errors, 28 warnings)
+(28 warnings เท่ากับ develop — ไม่มีจากไฟล์ของ task นี้)
+
+## pnpm --filter storefront build (production)
+✓ Compiled successfully in 4.6s
+  Generating static pages using 7 workers (0/8) ...
+  Generating static pages using 7 workers (2/8) 
+  Generating static pages using 7 workers (4/8) 
+  Generating static pages using 7 workers (6/8) 
+✓ Generating static pages using 7 workers (8/8) in 137ms
+
+## e2e chromium: AC-3 + AC-17
+  ✓  1 [chromium] › apps/storefront/e2e/ui-preset-font.spec.ts:9:5 › AC-3: body, h1, h2, p, button, input และ class txt-*/*-webs บนหน้าแรกใช้ Noto Sans Thai ก่อน Inter (2.8s)
+  ✓  2 [chromium] › apps/storefront/e2e/sfui-mobile-390.spec.ts:20:5 › AC-17: หน้าแรก, store, PDP, cart, checkout, account, orders ที่ 390px ไม่ล้นแนวนอน (34.0s)
+  2 passed (34.5s)
+
+## e2e chromium: spec ที่ assert CSS/layout (toHaveCSS / getComputedStyle) + core-32/core-50/core-67/core-89
+    test-results/core-50-nav-narrow-AC-145--5c6d7-ดง-ตำแหน่ง-ขนาดเท่า-develop-chromium/test-failed-1.png
+  1 failed
+  67 passed (1.3m)
+ล้ม 1: core-50-nav-narrow AC-145 1280×800 nav-menu-button width ต่าง 1.27px จาก DESKTOP_BASELINE ที่วัดบน chromium Linux (comment ใน spec: macOS render ข้อความไทยกว้างต่าง ~1.3px) — ไม่ใช่ผลของ task นี้ ต้องยืนยันใน CI (Linux)
+
+## รอบแก้ตาม review (REQUEST CHANGES) — 2026-11-26
+- Red: sfui-legacy-css.unit.spec.ts ข้อใหม่ "ทุก var(--…) ที่ src/** อ้างตรงมีนิยาม" ล้มก่อนแก้ด้วย
+  --fg-interactive (src/app/not-found.tsx, interactive-link/index.tsx), --fg-muted (discount-code/index.tsx)
+- Green: legacy-medusa.css เพิ่ม :root --fg-interactive / --fg-muted (ค่า light ของ ui-preset 2.22.1) + --default-ring-color แบบ v3
+- test:e2e:unit (project unit ทั้งหมด): 185 passed (รวม evidence-budget)
+- test:unit (Vitest): 125 files, 1961 tests passed (theme-css.test.ts 13)
+- typecheck: ผ่าน · lint: 0 errors, 28 warnings (เท่า develop) · build (production): ผ่าน
+- probe หน้า 404 (/th/no-such-page): stroke ของลูกศร InteractiveLink = rgb(59, 130, 246) (ก่อนแก้ = ไม่มีค่า)
+- e2e chromium: thai-ui-shell, thai-ui-pages, thai-ui-cart-order, thai-ui-account, core-40-discount-action-race,
+  ui-preset-font, sfui-mobile-390 — 13 passed
+
+## รอบ re-review (กฎ 15 ห้าม var(--fg|bg|border-*) ดิบของ preset) — 2026-11-26
+- Red: sfui-legacy.unit.spec.ts ข้อใหม่ (control var(--fg-interactive) ถูกจับ / var(--font-noto-sans-thai) ไม่ถูกจับ) ล้มก่อนแก้ (hasForbiddenPattern ยังไม่มี)
+- Green: sfui-source.ts hasForbiddenPattern = FORBIDDEN_IMPORT | (ไม่ใช่ test: PRESET_RAW_VAR | class ของ preset) ใช้ทั้งข้อ (a) และ (b)
+- interactive-link + app/not-found.tsx อยู่ใน PENDING SFUI-5a, discount-code อยู่ใน SFUI-5c (มี test)
+- test:e2e:unit: 187 passed · test:unit: 125 files / 1961 tests passed · typecheck ผ่าน · lint 0 errors 28 warnings (เท่า develop)

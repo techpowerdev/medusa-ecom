@@ -23,7 +23,7 @@ const SearchDrawer = ({ isOpen, close, children }: SearchDrawerProps) => {
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-ui-bg-overlay backdrop-blur-sm" />
+          <div className="fixed inset-0 bg-ui-bg-overlay backdrop-blur-xs" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-hidden">

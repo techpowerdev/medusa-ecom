@@ -5,7 +5,7 @@ import { Noto_Sans_Thai } from "next/font/google"
 import "styles/globals.css"
 
 // [CORE-4a] ADR-008 ข้อ 4: next/font ดาวน์โหลดฟอนต์ตอน build แล้ว self-host (ไม่มี request ไป Google Fonts ตอน runtime)
-// ใช้ผ่าน CSS variable ที่ tailwind.config.js ตั้งเป็น fontFamily.sans ตัวแรก
+// ใช้ผ่าน CSS variable ที่ `--font-sans` ใน @theme ของ src/styles/globals.css ตั้งเป็นฟอนต์ตัวแรก (SFUI-1a, spec 09 กฎ 8)
 const notoSansThai = Noto_Sans_Thai({
   subsets: ["thai", "latin"],
   display: "swap",

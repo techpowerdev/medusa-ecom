@@ -69,7 +69,7 @@ const SearchPanel = ({ onNavigate }: { onNavigate: () => void }) => {
           placeholder="ค้นหาสินค้า"
           aria-label="ค้นหาสินค้า"
           autoFocus
-          className="txt-medium w-full bg-transparent py-4 text-ui-fg-base outline-none placeholder:text-ui-fg-muted"
+          className="txt-medium w-full bg-transparent py-4 text-ui-fg-base outline-hidden placeholder:text-ui-fg-muted"
           data-testid="search-input"
         />
       </div>

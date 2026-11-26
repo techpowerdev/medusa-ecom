@@ -1,0 +1,44 @@
+import { expect, test } from "@playwright/test"
+import fs from "node:fs"
+import path from "node:path"
+
+import { STOREFRONT } from "./support/sfui-source"
+
+// SFUI (spec 09 กฎ 1, AC-1; ADR-030 ข้อ 10): dependency ของ storefront pin แบบ exact ตามตาราง ADR-030 ทีละขั้น
+// ขั้น 1a: Tailwind v4 + PostCSS plugin ของ v4; ถอด preset/plugin ของ v3 และ autoprefixer
+// (task ถัดไปเพิ่มข้อตรวจของขั้นตัวเองในไฟล์นี้: 1b = tw-animate-css, radix-ui, cva, cn, lucide-react; 6 = ถอดชุดที่เหลือ)
+const pkg = JSON.parse(fs.readFileSync(path.join(STOREFRONT, "package.json"), "utf8")) as {
+  dependencies: Record<string, string>
+  devDependencies: Record<string, string>
+}
+const all = { ...pkg.dependencies, ...pkg.devDependencies }
+
+test("AC-1 (1a): tailwindcss และ @tailwindcss/postcss เป็น 4.3.5 แบบ exact ใน devDependencies", () => {
+  expect(pkg.devDependencies.tailwindcss).toBe("4.3.5")
+  expect(pkg.devDependencies["@tailwindcss/postcss"]).toBe("4.3.5")
+  expect(pkg.dependencies.tailwindcss).toBeUndefined()
+  expect(pkg.dependencies["@tailwindcss/postcss"]).toBeUndefined()
+})
+
+test("AC-1 (1a): ไม่มี @medusajs/ui-preset, tailwindcss-radix, autoprefixer", () => {
+  for (const name of ["@medusajs/ui-preset", "tailwindcss-radix", "autoprefixer"]) {
+    expect(all[name], name).toBeUndefined()
+  }
+})
+
+test("AC-1 (กฎ 1): ไม่มีไฟล์ tailwind.config.* และ postcss config มี plugin เดียวคือ @tailwindcss/postcss", () => {
+  const files = fs.readdirSync(STOREFRONT)
+  expect(files.filter((name) => /^tailwind\.config\./.test(name))).toEqual([])
+
+  const postcssFiles = files.filter((name) => /^postcss\.config\./.test(name))
+  expect(postcssFiles).toHaveLength(1)
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- อ่าน config แบบเดียวกับที่ Next.js โหลด
+  const config = require(path.join(STOREFRONT, postcssFiles[0]))
+  expect(Object.keys((config.default ?? config).plugins)).toEqual(["@tailwindcss/postcss"])
+})
+
+test("AC-1 (กฎ 1): globals.css ขึ้นต้นด้วย @import \"tailwindcss\" (ไม่นับ comment)", () => {
+  const css = fs.readFileSync(path.join(STOREFRONT, "src", "styles", "globals.css"), "utf8")
+  const firstStatement = css.replace(/\/\*[\s\S]*?\*\//g, "").trim().split("\n")[0]
+  expect(firstStatement).toBe('@import "tailwindcss";')
+})

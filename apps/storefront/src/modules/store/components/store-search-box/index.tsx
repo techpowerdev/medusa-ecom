@@ -51,7 +51,7 @@ const StoreSearchBox = () => {
         }}
         placeholder="ค้นหาสินค้า"
         aria-label="ค้นหาสินค้า"
-        className="txt-medium w-full bg-transparent py-3 text-ui-fg-base outline-none placeholder:text-ui-fg-muted [&::-webkit-search-cancel-button]:hidden"
+        className="txt-medium w-full bg-transparent py-3 text-ui-fg-base outline-hidden placeholder:text-ui-fg-muted [&::-webkit-search-cancel-button]:hidden"
         data-testid="store-search-input"
       />
       {inputValue && (
