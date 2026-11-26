@@ -1,0 +1,230 @@
+# AI18N-1 — ผลทดสอบ (spec 10, ADR-031) — 2026-11-26 บนเครื่อง builder (node 24.12.0, pnpm 12.15.0)
+
+## Red (ก่อนเขียนโค้ด)
+- i18n.unit.spec.ts: Cannot find module '../i18n/t' (suite ล้ม)
+- deps.unit.spec.ts: i18next ใน devDependencies Expected "23.7.11" Received undefined
+- admin-options.unit.spec.ts: 5 failed (storageState/ADMIN_UI_OPTIONS_TH/adminText/adminLabel ยังไม่มี)
+
+## unit backend: pnpm --filter backend test:unit
+Test Suites: 134 passed, 134 total
+Tests:       2531 passed, 2531 total
+Time:        161.266 s
+
+## unit backend (verbose): i18n.unit.spec.ts + deps.unit.spec.ts (+ medusa-ui.unit.spec.ts ในยอดรวม)
+PASS src/admin/__tests__/i18n.unit.spec.ts
+  โครง src/admin/i18n (AC-1, กฎ 1–2)
+    ✓ default export มี en/th และแต่ละภาษามี namespace ตรง 4 ตัว ไม่มี translation
+    ✓ json/en/ecom-common.json มีอยู่และ parse ได้
+    ✓ json/en/ecom-group-buy.json มีอยู่และ parse ได้
+    ✓ json/en/ecom-evoucher.json มีอยู่และ parse ได้
+    ✓ json/en/ecom-affiliate.json มีอยู่และ parse ได้
+    ✓ json/th/ecom-common.json มีอยู่และ parse ได้
+    ✓ json/th/ecom-group-buy.json มีอยู่และ parse ได้
+    ✓ json/th/ecom-evoucher.json มีอยู่และ parse ได้
+    ✓ json/th/ecom-affiliate.json มีอยู่และ parse ได้
+    ✓ import JSON ด้วย with { type: "json" } (กฎ 1)
+  parity en/th (AC-2, กฎ 5)
+    ✓ ecom-common: key/{{var}} ตรงกันและค่า th มีอักษรไทย
+    ✓ ecom-group-buy: key/{{var}} ตรงกันและค่า th มีอักษรไทย
+    ✓ ecom-evoucher: key/{{var}} ตรงกันและค่า th มีอักษรไทย
+    ✓ ecom-affiliate: key/{{var}} ตรงกันและค่า th มีอักษรไทย
+    ✓ fixture: ลบ key จาก th → คืน key นั้น; plural en _one/_other กับ th _other เท่ากัน; {{var}} ต่างกัน → ล้ม
+  key ที่ใช้ในโค้ดมีจริง (AC-3, กฎ 4a, 6, 7)
+    ✓ i18n/index.ts
+    ✓ i18n/t.ts
+    ✓ lib/affiliate-account.ts
+    ✓ lib/affiliate-names.ts
+    ✓ lib/affiliate-payout.ts
+    ✓ lib/affiliate-program-form.ts
+    ✓ lib/affiliate.ts
+    ✓ lib/client.ts
+    ✓ lib/combobox-escape.ts
+    ✓ lib/evoucher-allocate.ts
+    ✓ lib/evoucher-partner-form.ts
+    ✓ lib/evoucher-pool-delete.ts
+    ✓ lib/evoucher-pool-form.ts
+    ✓ lib/evoucher-query.ts
+    ✓ lib/evoucher-resend.ts
+    ✓ lib/evoucher-status.ts
+    ✓ lib/evoucher.ts
+    ✓ lib/fetch-error.ts
+    ✓ lib/flash-sale-form.ts
+    ✓ lib/form-validation.ts
+    ✓ lib/group-buy-campaign.ts
+    ✓ lib/group-buy-form.ts
+    ✓ lib/group-buy.ts
+    ✓ lib/order-refund-blocked.ts
+    ✓ lib/page-offset.ts
+    ✓ lib/single-flight.ts
+    ✓ widgets/flash-sale-options.tsx
+    ✓ widgets/order-evouchers.tsx
+    ✓ widgets/order-refund-blocked.tsx
+    ✓ widgets/variant-evoucher-pool.tsx
+    ✓ components/affiliate/affiliates-table.tsx
+    ✓ components/affiliate/list-table.tsx
+    ✓ components/affiliate/mark-paid-prompt.tsx
+    ✓ components/affiliate/payout-form.tsx
+    ✓ components/affiliate/payout-info-drawer.tsx
+    ✓ components/affiliate/payouts-table.tsx
+    ✓ components/affiliate/program-form.tsx
+    ✓ components/affiliate/programs-table.tsx
+    ✓ components/common/container.tsx
+    ✓ components/common/header.tsx
+    ✓ components/common/number-input.tsx
+    ✓ components/common/page-offset-gate.tsx
+    ✓ components/common/use-confirm-discard.ts
+    ✓ components/common/use-page-offset.ts
+    ✓ components/common/use-remount-menu.ts
+    ✓ components/common/use-restore-opener-focus.ts
+    ✓ components/evoucher/codes-table.tsx
+    ✓ components/evoucher/import-codes.tsx
+    ✓ components/evoucher/partners-section.tsx
+    ✓ components/evoucher/pool-delete.tsx
+    ✓ components/evoucher/pools-table.tsx
+    ✓ components/group-buy/create-campaign.tsx
+    ✓ components/group-buy/group-members.tsx
+    ✓ components/group-buy/groups-section.tsx
+    ✓ components/group-buy/product-picker.tsx
+    ✓ routes/affiliate/page.tsx
+    ✓ routes/evouchers/page.tsx
+    ✓ routes/group-buying/page.tsx
+    ✓ routes/group-buying/[id]/page.tsx
+    ✓ routes/evouchers/pools/[id]/page.tsx
+    ✓ prompt ออกจากฟอร์มใช้ key ของ Medusa และ Leave/Continue editing ของ ecom-common
+    ✓ fixture: key ไม่มีอยู่ → คืน key นั้น; ns translation นอกรายการ/หลาย namespace → ล้ม
+    ✓ fixture enum (กฎ 7): ค่าใหม่ใน array/union ที่ไม่มี key → คืนค่านั้น
+  t ตอนรัน + instance แยก (AC-4, กฎ 4, 8, 11, 16)
+    ✓ (a) ecom-common: en = ข้อความเดิม, th = ค่าไทย, de → en
+    ✓ (a) fieldErrorMap รับ function ต่อช่องและเรียกตอน parse (กฎ 4d)
+    ✓ (b) instance กลางของ i18next ไม่ถูก init — optionalInt ของ dashboard ยังได้ Invalid input
+    ✓ (c) require ทุก lib/*.ts (ยกเว้น client.ts) และ i18n/t.ts ก่อน init ไม่ throw
+    ✓ (c) fixture: module ที่เรียก helper t ระดับบนสุด → throw ก่อน init
+  guard static (AC-5, กฎ 9, 14)
+    ✓ I18N_PENDING: ทุกไฟล์มีอยู่จริงและไม่ซ้ำ
+    ✓ lib/affiliate-account.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/affiliate-names.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/affiliate-payout.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/affiliate-program-form.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/affiliate.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/client.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/combobox-escape.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/evoucher-allocate.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/evoucher-partner-form.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/evoucher-pool-delete.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/evoucher-pool-form.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/evoucher-query.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/evoucher-resend.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/evoucher-status.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/evoucher.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/fetch-error.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/flash-sale-form.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/form-validation.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/group-buy-campaign.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/group-buy-form.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/group-buy.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/order-refund-blocked.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/page-offset.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/single-flight.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ widgets/flash-sale-options.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ widgets/order-evouchers.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ widgets/order-refund-blocked.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ widgets/variant-evoucher-pool.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/affiliate/affiliates-table.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/affiliate/list-table.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/affiliate/mark-paid-prompt.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/affiliate/payout-form.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/affiliate/payout-info-drawer.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/affiliate/payouts-table.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/affiliate/program-form.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/affiliate/programs-table.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/common/container.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/common/header.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/common/number-input.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/common/page-offset-gate.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/common/use-confirm-discard.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/common/use-page-offset.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/common/use-remount-menu.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/common/use-restore-opener-focus.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/evoucher/codes-table.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/evoucher/import-codes.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/evoucher/partners-section.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/evoucher/pool-delete.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/evoucher/pools-table.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/group-buy/create-campaign.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/group-buy/group-members.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/group-buy/groups-section.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ components/group-buy/product-picker.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ routes/affiliate/page.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ routes/evouchers/page.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ routes/group-buying/page.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ routes/group-buying/[id]/page.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ routes/evouchers/pools/[id]/page.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ i18n/index.ts ไม่เรียก t ตอนโหลด (f)
+    ✓ i18n/t.ts ไม่เรียก t ตอนโหลด (f)
+    ✓ ไฟล์ใน I18N_PENDING ยังมีข้อความฮาร์ดโค้ด (แปลแล้วต้องลบออกจากรายการ)
+    ✓ fixture (a) ถูกจับ: components/x.tsx const C = () => <Text>Hello world</Text>
+    ✓ fixture (b) ถูกจับ: components/x.tsx const actions = [{ label: "Edit", onClick }]
+    ✓ fixture (b) ถูกจับ: components/x.tsx const C = () => <Header heading="Could not load codes" />
+    ✓ fixture (b) ถูกจับ: components/x.tsx const C = () => <Header heading={ok ? "Codes" : "Could not load codes"} />
+    ✓ fixture (c) ถูกจับ: components/x.tsx const f = () => toast.success("Saved")
+    ✓ fixture (c) ถูกจับ: components/x.tsx const f = () => { throw new FormError("Name is required") }
+    ✓ fixture (d) ถูกจับ: lib/x.ts export const s = z.string().min(1, "Select a partner")
+    ✓ fixture (d) ถูกจับ: lib/x.ts export const s = z.string().refine(fn, { message: "Name is required" })
+    ✓ fixture (d) ถูกจับ: lib/x.ts export const m = fieldErrorMap({ starts_at: "Invalid date" })
+    ✓ fixture (e) ถูกจับ: lib/x.ts const INVALID_DATE = "Invalid date"
+    ✓ fixture (e) ถูกจับ: lib/x.ts export const required = (label: string) => `${label} is required`
+    ✓ fixture (e) ถูกจับ: lib/x.ts export function activeChangeType(type?: string) { if (!type) return "order change"; return type }
+    ✓ fixture (f) ถูกจับ: components/x.tsx const X = t("ecom-common", "a")
+    ✓ fixture (f) ถูกจับ: components/x.tsx const { t } = useTranslation("ecom-common")
+    ✓ fixture (g) ถูกจับ: routes/x/page.tsx export const config = defineRouteConfig({ label: LABEL, translationNs: NS })
+    ✓ fixture (c) new Error ในไฟล์ที่แสดงต่อผู้ใช้ถูกจับ ไฟล์อื่นไม่จับ
+    ✓ fixture (f) ทำงานกับไฟล์ใน PENDING ด้วย
+    ✓ fixture ไม่ถูกจับ: components/x.tsx const C = () => { const { t } = useTranslation("ecom-common"); return <Text>{t("x")}</Text> }
+    ✓ fixture ไม่ถูกจับ: lib/x.ts export const s = z.string().min(1, { error: () => t("ecom-evoucher", "x") })
+    ✓ fixture ไม่ถูกจับ: components/x.tsx NumberInput.displayName = "NumberInput"
+    ✓ fixture ไม่ถูกจับ: lib/x.ts export const send = () => request({ method: "POST" })
+    ✓ fixture ไม่ถูกจับ: components/x.tsx const C = () => <Button variant="secondary" data-testid="gb-save">{t("actions.save", { ns: "translation" })}</Button>
+    ✓ fixture ไม่ถูกจับ: routes/x/page.tsx export const config = defineRouteConfig({ label: "nav.label", translationNs: "ecom-common", icon: Users })
+    ✓ fixture ไม่ถูกจับ: components/x.tsx const C = () => <Text>THB</Text>
+    ✓ fixture ไม่ถูกจับ: lib/x.ts export const path = (id: string) => `/admin/group-buy/campaigns/${id}/groups`
+PASS src/admin/__tests__/deps.unit.spec.ts
+  admin dependencies (spec 08 AC-1)
+    ✓ @medusajs/ui ตรงกับ dependency ของ @medusajs/dashboard แบบ exact
+    ✓ @medusajs/icons ตรงกับ dependency ของ @medusajs/dashboard แบบ exact
+    ✓ react-hook-form ตรงกับ dependency ของ @medusajs/dashboard แบบ exact
+    ✓ @hookform/resolvers ตรงกับ dependency ของ @medusajs/dashboard แบบ exact
+    ✓ zod ตรงกับ dependency ของ @medusajs/dashboard แบบ exact
+    ✓ @tanstack/react-query ตรงกับ dependency ของ @medusajs/dashboard แบบ exact
+    ✓ react-router-dom ตรงกับ dependency ของ @medusajs/dashboard แบบ exact
+    ✓ react-i18next อยู่ใน dependencies และตรงกับ @medusajs/dashboard แบบ exact
+    ✓ i18next อยู่ใน devDependencies (ไม่อยู่ใน dependencies) และตรงกับ @medusajs/dashboard แบบ exact
+    ✓ jest โหลด @medusajs/dashboard/lib ได้ (กฎ 2)
+Test Suites: 3 passed, 3 total
+Tests:       440 passed, 440 total
+
+## unit storefront: playwright --project=unit (ทั้งหมด)
+221 passed
+
+## e2e admin (chromium, prod build backend :9311, DB medusa_ai18n1)
+  ✓  1 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้าง partner — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (2.8s)
+  ✓  2 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้างแคมเปญ — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (2.7s)
+  ✓  3 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้าง program — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (2.0s)
+  ✓  4 [chromium] › e2e/admin-form-discard-prompt.spec.ts:122:5 › AC-32: Drawer แก้ partner — กรอกแล้วคลิกปุ่ม close ของ Drawer → alertdialog; Escape 2 ครั้งติดกันที่ฟอร์มสร้าง → alertdialog ตัวเดียว; บันทึกสำเร็จไม่ถาม (2.7s)
+  ✓  5 [chromium] › e2e/admin-form-discard-prompt.spec.ts:184:5 › AC-32: ฟอร์ม payout dirty + Combobox ขยาย → Escape ไม่มี alertdialog และ dialog ยังเปิด (กฎ 31d) (1.7s)
+  ✓  6 [chromium] › e2e/admin-form-discard-prompt.spec.ts:231:5 › AC-32: ฟอร์มสร้าง partner — กด Save แล้ว Escape ทันที → ไม่มี alertdialog ระหว่างบันทึก และหลังบันทึกสำเร็จฟอร์มปิดโดยไม่มี prompt ค้าง (4.7s)
+  ✓  7 [chromium] › e2e/admin-i18n-common.spec.ts:63:7 › lng=th › AC-8: prompt ออกจากฟอร์มเป็นไทย (key ของ Medusa + ecom-common) และเมนู Settings ของ Medusa เป็นไทย (1.8s)
+  ✓  8 [chromium] › e2e/admin-i18n-common.spec.ts:87:7 › lng=en › AC-8: prompt ออกจากฟอร์มเป็นอังกฤษเดิม (ค่า en) ไม่มีอักษรไทย (1.3s)
+  8 passed (20.8s)
+
+## e2e admin ที่ loginAdmin อีก 34 ไฟล์ (AC-7 ชุดเดิม)
+  1 failed
+  160 passed (7.7m)
+1 failed = admin-create-double-submit.spec.ts:318 'Create program' — ENOENT ไฟล์ trace ใน test-results/ (รัน playwright project unit พร้อมกันจนลบโฟลเดอร์) ไม่ใช่ assertion; รันไฟล์นั้นซ้ำเดี่ยว:
+  12 passed (49.3s)
+
+ยังไม่ได้รันในเครื่อง (ต้องใช้ storefront/Stripe — รอ CI): core-55-return-receive.spec.ts, pay-10-refund-blocked-widget.spec.ts, payments-refund.spec.ts
+
+## lint/typecheck/build
+pnpm lint: exit 0 (0 errors; warning เดิม backend 4 / storefront 27)
+pnpm typecheck: exit 0
+NODE_ENV=production pnpm --filter backend build: exit 0 (admin bundle มี key confirmDiscard.continueEditing)

@@ -2,11 +2,15 @@
  * ADM-3 (spec 08 กฎ 8): `optionalInt`/`optionalFloat` ของ dashboard ตั้งข้อความ error ด้วย `i18next.t(...)` ตอนโหลด module
  * ซึ่งยังไม่ init จึงได้ `undefined` และ zod แสดง "Invalid input" — ข้อความต่อช่องจึงใส่ผ่าน error map ตอน parse
  * (ใช้กับ issue ที่ไม่มีข้อความเท่านั้น; ข้อความที่ schema ระบุเองไม่ถูกแทน) ส่งเป็น schemaOptions ของ `zodResolver`
+ * spec 10 กฎ 4d: ข้อความต่อช่องเป็น function (`{ starts_at: invalidDate }`) เรียกตอน parse ให้ได้ภาษาปัจจุบัน
+ * — ยังรับ string ระหว่างที่ไฟล์ของกลุ่มอื่นยังไม่แปล (`I18N_PENDING`; guard กฎ 14d จับ literal ในไฟล์ที่แปลแล้ว)
  */
 export const fieldErrorMap =
-  (messages: Record<string, string>) =>
-  (issue: { path?: PropertyKey[] }): string | undefined =>
-    messages[String(issue.path?.[0])]
+  (messages: Record<string, string | (() => string)>) =>
+  (issue: { path?: PropertyKey[] }): string | undefined => {
+    const message = messages[String(issue.path?.[0])]
+    return typeof message === "function" ? message() : message
+  }
 
 /** ค่าว่างของช่องตัวเลขในฟอร์ม (input ส่ง `""`, ค่าที่ไม่ได้กรอกเป็น `undefined`) */
 export const isBlank = (value: unknown): value is "" | undefined => value === "" || value === undefined

@@ -35,4 +35,6 @@ if (process.env.TEST_TYPE === "integration:http") {
   Object.assign(module.exports, INTEGRATION_WORKER);
 } else if (process.env.TEST_TYPE === "unit") {
   module.exports.testMatch = ["**/src/**/__tests__/**/*.unit.spec.[jt]s"];
+  // spec 10 กฎ 16 (AI18N-1): instance แยกของ i18next (lng=en) ให้ helper src/admin/i18n/t.ts — เฉพาะ unit
+  module.exports.setupFiles = [...module.exports.setupFiles, "./src/admin/__tests__/i18n-setup.ts"];
 }

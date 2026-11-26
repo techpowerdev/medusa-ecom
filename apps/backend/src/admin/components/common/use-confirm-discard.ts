@@ -1,5 +1,6 @@
 import { usePrompt } from "@medusajs/ui"
 import { useEffect, useLayoutEffect, useRef } from "react"
+import { useTranslation } from "react-i18next"
 
 type Options = {
   /** ฟอร์มของ react-hook-form — ใช้ `isDirty` (ถูกแก้) และ `isSubmitting` (กด Save แล้ว ก่อน mutation เริ่ม) */
@@ -13,12 +14,13 @@ type Options = {
 /**
  * ADM-27 (spec 08 กฎ 31): ถามยืนยันก่อนปิด `FocusModal`/`Drawer` แบบ state ที่ฟอร์ม dirty — Medusa มี pattern นี้เฉพาะ
  * `RouteModalForm` (modal แบบ route) จึงทำตาม "Custom Component Guides" ด้วย `usePrompt` ของ `@medusajs/ui`
- * และถ้อยคำ `unsavedChangesTitle`/`unsavedChangesDescription` ของ dashboard
+ * และถ้อยคำ `unsavedChangesTitle`/`unsavedChangesDescription` ของ dashboard (key ของ Medusa — spec 10 กฎ 6) ปุ่มยืนยัน/ยกเลิกจาก `ecom-common`
  * คืน handler สำหรับ `onOpenChange` — ค่า `true` (เปิด) ไม่ทำอะไร; บันทึกสำเร็จผู้เรียกปิดด้วย state ตรง (ไม่ผ่าน handler นี้) จึงไม่ถาม
  * prompt ไม่ซ้อน: คำขอปิดหลายครั้งก่อน prompt เปิดรวมเป็น timer เดียว และระหว่าง prompt เปิด `usePrompt` (4.2.8) คืน promise เดิม
  */
 export const useConfirmDiscard = ({ form, isPending, onClose }: Options) => {
   const prompt = usePrompt()
+  const { t } = useTranslation("ecom-common")
   // อ่านใน render เพื่อ subscribe proxy ของ formState
   const { isDirty, isSubmitting } = form.formState
   const latest = useRef({ busy: isPending || isSubmitting, isDirty, onClose })
@@ -44,10 +46,10 @@ export const useConfirmDiscard = ({ form, isPending, onClose }: Options) => {
         return
       }
       const leave = await prompt({
-        title: "Are you sure you want to leave this form?",
-        description: "You have unsaved changes that will be lost if you exit this form.",
-        confirmText: "Leave",
-        cancelText: "Continue editing",
+        title: t("general.unsavedChangesTitle", { ns: "translation" }),
+        description: t("general.unsavedChangesDescription", { ns: "translation" }),
+        confirmText: t("confirmDiscard.leave"),
+        cancelText: t("confirmDiscard.continueEditing"),
       })
       if (leave) latest.current.onClose()
     })

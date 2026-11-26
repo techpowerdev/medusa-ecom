@@ -1,7 +1,10 @@
 import { APIRequestContext, Locator, Page } from "@playwright/test"
+import { readFileSync } from "node:fs"
+import path from "node:path"
 
 import { BACKEND_URL, expect } from "./fixtures"
 import type { Headers } from "./medusa"
+import { REPO_ROOT } from "./paths"
 
 // OPS-11 (spec 07 AC-16): login admin UI + header proxy ของ e2e admin อยู่ที่นี่ที่เดียว
 
@@ -16,11 +19,68 @@ export const PAGINATION_TEXT = /\d+ of \d+ (results|pages)/
  * แบบ prod ไม่เช่นนั้น Set-Cookie ไม่ถูกส่งและ login admin UI ไม่ติด
  * spec 08 กฎ 12 (ADM-2b): วันเวลา/เงินใน admin ตาม timezone/locale ของ browser (useDate, getLocaleAmount ของ Medusa)
  * จึงตั้ง locale en-US + timezone ไทยให้ผลตายตัว (ภาษาของ admin ยังเป็น English — useDate อ่าน locale จากภาษานั้น)
+ * spec 10 กฎ 12 (AI18N-1): ล็อกภาษาของ admin เป็น `en` ด้วย cookie + localStorage `lng` ของ origin backend (detector ของ dashboard
+ * อ่าน cookie → localStorage) ผ่าน `storageState` — ชื่ออังกฤษในข้อยกเว้น 4 ข้อของการหาด้วย testid จึงเป็นค่า `en`
+ * หมายเหตุ: cookie ไม่แยก port — storefront บน localhost เห็น cookie `lng` ด้วย (ตอนนี้ไม่มีผล: storefront ไม่มี i18n — ADR-014)
  */
-export const ADMIN_UI_OPTIONS = {
-  extraHTTPHeaders: { "x-forwarded-proto": "https" },
-  locale: "en-US",
-  timezoneId: "Asia/Bangkok",
+const adminUiOptions = (lng: "en" | "th") => {
+  const { origin, hostname } = new URL(BACKEND_URL)
+  return {
+    extraHTTPHeaders: { "x-forwarded-proto": "https" },
+    locale: "en-US",
+    timezoneId: "Asia/Bangkok",
+    storageState: {
+      cookies: [
+        { name: "lng", value: lng, domain: hostname, path: "/", expires: -1, httpOnly: false, secure: false, sameSite: "Lax" as const },
+      ],
+      origins: [{ origin, localStorage: [{ name: "lng", value: lng }] }],
+    },
+  }
+}
+
+export const ADMIN_UI_OPTIONS = adminUiOptions("en")
+
+/** spec 10 กฎ 13: e2e โหมดไทย — เหมือน `ADMIN_UI_OPTIONS` ต่างเฉพาะ `lng=th` (ค่าที่คาดสร้างจาก `adminText`/`adminLabel`) */
+export const ADMIN_UI_OPTIONS_TH = adminUiOptions("th")
+
+type Lng = "en" | "th"
+type Flat = Record<string, string>
+
+const flatten = (json: Record<string, unknown>, prefix = ""): Flat =>
+  Object.entries(json).reduce<Flat>((acc, [key, value]) => {
+    const name = prefix ? `${prefix}.${key}` : key
+    return typeof value === "string" ? { ...acc, [name]: value } : { ...acc, ...flatten(value as Record<string, unknown>, name) }
+  }, {})
+
+const BACKEND_DIR = path.join(REPO_ROOT, "apps", "backend")
+const readJson = (file: string): Flat => flatten(JSON.parse(readFileSync(file, "utf8")))
+
+/** คำแปลของ namespace: `translation` = ไฟล์ของ dashboard (resolve จาก apps/backend), อื่นๆ = `src/admin/i18n/json` ของเรา */
+const translations = (lng: Lng, ns: string): Flat =>
+  ns === "translation"
+    ? readJson(
+        path.join(
+          path.dirname(require.resolve("@medusajs/dashboard/package.json", { paths: [BACKEND_DIR] })),
+          "src/i18n/translations",
+          `${lng}.json`
+        )
+      )
+    : readJson(path.join(BACKEND_DIR, "src/admin/i18n/json", lng, `${ns}.json`))
+
+/** spec 10 กฎ 13: ข้อความที่คาดของ key ในภาษานั้น (ไม่ hard-code ประโยคไทย) — key ไม่มี → throw */
+export function adminText(lng: Lng, ns: string, key: string) {
+  const value = translations(lng, ns)[key]
+  if (value === undefined) throw new Error(`adminText: ไม่พบ ${lng}/${ns}:${key}`)
+  return value
+}
+
+/**
+ * spec 10 กฎ 13: ชื่อของ element ที่หาด้วย role + ชื่อ (ข้อยกเว้นของ testid) ในภาษานั้น จากข้อความอังกฤษเดิม — หา key ที่ค่า `en` เท่ากัน
+ * ใน namespace แล้วคืนค่าของ `lng`; ยังไม่มี key (กลุ่มนั้นยังไม่แปล) → ข้อความอังกฤษเดิม ให้ spec ทำงานได้ทั้งก่อนและหลังแปลกลุ่มนั้น
+ */
+export function adminLabel(lng: Lng, ns: string, en: string) {
+  const key = Object.entries(translations("en", ns)).find(([, value]) => value === en)?.[0]
+  return key ? adminText(lng, ns, key) : en
 }
 
 const env = (key: string, fallback: string) => {
