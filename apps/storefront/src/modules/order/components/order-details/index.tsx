@@ -46,7 +46,7 @@ const OrderDetails = ({ order, showStatus }: OrderDetailsProps) => {
         วันที่สั่งซื้อ:{" "}
         <span data-testid="order-date">{formatDate(order.created_at)}</span>
       </p>
-      <p className="text-sm leading-[1.4rem] mt-2 text-primary underline-offset-4">
+      <p className="text-sm leading-[1.4rem] mt-2 text-primary">
         เลขที่คำสั่งซื้อ: <span data-testid="order-id">{order.display_id}</span>
       </p>
 

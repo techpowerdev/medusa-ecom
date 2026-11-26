@@ -14,13 +14,13 @@ type ItemProps = {
 const Item = ({ item, currencyCode }: ItemProps) => {
   return (
     <TableRow className="w-full" data-testid="product-row">
-      <TableCell className="p-4 pl-0! w-24">
+      <TableCell className="p-4 pl-0! w-24 whitespace-normal">
         <div className="flex w-16">
           <Thumbnail thumbnail={item.thumbnail} size="square" />
         </div>
       </TableCell>
 
-      <TableCell className="p-4 text-left">
+      <TableCell className="p-4 text-left whitespace-normal">
         <p
           className="text-sm leading-[1.4rem] font-medium text-foreground"
           data-testid="product-name"
@@ -30,7 +30,7 @@ const Item = ({ item, currencyCode }: ItemProps) => {
         <LineItemOptions variant={item.variant} data-testid="product-variant" />
       </TableCell>
 
-      <TableCell className="p-4 pr-0!">
+      <TableCell className="p-4 pr-0! whitespace-normal">
         <span className="pr-0! flex flex-col items-end h-full justify-center">
           <span className="flex gap-x-1 ">
             <p className="text-sm leading-[1.4rem] text-muted-foreground">
