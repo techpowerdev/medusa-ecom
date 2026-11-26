@@ -48,13 +48,6 @@ const TASKS: Task[] = [
 ]
 
 const PENDING: Partial<Record<Task, string[]>> = {
-  "SFUI-3b": [
-    "src/modules/layout/components/search/drawer.tsx",
-    "src/modules/layout/components/search/hit.tsx",
-    "src/modules/layout/components/search/index.tsx",
-    "src/modules/layout/components/side-menu/index.tsx",
-    "src/modules/products/components/product-actions/mobile-actions.tsx",
-  ],
   "SFUI-3d": [
     "src/core-19f-continue-after-timeout.test.ts",
     "src/lib/constants.tsx",
