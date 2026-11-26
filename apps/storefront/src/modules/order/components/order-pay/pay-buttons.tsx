@@ -40,6 +40,7 @@ export const OrderCardButton = ({ ready, onPaid }: { ready: boolean; onPaid: () 
     <>
       <Button
         size="lg"
+        className="h-12"
         onClick={pay}
         isLoading={submitting}
         disabled={!ready || !stripe || !elements}
@@ -133,6 +134,7 @@ export const OrderPromptPayButton = ({ session, email, renew, onPaid, poll }: Pr
     <>
       <Button
         size="lg"
+        className="h-12"
         onClick={showQr}
         isLoading={submitting}
         disabled={!stripe || !clientSecret}

@@ -54,3 +54,21 @@ Red: เพิ่ม test ใน e2e/sfui-5c-checkout-heading.spec.ts (h1 ขอ
 แก้: text-3xl-regular → text-[2rem] leading-[2.75rem] font-semibold (text-3xl-regular ยังมีผู้ใช้ใน order/* และนิยามอยู่ globals.css ไม่ใช่ legacy-medusa.css จึงไม่ต้องลบนิยาม)
 typecheck ผ่าน; lint 0 errors (27 warnings เดิม); test:unit 2022/2022 passed (132 files); test:e2e:unit 202 passed; build prod ผ่าน
 e2e (prod :8130/:9130, DB medusa_sfui5c ใหม่, Redis db 13): sfui-5c-checkout-heading, core-52-checkout-guards, core-14-buy-login, core-14g-action-stale-jwt: 20 passed (25.4s), 0 failed
+
+## D-1 (qa SFUI): ปุ่ม/ลิงก์ lg ที่เดิมเป็น size large คงความสูง 48px (h-12) (2026-11-26)
+### red — e2e/sfui-button-lg.unit.spec.ts (หลัง merge SFUI-5b ก่อนแก้)
+    +   "src/modules/checkout/components/payment-button/index.tsx:265",
+    +   "src/modules/checkout/components/payment-button/index.tsx:309",
+    +   "src/modules/checkout/components/promptpay-payment/index.tsx:73",
+    +   "src/modules/checkout/components/promptpay-payment/index.tsx:307",
+    +   "src/modules/checkout/components/refunded-go-to-cart/index.tsx:13",
+  1 failed
+  1 passed
+### green
+  2 passed (593ms)
+$ tsc --noEmit
+✖ 27 problems (0 errors, 27 warnings)
+
+ Test Files  132 passed (132)
+      Tests  2023 passed (2023)
+  204 passed (1.4s)

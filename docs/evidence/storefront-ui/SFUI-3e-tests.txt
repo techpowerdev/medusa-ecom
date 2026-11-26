@@ -115,3 +115,17 @@ e2e: e2e/sfui-3e-shipping.spec.ts e2e/sfui-3d-payment.spec.ts e2e/core-32-shippi
   e2e/core-38-mobile-layout.spec.ts:247:5 › AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่างอยู่ในกล่องของตัวเองที่ 375/640/1280
   12 passed (16.9s)
 test:unit: Tests 2008 passed (2008) | typecheck: exit 0 | lint: 0 errors, 28 warnings (เดิม) | build prod: exit 0 | test:e2e:unit: 192 passed (2.2s)
+
+## D-1 (qa SFUI): submit-delivery-option-button คงความสูง 48px (h-12) ของ size large เดิม (2026-11-26)
+### red — e2e/sfui-button-lg.unit.spec.ts (หลัง merge SFUI-3d ก่อนแก้ shipping)
+    +   "src/modules/checkout/components/shipping/index.tsx:397",
+  1 failed
+  1 passed
+### green
+  2 passed (558ms)
+$ tsc --noEmit
+✖ 27 problems (0 errors, 27 warnings)
+
+ Test Files  130 passed (130)
+      Tests  2016 passed (2016)
+  194 passed (1.4s)

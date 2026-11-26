@@ -311,3 +311,19 @@ tsc --noEmit exit 0
 
 ## หน้าแรก: computed style ของหัวข้อ product-rail (<Text className="txt-xlarge">) — เดิมก่อนแก้ 14px
 [["txt-xlarge","18px","28.8px"],["txt-xlarge","18px","28.8px"]]
+
+## D-1 (qa SFUI): shim size="large" → lg + h-12 คงความสูง 48px ของ develop (2026-11-26)
+### red (ก่อนแก้ shim — vitest index.test.tsx)
+     × buttonClassName map variant/size เดิม → buttonVariants ของ shadcn
+     × Button / buttonClassName size large คงความสูง h-12 ของ shim เดิม (D-1)
+AssertionError: expected [ 'inline-flex', 'shrink-0', …(26) ] to include 'h-12'
+      Tests  2 failed | 10 passed (12)
+### green (หลังแก้)
+$ tsc --noEmit
+TC=0
+
+✖ 28 problems (0 errors, 28 warnings)
+
+ Test Files  128 passed (128)
+      Tests  1998 passed (1998)
+  192 passed (1.3s)
