@@ -9,7 +9,7 @@ const MESSAGES: Record<PortalAffiliate["status"], string> = {
 /** AF-8b (กฎ 33, Q6): route ที่ API ตอบ 403 ตามสถานะ → ข้อความไทยตามสถานะ ไม่ใช่หน้า error */
 export default function StatusNotice({ status }: { status: PortalAffiliate["status"] }) {
   return (
-    <p className="rounded-rounded border border-ui-border-base bg-ui-bg-subtle p-4" data-testid="affiliate-status-notice">
+    <p className="rounded-rounded border border-border bg-muted p-4" data-testid="affiliate-status-notice">
       {MESSAGES[status]}
     </p>
   )

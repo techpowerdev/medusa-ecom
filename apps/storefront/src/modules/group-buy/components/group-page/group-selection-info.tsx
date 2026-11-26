@@ -18,7 +18,7 @@ export default function GroupSelectionInfo({
       </span>
       {price && (
         <span
-          className="text-small-regular text-ui-fg-subtle"
+          className="text-small-regular text-muted-foreground"
           data-testid="group-selection-price"
           data-value={amount ?? undefined}
         >

@@ -8,19 +8,19 @@ export default function VoucherCard({ voucher }: { voucher: CustomerEvoucher }) 
 
   return (
     <li
-      className="flex flex-col gap-y-3 rounded-lg border border-ui-border-base p-4 text-small-regular"
+      className="flex flex-col gap-y-3 rounded-lg border border-border p-4 text-small-regular"
       data-testid="voucher-card"
     >
       <div className="flex flex-col">
         <span className="text-base-semi" data-testid="voucher-partner-name">
           {partner.name}
         </span>
-        <span className="text-ui-fg-subtle">{pool.name}</span>
+        <span className="text-muted-foreground">{pool.name}</span>
       </div>
       {/* CORE-37 (กฎข้อ 95c): สถานะของปุ่มคัดลอกขึ้นบรรทัดของตัวเองใต้แถวรหัส — ไม่ดันปุ่ม/ไม่ทำให้แถวรหัสเยื้อง
           CORE-42 (กฎข้อ 100b): ไม่มี gap-y — ระยะห่างอยู่ที่ margin ของสถานะเมื่อมีเนื้อหา (สถานะว่าง = ไม่มีช่องว่างใต้แถว) */}
       <div className="flex flex-wrap items-center gap-x-3" data-testid="voucher-code-row">
-        <span className="text-ui-fg-muted">รหัส</span>
+        <span className="text-muted-foreground">รหัส</span>
         <code className="break-all font-mono text-base-semi" data-testid="voucher-code">
           {voucher.code}
         </code>
@@ -28,20 +28,20 @@ export default function VoucherCard({ voucher }: { voucher: CustomerEvoucher }) 
       </div>
       {voucher.pin && (
         <div className="flex gap-x-3">
-          <span className="text-ui-fg-muted">รหัสลับ</span>
+          <span className="text-muted-foreground">รหัสลับ</span>
           <code className="font-mono" data-testid="voucher-pin">
             {voucher.pin}
           </code>
         </div>
       )}
       <div className="flex gap-x-3" data-testid="voucher-expires-at">
-        <span className="text-ui-fg-muted">หมดอายุ</span>
+        <span className="text-muted-foreground">หมดอายุ</span>
         <span>{voucher.expires_at ? formatDate(voucher.expires_at) : "ไม่มีวันหมดอายุ"}</span>
       </div>
       {/* EV-7e (กฎข้อ 29b): ช่องทางติดต่อพาร์ทเนอร์เมื่อใช้ code ไม่ได้ — แสดงเป็นข้อความ (ไม่ render เป็นลิงก์) */}
       {partner.support_contact && (
         <div className="flex gap-x-3" data-testid="voucher-support-contact">
-          <span className="text-ui-fg-muted">ติดต่อพาร์ทเนอร์</span>
+          <span className="text-muted-foreground">ติดต่อพาร์ทเนอร์</span>
           <span className="whitespace-pre-line break-all">{partner.support_contact}</span>
         </div>
       )}

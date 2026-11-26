@@ -42,12 +42,12 @@ export default function GroupPage({ view: { group, campaign }, product, shareUrl
   return (
     <div className="content-container flex flex-col gap-y-6 py-8 small:py-12" data-testid="group-page">
       <header className="flex flex-col gap-y-2">
-        <span className="text-small-regular text-ui-fg-subtle">
+        <span className="text-small-regular text-muted-foreground">
           {group.kind === "team" ? "ซื้อกลุ่มแบบทีม" : "ซื้อกลุ่มแบบกลุ่มเปิด"}
         </span>
         <h1 className="text-2xl-semi break-words">{campaign.name}</h1>
         {discount && (
-          <p className="text-large-semi text-ui-fg-interactive" data-testid="group-discount">
+          <p className="text-large-semi text-primary underline-offset-4" data-testid="group-discount">
             รับส่วนลด {discount} เมื่อกลุ่มครบเป้าหมาย
           </p>
         )}
@@ -65,13 +65,13 @@ export default function GroupPage({ view: { group, campaign }, product, shareUrl
           <div className="flex min-w-0 flex-col gap-y-1">
             <span className="text-base-semi break-words">{product.title}</span>
             {price && (
-              <span className="text-small-regular text-ui-fg-subtle">ราคาปกติเริ่มต้น {price.calculated_price}</span>
+              <span className="text-small-regular text-muted-foreground">ราคาปกติเริ่มต้น {price.calculated_price}</span>
             )}
           </div>
         </LocalizedClientLink>
       )}
 
-      <section className="flex flex-col gap-y-3 rounded-rounded border border-ui-border-base p-4">
+      <section className="flex flex-col gap-y-3 rounded-rounded border border-border p-4">
         <p className="text-base-semi" data-testid="group-status" data-status={group.status}>
           {GROUP_STATUS_LABEL[group.status]}
         </p>
@@ -84,14 +84,14 @@ export default function GroupPage({ view: { group, campaign }, product, shareUrl
             {progress.unit}
           </span>
           <div
-            className="h-2 w-full overflow-hidden rounded-full bg-ui-bg-subtle"
+            className="h-2 w-full overflow-hidden rounded-full bg-muted"
             role="progressbar"
             aria-label="ความคืบหน้าของกลุ่ม"
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={progress.percent}
           >
-            <div className="h-full bg-ui-fg-interactive" style={{ width: `${progress.percent}%` }} />
+            <div className="h-full bg-primary" style={{ width: `${progress.percent}%` }} />
           </div>
         </div>
         <p className="text-base-regular" data-testid="group-member-count">
@@ -128,8 +128,8 @@ export default function GroupPage({ view: { group, campaign }, product, shareUrl
       {/* ลิงก์แชร์ `/g/<token>` + ปุ่มคัดลอก (กฎข้อ 29b, 29g) */}
       {joinable && (
         <section className="flex flex-col gap-y-2">
-          <span className="text-small-regular text-ui-fg-subtle">แชร์ลิงก์นี้ให้เพื่อนเข้าร่วมกลุ่ม</span>
-          <a href={shareUrl} className="break-all text-ui-fg-interactive underline" data-testid="group-share-link">
+          <span className="text-small-regular text-muted-foreground">แชร์ลิงก์นี้ให้เพื่อนเข้าร่วมกลุ่ม</span>
+          <a href={shareUrl} className="break-all text-primary underline-offset-4 underline" data-testid="group-share-link">
             {shareUrl}
           </a>
           <div className="self-start">

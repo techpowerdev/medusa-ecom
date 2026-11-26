@@ -1,6 +1,6 @@
 "use client"
 
-import { clx } from "@modules/common/components/ui"
+import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -18,7 +18,7 @@ export default function PortalNav({ countryCode }: { countryCode: string }) {
   const base = `/${countryCode}/affiliate`
 
   return (
-    <nav className="flex flex-wrap gap-x-6 gap-y-2 border-b border-ui-border-base" aria-label="เมนูแอฟฟิลิเอต">
+    <nav className="flex flex-wrap gap-x-6 gap-y-2 border-b border-border" aria-label="เมนูแอฟฟิลิเอต">
       {ITEMS.map((item) => {
         const href = `${base}${item.path}`
         const current = pathname === href
@@ -27,7 +27,7 @@ export default function PortalNav({ countryCode }: { countryCode: string }) {
             key={item.testId}
             href={href}
             aria-current={current ? "page" : undefined}
-            className={clx("pb-2", current && "border-b-2 border-ui-fg-base font-semibold")}
+            className={cn("pb-2", current && "border-b-2 border-foreground font-semibold")}
             data-testid={item.testId}
           >
             {item.label}

@@ -43,22 +43,22 @@ export default async function AffiliateEarningsPage({ params }: { params: Promis
           {EARNING_STATUSES.map((status) => (
             <div
               key={status}
-              className="flex flex-col gap-y-1 border border-ui-border-base rounded-rounded p-4"
+              className="flex flex-col gap-y-1 border border-border rounded-rounded p-4"
               data-testid={`affiliate-earnings-${status}`}
             >
-              <dt className="text-small-regular text-ui-fg-subtle">{LABEL[status]}</dt>
+              <dt className="text-small-regular text-muted-foreground">{LABEL[status]}</dt>
               {byStatus[status].map((m) => (
                 <dd key={m.currency_code} className="text-large-semi">
                   {portalAmount(m)}
                 </dd>
               ))}
               {status === "pending" && (
-                <dd className="text-small-regular text-ui-fg-subtle" data-testid="affiliate-earnings-pending-note">
+                <dd className="text-small-regular text-muted-foreground" data-testid="affiliate-earnings-pending-note">
                   หักรายการยกเลิก/คืนเงินแล้ว
                 </dd>
               )}
               {status === "reversed" && (
-                <dd className="text-small-regular text-ui-fg-subtle" data-testid="affiliate-earnings-reversed-note">
+                <dd className="text-small-regular text-muted-foreground" data-testid="affiliate-earnings-reversed-note">
                   ยอดที่ถูกหักจากคำสั่งซื้อที่ยกเลิกหรือคืนเงิน แสดงแยกจากยอดอื่น
                 </dd>
               )}

@@ -59,12 +59,15 @@ test("AC-2: ทุก class ของ preset ที่ใช้ใน src/** ม
 })
 
 test("AC-2: legacy-medusa.css ไม่มีชื่อที่ไม่ถูกใช้ใน src/**", () => {
-  const defs = definitions(fs.readFileSync(LEGACY_CSS, "utf8"))
+  const css = fs.readFileSync(LEGACY_CSS, "utf8")
+  const defs = definitions(css)
   const needed = { utilities: new Set<string>(), colors: new Set<string>(), shadows: new Set<string>(), variants: new Set<string>() }
   for (const name of Array.from(used)) {
     const [kind, key] = requiredDefinition(name)
     needed[kind].add(key)
   }
+  // สีที่ไฟล์นี้อ้างเองนับเป็นผู้ใช้ (เช่น ขอบเริ่มต้น var(--color-ui-border-base) ใน @layer base — ลบพร้อมไฟล์ใน SFUI-6)
+  for (const m of Array.from(css.matchAll(/var\(--color-(ui-[\w-]+)\)/g))) needed.colors.add(m[1])
   const unused = (Object.keys(defs) as (keyof Definitions)[]).flatMap((kind) =>
     Array.from(defs[kind]).filter((key) => !needed[kind].has(key)).map((key) => `${kind}:${key}`)
   )
