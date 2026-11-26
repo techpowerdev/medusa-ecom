@@ -91,8 +91,8 @@ GitHub ใช้งานผ่าน `gh` CLI ไม่ใช่ MCP server
 - storefront UI (ADR-030): Tailwind CSS v4 แบบ CSS-first (ไม่มี `tailwind.config.*`; theme/brand อยู่ใน `@theme` ของ `src/styles/globals.css`)
   + shadcn/ui (Radix ผ่าน package `radix-ui`; component อยู่ที่ `src/components/ui/*` เพิ่มด้วย `pnpm dlx shadcn@4.23.1 add` เท่านั้น) + icon `lucide-react`;
   ไม่ใช้ `@medusajs/ui-preset`/`@medusajs/icons`/`@headlessui/react`/`clsx` ใน storefront (admin ยังใช้ `@medusajs/ui` ตาม ADR-018)
-  - Radix เข้าผ่าน `src/components/ui/*` เท่านั้น ห้าม import `radix-ui`/`@radix-ui/*` ใน `src/modules`/`src/app` (ADR-030 ข้อ 4)
-  - แก้ไฟล์ใน `src/components/ui/` ได้เท่าที่จำเป็นพร้อม comment `// SFUI:` อธิบายเหตุผล
+  - Radix เข้าผ่าน `src/components/**` เท่านั้น ห้าม import `radix-ui`/`@radix-ui/*` ใน `src/modules`/`src/app` (ADR-030 ข้อ 4)
+  - ห้ามแก้ไฟล์ใน `src/components/ui/` (ผลของ shadcn CLI ตรงตัว) — ปรับด้วย wrapper ใน `src/components/` หรือส่ง className/props (spec 09 กฎ 2–3)
 - Docker Compose สำหรับ local; ดู `docs/spec/07-scaling-ops.md` สำหรับ prod
 
 ## Commands

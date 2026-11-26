@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/button"
 import {
   Collapsible,
   CollapsibleContent,
@@ -62,7 +62,7 @@ const AccountInfo = ({
   return (
     // SFUI-3c (spec 09 กฎ 4a): root เป็น Collapsible ที่ควบคุมด้วย state เดิม — ปุ่มแก้ไขเป็น trigger (aria-expanded/aria-controls)
     // ไม่ส่ง onOpenChange: ปุ่มเปลี่ยน state เองใน handleToggle (reset ฟอร์ม/clearState) ตามเดิม
-    <Collapsible open={state} className="text-small-regular" data-testid={dataTestid}>
+    <Collapsible open={state} className="text-xs leading-5 font-normal" data-testid={dataTestid}>
       <div className="flex items-end justify-between">
         <div className="flex flex-col">
           <span className="uppercase text-foreground">{label}</span>

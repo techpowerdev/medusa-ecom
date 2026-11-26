@@ -1,8 +1,7 @@
 "use client"
 
 import * as React from "react"
-// SFUI: ใช้ cn ของโปรเจกต์ (รู้จัก utility ขนาดฟอนต์ใน globals.css — spec 09 กฎ 2)
-import { cn } from "@/lib/utils"
+import { cn } from "cn"
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react"
 import { Select as SelectPrimitive } from "radix-ui"
 

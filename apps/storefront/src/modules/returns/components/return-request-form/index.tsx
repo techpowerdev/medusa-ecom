@@ -3,7 +3,7 @@
 import { requestReturn, ReturnRequestState } from "@lib/data/returns"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import NativeSelect from "@modules/common/components/native-select"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/button"
 import { useActionState } from "react"
 
 export type ReturnableLine = {

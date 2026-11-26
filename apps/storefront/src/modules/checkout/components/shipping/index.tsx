@@ -1,6 +1,7 @@
 "use client"
-import { Button } from "@/components/ui/button"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Button } from "@/components/button"
+import { RadioGroupItem } from "@/components/radio-group"
+import { RadioGroup } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
 import { setShippingMethod } from "@lib/data/cart"
 import { calculatePriceForShippingOption } from "@lib/data/fulfillment"
@@ -27,7 +28,7 @@ const PICKUP_OPTION_OFF = "__PICKUP_OFF"
 // SFUI-3e (spec 09 กฎ 4, 9, 12): ตัวเลือก = RadioGroupItem ของ shadcn (ปุ่ม role="radio" ที่มี testid และชื่อ/ราคาอยู่ข้างใน)
 // ทั้งแถวเป็นปุ่ม (คลิกได้ทั้งแถวเหมือนเดิม); indicator ของ shadcn ซ่อน — วาดวงกลมเองในแถว (แบบเดียวกับ PaymentContainer ของ SFUI-3d)
 const OPTION_CLASS =
-  "group flex size-auto aspect-auto w-full items-center justify-between rounded-md text-small-regular text-left shadow-none cursor-pointer py-4 px-8 mb-2 hover:border-ring [&>[data-slot=radio-group-indicator]]:hidden"
+  "group flex size-auto aspect-auto w-full items-center justify-between rounded-md text-xs leading-5 font-normal text-left shadow-none cursor-pointer py-4 px-8 mb-2 hover:border-ring [&>[data-slot=radio-group-indicator]]:hidden"
 
 type ShippingProps = {
   cart: HttpTypes.StoreCart

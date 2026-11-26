@@ -23,7 +23,7 @@ import { useParams, useRouter } from "next/navigation"
 import { useRef, useState } from "react"
 import GroupSelectionInfo from "./group-selection-info"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/button"
 
 type Props = {
   token: string

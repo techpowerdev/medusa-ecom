@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRange } from "react-instantsearch"
 
-import { Slider } from "@/components/ui/slider"
+import { Slider } from "@/components/slider"
 import { indexedCurrency, priceAttribute } from "@lib/search-client"
 import { convertToLocale } from "@lib/util/money"
 

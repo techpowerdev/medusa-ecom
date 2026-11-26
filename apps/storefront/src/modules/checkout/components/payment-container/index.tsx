@@ -1,4 +1,4 @@
-import { RadioGroupItem } from "@/components/ui/radio-group"
+import { RadioGroupItem } from "@/components/radio-group"
 import { cn } from "@/lib/utils"
 import React, { useContext, useEffect, useRef, useState, type JSX } from "react"
 

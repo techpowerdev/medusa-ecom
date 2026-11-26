@@ -24,7 +24,7 @@ import {
   secondsLeft,
 } from "@lib/util/payment-session"
 import { HttpTypes } from "@medusajs/types"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/button"
 import { useStripe } from "@stripe/react-stripe-js"
 import { useParams, useRouter } from "next/navigation"
 import { useCallback, useContext, useEffect, useRef, useState } from "react"

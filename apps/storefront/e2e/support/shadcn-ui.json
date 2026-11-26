@@ -1,0 +1,19 @@
+{
+  "shadcn": "4.23.1",
+  "files": {
+    "accordion.tsx": "99de242681eb43121969db02bbb102aeeb1865ef52c7635672508a58c5429085",
+    "badge.tsx": "13a9380dfff853ee730c14a52df49f22aecd31f40f2998d7c1e7ec458b6e1650",
+    "button.tsx": "79dd6f75f8136394442202d6b8b922fb269eaad0a5dba579397c9d5b41f893bb",
+    "checkbox.tsx": "ba0ac64064e2d8fa7299d53e9e84b9a4772fef8dd4cf6170c56d3030a1d69941",
+    "collapsible.tsx": "c6598e5584f4258b5d9fefadbc5ad6a66888ad58729f4b634a0bb2d9c513188b",
+    "dialog.tsx": "0d2e82ed5e7040abda714a0471aff54535e05bad6249da049cc0c3bf3ae024e5",
+    "input.tsx": "0c9457181f6ddc80969bcf854e92c362903a55b6e889fbef3fd85343ecc4af5b",
+    "label.tsx": "344bde38b8531615dbf8e14af3895517c24d8ef6ce56ddeda7e2e6fe4b5d0c00",
+    "popover.tsx": "3f99d3add6c9fa4f03721e81297ee10e1310785ee1d9d9d4c82a114d84ab0757",
+    "radio-group.tsx": "cfc4f99ee68be2fbbd70de3ffad82e1462d5e8e0bb0aecfd190a4f5115325862",
+    "select.tsx": "962830436bd0b7ee50e556f0747e277d6a86869ed27d167516346b15f26309d8",
+    "sheet.tsx": "ea473d38a26a9b0b879e5a13139899ad45e9782e896b3fa205c7763a6c506876",
+    "slider.tsx": "6a531f6182de6efec2c25d30a7626b66cbf11cf52d505e47f907124934f7188e",
+    "table.tsx": "bd1a9fc83a5a2149e504038e274bb7e5a0351af59f6896df52ac4d5b439695ac"
+  }
+}
