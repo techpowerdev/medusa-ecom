@@ -89,7 +89,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
         {/* SFUI-3b (spec 09 กฎ 4c): `Transition appear` → `animate-in fade-in duration-300` ของ tw-animate-css (จบที่ opacity 1) */}
         {show && (
           <div
-            className="animate-in fade-in duration-300 bg-white flex flex-col gap-y-3 justify-center items-center text-large-regular p-4 h-full w-full border-t border-gray-200"
+            className="animate-in fade-in duration-300 bg-white flex flex-col gap-y-3 justify-center items-center text-base leading-6 font-normal p-4 h-full w-full border-t border-gray-200"
             data-testid="mobile-actions"
           >
             <div className="flex items-center gap-x-2">
@@ -101,7 +101,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                 <div className="flex items-end gap-x-2 text-foreground">
                   {selectedPrice.price_type === "sale" && (
                     <p>
-                      <span className="line-through text-small-regular">
+                      <span className="line-through text-xs leading-5 font-normal">
                         {selectedPrice.original_price}
                       </span>
                     </p>
@@ -171,7 +171,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
             </div>
             {error && (
               <p
-                className="text-small-regular text-destructive"
+                className="text-xs leading-5 font-normal text-destructive"
                 role="alert"
                 data-testid="mobile-add-to-cart-error"
               >

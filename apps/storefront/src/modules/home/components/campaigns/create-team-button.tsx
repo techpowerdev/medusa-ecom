@@ -49,7 +49,7 @@ export default function CreateTeamButton({ campaignId, countryCode }: { campaign
         สร้างทีมของคุณ
       </Button>
       {error && (
-        <p className="text-small-regular text-destructive" role="alert" data-testid="group-create-team-error">
+        <p className="text-xs leading-5 font-normal text-destructive" role="alert" data-testid="group-create-team-error">
           {error}
         </p>
       )}
