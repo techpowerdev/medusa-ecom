@@ -106,3 +106,29 @@ typecheck: exit 0 · lint: exit 0 (0 errors, 28 warnings เดิม — ไฟ
 # core-4e AC-91 ล้มที่ขั้น delivery ของ checkout (delivery-options-container ไม่ขึ้นใน 5s ขณะรันขนานกับ spec อื่น) — ไม่เกี่ยวกับไฟล์ของ task; รันซ้ำเดี่ยวผ่าน:
   ✓  1 [chromium] › e2e/core-4e-checkout-polish.spec.ts:128:5 › AC-91: ขั้นที่อยู่ของ checkout — placeholder ไทย, test id/aria-label ของ popup, label ไม่ทับค่า (6.2s)
   1 passed (6.7s)
+
+## นำการแก้ e2e/sfui-4-store.spec.ts จาก review SFUI-6 มาใส่ (หัว filter ผูก option "ขนาด" ของ seed — กัน strict mode เมื่อรันหลัง flash-sale/group-buy) (2026-11-26)
+### static (branch SFUI-4 หลังแก้)
+$ tsc --noEmit
+✖ 27 problems (0 errors, 27 warnings)
+
+ Test Files  130 passed (130)
+      Tests  2018 passed (2018)
+  204 passed (1.4s)
+
+## e2e sfui-4-store บน DB เดียวกับ flash-sale-fs14 → group-buy-join (ปลาย SFUI-7 @ 5c5521c0, prod build :8170/:9170, --workers=1, 2026-11-26)
+  ✓   1 [chromium] › e2e/flash-sale-fs14.spec.ts:165:5 › AC-20: /store (search hit) การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง
+  ✓   2 [chromium] › e2e/flash-sale-fs14.spec.ts:188:5 › AC-20: /search?q=<ชื่อ X> การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง
+  ✓   3 [chromium] › e2e/flash-sale-fs14.spec.ts:203:5 › AC-20: 375×812 ราคา flash อยู่ในกรอบการ์ดบน /store, /search และ PLP
+  ✓   4 [chromium] › e2e/flash-sale-fs14.spec.ts:251:5 › AC-20: rail หน้าแรก การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (1.0m)
+  ✓   5 [chromium] › e2e/flash-sale-fs14.spec.ts:285:5 › AC-25: /store ค้นใหม่ → ข้อมูล flash ยิงด้วย variant ของผลค้นล่าสุดเท่านั้น 1 ครั้ง
+  ✓   6 [chromium] › e2e/group-buy-join.spec.ts:88:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, cart C ไม่ถูกแตะ, aff ลง draft order
+  ✓   7 [chromium] › e2e/group-buy-join.spec.ts:171:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › B ไม่มีที่อยู่ → join disabled + ลิงก์เพิ่มที่อยู่, ไม่มี cart ใหม่
+  ✓   8 [chromium] › e2e/group-buy-join.spec.ts:185:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › รายการรวมเกิน max_units_per_person → group-units-limit และไม่มี cart ใหม่
+  ✓   9 [chromium] › e2e/group-buy-join.spec.ts:205:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_GROUP_FULL → group-join-error ข้อความไทย และ C ไม่เปลี่ยน
+  ✓  10 [chromium] › e2e/group-buy-join.spec.ts:205:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_UNITS_LIMIT_EXCEEDED → group-join-error ข้อความไทย และ C ไม่เปลี่ยน
+  ✓  11 [chromium] › e2e/group-buy-join.spec.ts:229:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › กลุ่มหมดเวลาระหว่างอยู่บนหน้า → join ตอบ 400 และ group-join-error ยังแสดงหลังปุ่มหาย
+  ✓  12 [chromium] › e2e/group-buy-join.spec.ts:244:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › ยังไม่ login: กด join → หน้า login ไม่มี server action (ไม่มี join/cart ใหม่) (AC-47)
+  ✓  13 [chromium] › e2e/sfui-4-store.spec.ts:9:5 › AC-14: Enter บนหัว filter เปิด/ปิดเนื้อหา และ ArrowRight บน thumb ช่วงราคาเปลี่ยนค่า
+  ✓  14 [chromium] › e2e/sfui-4-store.spec.ts:66:5 › AC-14: แท็บบน PDP เป็น Accordion — ปุ่มมีชื่อไทย และ Enter เปิดเนื้อหา
+  14 passed (1.6m)
