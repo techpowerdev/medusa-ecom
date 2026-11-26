@@ -1,5 +1,5 @@
 "use client"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/button"
 import { RadioGroup } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
 import { isStripeLike, paymentInfoMap } from "@lib/constants"

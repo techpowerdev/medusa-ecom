@@ -1,8 +1,7 @@
 "use client"
 
 import * as React from "react"
-// SFUI: ใช้ cn ของโปรเจกต์ (รู้จัก utility ขนาดฟอนต์ใน globals.css — Q1 ของ SFUI-2)
-import { cn } from "@/lib/utils"
+import { cn } from "cn"
 import { Slider as SliderPrimitive } from "radix-ui"
 
 function Slider({
@@ -11,12 +10,8 @@ function Slider({
   value,
   min = 0,
   max = 100,
-  thumbLabels,
   ...props
-}: React.ComponentProps<typeof SliderPrimitive.Root> & {
-  // SFUI: ชื่อของ thumb แต่ละตัว — ไม่ส่งแล้ว Radix ตั้ง aria-label เป็น "Minimum"/"Maximum" ภาษาอังกฤษ (spec 09 กฎ 10)
-  thumbLabels?: string[]
-}) {
+}: React.ComponentProps<typeof SliderPrimitive.Root>) {
   const _values = React.useMemo(
     () =>
       Array.isArray(value)
@@ -57,7 +52,6 @@ function Slider({
         <SliderPrimitive.Thumb
           data-slot="slider-thumb"
           key={index}
-          aria-label={thumbLabels?.[index]}
           className="block size-4 shrink-0 rounded-full border border-primary bg-white shadow-sm ring-ring/50 transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
         />
       ))}

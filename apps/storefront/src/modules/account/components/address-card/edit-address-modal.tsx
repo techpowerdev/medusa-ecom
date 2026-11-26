@@ -14,7 +14,7 @@ import Spinner from "@modules/common/icons/spinner"
 import { SquarePen, Trash2, X } from "lucide-react"
 import React, { useActionState, useEffect, useState } from "react"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/button"
 import {
   Dialog,
   DialogClose,

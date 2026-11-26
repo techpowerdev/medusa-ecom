@@ -6,10 +6,10 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import { ArrowRight, X } from "lucide-react"
 import { useState } from "react"
 
+import { SheetContent } from "@/components/sheet"
 import {
   Sheet,
   SheetClose,
-  SheetContent,
   SheetDescription,
   SheetTitle,
   SheetTrigger,

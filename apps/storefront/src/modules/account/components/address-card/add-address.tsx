@@ -3,7 +3,7 @@
 import { Plus, X } from "lucide-react"
 import { useActionState, useEffect, useState } from "react"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/button"
 import {
   Dialog,
   DialogClose,

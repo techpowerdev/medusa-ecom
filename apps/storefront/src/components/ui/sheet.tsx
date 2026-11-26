@@ -1,8 +1,7 @@
 "use client"
 
 import * as React from "react"
-// SFUI: ใช้ cn ของโปรเจกต์ (รู้จัก utility ขนาดฟอนต์ใน globals.css — Q1 ของ SFUI-2)
-import { cn } from "@/lib/utils"
+import { cn } from "cn"
 import { XIcon } from "lucide-react"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
@@ -49,19 +48,14 @@ function SheetContent({
   children,
   side = "right",
   showCloseButton = true,
-  overlayProps,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
-  // SFUI: ส่ง prop (เช่น data-testid เดิม `side-menu-backdrop`) ให้ overlay ที่ SheetContent render เอง (spec 09 กฎ 9)
-  overlayProps?: React.ComponentProps<typeof SheetOverlay> & {
-    "data-testid"?: string
-  }
 }) {
   return (
     <SheetPortal>
-      <SheetOverlay {...overlayProps} />
+      <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
         className={cn(
@@ -82,8 +76,7 @@ function SheetContent({
         {showCloseButton && (
           <SheetPrimitive.Close className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-secondary">
             <XIcon className="size-4" />
-            {/* SFUI: ข้อความของ UI เป็นภาษาไทย (spec 09 กฎ 10) */}
-            <span className="sr-only">ปิด</span>
+            <span className="sr-only">Close</span>
           </SheetPrimitive.Close>
         )}
       </SheetPrimitive.Content>

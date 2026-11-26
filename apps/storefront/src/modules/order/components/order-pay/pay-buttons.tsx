@@ -5,7 +5,7 @@ import { PROMPTPAY_POLL_MS, promptPayExpiryAction, secondsLeft } from "@lib/util
 import ErrorMessage from "@modules/checkout/components/error-message"
 import { openQr } from "@modules/checkout/components/promptpay-payment/open-qr"
 import PromptPayQr from "@modules/checkout/components/promptpay-payment/qr-panel"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/button"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
 import { useCallback, useEffect, useState } from "react"
 

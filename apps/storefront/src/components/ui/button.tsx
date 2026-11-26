@@ -1,7 +1,6 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-// SFUI: ใช้ cn ของโปรเจกต์ (รู้จัก utility ขนาดฟอนต์ใน globals.css — Q1 ของ SFUI-2)
-import { cn } from "@/lib/utils"
+import { cn } from "cn"
 import { Slot } from "radix-ui"
 
 const buttonVariants = cva(
@@ -43,18 +42,12 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
-  isLoading = false,
-  disabled,
-  children,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
-    // SFUI: คงพฤติกรรม `isLoading` ของ shim เดิม (spec 09 กฎ 20) — แสดง "กำลังดำเนินการ..." และ disabled ระหว่างส่ง
-    isLoading?: boolean
   }) {
-  // SFUI: ตอน loading render เป็น <button> เสมอ (Slot ต้องการลูกเป็น element ตัวเดียว ใช้กับข้อความไม่ได้)
-  const Comp = asChild && !isLoading ? Slot.Root : "button"
+  const Comp = asChild ? Slot.Root : "button"
 
   return (
     <Comp
@@ -62,11 +55,8 @@ function Button({
       data-variant={variant}
       data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
-      disabled={disabled || isLoading}
       {...props}
-    >
-      {isLoading ? "กำลังดำเนินการ..." : children}
-    </Comp>
+    />
   )
 }
 

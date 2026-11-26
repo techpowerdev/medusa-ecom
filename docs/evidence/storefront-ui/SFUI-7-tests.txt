@@ -1,0 +1,32 @@
+SFUI-7 — ไฟล์ใน src/components/ui = ผล shadcn CLI ตรงตัว, ความสามารถเพิ่มย้ายไป wrapper (spec 09 กฎ 2, 3, 5, 10, AC-19)
+branch feat/SFUI-7-shadcn-pristine (stack บน feat/SFUI-6-cleanup f1a81eba) · 2026-11-26 · Node 24.12.0, pnpm 12.15.0
+
+== Red: static e2e/sfui-7-ui-pristine.unit.spec.ts (ก่อนคืนไฟล์ ui) ==
+  ✘ AC-19 (กฎ 3) hash ไม่ตรงผล CLI (button.test.tsx อยู่ใน ui + ทุกไฟล์มี SFUI:)
+  ✘ AC-19 (กฎ 2–3) accordion.tsx มี SFUI:/import @/lib/utils
+  ✘ AC-19 (กฎ 2) utility ขนาดฟอนต์ส่งเข้า primitive 8 จุด: account-info:65, address-select:44/54, shipping:245/285/351 (OPTION_CLASS), country-select:98, search/drawer:43
+  ✘ AC-19 test อยู่ใน ui (button.test.tsx)
+  4 failed, 2 passed
+== Red: vitest src/components (wrapper ยังไม่มี) == Test Files 2 failed (import @/components/{button,sheet,slider,radio-group} ไม่พบ)
+
+== node scripts/shadcn-ui-verify.mjs (shadcn@4.23.1 add 14 ตัว --overwrite ใน temp dir, ต้องใช้เน็ต) ==
+src/components/ui ตรงกับผล shadcn@4.23.1 ทั้ง 14 ไฟล์
+== pnpm install --frozen-lockfile == Done (pnpm-lock.yaml/package.json ไม่เปลี่ยน)
+== pnpm --filter storefront lint == exit 0 — 0 errors, 27 warnings (เท่าเดิมของ stack, ไม่มีในไฟล์ใหม่)
+== pnpm --filter storefront typecheck == exit 0
+== pnpm --filter storefront test:unit ==
+ Test Files  132 passed (132)
+      Tests  2025 passed (2025)
+== pnpm --filter storefront test:e2e:unit ==
+  203 passed (1.6s)
+== NODE_ENV=production next build == exit 0
+
+== e2e (prod build, backend 9170 DB medusa_sfui7 สะอาด, storefront 8170) ==
+-- e2e/sfui-mobile-390.spec.ts (DB สะอาด รันก่อน)
+  1 passed (39.1s)
+-- 30 ไฟล์: e2e/core-15b-search-drawer-error.spec.ts e2e/core-19a-nav-cart-search.spec.ts e2e/core-22-account-fixes.spec.ts e2e/core-23c-account-forms.spec.ts e2e/core-26-cart-dropdown-total.spec.ts e2e/core-32-shipping-profile-filter.spec.ts e2e/core-38-mobile-layout.spec.ts e2e/core-42-cart-voucher-layout.spec.ts e2e/core-47-cart-375-long-title.spec.ts e2e/core-91-cart-dropdown-known.spec.ts e2e/flash-sale-fs14.spec.ts e2e/flash-sale-fs19.spec.ts e2e/sfui-2-brand.spec.ts e2e/sfui-3a-dialog.spec.ts e2e/sfui-3b-sheet.spec.ts e2e/sfui-3c-select.spec.ts e2e/sfui-3d-payment.spec.ts e2e/sfui-3e-shipping.spec.ts e2e/sfui-4-store.spec.ts e2e/sfui-5a-common.spec.ts e2e/sfui-5b-catalog.spec.ts e2e/sfui-5c-checkout-heading.spec.ts e2e/sfui-5d-account-order.spec.ts e2e/sfui-5e-features.spec.ts e2e/sfui-6-parity.spec.ts e2e/thai-ui-account.spec.ts e2e/thai-ui-cart-order.spec.ts e2e/thai-ui-checkout.spec.ts e2e/thai-ui-pages.spec.ts e2e/thai-ui-shell.spec.ts 
+  1 failed
+    [chromium] › e2e/core-38-mobile-layout.spec.ts:124:5 › AC-132: checkout — label ของฟอร์มที่อยู่ไม่ทับค่า, สรุปที่อยู่ 375 เรียงแนวตั้งและอีเมลยาวไม่ล้น, 1280 แถวเดียว 
+  77 passed (2.7m)
+   core-38 :124 ล้มที่ page.goto PDP timeout 120s (ไม่ใช่ assertion — โหลดพร้อม 2 worker) รันซ้ำทั้งไฟล์ workers=1:
+  5 passed (12.5s)

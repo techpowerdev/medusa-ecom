@@ -41,7 +41,7 @@ const AddressSelect = ({
     // value "" = ยังไม่เลือก (แสดง placeholder) — คง controlled ตลอดแม้ที่อยู่ในฟอร์มไม่ตรงกับที่บันทึกไว้
     <Select onValueChange={handleSelect} value={selectedAddress?.id ?? ""}>
       <SelectTrigger
-        className="w-full data-[size=default]:h-auto px-4 py-[10px] text-left bg-background text-base-regular"
+        className="w-full data-[size=default]:h-auto px-4 py-[10px] text-left bg-background text-sm leading-6 font-normal"
         data-testid="shipping-address-select"
       >
         {/* ปุ่มแสดงเฉพาะบรรทัดที่อยู่ (ไม่ใช่เนื้อหาทั้งรายการ) ตามเดิม */}
@@ -51,7 +51,7 @@ const AddressSelect = ({
       </SelectTrigger>
       <SelectContent
         position="popper"
-        className="max-h-60 text-small-regular"
+        className="max-h-60 text-xs leading-5 font-normal"
         data-testid="shipping-address-options"
       >
         {addresses.map((address) => {

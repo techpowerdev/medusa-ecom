@@ -19,7 +19,7 @@ import {
 } from "@lib/util/place-order-outcome"
 import { stripeErrorMessage } from "@lib/util/stripe-error"
 import { HttpTypes } from "@medusajs/types"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/button"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
 import { useParams, useRouter } from "next/navigation"
 import React, { useEffect, useRef, useState } from "react"

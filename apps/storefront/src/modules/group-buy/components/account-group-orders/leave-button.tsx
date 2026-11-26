@@ -5,7 +5,7 @@ import { GENERIC_ERROR_MESSAGE } from "@lib/util/error-message"
 import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/button"
 
 // GB-7b (spec 04 กฎข้อ 13): ออกจากกลุ่ม = ยกเลิก draft order ของ membership นี้ — ยืนยันก่อนส่ง และกันกดซ้ำด้วย ref (in-flight) + disabled
 // render ทุกแถวเสมอ (review #223): ถ้าถอด component เมื่อ canLeave เป็น false หลัง router.refresh() state error จะหายไปด้วย

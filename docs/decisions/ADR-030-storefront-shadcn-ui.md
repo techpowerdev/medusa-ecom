@@ -51,9 +51,10 @@ b. `clsx` + `tailwind-merge` ใน `src/lib/utils.ts` แบบเดิมข�
    `rsc: true`, `tsx: true`, `iconLibrary: "lucide"`, aliases `components: "@/components"`, `ui: "@/components/ui"`, `utils: "@/lib/utils"`, `lib: "@/lib"`, `hooks: "@/hooks"`;
    `tsconfig.json` เพิ่ม `"@/*": ["*"]` (baseUrl `src` เดิม — alias `@lib/*`, `@modules/*` คงไว้)
 3. **ที่ตั้ง**: component ของ shadcn อยู่ที่ `apps/storefront/src/components/ui/<name>.tsx` (เพิ่มด้วย `shadcn add` เท่านั้น); `src/lib/utils.ts` = `export { cn } from "cn"`;
-   แก้ไฟล์ใน `src/components/ui/` ได้เท่าที่จำเป็น (เช่น prop `isLoading` ของ `Button` ที่แสดง "กำลังดำเนินการ..." ตามเดิม) พร้อม comment `// SFUI:` อธิบาย;
+   ~~แก้ไฟล์ใน `src/components/ui/` ได้เท่าที่จำเป็นพร้อม comment `// SFUI:`~~ → **แก้ 2026-11-26 (owner, SFUI-7): ห้ามแก้ไฟล์ใน `src/components/ui/`** (ผลของ shadcn CLI ตรงตัว รวม `import { cn } from "cn"`)
+   ปรับด้วย className/props หรือ wrapper `src/components/<name>.tsx` (เช่น prop `isLoading` ของ `Button` ที่แสดง "กำลังดำเนินการ..." ตามเดิม) — รายละเอียดใน spec 09 กฎ 2–3;
    component ของโดเมน (ตะกร้า, checkout ฯลฯ) คงอยู่ใน `src/modules/**` ตาม starter
-4. **Radix เข้าผ่าน `src/components/ui/*` เท่านั้น** (package `radix-ui` รวม) — โค้ดใน `src/modules/**`, `src/app/**` ไม่ import `radix-ui`/`@radix-ui/*` ตรง;
+4. **Radix เข้าผ่าน `src/components/**` เท่านั้น** (package `radix-ui` รวม; `ui/` ของ CLI + wrapper ใน `src/components/` — แก้ 2026-11-26, SFUI-7) — โค้ดใน `src/modules/**`, `src/app/**` ไม่ import `radix-ui`/`@radix-ui/*` ตรง;
    accordion/slider เดิมย้ายเป็น `accordion`/`slider` ของ shadcn
 5. **map primitive**: headless `Dialog` (modal ที่อยู่) → `Dialog`; headless `Dialog`/`Popover` ที่เป็นแผงเต็มจอ (side menu, search drawer, mobile actions) → `Sheet`;
    `Popover` (cart dropdown) → `Popover`; `Listbox` → `Select`; `Disclosure` → `Collapsible`; `RadioGroup`/`Radio` → `RadioGroup`/`RadioGroupItem`;

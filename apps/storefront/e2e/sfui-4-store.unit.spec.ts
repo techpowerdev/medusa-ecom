@@ -5,6 +5,7 @@ import { readSource } from "./support/sfui-source"
 
 // SFUI-4 (spec 09 กฎ 4–5, AC-14 ส่วน static): accordion/slider ของ store filter และแท็บ PDP ใช้ shadcn
 // `Accordion`/`Slider` จาก `@/components/ui/*` — ไม่ import Radix ตรง (`@radix-ui/*`, `radix-ui`) หรือ `clsx`
+// SFUI-7 (กฎ 3): Slider ที่ต้องตั้งชื่อ thumb ภาษาไทยมาจาก wrapper `@/components/slider` (ไฟล์ใน ui = ผล CLI ตรงตัว)
 
 const ACCORDION_FILES = [
   "modules/products/components/product-tabs/accordion.tsx",
@@ -47,16 +48,16 @@ for (const file of ACCORDION_FILES) {
 }
 
 for (const file of SLIDER_FILES) {
-  test(`AC-14: ${file} import Slider จาก @/components/ui/slider`, () => {
-    const ui = imports(file).filter((i) => i.from === "@/components/ui/slider")
+  test(`AC-14: ${file} import Slider จาก @/components/slider`, () => {
+    const ui = imports(file).filter((i) => i.from === "@/components/slider")
     expect(ui.flatMap((i) => i.names)).toContain("Slider")
   })
 }
 
-test("AC-14 (กฎ 2–3): accordion/slider จาก CLI ใช้ cn ของ @/lib/utils", () => {
+test("AC-14 (กฎ 2–3): accordion/slider จาก CLI ใช้ cn ของ package cn ตามผล CLI (SFUI-7)", () => {
   for (const file of ["components/ui/accordion.tsx", "components/ui/slider.tsx"]) {
-    const utils = imports(file).filter((i) => i.from === "@/lib/utils")
-    expect(utils.flatMap((i) => i.names), file).toContain("cn")
-    expect(imports(file).map((i) => i.from), file).not.toContain("cn")
+    const cn = imports(file).filter((i) => i.from === "cn")
+    expect(cn.flatMap((i) => i.names), file).toContain("cn")
+    expect(imports(file).map((i) => i.from), file).not.toContain("@/lib/utils")
   }
 })

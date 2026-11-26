@@ -95,7 +95,7 @@ const CountrySelect = ({ toggleState, regions }: CountrySelectProps) => {
             </SelectValue>
           </div>
         </SelectTrigger>
-        <SelectContent className="max-h-[442px] text-small-regular uppercase">
+        <SelectContent className="max-h-[442px] text-xs leading-5 font-normal uppercase">
           {options?.map((o) => (
             <SelectItem
               key={o.country}

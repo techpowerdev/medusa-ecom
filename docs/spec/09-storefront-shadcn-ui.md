@@ -44,9 +44,21 @@ none
    (`accordion-*` ของ v3 และ token `--chart-*`/`--sidebar-*` ที่ shadcn init สร้างถูกลบใน SFUI-6 เพราะไม่มีผู้ใช้ — `Accordion` ของ shadcn ใช้ `animate-accordion-down/up` ของ `tw-animate-css`);
    class เดิมใน `globals.css` ที่ถูก `@apply` (`text-xsmall-regular` … `text-3xl-semi`) เป็น `@utility`
 2. `components.json` ตาม ADR-030 ข้อ 2 (style `new-york`, ติดตั้งด้วย `pnpm dlx shadcn@4.23.1 init -b radix`, `tailwind.config: ""`, `baseColor: "neutral"`, `iconLibrary: "lucide"`,
-   aliases `@/components`, `@/components/ui`, `@/lib/utils`, `@/lib`, `@/hooks`); `tsconfig.json` มี `"@/*": ["*"]`; `src/lib/utils.ts` export `cn` ที่สร้างด้วย `createCn` จาก `cn/config` โดย extend classGroups `font-size` ด้วย utility ขนาดฟอนต์ `text-*` ของ `globals.css` (`FONT_SIZE_UTILITIES`) — กัน tailwind-merge ตัด `text-xl-semi` ฯลฯ เมื่อคู่กับ `text-ui-fg-*` (ตัดสิน 2026-11-26 ระหว่าง SFUI-2); component ใน `src/components/ui/*` import `cn` จาก `@/lib/utils` เท่านั้น
-3. component ของ shadcn เพิ่มด้วย `pnpm dlx shadcn@4.23.1 add <name>` ลง `src/components/ui/` เท่านั้น และเฉพาะตัวที่ task ระบุ (ตาราง Tasks); แก้ไฟล์ที่ CLI สร้างได้เท่าที่จำเป็น
-   พร้อม comment `// SFUI: <เหตุผล>`; ห้ามสร้างไฟล์ใน `src/components/ui/` ที่ไม่มาจาก registry ของ shadcn; task 2–5 ห้ามแก้ `package.json`/`pnpm-lock.yaml`
+   aliases `@/components`, `@/components/ui`, `@/lib/utils`, `@/lib`, `@/hooks`); `tsconfig.json` มี `"@/*": ["*"]`; `src/lib/utils.ts` export `cn` ที่สร้างด้วย `createCn` จาก `cn/config` โดย extend classGroups `font-size` ด้วย utility ขนาดฟอนต์ `text-*` ของ `globals.css` (`FONT_SIZE_UTILITIES`) — กัน tailwind-merge ตัด `text-xl-semi` ฯลฯ เมื่อคู่กับ `text-ui-fg-*` (ตัดสิน 2026-11-26 ระหว่าง SFUI-2) — ใช้กับโค้ดนอก `src/components/ui/`;
+   **component ใน `src/components/ui/*` ใช้ `cn` ตามผล CLI (`import { cn } from "cn"` — SFUI-7, owner 2026-11-26)** ซึ่งไม่รู้จัก utility ขนาดฟอนต์ของเรา (ถือเป็นสีตัวอักษร: ตัด `text-<สี>` ของ primitive
+   หรือถูกตัดเมื่อคู่กับ `text-<สี>`) และ package `cn` 0.5.2 ไม่มี config ระดับ global (config ทำได้แค่ `createCn` ของ `cn/config` ที่ได้ฟังก์ชันใหม่ หรือ `cn build`/`withCn` ที่สร้างตาราง
+   ให้ `cn/engine` — `import { cn } from "cn"` ใช้ตารางค่าเริ่มต้นเสมอ) → **className/argument ที่ส่งเข้า component ของ `@/components/**` ห้ามมี `text-{xsmall,small,base,large,xl,2xl,3xl}-{regular,semi}`**
+   ใช้ utility มาตรฐานที่ได้ค่าเท่ากัน (ตาม `@apply` ใน `globals.css`): `xsmall-*` → `text-[10px] leading-4`, `small-*` → `text-xs leading-5`, `base-*` → `text-sm leading-6`, `large-*` → `text-base leading-6`,
+   `xl-*` → `text-2xl leading-[36px]`, `2xl-*` → `text-[30px] leading-[48px]`, `3xl-*` → `text-[32px] leading-[44px]` + `font-normal` (`-regular`) / `font-semibold` (`-semi`) — AC-19
+3. component ของ shadcn เพิ่มด้วย `pnpm dlx shadcn@4.23.1 add <name>` ลง `src/components/ui/` เท่านั้น และเฉพาะตัวที่ task ระบุ (ตาราง Tasks); add ตัวที่มีอยู่แล้วซ้ำใช้ `--overwrite`;
+   **ห้ามแก้ไฟล์ใน `src/components/ui/`** — ต้องตรงกับผลของ CLI ตามตัวอักษร (SFUI-7, owner 2026-11-26; hash อยู่ใน `e2e/support/shadcn-ui.json` สร้างด้วย
+   `node scripts/shadcn-ui-verify.mjs --write [<name>]` และตรวจกับ CLI จริงในเครื่องด้วย `node scripts/shadcn-ui-verify.mjs` — ต้องใช้เน็ต; สคริปต์รัน CLI ใน temp dir จึงไม่แก้
+   `package.json`/lockfile/`globals.css` ของโปรเจกต์); ปรับด้วย className/props ที่ primitive รับ หรือ **wrapper** `src/components/<name>.tsx` (ชื่อไฟล์และชื่อ export เดียวกับใน `ui/`
+   เปลี่ยนแค่ path import) ที่ประกอบจาก export ของ `ui/*` ก่อน — ถ้า `ui/*` ไม่เปิด prop ที่ต้องใช้ ประกอบจาก primitive ของ `radix-ui` ด้วย class เดียวกับไฟล์ใน `ui/` พร้อม test เทียบ DOM
+   กับของ CLI (`src/components/wrappers.test.tsx`); wrapper ปัจจุบัน: `button` (`isLoading` — กฎ 20), `sheet` (`SheetContent` + `overlayProps`, ปุ่มปิดในตัวชื่อ "ปิด"), `slider` (`thumbLabels`),
+   `radio-group` (`RadioGroupItem` render `children`); ผู้เรียกที่ไม่ใช้ความสามารถเพิ่มใช้ `@/components/ui/*` ตรง; ปุ่มปิดในตัวของ `DialogContent`/`SheetContent`/`DialogFooter` จาก CLI
+   มีข้อความ "Close" → ใช้จาก `ui/` ต้องส่ง `showCloseButton={false}` (ต้องการปุ่มปิดในตัว → wrapper); test ของ component อยู่นอก `ui/` (AC-19);
+   ห้ามสร้างไฟล์ใน `src/components/ui/` ที่ไม่มาจาก registry ของ shadcn; task 2–5 ห้ามแก้ `package.json`/`pnpm-lock.yaml`
    (component ต้องการ dependency ใหม่ → หยุดรายงาน planner)
 4. map primitive (ADR-030 ข้อ 5): modal ที่อยู่ → `Dialog`; side menu → `Sheet side="left"`, search drawer → `Sheet side="top"`, mobile actions → `Sheet side="bottom"`;
    cart dropdown → `Popover` (คงการเปิดเมื่อ hover/เพิ่มสินค้า และปิดตามเดิม); `layout/country-select`, `checkout/address-select` → `Select`; `account-info` → `Collapsible`;
@@ -62,7 +74,7 @@ none
    (c) `mobile-actions.tsx` — แถบ `mobile-actions` (L80–92, `Transition appear` จาง 300ms เมื่อ `show`): คงเงื่อนไข `{show && …}` และแทน `Transition` ด้วย class `animate-in fade-in duration-300`
        ของ `tw-animate-css` บน `<div data-testid="mobile-actions">` (จบที่ `opacity: 1` — FS-19 กฎ 24b ไม่มี leave transition); **`Sheet side="bottom"` แทนเฉพาะ `Dialog` ของ `mobile-actions-modal`** (L183–245)
        ไม่ใช่แถบ `mobile-actions`
-5. `radix-ui`/`@radix-ui/*` ถูก import ได้เฉพาะใน `src/components/ui/**` — `src/modules/**`, `src/app/**`, `src/lib/**` import component จาก `@/components/ui/*`
+5. `radix-ui`/`@radix-ui/*` ถูก import ได้เฉพาะใน `src/components/**` (`ui/` ของ CLI + wrapper ตามกฎ 3 — SFUI-7) — `src/modules/**`, `src/app/**`, `src/lib/**` import component จาก `@/components/ui/*` หรือ wrapper `@/components/*`
 6. icon มาจาก `lucide-react` เท่านั้น (ขนาดด้วย `size-*`): `ArrowUpRightMini`→`ArrowUpRight`, `ArrowRightMini`→`ArrowRight`, `ChevronDownMini`→`ChevronDown`,
    `ChevronUpDown`→`ChevronsUpDown`, `CheckCircleSolid`→`CircleCheck`, `XMark`/`XMarkMini`→`X`, `MagnifyingGlass`→`Search`, `Plus`→`Plus`, `PencilSquare`→`SquarePen`,
    `Trash`→`Trash2`, `Spinner`/`Loader`→`LoaderCircle` + `animate-spin`, `ExclamationCircleSolid`→`CircleAlert`, `EllipseMiniSolid`→`Circle` (`fill-current size-2`),
@@ -99,7 +111,7 @@ none
     `IconBadge` → `Badge variant="secondary"`; `IconButton` → `Button variant="ghost" size="icon"`; `Button` `primary|secondary|transparent` → `default|outline|ghost`,
     `small|medium|large` → `sm|default|lg`; `buttonClassName(o, c)` → `cn(buttonVariants(o), c)`; `clx` → `cn`; `Label`/`Input`/`Table.*` → shadcn ชื่อเดียวกัน (`TableCell`/`TableHead` ของ shadcn มี `whitespace-nowrap` และ `TableHead` สูง `h-10` ซึ่ง `Table.Cell`/`.HeaderCell` เดิมไม่มี/สูง `h-12` → ผู้ใช้ใส่ `whitespace-normal` และหัวตาราง `h-12` เอง — review SFUI-5d/SFUI-6; shim ส่ง `px-4` ให้ `TableHead` และ `p-4` ให้ `TableCell` และ `Text` ค่าเริ่มต้น `text-sm leading-[1.4rem]` ที่ไม่ทับ `txt-*`/`h*-webs` ของผู้เรียก)
     (`Table.Header`→`TableHeader`, `.Body`→`TableBody`, `.Row`→`TableRow`, `.Head`/`.HeaderCell`→`TableHead`, `.Cell`→`TableCell`); `Button isLoading` → prop `isLoading` ที่เพิ่มใน
-    `src/components/ui/button.tsx` (SFUI-2 — แสดง "กำลังดำเนินการ..." + disabled ตามเดิม)
+    `src/components/ui/button.tsx` (SFUI-2 — แสดง "กำลังดำเนินการ..." + disabled ตามเดิม; SFUI-7 ย้ายไป wrapper `src/components/button.tsx` — กฎ 3)
     หมายเหตุ (review SFUI-6): ค่าเริ่มต้นที่ระบุในวงเล็บข้างบน (`Text` = `text-sm leading-[1.4rem]` ที่ไม่ทับ `txt-*` ของผู้เรียก ฯลฯ) เป็นพฤติกรรมของ shim ฉบับ SFUI-2 ไม่ใช่ develop —
     บน develop shim ใช้ clsx โดยไม่ merge ค่าที่ render จึงขึ้นกับลำดับ CSS ของ v3 (เช่น `txt-medium` ของ `Text` ชนะ `txt-small`/`txt-compact-*` ของผู้เรียก) → ยึดค่าที่ render บน develop ตามกฎ 19;
     ปุ่มปิดของ `free-shipping-price-nudge` เปลี่ยนจากสี่เหลี่ยมมุมมน (`IconButton`) เป็นวงกลม `Button variant="ghost" size="icon"` — ยอมรับเป็นหน้าตา shadcn ตาม ADR-030
@@ -146,7 +158,7 @@ none
   — reviewer ตรวจ (ไม่ใช่ static): task ที่จะ merge ลบ key ของตัวเองออกจาก `PENDING` ครบ และไม่ลบ key ของ task อื่น
 - AC-7 (SFUI-1b, กฎ 2) static: `components.json` มีค่าตามกฎ 2 ทุก field; `tsconfig.json` มี `@/*`; `src/lib/utils.ts` export `cn` (สร้างด้วย `createCn` ตามกฎ 2 และทุก utility ขนาดฟอนต์ใน `globals.css` อยู่ใน `FONT_SIZE_UTILITIES`); `vitest.config.mts` มี alias `"@"` → `src` และ `include` ครอบ `src/**/*.test.ts` + `src/**/*.test.tsx`;
   unit `src/lib/utils.test.ts` ที่ `import { cn } from "@/lib/utils"` (ผ่าน alias ไม่ใช่ path สัมพัทธ์) ผ่าน: `cn("px-2", "px-4") === "px-4"`
-- AC-8 (SFUI-2, กฎ 3, 14, 20) unit (jsdom) `src/components/ui/button.test.tsx` — ต้อง**ถูกรันจริง** (ปรากฏในผล `pnpm --filter storefront test:unit` ของ PR; include `*.test.tsx` จาก SFUI-1b) — ของ `src/components/ui/button.tsx`: `isLoading` → ปุ่ม disabled และข้อความมีอักษรไทย; `buttonVariants({ variant: "outline", size: "sm" })` คืน string;
+- AC-8 (SFUI-2, กฎ 3, 14, 20) unit (jsdom) `src/components/ui/button.test.tsx` (SFUI-7 ย้ายเป็น `src/components/button.test.tsx` ทดสอบ wrapper `src/components/button.tsx`) — ต้อง**ถูกรันจริง** (ปรากฏในผล `pnpm --filter storefront test:unit` ของ PR; include `*.test.tsx` จาก SFUI-1b) — ของ `src/components/ui/button.tsx`: `isLoading` → ปุ่ม disabled และข้อความมีอักษรไทย; `buttonVariants({ variant: "outline", size: "sm" })` คืน string;
   shim `Button`/`Badge`/`Label`/`Input`/`Table`/`IconButton`/`buttonClassName`/`clx` ส่งต่อไป shadcn (`Button` ที่ render มี `data-slot="button"`); e2e AC-4 ข้อ (2);
   `e2e/core-90-link-button.unit.spec.ts` (AC-187) ผ่าน
 - AC-9 (SFUI-3a, กฎ 4, 9, 11) e2e ใหม่ `e2e/sfui-3a-dialog.spec.ts` (ลูกค้าที่ login): Given `/<cc>/account/addresses` When กด `add-address-button` Then `getByRole("dialog")` มีชื่อที่เข้าถึงได้และเป็นภาษาไทย
@@ -173,6 +185,11 @@ none
 - AC-17 (SFUI-1a สร้าง, ทุก task รัน, กฎ 17) e2e ใหม่ `e2e/sfui-mobile-390.spec.ts` (`viewport: { width: 390, height: 844 }`, ลูกค้าที่ login + cart มีสินค้า 1 ชิ้น):
   `/<cc>`, `/<cc>/store`, PDP, `/<cc>/cart`, `/<cc>/checkout?step=address`, `/<cc>/account`, `/<cc>/account/orders` — ทุกหน้า `scrollWidth <= innerWidth`
 - AC-18 (ทุก task, กฎ 18) reviewer ตรวจ: `git diff origin/develop --stat -- apps/backend` และ diff ของไฟล์ e2e ที่เปิด `/app` ตามรายการในกฎ 18 ว่าง; e2e เหล่านั้นผ่านใน CI
+- AC-19 (SFUI-7, กฎ 2, 3, 5, 10) static `e2e/sfui-7-ui-pristine.unit.spec.ts`: ไฟล์ใน `src/components/ui/` มีชุดชื่อและ sha256 ตรงกับ `e2e/support/shadcn-ui.json` (ผล `shadcn@4.23.1 add --overwrite`),
+  ไม่มี `SFUI:`/import `@/lib/utils`/ไฟล์ test; `radix-ui` ถูก import เฉพาะใน `src/components/**`; className/argument ที่ส่งเข้า `@/components/**` (รวมค่าคงที่ในไฟล์เดียวกัน) ไม่มี utility ขนาดฟอนต์ของ `globals.css`;
+  `DialogContent`/`SheetContent` จาก `ui/` มี `showCloseButton={false}` และ `DialogFooter` ไม่เปิดปุ่มปิด; unit `src/components/button.test.tsx` (ย้ายจาก `ui/` — AC-8) และ `src/components/wrappers.test.tsx`
+  (wrapper ที่ไม่ใช้ความสามารถเพิ่มได้ DOM เท่ากับของ CLI, `overlayProps`/`thumbLabels`/`children` ถึง DOM, ปุ่มปิดในตัวเป็นภาษาไทย); `node scripts/shadcn-ui-verify.mjs` ผ่านในเครื่อง (บันทึกใน evidence);
+  e2e ที่อ้างหน้าที่แตะผ่านโดยไม่แก้ (กฎ 19)
 
 ## Non-functional (concurrency, idempotency, scale, observability)
 - กันกดซ้ำ: ปุ่มที่ย้ายไป shadcn คง `disabled`/single-flight เดิม (ไม่มี logic ใหม่)
@@ -183,8 +200,8 @@ none
 ## Test plan: unit / integration / e2e, mapped to AC numbers
 | ชนิด | AC |
 |---|---|
-| static (`pnpm --filter storefront test:e2e:unit`, `e2e/*.unit.spec.ts`) | AC-1, AC-2, AC-5, AC-6, AC-7, static ของ AC-14/15/16 |
-| unit (Vitest) | AC-3 (CSS), AC-4 (CSS), AC-7 (`cn`), AC-8, AC-12, AC-13 |
+| static (`pnpm --filter storefront test:e2e:unit`, `e2e/*.unit.spec.ts`) | AC-1, AC-2, AC-5, AC-6, AC-7, static ของ AC-14/15/16, AC-19 |
+| unit (Vitest) | AC-3 (CSS), AC-4 (CSS), AC-7 (`cn`), AC-8, AC-12, AC-13, AC-19 (wrapper) |
 | integration | none (ไม่แตะ backend) |
 | e2e storefront (Playwright) | AC-3, AC-4 (2), AC-9..AC-15, AC-17 + ชุดเดิมทั้งหมด (กฎ 19) |
 qa เก็บ evidence ทุก task ที่มี UI (ทุก task ยกเว้น SFUI-1b) — screenshot ก่อน/หลังของหน้าที่ task แตะ ≤ 5 รูป; builder รัน e2e **ทุก** spec ที่อ้างหน้าที่ task แตะ (CLAUDE.md)
@@ -212,8 +229,9 @@ qa เก็บ evidence ทุก task ที่มี UI (ทุก task ย�
 | SFUI-5d | account + order: `src/modules/{account,order}/**` (ยกเว้นไฟล์ของ 3a/3c/3e), `src/app/[countryCode]/(main)/{account,order}/**` (ยกเว้น `account/@dashboard/vouchers/**` ของ 5e) | — | AC-15 | SFUI-2 | ∥ |
 | SFUI-5e | ฟีเจอร์: `src/modules/{group-buy,affiliate,evoucher}/**`, `src/app/[countryCode]/(main)/{affiliate,g}/**`, `src/app/[countryCode]/(main)/account/@dashboard/vouchers/**` | — | AC-15 | SFUI-2 | ∥ |
 | SFUI-6 | ปิดงาน: ลบ shim `common/components/ui/`, `common/components/radio/`, `legacy-medusa.css` + `@import`, dependency ขั้น 6 (`package.json`/lockfile), `e2e/sfui-legacy.unit.spec.ts` เหลือข้อ (a) รายการว่าง, `e2e/sfui-legacy-css.unit.spec.ts` (ลบ), `CLAUDE.md` หัวข้อ Stack (+ ข้อความ storefront ที่อ้าง preset ถ้ามี — owner อนุมัติใน review), บันทึก bundle ก่อน/หลัง | — | AC-1 (ขั้น 6), AC-16 | SFUI-1a..SFUI-5e ทั้งหมด | — |
+| SFUI-7 | ไฟล์ใน `ui/` = ผล CLI ตรงตัว (owner 2026-11-26): `src/components/ui/*` (คืนเป็นผล `shadcn add --overwrite`), wrapper ใหม่ `src/components/{button,sheet,slider,radio-group}.tsx`, ย้าย `src/components/ui/button.test.tsx` → `src/components/button.test.tsx`, ใหม่ `src/components/wrappers.test.tsx`, `scripts/shadcn-ui-verify.mjs`, `e2e/support/shadcn-ui.json`, `e2e/sfui-7-ui-pristine.unit.spec.ts`, แก้ `e2e/sfui-4-store.unit.spec.ts` (AC-14 ข้อ import Slider/`cn` ตามกฎใหม่), ผู้เรียก wrapper และจุดที่ส่ง utility ขนาดฟอนต์เข้า primitive (`account-info`, `address-select`, `country-select`, `search/drawer`, `shipping`), กฎ 2/3/5, ADR-030 ข้อ 3–4, `CLAUDE.md` หัวข้อ Stack | ทุกตัวใน `ui/` (`--overwrite`) | AC-19 | SFUI-6 | — |
 
-ลำดับ: SFUI-1a → SFUI-1b → SFUI-2 → (SFUI-3a ∥ 3b ∥ 3c ∥ 3d ∥ 3e ∥ SFUI-4 ∥ 5a ∥ 5b ∥ 5c ∥ 5d ∥ 5e) → SFUI-6
+ลำดับ: SFUI-1a → SFUI-1b → SFUI-2 → (SFUI-3a ∥ 3b ∥ 3c ∥ 3d ∥ 3e ∥ SFUI-4 ∥ 5a ∥ 5b ∥ 5c ∥ 5d ∥ 5e) → SFUI-6 → SFUI-7
 - ไฟล์ร่วมของกลุ่มขนาน: `e2e/sfui-legacy.unit.spec.ts` (ต่างคนต่างลบ key ของตัวเอง — ตัวที่ merge ทีหลัง sync), `src/components/ui/*` (แต่ละ task เพิ่มคนละไฟล์ตามคอลัมน์ shadcn add)
 - ประมาณ LOC: 1a ~400 (CSS ชั่วคราวคัดลอกค่า), 1b ~150, 2 ~250, 3a–3e/4 ~200–350 ต่อ task, 5a–5e ~250–380 ต่อ task (5c ใหญ่สุด: `addresses` ~45 จุด) — เกิน 450 ให้หยุดแตกตามโฟลเดอร์ย่อยแล้วแจ้ง planner
 - ขนานพร้อมกันได้ตามเครื่อง — e2e storefront ทั้งชุดรันใน CI; ในเครื่องรันเฉพาะ spec ที่อ้างหน้าที่แตะ

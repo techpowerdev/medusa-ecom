@@ -40,7 +40,7 @@ const SearchDrawer = ({
         data-testid="search-drawer"
       >
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <SheetTitle className="text-large-semi">ค้นหา</SheetTitle>
+          <SheetTitle className="text-base leading-6 font-semibold">ค้นหา</SheetTitle>
           <SheetClose
             aria-label="ปิดการค้นหา"
             className="text-muted-foreground hover:text-foreground"

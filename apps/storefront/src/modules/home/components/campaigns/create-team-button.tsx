@@ -4,7 +4,7 @@ import { createGroupBuyTeam } from "@lib/data/group-buy"
 import { settleAction } from "@lib/util/action-result"
 import { groupJoinErrorMessage } from "@lib/util/group-join-error"
 import { loginPathForReturn } from "@lib/util/login-return"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/button"
 import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
 
