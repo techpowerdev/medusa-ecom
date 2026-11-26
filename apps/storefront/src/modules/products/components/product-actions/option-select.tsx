@@ -1,5 +1,5 @@
 import { HttpTypes } from "@medusajs/types"
-import { clx } from "@modules/common/components/ui"
+import { cn } from "@/lib/utils"
 import React from "react"
 
 type OptionSelectProps = {
@@ -45,11 +45,11 @@ const OptionSelect: React.FC<OptionSelectProps> = ({
               />
               <label
                 htmlFor={id}
-                className={clx(
-                  "flex items-center justify-center cursor-pointer border-ui-border-base bg-ui-bg-subtle border text-small-regular h-10 rounded-rounded p-2 peer-focus-visible:ring-2 peer-focus-visible:ring-offset-1 peer-disabled:cursor-not-allowed",
+                className={cn(
+                  "flex items-center justify-center cursor-pointer border-border bg-muted border text-small-regular h-10 rounded-rounded p-2 peer-focus-visible:ring-2 peer-focus-visible:ring-offset-1 peer-disabled:cursor-not-allowed",
                   {
-                    "border-ui-border-interactive": v === current,
-                    "hover:shadow-elevation-card-rest transition-shadow ease-in-out duration-150":
+                    "border-primary": v === current,
+                    "hover:shadow-sm transition-shadow ease-in-out duration-150":
                       v !== current,
                   }
                 )}

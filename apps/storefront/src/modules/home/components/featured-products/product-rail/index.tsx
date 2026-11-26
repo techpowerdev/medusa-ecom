@@ -1,6 +1,5 @@
 import { listProducts } from "@lib/data/products"
 import { HttpTypes } from "@medusajs/types"
-import { Text } from "@modules/common/components/ui"
 
 import InteractiveLink from "@modules/common/components/interactive-link"
 import { CardFlashPricesProvider } from "@modules/products/components/flash-sale"
@@ -30,7 +29,7 @@ export default async function ProductRail({
   return (
     <div className="content-container py-12 small:py-24">
       <div className="flex justify-between mb-8">
-        <Text className="txt-xlarge">{collection.title}</Text>
+        <p className="text-lg leading-[1.8rem]">{collection.title}</p>
         <InteractiveLink
           href={`/collections/${collection.handle}`}
           data-testid="product-rail-view-all"

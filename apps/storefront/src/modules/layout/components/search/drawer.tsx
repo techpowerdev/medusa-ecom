@@ -1,69 +1,62 @@
 "use client"
 
-import { Dialog, Transition } from "@headlessui/react"
-import { XMark } from "@medusajs/icons"
-import React, { Fragment } from "react"
+import { X } from "lucide-react"
+import React from "react"
+
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from "@/components/ui/sheet"
 
 type SearchDrawerProps = {
   isOpen: boolean
   close: () => void
+  /** ปุ่มที่เปิด drawer (ลิงก์ `nav-search-button` ไม่ใช่ SheetTrigger) — คืน focus เมื่อปิด */
+  returnFocusRef: React.RefObject<HTMLElement | null>
   children: React.ReactNode
 }
 
-const SearchDrawer = ({ isOpen, close, children }: SearchDrawerProps) => {
+// SFUI-3b (spec 09 กฎ 4, 11): search drawer เป็น `Sheet side="top"`
+const SearchDrawer = ({
+  isOpen,
+  close,
+  returnFocusRef,
+  children,
+}: SearchDrawerProps) => {
   return (
-    <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-[75]" onClose={close}>
-        <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-ui-bg-overlay backdrop-blur-xs" />
-        </Transition.Child>
-
-        <div className="fixed inset-0 overflow-hidden">
-          <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
-            <Transition.Child
-              as={Fragment}
-              enter="transform transition ease-in-out duration-300"
-              enterFrom="translate-x-full"
-              enterTo="translate-x-0"
-              leave="transform transition ease-in-out duration-200"
-              leaveFrom="translate-x-0"
-              leaveTo="translate-x-full"
-            >
-              <Dialog.Panel
-                className="pointer-events-auto w-screen max-w-md min-w-0"
-                data-testid="search-drawer"
-              >
-                <div className="flex h-full flex-col border-l border-ui-border-base bg-ui-bg-base shadow-elevation-modal">
-                  <div className="flex items-center justify-between border-b border-ui-border-base px-4 py-3">
-                    <Dialog.Title className="text-large-semi text-ui-fg-base">
-                      ค้นหา
-                    </Dialog.Title>
-                    <button
-                      type="button"
-                      onClick={close}
-                      aria-label="ปิดการค้นหา"
-                      className="text-ui-fg-muted hover:text-ui-fg-base"
-                      data-testid="close-search-drawer"
-                    >
-                      <XMark />
-                    </button>
-                  </div>
-                  {children}
-                </div>
-              </Dialog.Panel>
-            </Transition.Child>
-          </div>
+    <Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
+      <SheetContent
+        side="top"
+        showCloseButton={false}
+        // ปุ่มเปิดเป็นลิงก์ (ทำงานได้โดยไม่มี JS) จึงไม่มี SheetTrigger ให้ Radix คืน focus — คืนเองที่ลิงก์
+        onCloseAutoFocus={(event) => {
+          event.preventDefault()
+          returnFocusRef.current?.focus()
+        }}
+        className="max-h-[85dvh] min-w-0 gap-0"
+        data-testid="search-drawer"
+      >
+        <div className="flex items-center justify-between border-b px-4 py-3">
+          <SheetTitle className="text-large-semi">ค้นหา</SheetTitle>
+          <SheetClose
+            aria-label="ปิดการค้นหา"
+            className="text-muted-foreground hover:text-foreground"
+            data-testid="close-search-drawer"
+          >
+            <X className="size-5" />
+          </SheetClose>
         </div>
-      </Dialog>
-    </Transition>
+        {/* ซ่อนด้วย `hidden` ไม่ใช่ `sr-only`: กล่อง 1px ของ sr-only ที่ข้อความล้นถูกนับเป็น container ที่เลื่อนแนวนอนใน
+            drawer (core-19a AC-63) — aria-describedby ยังอ่านข้อความของ element ที่ซ่อนได้ */}
+        <SheetDescription hidden>
+          พิมพ์ชื่อสินค้าเพื่อค้นหา แล้วเลือกสินค้าจากผลลัพธ์
+        </SheetDescription>
+        {children}
+      </SheetContent>
+    </Sheet>
   )
 }
 

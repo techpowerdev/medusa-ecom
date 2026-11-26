@@ -1,5 +1,8 @@
-import { EllipseMiniSolid } from "@medusajs/icons"
-import { Label, RadioGroup, Text, clx } from "@modules/common/components/ui"
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { cn } from "@/lib/utils"
+import { Circle } from "lucide-react"
+
 type FilterRadioGroupProps = {
   title: string
   items: {
@@ -11,6 +14,7 @@ type FilterRadioGroupProps = {
   "data-testid"?: string
 }
 
+// SFUI-5a (spec 09 กฎ 20): RadioGroup ของ shadcn — item ซ่อนด้วย sr-only (ไม่ใช่ hidden: label ต้องคลิกถึง)
 const FilterRadioGroup = ({
   title,
   items,
@@ -20,29 +24,23 @@ const FilterRadioGroup = ({
 }: FilterRadioGroupProps) => {
   return (
     <div className="flex gap-x-3 flex-col gap-y-3">
-      <Text className="txt-compact-small-plus text-ui-fg-muted">{title}</Text>
-      <RadioGroup data-testid={dataTestId}>
+      <p className="text-sm leading-5 font-medium text-muted-foreground">{title}</p>
+      <RadioGroup value={value} onValueChange={handleChange} data-testid={dataTestId}>
         {items?.map((i) => (
           <div
             key={i.value}
-            className={clx("flex items-center", {
-              "ml-[-23px]": i.value === value,
+            className={cn("flex items-center", {
+              "-ml-4": i.value === value,
             })}
           >
-            {i.value === value && <EllipseMiniSolid className="mr-2" />}
-            <RadioGroup.Item
-              checked={i.value === value}
-              onChange={() => handleChange(i.value)}
-              className="hidden peer"
-              id={i.value}
-              value={i.value}
-            />
+            {i.value === value && <Circle className="mr-2 fill-current size-2" />}
+            <RadioGroupItem value={i.value} id={i.value} className="sr-only" />
             <Label
               htmlFor={i.value}
-              className={clx(
-                "txt-compact-small! transform-none! text-ui-fg-subtle hover:cursor-pointer",
+              className={cn(
+                "text-sm! leading-5 font-normal transform-none! text-muted-foreground hover:cursor-pointer",
                 {
-                  "text-ui-fg-base": i.value === value,
+                  "text-foreground": i.value === value,
                 }
               )}
               data-testid="radio-label"

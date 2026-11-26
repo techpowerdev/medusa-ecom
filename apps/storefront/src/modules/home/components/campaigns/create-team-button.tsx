@@ -4,7 +4,7 @@ import { createGroupBuyTeam } from "@lib/data/group-buy"
 import { settleAction } from "@lib/util/action-result"
 import { groupJoinErrorMessage } from "@lib/util/group-join-error"
 import { loginPathForReturn } from "@lib/util/login-return"
-import { Button } from "@modules/common/components/ui"
+import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
 
@@ -39,7 +39,7 @@ export default function CreateTeamButton({ campaignId, countryCode }: { campaign
   return (
     <div className="flex flex-col gap-y-2">
       <Button
-        variant="secondary"
+        variant="outline"
         className="w-full"
         isLoading={pending}
         disabled={pending}
@@ -49,7 +49,7 @@ export default function CreateTeamButton({ campaignId, countryCode }: { campaign
         สร้างทีมของคุณ
       </Button>
       {error && (
-        <p className="text-small-regular text-ui-fg-error" role="alert" data-testid="group-create-team-error">
+        <p className="text-small-regular text-destructive" role="alert" data-testid="group-create-team-error">
           {error}
         </p>
       )}

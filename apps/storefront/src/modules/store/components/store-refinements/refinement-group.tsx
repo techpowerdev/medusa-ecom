@@ -1,7 +1,8 @@
 "use client"
 
-import clsx from "clsx"
 import { useRefinementList } from "react-instantsearch"
+
+import { cn } from "@/lib/utils"
 
 type RefinementGroupProps = {
   attribute: string
@@ -22,7 +23,7 @@ const RefinementGroup = ({ attribute, title }: RefinementGroupProps) => {
   return (
     <div className="flex flex-col gap-y-3">
       <span
-        className="txt-compact-small-plus text-ui-fg-subtle"
+        className="text-sm font-medium leading-5 text-muted-foreground"
         data-testid={`refinement-title-${attribute}`}
       >
         {title}
@@ -35,18 +36,18 @@ const RefinementGroup = ({ attribute, title }: RefinementGroupProps) => {
                 type="checkbox"
                 checked={item.isRefined}
                 onChange={() => refine(item.value)}
-                className="mt-1 shrink-0 accent-ui-fg-interactive"
+                className="mt-1 shrink-0 accent-primary"
                 data-testid={`refinement-${attribute}`}
               />
               <span
-                className={clsx("text-small-regular min-w-0 break-words", {
-                  "text-ui-fg-base": item.isRefined,
-                  "text-ui-fg-subtle": !item.isRefined,
-                })}
+                className={cn(
+                  "text-small-regular min-w-0 break-words",
+                  item.isRefined ? "text-foreground" : "text-muted-foreground"
+                )}
               >
                 {item.label}
               </span>
-              <span className="text-small-regular shrink-0 text-ui-fg-muted">
+              <span className="text-small-regular shrink-0 text-muted-foreground">
                 ({item.count})
               </span>
             </label>

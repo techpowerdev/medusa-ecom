@@ -1,7 +1,7 @@
 import { listCategories } from "@lib/data/categories";
 import { listCollections } from "@lib/data/collections";
 import { STORE_CONTENT, STORE_NAME } from "@lib/store-content";
-import { Text, clx } from "@modules/common/components/ui";
+import { cn } from "@/lib/utils";
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link";
 
@@ -15,25 +15,25 @@ export default async function Footer() {
   ]);
 
   return (
-    <footer className="border-t border-ui-border-base w-full">
+    <footer className="border-t border-border w-full">
       <div className="content-container flex flex-col w-full">
         <div className="flex flex-col gap-y-6 xsmall:flex-row items-start justify-between py-40">
           <div className="flex flex-col gap-y-2">
             <LocalizedClientLink
               href="/"
-              className="txt-compact-xlarge-plus text-ui-fg-subtle hover:text-ui-fg-base uppercase"
+              className="text-lg leading-5 font-medium text-muted-foreground hover:text-foreground uppercase"
               data-testid="footer-store-name"
             >
               {STORE_NAME}
             </LocalizedClientLink>
-            <Text className="txt-small text-ui-fg-subtle" data-testid="footer-tagline">
+            <p className="text-sm text-muted-foreground" data-testid="footer-tagline">
               {STORE_CONTENT.footer.tagline}
-            </Text>
+            </p>
           </div>
           <div className="text-small-regular gap-10 md:gap-x-16 grid grid-cols-2 sm:grid-cols-3">
             {productCategories && productCategories?.length > 0 && (
               <div className="flex flex-col gap-y-2">
-                <span className="txt-small-plus txt-ui-fg-base">
+                <span className="text-sm font-medium text-foreground">
                   หมวดหมู่
                 </span>
                 <ul
@@ -54,13 +54,13 @@ export default async function Footer() {
 
                     return (
                       <li
-                        className="flex flex-col gap-2 text-ui-fg-subtle txt-small"
+                        className="flex flex-col gap-2 text-muted-foreground text-sm"
                         key={c.id}
                       >
                         <LocalizedClientLink
-                          className={clx(
-                            "hover:text-ui-fg-base",
-                            children && "txt-small-plus"
+                          className={cn(
+                            "hover:text-foreground",
+                            children && "font-medium"
                           )}
                           href={`/categories/${c.handle}`}
                           data-testid="category-link"
@@ -73,7 +73,7 @@ export default async function Footer() {
                               children.map((child) => (
                                 <li key={child.id}>
                                   <LocalizedClientLink
-                                    className="hover:text-ui-fg-base"
+                                    className="hover:text-foreground"
                                     href={`/categories/${child.handle}`}
                                     data-testid="category-link"
                                   >
@@ -91,12 +91,12 @@ export default async function Footer() {
             )}
             {collections && collections.length > 0 && (
               <div className="flex flex-col gap-y-2">
-                <span className="txt-small-plus txt-ui-fg-base">
+                <span className="text-sm font-medium text-foreground">
                   คอลเลกชัน
                 </span>
                 <ul
-                  className={clx(
-                    "grid grid-cols-1 gap-2 text-ui-fg-subtle txt-small",
+                  className={cn(
+                    "grid grid-cols-1 gap-2 text-muted-foreground text-sm",
                     {
                       "grid-cols-2": (collections?.length || 0) > 3,
                     }
@@ -105,7 +105,7 @@ export default async function Footer() {
                   {collections?.slice(0, 6).map((c) => (
                     <li key={c.id}>
                       <LocalizedClientLink
-                        className="hover:text-ui-fg-base"
+                        className="hover:text-foreground"
                         href={`/collections/${c.handle}`}
                       >
                         {c.title}
@@ -117,15 +117,15 @@ export default async function Footer() {
             )}
             <div className="flex flex-col gap-y-2">
               <span
-                className="txt-small-plus txt-ui-fg-base"
+                className="text-sm font-medium text-foreground"
                 data-testid="footer-customer-service"
               >
                 บริการลูกค้า
               </span>
-              <ul className="grid grid-cols-1 gap-y-2 text-ui-fg-subtle txt-small">
+              <ul className="grid grid-cols-1 gap-y-2 text-muted-foreground text-sm">
                 <li>
                   <LocalizedClientLink
-                    className="hover:text-ui-fg-base"
+                    className="hover:text-foreground"
                     href="/shipping"
                   >
                     ข้อมูลการจัดส่ง
@@ -133,7 +133,7 @@ export default async function Footer() {
                 </li>
                 <li>
                   <LocalizedClientLink
-                    className="hover:text-ui-fg-base"
+                    className="hover:text-foreground"
                     href="/returns"
                   >
                     นโยบายการคืนสินค้า
@@ -141,7 +141,7 @@ export default async function Footer() {
                 </li>
                 <li>
                   <LocalizedClientLink
-                    className="hover:text-ui-fg-base"
+                    className="hover:text-foreground"
                     href="/terms"
                   >
                     ข้อกำหนดการให้บริการ
@@ -149,7 +149,7 @@ export default async function Footer() {
                 </li>
                 <li>
                   <LocalizedClientLink
-                    className="hover:text-ui-fg-base"
+                    className="hover:text-foreground"
                     href="/privacy"
                   >
                     นโยบายความเป็นส่วนตัว
@@ -157,7 +157,7 @@ export default async function Footer() {
                 </li>
                 <li>
                   <LocalizedClientLink
-                    className="hover:text-ui-fg-base"
+                    className="hover:text-foreground"
                     href="/contact"
                   >
                     ติดต่อเรา
@@ -165,7 +165,7 @@ export default async function Footer() {
                 </li>
                 <li>
                   <LocalizedClientLink
-                    className="hover:text-ui-fg-base"
+                    className="hover:text-foreground"
                     href="/search"
                   >
                     ค้นหา
@@ -175,10 +175,10 @@ export default async function Footer() {
             </div>
           </div>
         </div>
-        <div className="flex w-full mb-16 justify-between text-ui-fg-muted">
-          <Text className="txt-compact-small" data-testid="footer-copyright">
+        <div className="flex w-full mb-16 justify-between text-muted-foreground">
+          <p className="text-sm leading-5" data-testid="footer-copyright">
             © {new Date().getFullYear()} {STORE_NAME} สงวนลิขสิทธิ์
-          </Text>
+          </p>
         </div>
       </div>
     </footer>

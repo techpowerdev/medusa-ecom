@@ -1,6 +1,7 @@
 "use client"
 
-import { buttonClassName, Heading } from "@modules/common/components/ui"
+import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 import CartTotals from "@modules/common/components/cart-totals"
 import Divider from "@modules/common/components/divider"
@@ -18,19 +19,18 @@ const Summary = ({ cart }: SummaryProps) => {
 
   return (
     <div className="flex flex-col gap-y-4">
-      <Heading
-        level="h2"
-        className="text-[2rem] leading-[2.75rem]"
+      <h2
+        className="font-semibold text-[2rem] leading-[2.75rem]"
         data-testid="cart-summary-title"
       >
         สรุปคำสั่งซื้อ
-      </Heading>
+      </h2>
       <DiscountCode cart={cart} />
       <Divider />
       <CartTotals totals={cart} />
       <LocalizedClientLink
         href={"/checkout?step=" + step}
-        className={buttonClassName({}, "w-full h-10")}
+        className={cn(buttonVariants(), "w-full h-10")}
         data-testid="checkout-button"
       >
         ไปชำระเงิน

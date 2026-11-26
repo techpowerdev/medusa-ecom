@@ -1,5 +1,3 @@
-import { Heading } from "@modules/common/components/ui"
-
 import ItemsPreviewTemplate from "@modules/cart/templates/preview"
 import DiscountCode from "@modules/checkout/components/discount-code"
 import CartTotals from "@modules/common/components/cart-totals"
@@ -11,13 +9,12 @@ const CheckoutSummary = ({ cart }: { cart: HttpTypes.StoreCart }) => {
     <div className="sticky top-0 flex flex-col-reverse small:flex-col gap-y-8 py-8 small:py-0 ">
       <div className="w-full bg-white flex flex-col">
         <Divider className="my-6 small:hidden" />
-        <Heading
-          level="h2"
-          className="flex flex-row text-3xl-regular items-baseline"
+        <h2
+          className="text-2xl font-semibold flex flex-row items-baseline"
           data-testid="checkout-summary-heading"
         >
           สินค้าในตะกร้า
-        </Heading>
+        </h2>
         <Divider className="my-6" />
         <CartTotals totals={cart} />
         <ItemsPreviewTemplate cart={cart} />

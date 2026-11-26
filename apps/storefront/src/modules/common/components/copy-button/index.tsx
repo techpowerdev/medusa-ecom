@@ -1,6 +1,6 @@
 "use client"
 
-import { Button } from "@modules/common/components/ui"
+import { Button } from "@/components/ui/button"
 import { useRef, useState } from "react"
 
 type Props = {
@@ -82,8 +82,8 @@ export default function CopyButton({
     <div className={layout === "row" ? "contents" : "flex flex-col gap-y-1"}>
       <Button
         type="button"
-        variant="secondary"
-        size={size}
+        variant="outline"
+        size={size === "small" ? "sm" : "default"}
         onClick={run}
         disabled={busy}
         isLoading={busy}
@@ -94,13 +94,13 @@ export default function CopyButton({
       {/* CORE-42 (กฎข้อ 100b): "row" — ระยะห่างจากแถวอยู่ที่ margin เมื่อมีเนื้อหา; span ว่างยังอยู่ใน DOM (live region ห้าม display:none) */}
       <span
         aria-live="polite"
-        className={`text-small-regular text-ui-fg-subtle ${layout === "row" ? "min-w-0 basis-full [&:not(:empty)]:mt-1" : ""}`}
+        className={`text-small-regular text-muted-foreground ${layout === "row" ? "min-w-0 basis-full [&:not(:empty)]:mt-1" : ""}`}
         data-testid={statusTestId}
       >
         {status?.message}
         {status?.manualValue !== undefined && (
           <span
-            className="block select-all font-mono text-ui-fg-base [overflow-wrap:anywhere]"
+            className="block select-all font-mono text-foreground [overflow-wrap:anywhere]"
             data-testid={`${statusTestId}-value`}
           >
             {status.manualValue}
