@@ -60,6 +60,9 @@ type ButtonStyle = {
 
 const VARIANT = { primary: "default", secondary: "outline", transparent: "ghost" } as const
 const SIZE = { small: "sm", medium: "default", large: "lg" } as const
+// D-1 (กฎ 19 ชนะกฎ 20): `large` เดิมสูง 48px แต่ `lg` ของ shadcn สูง 40px — ปุ่ม submit-payment-button ที่เตี้ยลงทำให้
+// คลิกหลังกรอกบัตรตกใน iframe ของ Stripe จึงคง `h-12` (padding `px-6` เท่าเดิมอยู่แล้ว)
+const SIZE_KEEP = { small: undefined, medium: undefined, large: "h-12" } as const
 
 type ButtonProps = Omit<ComponentProps<typeof ShadcnButton>, "variant" | "size"> & ButtonStyle
 
@@ -67,10 +70,20 @@ type ButtonProps = Omit<ComponentProps<typeof ShadcnButton>, "variant" | "size">
 export const buttonClassName = (
   { variant = "primary", size = "medium" }: ButtonStyle = {},
   className?: string
-) => cn(buttonVariants({ variant: VARIANT[variant], size: SIZE[size] }), className)
+) => cn(buttonVariants({ variant: VARIANT[variant], size: SIZE[size] }), SIZE_KEEP[size], className)
 
-export const Button = ({ variant = "primary", size = "medium", ...props }: ButtonProps) => (
-  <ShadcnButton variant={VARIANT[variant]} size={SIZE[size]} {...props} />
+export const Button = ({
+  variant = "primary",
+  size = "medium",
+  className,
+  ...props
+}: ButtonProps) => (
+  <ShadcnButton
+    variant={VARIANT[variant]}
+    size={SIZE[size]}
+    className={cn(SIZE_KEEP[size], className)}
+    {...props}
+  />
 )
 
 // Container Component
