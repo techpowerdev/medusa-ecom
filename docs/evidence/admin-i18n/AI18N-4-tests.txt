@@ -51,3 +51,13 @@ typecheck: backend + storefront ผ่าน
 ## หมายเหตุ
 # storefront test:e2e:unit: evidence-budget ล้มที่ docs/evidence/admin-i18n/AI18N-1-tests.txt (regex task id ยังไม่รับ AI18N-* —
 # session หลักแจ้งว่าแก้ใน commit ใหม่ของ AI18N-1) ไฟล์นี้ก็จะติดเหตุเดียวกันจนกว่า commit นั้นเข้า stack
+
+## หลังเรียง stack (2026-11-27): rebase --onto feat/AI18N-3-evoucher-widgets (AI18N-1 2bc72327 + AI18N-2 + AI18N-3)
+conflict: __tests__/medusa-ui.unit.spec.ts 3 จุด — เก็บทุกฝั่ง: it ของ partners (AI18N-3) + AFFILIATE_CASES (AI18N-4) แทน CASES ตัวอักษรเดิมที่ว่างแล้ว,
+  ERROR_TABLES: แถว affiliate (AI18N-4) + แถว group-buy (AI18N-2); I18N_PENDING ทุก key ว่าง
+range-diff 1e69616f → ใหม่: ต่างเฉพาะจุด conflict ข้างบน — ไม่มีเคสหาย
+pnpm --filter backend test:unit: Test Suites: 137 passed, 137 total / Tests: 2600 passed, 2600 total
+Playwright project unit (storefront): 226 passed (รวม evidence-budget)
+pnpm lint: 0 errors (warning เดิม backend 4 / storefront 27); pnpm typecheck: ผ่าน
+NODE_ENV=production pnpm --filter backend build: ผ่าน; assert-absent "Development Mode" OK; bundle มี translationNs ecom-group-buy/ecom-evoucher/ecom-affiliate
+e2e ไม่ได้รันซ้ำหลังเรียง stack (qa รันชุดเต็มที่ปลาย stack)
