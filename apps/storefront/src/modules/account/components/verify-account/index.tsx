@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { buttonClassName } from "@modules/common/components/ui"
+import { buttonVariants } from "@/components/ui/button"
 import { confirmEmailVerification } from "@lib/data/customer"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
@@ -40,17 +40,17 @@ const VerifyAccount = () => {
       <h1 className="text-large-semi uppercase">ยืนยันอีเมล</h1>
 
       {state === "verifying" && (
-        <p className="text-base-regular text-ui-fg-base">
+        <p className="text-base-regular text-foreground">
           กำลังยืนยันอีเมลของคุณ...
         </p>
       )}
 
       {state === "success" && (
         <>
-          <p className="text-base-regular text-ui-fg-base">
+          <p className="text-base-regular text-foreground">
             ยืนยันอีเมลเรียบร้อยแล้ว คุณเข้าสู่ระบบบัญชีได้แล้ว
           </p>
-          <LocalizedClientLink href="/account" className={buttonClassName()}>
+          <LocalizedClientLink href="/account" className={buttonVariants()}>
             ไปหน้าเข้าสู่ระบบ
           </LocalizedClientLink>
         </>
@@ -59,14 +59,14 @@ const VerifyAccount = () => {
       {state === "error" && (
         <>
           <p
-            className="text-base-regular text-ui-fg-base"
+            className="text-base-regular text-foreground"
             data-testid="verify-account-error"
           >
             ลิงก์ยืนยันนี้ไม่ถูกต้องหรือหมดอายุแล้ว เข้าสู่ระบบเพื่อรับอีเมลยืนยันใหม่
           </p>
           <LocalizedClientLink
             href="/account"
-            className={buttonClassName({ variant: "secondary" })}
+            className={buttonVariants({ variant: "outline" })}
           >
             ไปหน้าเข้าสู่ระบบ
           </LocalizedClientLink>

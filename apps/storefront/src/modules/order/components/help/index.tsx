@@ -1,11 +1,10 @@
-import { Heading } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import React from "react"
 
 const Help = () => {
   return (
     <div className="mt-6" data-testid="order-help">
-      <Heading className="text-base-semi">ต้องการความช่วยเหลือ?</Heading>
+      <h2 className="text-2xl font-semibold">ต้องการความช่วยเหลือ?</h2>
       <div className="text-base-regular my-2">
         <ul className="gap-y-2 flex flex-col">
           <li>

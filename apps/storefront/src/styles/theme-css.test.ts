@@ -102,9 +102,13 @@ describe("globals.css — ฟอนต์ (AC-3 ส่วน CSS, กฎ 8)", ()
   })
 
   it("class typography ของ preset (txt-*) ใช้ var(--font-sans) — ไม่ fix Inter", async () => {
-    const root = await compile(["txt-medium", "txt-medium-plus"])
-    for (const cls of [".txt-medium", ".txt-medium-plus"]) {
-      expect(declsOf(root, cls)["font-family"], cls).toBe("var(--font-sans)")
+    // ตรวจทุก @utility txt-* ที่ยังเหลือใน legacy-medusa.css (ไม่ผูกชื่อตัวอย่าง — task เจ้าของไฟล์ลบ utility ที่ไม่มีผู้ใช้ตาม AC-2;
+    // หลัง SFUI-5d ไม่เหลือ txt-* แล้ว test นี้จึงไม่มีอะไรให้ตรวจจน SFUI-6 ลบทั้งไฟล์)
+    const legacy = fs.readFileSync(path.join(STYLES, "legacy-medusa.css"), "utf8")
+    const names = Array.from(legacy.matchAll(/@utility\s+(txt-[\w-]+)\s*\{/g), (m) => m[1])
+    const root = await compile(names)
+    for (const name of names) {
+      expect(declsOf(root, `.${name}`)["font-family"], name).toBe("var(--font-sans)")
     }
   })
 })

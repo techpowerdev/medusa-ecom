@@ -20,8 +20,8 @@ const OrderSummary = ({ order }: OrderSummaryProps) => {
   return (
     <div data-testid="order-summary">
       <h2 className="text-base-semi">สรุปคำสั่งซื้อ</h2>
-      <div className="text-small-regular text-ui-fg-base my-2">
-        <div className="flex items-center justify-between text-base-regular text-ui-fg-base mb-2">
+      <div className="text-small-regular text-foreground my-2">
+        <div className="flex items-center justify-between text-base-regular text-foreground mb-2">
           <span>ยอดรวมสินค้า</span>
           <span>{getAmount(order.subtotal)}</span>
         </div>
@@ -48,7 +48,7 @@ const OrderSummary = ({ order }: OrderSummaryProps) => {
           </div>
         </div>
         <div className="h-px w-full border-b border-gray-200 border-dashed my-4" />
-        <div className="flex items-center justify-between text-base-regular text-ui-fg-base mb-2">
+        <div className="flex items-center justify-between text-base-regular text-foreground mb-2">
           <span>ยอดรวมทั้งสิ้น</span>
           <span>{getAmount(order.total)}</span>
         </div>

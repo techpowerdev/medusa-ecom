@@ -1,5 +1,3 @@
-import { Container } from "@modules/common/components/ui"
-
 import ChevronDown from "@modules/common/icons/chevron-down"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { convertToLocale } from "@lib/util/money"
@@ -21,7 +19,7 @@ const Overview = ({ customer, orders, hasGroupOrders = false }: OverviewProps) =
           <span data-testid="welcome-message" data-value={customer?.first_name}>
             สวัสดี {customer?.first_name}
           </span>
-          <span className="text-small-regular text-ui-fg-base">
+          <span className="text-small-regular text-foreground">
             เข้าสู่ระบบด้วย:{" "}
             <span
               className="font-semibold"
@@ -48,7 +46,7 @@ const Overview = ({ customer, orders, hasGroupOrders = false }: OverviewProps) =
                   >
                     {getProfileCompletion(customer)}%
                   </span>
-                  <span className="uppercase text-base-regular text-ui-fg-subtle">
+                  <span className="uppercase text-base-regular text-muted-foreground">
                     สมบูรณ์
                   </span>
                 </div>
@@ -64,7 +62,7 @@ const Overview = ({ customer, orders, hasGroupOrders = false }: OverviewProps) =
                   >
                     {customer?.addresses?.length || 0}
                   </span>
-                  <span className="uppercase text-base-regular text-ui-fg-subtle">
+                  <span className="uppercase text-base-regular text-muted-foreground">
                     ที่บันทึกไว้
                   </span>
                 </div>
@@ -77,7 +75,7 @@ const Overview = ({ customer, orders, hasGroupOrders = false }: OverviewProps) =
                 {((orders && orders.length > 0) || hasGroupOrders) && (
                   <LocalizedClientLink
                     href="/account/orders"
-                    className="text-small-regular text-ui-fg-interactive hover:underline"
+                    className="text-small-regular text-primary underline-offset-4 hover:underline"
                     data-testid="overview-orders-view-all"
                   >
                     ดูทั้งหมด
@@ -99,7 +97,7 @@ const Overview = ({ customer, orders, hasGroupOrders = false }: OverviewProps) =
                         <LocalizedClientLink
                           href={`/account/orders/details/${order.id}`}
                         >
-                          <Container className="bg-gray-50 flex justify-between items-center p-4">
+                          <div className="rounded-lg bg-card flex justify-between items-center p-4">
                             <div className="grid grid-cols-3 grid-rows-2 text-small-regular gap-x-4 flex-1">
                               <span className="font-semibold">วันที่สั่งซื้อ</span>
                               <span className="font-semibold">
@@ -133,7 +131,7 @@ const Overview = ({ customer, orders, hasGroupOrders = false }: OverviewProps) =
                               </span>
                               <ChevronDown className="-rotate-90" />
                             </button>
-                          </Container>
+                          </div>
                         </LocalizedClientLink>
                       </li>
                     )

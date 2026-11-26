@@ -5,7 +5,7 @@ import { PROMPTPAY_POLL_MS, promptPayExpiryAction, secondsLeft } from "@lib/util
 import ErrorMessage from "@modules/checkout/components/error-message"
 import { openQr } from "@modules/checkout/components/promptpay-payment/open-qr"
 import PromptPayQr from "@modules/checkout/components/promptpay-payment/qr-panel"
-import { Button } from "@modules/common/components/ui"
+import { Button } from "@/components/ui/button"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
 import { useCallback, useEffect, useState } from "react"
 
@@ -39,7 +39,8 @@ export const OrderCardButton = ({ ready, onPaid }: { ready: boolean; onPaid: () 
   return (
     <>
       <Button
-        size="large"
+        size="lg"
+        className="h-12"
         onClick={pay}
         isLoading={submitting}
         disabled={!ready || !stripe || !elements}
@@ -132,7 +133,8 @@ export const OrderPromptPayButton = ({ session, email, renew, onPaid, poll }: Pr
   return (
     <>
       <Button
-        size="large"
+        size="lg"
+        className="h-12"
         onClick={showQr}
         isLoading={submitting}
         disabled={!stripe || !clientSecret}

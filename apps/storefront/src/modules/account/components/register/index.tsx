@@ -31,12 +31,12 @@ const Register = ({ setCurrentView }: Props) => {
       <h1 className="text-large-semi uppercase mb-6">
         สมัครสมาชิก {STORE_NAME}
       </h1>
-      <p className="text-center text-base-regular text-ui-fg-base mb-4">
+      <p className="text-center text-base-regular text-foreground mb-4">
         สร้างบัญชีสมาชิก {STORE_NAME} เพื่อรับประสบการณ์การช้อปปิ้งที่ดียิ่งขึ้น
       </p>
       {message?.state === "verification_required" && (
         <div
-          className="w-full mb-4 text-center text-base-regular text-ui-fg-base bg-ui-bg-subtle border border-ui-border-base rounded-rounded p-4"
+          className="w-full mb-4 text-center text-base-regular text-foreground bg-muted border border-border rounded-rounded p-4"
           data-testid="register-verification-message"
         >
           เราได้ส่งลิงก์ยืนยันไปที่ <strong>{message.email}</strong> แล้ว
@@ -118,7 +118,7 @@ const Register = ({ setCurrentView }: Props) => {
             data-testid="register-error"
           />
         )}
-        <span className="text-center text-ui-fg-base text-small-regular mt-6">
+        <span className="text-center text-foreground text-small-regular mt-6">
           การสร้างบัญชีกับ {STORE_NAME} ถือว่าคุณยอมรับ{" "}
           <LocalizedClientLink
             href="/privacy"
@@ -141,7 +141,7 @@ const Register = ({ setCurrentView }: Props) => {
           สมัครสมาชิก
         </SubmitButton>
       </form>
-      <span className="text-center text-ui-fg-base text-small-regular mt-6">
+      <span className="text-center text-foreground text-small-regular mt-6">
         เป็นสมาชิกอยู่แล้ว?{" "}
         <button
           type="button"

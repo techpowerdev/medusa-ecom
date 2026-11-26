@@ -11,7 +11,6 @@ const LEGACY_CSS = path.join(SRC, "styles", "legacy-medusa.css")
 // ชื่อที่โค้ดเดิมใช้แต่ @medusajs/ui-preset@2.22.1 ไม่เคยมีสไตล์ (พิมพ์ผิดตั้งแต่ก่อน SFUI — v3 ก็ไม่ generate อะไร)
 // ไม่สร้างนิยามให้ เพื่อไม่ให้หน้าตาเปลี่ยน; task เจ้าของไฟล์ (5x) ลบ class เหล่านี้ตอนย้าย
 const NO_STYLE_IN_PRESET = [
-  "text-ui-fg-medium-plus",
   "shadow-borders-interactive",
   "shadow-borders-strong-with-shadow",
 ]
@@ -47,7 +46,8 @@ test("AC-2: มีไฟล์ legacy-medusa.css และ globals.css import �
 })
 
 test("AC-2: ทุก class ของ preset ที่ใช้ใน src/** มีนิยามใน legacy-medusa.css", () => {
-  expect(used.size, "กันผ่านแบบว่างเปล่า").toBeGreaterThan(20)
+  // กันผ่านแบบว่างเปล่า: จำนวนลดลงตามที่ task เจ้าของไฟล์ย้าย (เดิม > 20 ตอน SFUI-1a) — ก่อน SFUI-6 ยังต้องเจออย่างน้อยหนึ่งชื่อ
+  expect(used.size, "กันผ่านแบบว่างเปล่า").toBeGreaterThan(0)
   const defs = definitions(fs.readFileSync(LEGACY_CSS, "utf8"))
   const undefinedNames = Array.from(used)
     .filter((name) => !NO_STYLE_IN_PRESET.includes(name))

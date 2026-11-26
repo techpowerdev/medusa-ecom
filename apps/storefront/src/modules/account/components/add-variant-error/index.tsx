@@ -46,13 +46,13 @@ const AddVariantError = async ({ countryCode, searchParams, confirm }: Props) =>
     return (
       <form
         action={confirmPendingAdd}
-        className="mb-6 flex flex-col gap-4 rounded-rounded border border-ui-border-base bg-ui-bg-subtle p-4 small:flex-row small:items-center small:justify-between"
+        className="mb-6 flex flex-col gap-4 rounded-rounded border border-border bg-muted p-4 small:flex-row small:items-center small:justify-between"
         data-testid="add-variant-pending"
       >
         <input type="hidden" name={PENDING_ADD_PARAM} value={pending.variantId} />
         <input type="hidden" name={PENDING_QUANTITY_PARAM} value={pending.quantity} />
         <input type="hidden" name="country_code" value={countryCode} />
-        <div className="text-base-regular text-ui-fg-base">
+        <div className="text-base-regular text-foreground">
           <p className="font-semibold">
             {inCart > 0 ? (
               <>
@@ -82,7 +82,7 @@ const AddVariantError = async ({ countryCode, searchParams, confirm }: Props) =>
   return (
     <div
       role="alert"
-      className="mb-6 rounded-rounded border border-ui-border-error bg-ui-bg-subtle p-4 text-base-regular text-ui-fg-error"
+      className="mb-6 rounded-rounded border border-destructive bg-muted p-4 text-base-regular text-destructive"
       data-testid="add-variant-error"
     >
       เพิ่มสินค้าลงตะกร้าไม่สำเร็จ สินค้าที่เลือกอาจไม่มีอยู่ หมดแล้ว

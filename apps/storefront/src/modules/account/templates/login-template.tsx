@@ -34,7 +34,7 @@ const LoginTemplate = () => {
       {notice && (
         <p
           role="status"
-          className="max-w-sm w-full mb-6 text-center text-base-regular text-ui-fg-base bg-ui-bg-subtle border border-ui-border-base rounded-rounded p-4"
+          className="max-w-sm w-full mb-6 text-center text-base-regular text-foreground bg-muted border border-border rounded-rounded p-4"
           data-testid="login-payment-received-notice"
         >
           {PAYMENT_RECEIVED_NOTICE}

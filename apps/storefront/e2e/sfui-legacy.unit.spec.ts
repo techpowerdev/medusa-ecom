@@ -48,29 +48,6 @@ const TASKS: Task[] = [
 ]
 
 const PENDING: Partial<Record<Task, string[]>> = {
-  "SFUI-5d": [
-    "src/modules/account/components/account-nav/index.tsx",
-    "src/modules/account/components/add-variant-error/index.tsx",
-    "src/modules/account/components/login/index.tsx",
-    "src/modules/account/components/order-card/index.tsx",
-    "src/modules/account/components/order-overview/index.tsx",
-    "src/modules/account/components/overview/index.tsx",
-    "src/modules/account/components/profile-email/index.tsx",
-    "src/modules/account/components/register/index.tsx",
-    "src/modules/account/components/verify-account/index.tsx",
-    "src/modules/account/templates/account-layout.tsx",
-    "src/modules/account/templates/login-template.tsx",
-    "src/modules/order/components/help/index.tsx",
-    "src/modules/order/components/item/index.tsx",
-    "src/modules/order/components/items/index.tsx",
-    "src/modules/order/components/order-details/index.tsx",
-    "src/modules/order/components/order-pay/pay-buttons.tsx",
-    "src/modules/order/components/order-summary/index.tsx",
-    "src/modules/order/components/payment-details/index.tsx",
-    "src/modules/order/components/shipping-details/index.tsx",
-    "src/modules/order/templates/order-completed-template.tsx",
-    "src/modules/order/templates/order-details-template.tsx",
-  ],
   "SFUI-5e": [
     "src/app/[countryCode]/(main)/account/@dashboard/vouchers/page.tsx",
     "src/app/[countryCode]/(main)/affiliate/earnings/page.tsx",

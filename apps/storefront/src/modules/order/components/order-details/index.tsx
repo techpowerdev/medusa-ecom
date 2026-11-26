@@ -1,6 +1,5 @@
 import { HttpTypes } from "@medusajs/types"
 import { formatDate } from "@lib/util/date"
-import { Text } from "@modules/common/components/ui"
 
 type OrderDetailsProps = {
   order: HttpTypes.StoreOrder
@@ -33,42 +32,42 @@ const formatStatus = (status: string) => STATUS_LABELS[status] ?? status
 const OrderDetails = ({ order, showStatus }: OrderDetailsProps) => {
   return (
     <div>
-      <Text>
+      <p className="text-sm leading-[1.4rem]">
         เราได้ส่งรายละเอียดคำสั่งซื้อไปที่{" "}
         <span
-          className="text-ui-fg-medium-plus font-semibold"
+          className="font-semibold"
           data-testid="order-email"
         >
           {order.email}
         </span>{" "}
         แล้ว
-      </Text>
-      <Text className="mt-2">
+      </p>
+      <p className="text-sm leading-[1.4rem] mt-2">
         วันที่สั่งซื้อ:{" "}
         <span data-testid="order-date">{formatDate(order.created_at)}</span>
-      </Text>
-      <Text className="mt-2 text-ui-fg-interactive">
+      </p>
+      <p className="text-sm leading-[1.4rem] mt-2 text-primary">
         เลขที่คำสั่งซื้อ: <span data-testid="order-id">{order.display_id}</span>
-      </Text>
+      </p>
 
       <div className="flex items-center text-compact-small gap-x-4 mt-4">
         {showStatus && (
           <>
-            <Text>
+            <p className="text-sm leading-[1.4rem]">
               สถานะคำสั่งซื้อ:{" "}
-              <span className="text-ui-fg-subtle " data-testid="order-status">
+              <span className="text-muted-foreground " data-testid="order-status">
                 {formatStatus(order.fulfillment_status)}
               </span>
-            </Text>
-            <Text>
+            </p>
+            <p className="text-sm leading-[1.4rem]">
               สถานะการชำระเงิน:{" "}
               <span
-                className="text-ui-fg-subtle "
+                className="text-muted-foreground "
                 data-testid="order-payment-status"
               >
                 {formatStatus(order.payment_status)}
               </span>
-            </Text>
+            </p>
           </>
         )}
       </div>
