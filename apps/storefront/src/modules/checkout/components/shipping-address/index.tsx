@@ -1,5 +1,4 @@
 import { HttpTypes } from "@medusajs/types"
-import { Container } from "@modules/common/components/ui"
 import Checkbox from "@modules/common/components/checkbox"
 import Input from "@modules/common/components/input"
 import { mapKeys } from "lodash"
@@ -118,8 +117,8 @@ const ShippingAddress = ({
   return (
     <>
       {customer && (addressesInRegion?.length || 0) > 0 && (
-        <Container
-          className="mb-6 flex flex-col gap-y-4 p-5"
+        <div
+          className="rounded-lg bg-card mb-6 flex flex-col gap-y-4 p-5"
           data-testid="saved-address-greeting"
         >
           <p className="text-small-regular">
@@ -134,7 +133,7 @@ const ShippingAddress = ({
             }
             onSelect={setFormAddress}
           />
-        </Container>
+        </div>
       )}
       <div className="grid grid-cols-2 gap-4">
         <Input

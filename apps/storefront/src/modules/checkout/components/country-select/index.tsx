@@ -4,7 +4,7 @@ import NativeSelect, {
   NativeSelectProps,
 } from "@modules/common/components/native-select"
 import { HttpTypes } from "@medusajs/types"
-import { clx } from "@modules/common/components/ui"
+import { cn } from "@/lib/utils"
 
 const CountrySelect = forwardRef<
   HTMLSelectElement,
@@ -46,7 +46,7 @@ const CountrySelect = forwardRef<
       placeholder={placeholder}
       defaultValue={defaultValue}
       // CORE-4g (กฎข้อ 63d): สูงเท่า Input (h-12) ในแถวเดียวกัน
-      className={clx("h-12", className)}
+      className={cn("h-12", className)}
       {...props}
     >
       {countryOptions?.map(({ value, label }, index) => (

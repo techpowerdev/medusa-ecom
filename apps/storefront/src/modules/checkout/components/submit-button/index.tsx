@@ -1,21 +1,21 @@
 "use client"
 
-import { Button } from "@modules/common/components/ui"
-import React from "react"
+import { Button } from "@/components/ui/button"
+import React, { type ComponentProps } from "react"
 import { useFormStatus } from "react-dom"
 
 export function SubmitButton({
   children,
-  variant = "primary",
-  size = "medium",
+  variant,
+  size,
   className,
   disabled,
   isLoading,
   "data-testid": dataTestId,
 }: {
   children: React.ReactNode
-  variant?: "primary" | "secondary" | "transparent" | null
-  size?: "small" | "medium" | "large"
+  variant?: ComponentProps<typeof Button>["variant"]
+  size?: ComponentProps<typeof Button>["size"]
   className?: string
   disabled?: boolean
   /** AF-22: pending จากภายนอก (ค่าที่สามของ useActionState) เมื่อฟอร์มส่งด้วย submitWithoutReset — ใช้แทน useFormStatus
@@ -32,7 +32,7 @@ export function SubmitButton({
       type="submit"
       isLoading={isLoading ?? pending}
       disabled={disabled}
-      variant={variant || "primary"}
+      variant={variant}
       data-testid={dataTestId}
     >
       {children}

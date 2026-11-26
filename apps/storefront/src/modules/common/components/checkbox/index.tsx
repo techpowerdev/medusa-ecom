@@ -1,4 +1,5 @@
-import { Checkbox, Label } from "@modules/common/components/ui"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import React from "react"
 
 type CheckboxProps = {
@@ -9,6 +10,10 @@ type CheckboxProps = {
   'data-testid'?: string
 }
 
+// SFUI-5a (spec 09 กฎ 13, 20): Checkbox ของ shadcn — root เป็น role="checkbox" (testid อยู่บน root) และใน <form>
+// Radix สร้าง input ซ่อนที่ส่ง `<name>=on` เมื่อติ๊ก (value เริ่มต้น "on" — cart.ts อ่าน `=== "on"`)
+// qa #353 D-1: form.reset() (React 19 หลัง action คืน error) ต้องไม่เปลี่ยนค่า — Radix ฟัง reset แล้วเรียก onCheckedChange
+// ด้วยค่าตอน mount จึงสลับผ่าน onClick (คลิก/Space/label) แทน และ defaultChecked = ค่าปัจจุบันให้ input ซ่อน reset กลับค่าเดิม
 const CheckboxWithLabel: React.FC<CheckboxProps> = ({
   checked = true,
   onChange,
@@ -18,21 +23,19 @@ const CheckboxWithLabel: React.FC<CheckboxProps> = ({
 }) => {
   return (
     <div className="flex items-center space-x-2 ">
-      <Checkbox
-        className="text-base-regular flex items-center gap-x-2"
-        id="checkbox"
-        role="checkbox"
-        checked={checked}
-        readOnly
-        aria-checked={checked}
-        onClick={onChange}
-        name={name}
-        data-testid={dataTestId}
-      />
-      <Label
-        htmlFor="checkbox"
-        className="transform-none! txt-medium!"
-      >
+      {/* ห่อให้ input ซ่อนของ Radix ไม่เป็นพี่น้องของ label (โครงเดียวกับ shim เดิม): rule `input ~ label` ของ globals.css
+          (label ลอย) จึงไม่จับ label นี้ และ core-38 ที่วัด label เทียบ input พี่น้องไม่นับช่องนี้ */}
+      <span className="flex">
+        <Checkbox
+          id="checkbox"
+          checked={checked}
+          defaultChecked={checked}
+          onClick={onChange}
+          name={name}
+          data-testid={dataTestId}
+        />
+      </span>
+      <Label htmlFor="checkbox" className="text-sm leading-[1.4rem]">
         {label}
       </Label>
     </div>

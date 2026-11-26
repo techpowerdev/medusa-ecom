@@ -1,6 +1,6 @@
 "use client"
 
-import { MagnifyingGlass, XMarkMini } from "@medusajs/icons"
+import { Search, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useSearchBox } from "react-instantsearch"
 
@@ -40,8 +40,8 @@ const StoreSearchBox = () => {
   }
 
   return (
-    <div className="mb-6 flex items-center gap-x-3 border-b border-ui-border-base">
-      <MagnifyingGlass className="shrink-0 text-ui-fg-muted" />
+    <div className="mb-6 flex items-center gap-x-3 border-b border-border">
+      <Search aria-hidden="true" className="size-[15px] shrink-0 text-muted-foreground" />
       <input
         type="search"
         value={inputValue}
@@ -51,7 +51,7 @@ const StoreSearchBox = () => {
         }}
         placeholder="ค้นหาสินค้า"
         aria-label="ค้นหาสินค้า"
-        className="txt-medium w-full bg-transparent py-3 text-ui-fg-base outline-hidden placeholder:text-ui-fg-muted [&::-webkit-search-cancel-button]:hidden"
+        className="text-sm leading-[1.4rem] w-full bg-transparent py-3 text-foreground outline-hidden placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
         data-testid="store-search-input"
       />
       {inputValue && (
@@ -59,10 +59,10 @@ const StoreSearchBox = () => {
           type="button"
           onClick={clear}
           aria-label="ล้างคำค้นหา"
-          className="shrink-0 text-ui-fg-muted hover:text-ui-fg-base"
+          className="shrink-0 text-muted-foreground hover:text-foreground"
           data-testid="store-search-clear"
         >
-          <XMarkMini />
+          <X aria-hidden="true" className="size-[15px]" />
         </button>
       )}
     </div>

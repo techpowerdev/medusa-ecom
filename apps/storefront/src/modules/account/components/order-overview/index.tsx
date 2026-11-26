@@ -1,6 +1,6 @@
 "use client"
 
-import { buttonClassName } from "@modules/common/components/ui"
+import { buttonVariants } from "@/components/ui/button"
 
 import OrderCard from "../order-card"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -34,7 +34,7 @@ const OrderOverview = ({ orders }: { orders: HttpTypes.StoreOrder[] }) => {
       <div className="mt-4">
         <LocalizedClientLink
           href="/"
-          className={buttonClassName()}
+          className={buttonVariants()}
           data-testid="continue-shopping-button"
         >
           เลือกซื้อสินค้าต่อ

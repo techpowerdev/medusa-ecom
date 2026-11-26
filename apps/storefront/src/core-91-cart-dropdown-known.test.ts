@@ -45,7 +45,8 @@ const render = async (props: { cart?: unknown }) => {
   })
 }
 
-const byTestId = (id: string) => container.querySelector<HTMLElement>(`[data-testid="${id}"]`)
+// SFUI-3c: nav-cart-dropdown เป็น PopoverContent ของ Radix ที่ render ผ่าน Portal ใต้ document.body (ไม่อยู่ใน container)
+const byTestId = (id: string) => document.querySelector<HTMLElement>(`[data-testid="${id}"]`)
 
 /** ให้ React เห็น mouseenter (React สร้างจาก mouseover/mouseout) */
 const hover = async () => {

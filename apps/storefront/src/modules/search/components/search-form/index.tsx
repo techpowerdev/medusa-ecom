@@ -1,4 +1,4 @@
-import { clx } from "@modules/common/components/ui"
+import { cn } from "@/lib/utils"
 
 type SearchFormProps = {
   countryCode: string
@@ -12,7 +12,7 @@ const SearchForm = ({ countryCode, defaultValue, className }: SearchFormProps) =
     role="search"
     method="get"
     action={`/${countryCode}/search`}
-    className={clx("flex gap-2", className)}
+    className={cn("flex gap-2", className)}
     {...{
       toolname: "search_products",
       tooldescription: "Search the store's products by keyword",
@@ -28,7 +28,7 @@ const SearchForm = ({ countryCode, defaultValue, className }: SearchFormProps) =
       defaultValue={defaultValue}
       placeholder="ค้นหาสินค้า"
       data-testid="search-query-input"
-      className="flex-1 h-10 px-4 border rounded-md border-ui-border-base bg-ui-bg-field txt-compact-medium"
+      className="flex-1 h-10 px-4 border rounded-md border-border bg-background text-sm leading-5"
     />
     <button
       type="submit"

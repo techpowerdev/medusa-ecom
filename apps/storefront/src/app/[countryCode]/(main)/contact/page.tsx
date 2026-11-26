@@ -43,7 +43,7 @@ export default function ContactPage() {
             data-testid="contact-channel"
           >
             <span
-              className="text-ui-fg-subtle small:w-32 small:shrink-0 small:py-2.5"
+              className="text-muted-foreground small:w-32 small:shrink-0 small:py-2.5"
               data-testid="contact-channel-label"
             >
               {channel.label}
@@ -51,7 +51,7 @@ export default function ContactPage() {
             {channel.href ? (
               <a
                 href={channel.href}
-                className="inline-flex min-h-[44px] items-center break-all text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
+                className="inline-flex min-h-[44px] items-center break-all text-primary underline-offset-4 hover:underline"
                 {...(channel.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
               >
                 {channel.value}

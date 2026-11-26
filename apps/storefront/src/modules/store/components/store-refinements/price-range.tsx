@@ -1,9 +1,9 @@
 "use client"
 
-import * as Slider from "@radix-ui/react-slider"
 import { useEffect, useState } from "react"
 import { useRange } from "react-instantsearch"
 
+import { Slider } from "@/components/ui/slider"
 import { indexedCurrency, priceAttribute } from "@lib/search-client"
 import { convertToLocale } from "@lib/util/money"
 
@@ -44,11 +44,13 @@ const PriceRange = ({ currencyCode }: { currencyCode: string }) => {
 
   return (
     <div className="flex flex-col gap-y-4">
-      <span className="txt-compact-small-plus text-ui-fg-subtle">ราคา</span>
+      <span className="text-sm font-medium leading-5 text-muted-foreground">
+        ราคา
+      </span>
 
       <div className="flex flex-col gap-y-3 pr-6">
-        <Slider.Root
-          className="relative flex h-5 w-full touch-none select-none items-center"
+        <Slider
+          className="h-5"
           value={value}
           min={min}
           max={max}
@@ -59,29 +61,19 @@ const PriceRange = ({ currencyCode }: { currencyCode: string }) => {
           // search per pixel.
           onValueCommit={(committed) => refine([committed[0], committed[1]])}
           aria-label="ช่วงราคา"
+          thumbLabels={["ราคาต่ำสุด", "ราคาสูงสุด"]}
           data-testid="price-range"
-        >
-          <Slider.Track className="relative h-0.5 w-full grow rounded-full bg-ui-border-base">
-            <Slider.Range className="absolute h-full rounded-full bg-ui-fg-interactive" />
-          </Slider.Track>
-          {value.map((_, index) => (
-            <Slider.Thumb
-              key={index}
-              className="block h-4 w-4 rounded-full border border-ui-border-interactive bg-ui-bg-base shadow-elevation-card-rest outline-hidden focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
-              aria-label={index === 0 ? "ราคาต่ำสุด" : "ราคาสูงสุด"}
-            />
-          ))}
-        </Slider.Root>
+        />
 
         <div className="flex items-center justify-between">
           <span
-            className="text-small-regular text-ui-fg-subtle"
+            className="text-small-regular text-muted-foreground"
             data-testid="price-range-min"
           >
             {format(value[0])}
           </span>
           <span
-            className="text-small-regular text-ui-fg-subtle"
+            className="text-small-regular text-muted-foreground"
             data-testid="price-range-max"
           >
             {format(value[1])}

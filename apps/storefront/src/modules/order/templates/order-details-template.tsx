@@ -1,6 +1,5 @@
 "use client"
 
-import { XMark } from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Help from "@modules/order/components/help"
@@ -8,6 +7,7 @@ import Items from "@modules/order/components/items"
 import OrderDetails from "@modules/order/components/order-details"
 import OrderSummary from "@modules/order/components/order-summary"
 import ShippingDetails from "@modules/order/components/shipping-details"
+import { X } from "lucide-react"
 import React from "react"
 
 type OrderDetailsTemplateProps = {
@@ -27,10 +27,10 @@ const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
         </h1>
         <LocalizedClientLink
           href="/account/orders"
-          className="flex gap-2 items-center text-ui-fg-subtle hover:text-ui-fg-base"
+          className="flex gap-2 items-center text-muted-foreground hover:text-foreground"
           data-testid="back-to-overview-button"
         >
-          <XMark /> กลับไปหน้าคำสั่งซื้อ
+          <X className="size-[15px]" /> กลับไปหน้าคำสั่งซื้อ
         </LocalizedClientLink>
       </div>
       <div
@@ -42,7 +42,7 @@ const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
         {canReturn && (
           <LocalizedClientLink
             href={`/account/orders/details/${order.id}/return`}
-            className="self-start rounded-md border border-ui-border-base px-4 py-2 text-ui-fg-base hover:bg-ui-bg-subtle-hover"
+            className="self-start rounded-md border border-border px-4 py-2 text-foreground hover:bg-muted"
             data-testid="order-return-button"
           >
             ขอคืนสินค้า

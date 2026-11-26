@@ -24,7 +24,7 @@ export default function CartErrorNotice({ message, itemsKey }: { message: string
   return (
     <p
       role="alert"
-      className="txt-medium mb-6 rounded-rounded bg-ui-bg-subtle p-3 text-ui-fg-base"
+      className="text-sm leading-[1.4rem] mb-6 rounded-rounded bg-muted p-3 text-foreground"
       data-testid="cart-error-notice"
     >
       {message}

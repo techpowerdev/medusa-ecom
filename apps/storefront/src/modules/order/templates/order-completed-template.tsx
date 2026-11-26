@@ -1,5 +1,3 @@
-import { Heading } from "@modules/common/components/ui"
-
 import CartTotals from "@modules/common/components/cart-totals"
 import Help from "@modules/order/components/help"
 import Items from "@modules/order/components/items"
@@ -22,22 +20,20 @@ export default async function OrderCompletedTemplate({
           className="flex flex-col gap-4 max-w-4xl h-full bg-white w-full py-10"
           data-testid="order-complete-container"
         >
-          <Heading
-            level="h1"
-            className="flex flex-col gap-y-3 text-ui-fg-base text-3xl mb-4"
+          <h1
+            className="flex flex-col gap-y-3 text-foreground text-3xl font-semibold mb-4"
             data-testid="order-complete-heading"
           >
             <span>ขอบคุณ!</span>
             <span>เราได้รับคำสั่งซื้อของคุณเรียบร้อยแล้ว</span>
-          </Heading>
+          </h1>
           <OrderDetails order={order} />
-          <Heading
-            level="h2"
-            className="flex flex-row text-3xl-regular"
+          <h2
+            className="flex flex-row text-2xl font-semibold"
             data-testid="order-complete-summary-heading"
           >
             สรุปรายการ
-          </Heading>
+          </h2>
           <Items order={order} />
           <CartTotals totals={order} />
           <ShippingDetails order={order} />
