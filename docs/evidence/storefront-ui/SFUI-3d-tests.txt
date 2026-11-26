@@ -113,3 +113,17 @@ typecheck: exit 0
 ## spec ที่รันจริงในเครื่องไม่ได้ (ต้องใช้ Stripe test key จริง — ให้ CI รัน):
 ## core-19b (PromptPay), core-19f-switch-payment-method, core-95-payment-received-notice, fs-22, fs-24, group-buy-account-orders (Stripe),
 ## pay-9, pay-11, pay-14-stale-session, pay-15, pay-17, pay-19, payments.spec, payments-order-pay (ส่วน Stripe UI), payments-promptpay-*, payments-refund
+
+## D-1 (qa SFUI): submit-payment-button คงความสูง 48px (h-12) ของ size large เดิม (2026-11-26)
+### red — e2e/sfui-button-lg.unit.spec.ts (หลัง merge SFUI-3b ก่อนแก้ payment)
+    +   "src/modules/checkout/components/payment/index.tsx:392",
+  1 failed
+  1 passed
+### green
+  sfui-button-lg.unit.spec.ts 2 passed
+$ tsc --noEmit
+✖ 27 problems (0 errors, 27 warnings)
+
+ Test Files  129 passed (129)
+      Tests  2009 passed (2009)
+  194 passed (1.4s)
