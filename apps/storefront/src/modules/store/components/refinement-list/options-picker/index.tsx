@@ -119,7 +119,7 @@ const OptionsPicker = ({
                         key={value.id}
                         onClick={() => toggleValue(value.id)}
                         className={cn(
-                          "border-border border text-small-regular h-10 rounded-rounded px-3 flex items-center transition-colors duration-150",
+                          "border-border border text-xs leading-5 font-normal h-10 rounded-rounded px-3 flex items-center transition-colors duration-150",
                           isSelected
                             ? "border-primary text-foreground"
                             : "text-muted-foreground hover:text-foreground"

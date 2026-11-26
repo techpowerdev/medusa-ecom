@@ -32,7 +32,7 @@ const OnSaleToggle = ({ currencyCode }: { currencyCode: string }) => {
         เฉพาะสินค้าลดราคา
       </span>
       {typeof value.count === "number" && (
-        <span className="text-small-regular text-muted-foreground">
+        <span className="text-xs leading-5 font-normal text-muted-foreground">
           ({value.count})
         </span>
       )}

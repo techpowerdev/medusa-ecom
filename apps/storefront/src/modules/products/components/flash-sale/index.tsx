@@ -181,7 +181,7 @@ export function CardFlashView({
     return (
       <>
         <span
-          className="rounded-rounded bg-muted px-2 py-0.5 text-small-regular text-destructive"
+          className="rounded-rounded bg-muted px-2 py-0.5 text-xs leading-5 font-normal text-destructive"
           data-testid="flash-card-sold-out"
         >
           แฟลชเซลหมดแล้ว
@@ -241,19 +241,19 @@ export default function FlashSale({ offer, now }: FlashOfferState) {
       data-testid="flash-sale"
     >
       <p
-        className="text-base-semi text-primary"
+        className="text-sm leading-6 font-semibold text-primary"
         data-testid="flash-banner"
       >
         {sale.banner_text || "แฟลชเซล ราคาพิเศษช่วงเวลาจำกัด"}
       </p>
       {countdown && (
-        <p className="text-small-regular" data-testid="flash-countdown">
+        <p className="text-xs leading-5 font-normal" data-testid="flash-countdown">
           สิ้นสุดใน <span className="tabular-nums">{countdown}</span>
         </p>
       )}
       {sale.sold_out ? (
         <p
-          className="text-base-semi text-destructive"
+          className="text-sm leading-6 font-semibold text-destructive"
           data-testid="flash-sold-out"
         >
           สินค้าหมด
@@ -263,11 +263,11 @@ export default function FlashSale({ offer, now }: FlashOfferState) {
           <p>
             <FlashPrice
               price={price}
-              className="text-xl-semi text-primary"
+              className="text-2xl leading-[36px] font-semibold text-primary"
             />
           </p>
           {sale.remaining_units != null && (
-            <p className="text-small-regular" data-testid="flash-remaining">
+            <p className="text-xs leading-5 font-normal" data-testid="flash-remaining">
               เหลือ {sale.remaining_units} ชิ้น
             </p>
           )}

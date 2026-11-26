@@ -50,7 +50,7 @@ export default function CategoryTemplate({
         hideOptionsPicker
       />
       <div className="w-full">
-        <div className="flex flex-row mb-8 text-2xl-semi gap-4">
+        <div className="flex flex-row mb-8 text-[30px] leading-[48px] font-semibold gap-4">
           {parents &&
             parents.map((parent) => (
               <span key={parent.id} className="text-muted-foreground">
@@ -67,7 +67,7 @@ export default function CategoryTemplate({
           <h1 data-testid="category-page-title">{category.name}</h1>
         </div>
         {category.description && (
-          <div className="mb-8 text-base-regular">
+          <div className="mb-8 text-sm leading-6 font-normal">
             <p>{category.description}</p>
           </div>
         )}

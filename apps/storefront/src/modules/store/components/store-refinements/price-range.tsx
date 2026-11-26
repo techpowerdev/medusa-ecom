@@ -67,13 +67,13 @@ const PriceRange = ({ currencyCode }: { currencyCode: string }) => {
 
         <div className="flex items-center justify-between">
           <span
-            className="text-small-regular text-muted-foreground"
+            className="text-xs leading-5 font-normal text-muted-foreground"
             data-testid="price-range-min"
           >
             {format(value[0])}
           </span>
           <span
-            className="text-small-regular text-muted-foreground"
+            className="text-xs leading-5 font-normal text-muted-foreground"
             data-testid="price-range-max"
           >
             {format(value[1])}
