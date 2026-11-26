@@ -81,3 +81,38 @@ Table.Cell/HeaderCell ของ shim ไม่มี whitespace-nowrap และ
   order/components/item → แก้แล้วใน SFUI-5d; cart/templates/preview, order/components/items ใช้แค่ Table/TableBody (ค่าเท่าเดิม)
 e2e ใหม่ e2e/sfui-6-parity.spec.ts (อยู่ในชุดกว้างด้านบน — ผ่าน 2/2):
   store thumbnail + PDP image gallery: พื้นขาว, padding 16px · /cart: th สูง 48px + white-space normal, td ทุกตัว white-space normal
+
+== รอบแก้ตาม review SFUI-6 (REQUEST CHANGES) — 2026-11-26 ==
+แก้: (1) heading ที่ยังไม่เท่า develop — address-name (edit-address-modal) h2 text-base-semi → text-2xl font-semibold (24px/32px/600);
+    order-pay h1 text-2xl-semi → text-[2rem] leading-[48px] font-semibold (32px/48px/600) — ยืนยันลำดับ CSS v3: .text-base-semi@809/.text-2xl-semi@840 (@layer components) < .text-2xl@2619/.text-3xl@2624
+    sweep <Heading> ทุกตัวบน develop ที่มี class ขนาด (payment/shipping-details, help, order-completed, addresses, discount-code, checkout-summary, sign-in-prompt, empty-cart, return-request-form) — ตรงแล้ว ไม่ต้องแก้
+    (2) sfui-4-store ผูกหัว filter กับ option 'ขนาด' ของ seed (filter จัดกลุ่มตามชื่อ — spec อื่นสร้าง Size/Value)
+    (3) เหตุผลข้อยกเว้น AC-5 radio-button (MedusaRadio บน develop render ใน checkout; หายตั้งแต่ SFUI-3d/3e) + test ใช้ regex เครื่องหมายคำพูด 3 แบบ ครอบ e2e/support/**
+-- lint: exit 0 (✖ 27 problems (0 errors, 27 warnings)) · typecheck: exit 0 · test:unit: Tests 2009 passed (2009) · test:e2e:unit: 197 passed (1.3s) · build (prod): exit 0
+-- e2e (prod build, DB medusa_sfui6 ใหม่ + seed):
+   1) e2e/sfui-mobile-390.spec.ts บน DB สะอาด: 1 passed (35.6s)
+   2) รอบเดียว DB เดียว --workers=1 ตามลำดับ: flash-sale-fs14 → group-buy-join → sfui-3a-dialog → sfui-4-store → sfui-6-parity
+      ✓   1 [chromium] › e2e/flash-sale-fs14.spec.ts:165:5 › AC-20: /store (search hit) การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (433ms)
+      ✓   2 [chromium] › e2e/flash-sale-fs14.spec.ts:188:5 › AC-20: /search?q=<ชื่อ X> การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (336ms)
+      ✓   3 [chromium] › e2e/flash-sale-fs14.spec.ts:203:5 › AC-20: 375×812 ราคา flash อยู่ในกรอบการ์ดบน /store, /search และ PLP (1.0s)
+      ✓   4 [chromium] › e2e/flash-sale-fs14.spec.ts:251:5 › AC-20: rail หน้าแรก การ์ด X แสดงราคา flash, การ์ด Y ไม่แสดง (28.9s)
+      ✓   5 [chromium] › e2e/flash-sale-fs14.spec.ts:285:5 › AC-25: /store ค้นใหม่ → ข้อมูล flash ยิงด้วย variant ของผลค้นล่าสุดเท่านั้น 1 ครั้ง (5.1s)
+      ✓   6 [chromium] › e2e/group-buy-join.spec.ts:88:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, cart C ไม่ถูกแตะ, aff ลง draft order (
+      ✓   7 [chromium] › e2e/group-buy-join.spec.ts:171:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › B ไม่มีที่อยู่ → join disabled + ลิงก์เพิ่มที่อยู่, ไม่มี cart ใหม่ (2.8s)
+      ✓   8 [chromium] › e2e/group-buy-join.spec.ts:185:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › รายการรวมเกิน max_units_per_person → group-units-limit และไม่มี cart ใหม่ (3.3s)
+      ✓   9 [chromium] › e2e/group-buy-join.spec.ts:205:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_GROUP_FULL → group-join-error ข้อความไทย และ C ไม่เปลี่ยน (3.3s)
+      ✓  10 [chromium] › e2e/group-buy-join.spec.ts:205:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_UNITS_LIMIT_EXCEEDED → group-join-error ข้อความไทย และ C ไม่เปลี่ยน (2.8s)
+      ✓  11 [chromium] › e2e/group-buy-join.spec.ts:229:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › กลุ่มหมดเวลาระหว่างอยู่บนหน้า → join ตอบ 400 และ group-join-error ยังแสดงหลังปุ่มหาย (2.5s)
+      ✓  12 [chromium] › e2e/group-buy-join.spec.ts:244:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › ยังไม่ login: กด join → หน้า login ไม่มี server action (ไม่มี join/cart ใหม่) (AC-47) (2.6s)
+      ✓  13 [chromium] › e2e/sfui-3a-dialog.spec.ts:82:7 › AC-9 › modal เพิ่มที่อยู่: dialog มีชื่อ/คำอธิบายไทย, Tab วนใน dialog, Escape ปิดและ focus กลับปุ่ม (1.9s)
+      ✓  14 [chromium] › e2e/sfui-3a-dialog.spec.ts:118:7 › AC-9 › modal แก้ไขที่อยู่: dialog มีชื่อ/คำอธิบายไทย, Tab วนใน dialog, Escape ปิดและ focus กลับปุ่ม (1.4s)
+      ✓  15 [chromium] › e2e/sfui-4-store.spec.ts:9:5 › AC-14: Enter บนหัว filter เปิด/ปิดเนื้อหา และ ArrowRight บน thumb ช่วงราคาเปลี่ยนค่า (902ms)
+      ✓  16 [chromium] › e2e/sfui-4-store.spec.ts:66:5 › AC-14: แท็บบน PDP เป็น Accordion — ปุ่มมีชื่อไทย และ Enter เปิดเนื้อหา (2.3s)
+      ✓  17 [chromium] › e2e/sfui-6-parity.spec.ts:28:5 › AC-16 (กฎ 19): thumbnail และ image gallery พื้นขาว padding 16px เท่า develop (2.4s)
+      ✓  18 [chromium] › e2e/sfui-6-parity.spec.ts:49:5 › AC-16 (กฎ 19): ตารางตะกร้า — เซลล์ตัดบรรทัดได้ (white-space normal) และหัวตารางสูง 48px เท่า develop (4.7s)
+      ✓  19 [chromium] › e2e/sfui-6-parity.spec.ts:91:5 › AC-16 (กฎ 21): ชื่อบนการ์ดที่อยู่ (address-name) 24px/32px/600 เท่า develop (383ms)
+      19 passed (1.2m)
+   3) spec ที่อ้างหน้าที่อยู่: core-22-account-fixes, core-23c-account-forms, core-63-address-invisible, thai-ui-account — 11 passed (10.7s)
+   4) spec ที่อ้างหน้า order-pay: payments-order-pay, group-buy-account-orders, thai-ui-cart-order — 19 passed (11.9m), 10 failed
+      ล้ม 10 ตัวเป็นชุดที่ต้องใช้ Stripe จริง (Payment Element/สร้าง session; ในเครื่องใช้ sk_test_/pk_test_ หลอก) — ล้มชุดเดียวกันทุกตัวในรอบ SFUI-5d/5e
+      (e2e-all-SFUI-5d, e2e-run1-SFUI-5e) ก่อนแก้ heading นี้ จึงไม่เกี่ยวกับ SFUI-6; CI ที่มี Stripe test key เป็นผู้ตัดสิน

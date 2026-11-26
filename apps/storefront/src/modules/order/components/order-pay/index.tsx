@@ -196,7 +196,9 @@ export default function OrderPay({ initial, email, redirect, serverNow }: Props)
 
   return (
     <div className="flex flex-col gap-y-6 w-full" data-testid="order-pay-page">
-      <h1 className="text-2xl-semi">
+      {/* SFUI-6 (กฎ 21): เดิม <Heading level="h1"> + text-2xl-semi — บน develop text-3xl (2rem ไม่มี line-height) + font-semibold ของ shim ชนะ,
+          line-height 48px มาจาก .text-2xl-semi (@layer components) → 32px/48px/600 */}
+      <h1 className="text-[2rem] leading-[48px] font-semibold">
         ชำระเงินคำสั่งซื้อ #{data.order.display_id}
       </h1>
       <div className="flex flex-col gap-y-1">

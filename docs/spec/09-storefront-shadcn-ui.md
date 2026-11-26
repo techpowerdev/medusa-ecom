@@ -100,6 +100,9 @@ none
     `small|medium|large` → `sm|default|lg`; `buttonClassName(o, c)` → `cn(buttonVariants(o), c)`; `clx` → `cn`; `Label`/`Input`/`Table.*` → shadcn ชื่อเดียวกัน (`TableCell`/`TableHead` ของ shadcn มี `whitespace-nowrap` และ `TableHead` สูง `h-10` ซึ่ง `Table.Cell`/`.HeaderCell` เดิมไม่มี/สูง `h-12` → ผู้ใช้ใส่ `whitespace-normal` และหัวตาราง `h-12` เอง — review SFUI-5d/SFUI-6; shim ส่ง `px-4` ให้ `TableHead` และ `p-4` ให้ `TableCell` และ `Text` ค่าเริ่มต้น `text-sm leading-[1.4rem]` ที่ไม่ทับ `txt-*`/`h*-webs` ของผู้เรียก)
     (`Table.Header`→`TableHeader`, `.Body`→`TableBody`, `.Row`→`TableRow`, `.Head`/`.HeaderCell`→`TableHead`, `.Cell`→`TableCell`); `Button isLoading` → prop `isLoading` ที่เพิ่มใน
     `src/components/ui/button.tsx` (SFUI-2 — แสดง "กำลังดำเนินการ..." + disabled ตามเดิม)
+    หมายเหตุ (review SFUI-6): ค่าเริ่มต้นที่ระบุในวงเล็บข้างบน (`Text` = `text-sm leading-[1.4rem]` ที่ไม่ทับ `txt-*` ของผู้เรียก ฯลฯ) เป็นพฤติกรรมของ shim ฉบับ SFUI-2 ไม่ใช่ develop —
+    บน develop shim ใช้ clsx โดยไม่ merge ค่าที่ render จึงขึ้นกับลำดับ CSS ของ v3 (เช่น `txt-medium` ของ `Text` ชนะ `txt-small`/`txt-compact-*` ของผู้เรียก) → ยึดค่าที่ render บน develop ตามกฎ 19;
+    ปุ่มปิดของ `free-shipping-price-nudge` เปลี่ยนจากสี่เหลี่ยมมุมมน (`IconButton`) เป็นวงกลม `Button variant="ghost" size="icon"` — ยอมรับเป็นหน้าตา shadcn ตาม ADR-030
     `Checkbox` (shim native → shadcn, ใน `common/components/checkbox/index.tsx` ของ SFUI-5a; ผู้ใช้เดียวคือ `checkout/components/shipping-address/index.tsx:212` `name="same_as_billing"`):
     `<Checkbox id checked={checked} defaultChecked={checked} onClick={onChange} name={name} data-testid={dataTestId} />` ห่อด้วย `<span>` — **ไม่ใช้ `onCheckedChange`** เพราะ Radix ฟัง event `reset` ของ form แล้วเรียก `onCheckedChange` ด้วยค่าตอน mount ทำให้ติ๊กกลับเองหลัง action คืน error (qa #353 D-1; ตัดสิน 2026-11-26 ระหว่าง SFUI-5a); Enter ไม่ toggle ตาม WAI-ARIA (Space toggle); เอา `role`/`readOnly`/`aria-checked` ที่ใส่เองออก (Radix root เป็น
     `role="checkbox"` + `aria-checked` เองและ testid อยู่บน root จึง `toBeChecked` ใช้ได้); ใน `<form>` Radix สร้าง input ซ่อนที่ส่ง `same_as_billing=on` เมื่อติ๊ก
@@ -133,7 +136,8 @@ none
 - AC-5 (SFUI-1a, กฎ 9–10) static `e2e/sfui-baseline.unit.spec.ts` + `e2e/support/sfui-baseline.json` (สร้างจาก `origin/develop` ก่อนแก้ใดๆ ใน SFUI-1a): `testids` = ทุกค่าสตริงที่ตามหลัง `data-testid=` / `"data-testid":`
   (รวมรูป `={"…"}` และ template literal เก็บตามตัวอักษร) ใน `src/**` (ไม่ใช่ test), `thai` = ทุกช่วงข้อความที่มีอักษรไทย `/[฀-๿]/` ระหว่างเครื่องหมายคำพูด/`>`…`<`;
   Then ทุกค่ายังพบใน `src/**` (เทียบหลังลบช่องว่างทั้งหมด) — แก้ baseline ได้เฉพาะเมื่อ spec นี้ระบุ; ข้อยกเว้น (เก็บเป็นรายการใน test ไม่แก้ไฟล์ baseline):
-  `radio-button` — ค่า default ของ `common/components/radio` ที่ AC-16 สั่งลบ (ไม่มีผู้ใช้ตั้งแต่บน develop และไม่มี e2e อ้าง; SFUI-6)
+  `radio-button` — ค่า default ของ `common/components/radio` (`MedusaRadio`): บน develop render ใน checkout (address-select, payment-container, shipping) แต่หายจาก DOM ตั้งแต่ SFUI-3d/3e ที่เปลี่ยนเป็น
+  `RadioGroupItem` + วงกลม `OptionDot` (testid ของตัวเลือกอยู่บนปุ่ม `role="radio"` — ADR-030 ข้อ 11) และ AC-16 สั่งลบไฟล์; ไม่มีไฟล์ใน `e2e/` (รวม `support/`) อ้าง (SFUI-6)
 - AC-6 (ทุก task, กฎ 15) static `e2e/sfui-legacy.unit.spec.ts` มี `PENDING: Record<"SFUI-2"|"SFUI-3a"|…|"SFUI-6", string[]>` (สร้างใน SFUI-1a ตามตารางเจ้าของไฟล์):
   (a) ไฟล์ที่มี pattern ต้องห้ามทุกไฟล์อยู่ใน `PENDING` ของ key ใด key หนึ่ง; (b) ทุกไฟล์ใน `PENDING` ยังมีและยังมี pattern (บังคับให้ลบออกเมื่อย้ายเสร็จ)
   — ข้อ (b) ทำให้ **SFUI-2 ต้องปรับ `PENDING` ของ shim ด้วย**: SFUI-1a ใส่ `common/components/ui/index.tsx` ไว้ใต้ key `SFUI-2` (มี `clsx` + `txt-medium`);
