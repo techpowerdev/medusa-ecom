@@ -5,6 +5,8 @@
 (next-intl + `messages/*.json`; ส่วน Translation module คงไว้ที่ backend แต่ storefront ไม่ใช้), ข้อ 2 (locale จาก cookie), ส่วน cookie ของข้อ 3,
 หัวข้อ "การแทนที่กฎใน CLAUDE.md" และตาราง "AC / ข้อกำหนดใน spec อื่น" **ไม่ใช้แล้ว** — ดู ADR-014
 ข้อที่ยังมีผล: ข้อ 3 (e2e หาด้วย `data-testid` ไม่ match ด้วยข้อความ), ข้อ 4 (brand tokens + Noto Sans Thai), ข้อ 5 (THB), ข้อ 6 (Vitest)
+— **หมายเหตุ 2026-11-26 ([ADR-030](ADR-030-storefront-shadcn-ui.md) accepted 2026-11-26)**: ข้อ 4 เจตนาและค่าเดิม แต่ทำผ่าน `@theme`/CSS variable ใน `src/styles/globals.css`
+(Tailwind v4 ไม่มี `tailwind.config.js`): `--color-brand*` เป็นที่เดียวที่ owner แก้ และ `--primary`/`--ring` ของ shadcn ชี้ไปที่ brand; `--font-sans` ขึ้นต้นด้วย `var(--font-noto-sans-thai)`
 
 ## บริบท
 CORE-4 (spec 01) ต้องส่งมอบ storefront ภาษาไทย + อังกฤษ, การจัดรูปแบบ THB และ brand theme

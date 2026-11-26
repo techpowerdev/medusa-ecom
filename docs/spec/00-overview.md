@@ -32,6 +32,7 @@
 | 6 | Payments | `06-payments-stripe.md` | Medusa Stripe provider (`pp_stripe_stripe`, `pp_stripe-promptpay_stripe`), auto capture |
 | 7 | Scale & ops | `07-scaling-ops.md` | Worker mode, Redis modules, DB indexes, CDN, observability |
 | 8 | Admin UI ใช้ของ Medusa | `08-admin-ui-medusa-components.md` | ปรับหน้า/widget ใน `src/admin/` ให้ใช้ export ของ `@medusajs/dashboard` + `@medusajs/ui` เป็นฐาน (ADR-018) |
+| 9 | Storefront UI เป็น shadcn/ui | `09-storefront-shadcn-ui.md` | อัป Tailwind v4 แล้วแทนชั้น UI ของ Medusa ใน storefront (preset, shim, icons, headlessui) ด้วย shadcn/ui แบบ Radix; ชั้น commerce ของ starter คงเดิม (ADR-030 — accepted 2026-11-26) |
 
 ## Milestones (ดู `docs/ROADMAP.md`)
 M0 Scaffold → M1 ร้านค้าหลักใช้งานได้ (test mode) → M2 Payments (Stripe cards + PromptPay) →
