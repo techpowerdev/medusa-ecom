@@ -45,12 +45,12 @@ typecheck: backend + storefront ผ่าน
     test-results/admin-row-menu-return-focu-0fc14-็จ-→-focus-ที่ปุ่ม-…-ของแถว-chromium/test-failed-1.png
   1 failed
   91 passed (2.3m)
-# ตัวที่ล้ม = เคส partners (หน้า e-voucher, ไม่ใช่ไฟล์ของ task นี้) — รันซ้ำไฟล์นั้นเดี่ยว (--workers=1): 3 passed
+# ตัวที่ล้ม = เคส partners ของ admin-row-menu-return-focus.spec.ts (หน้า e-voucher, ไม่ใช่ไฟล์ของ task นี้) — รันซ้ำไฟล์นั้นเดี่ยว
+# (--workers=1): 3 passed → flaky ตอนรันขนาน 2 workers ไม่เกี่ยวกับ task นี้
 # AC-11 (admin-i18n-affiliate.spec.ts): 2 passed (lng=th, lng=en)
 
 ## หมายเหตุ
-# storefront test:e2e:unit: evidence-budget ล้มที่ docs/evidence/admin-i18n/AI18N-1-tests.txt (regex task id ยังไม่รับ AI18N-* —
-# session หลักแจ้งว่าแก้ใน commit ใหม่ของ AI18N-1) ไฟล์นี้ก็จะติดเหตุเดียวกันจนกว่า commit นั้นเข้า stack
+# (ก่อนเรียง stack) storefront evidence-budget ล้มเพราะ regex task id ยังไม่รับ AI18N-* — แก้แล้วใน AI18N-1 (ผ่านหลังเรียง stack ด้านล่าง)
 
 ## หลังเรียง stack (2026-11-27): rebase --onto feat/AI18N-3-evoucher-widgets (AI18N-1 2bc72327 + AI18N-2 + AI18N-3)
 conflict: __tests__/medusa-ui.unit.spec.ts 3 จุด — เก็บทุกฝั่ง: it ของ partners (AI18N-3) + AFFILIATE_CASES (AI18N-4) แทน CASES ตัวอักษรเดิมที่ว่างแล้ว,
@@ -61,3 +61,17 @@ Playwright project unit (storefront): 226 passed (รวม evidence-budget)
 pnpm lint: 0 errors (warning เดิม backend 4 / storefront 27); pnpm typecheck: ผ่าน
 NODE_ENV=production pnpm --filter backend build: ผ่าน; assert-absent "Development Mode" OK; bundle มี translationNs ecom-group-buy/ecom-evoucher/ecom-affiliate
 e2e ไม่ได้รันซ้ำหลังเรียง stack (qa รันชุดเต็มที่ปลาย stack)
+
+## แก้ตาม review AI18N-4 (REQUEST CHANGES) — commit ต่อจาก 68d3cb33
+- blocker: ผลค้นหาว่างของ list-table ใช้ key ของ Medusa `general.noResultsTitle`/`general.noResultsMessage` (ns translation, กฎ 6)
+  + เพิ่มใน MEDUSA_KEYS + ลบ `list.noResults` จาก en/th
+- nit: th `markPaid.done` ไม่ซ้ำกับปุ่ม `markPaid.confirm`
+- nit จาก review AI18N-3 (i18n-check.ts): RETURN_ALLOWLIST ผูกกับไฟล์ (`lib/evoucher-pool-delete.ts`); keyIssues ข้ามเฉพาะ key แบบ template — identifier รายงาน (มี fixture ทั้งสองเคส)
+Red (test ก่อนแก้): i18n.unit.spec.ts + i18n-affiliate.unit.spec.ts — Tests: 4 failed, 182 passed, 186 total
+  (ผลค้นหาว่างใช้ general.noResults*, markPaid.done ไม่ซ้ำ, RETURN_ALLOWLIST ผูกกับไฟล์, helper key template ข้าม/identifier รายงาน)
+pnpm --filter backend test:unit: Test Suites: 137 passed, 137 total / Tests: 2604 passed, 2604 total
+Playwright project unit (storefront): 226 passed (รวม evidence-budget)
+pnpm lint: 0 errors (warning เดิม backend 4 / storefront 27); pnpm typecheck: ผ่าน
+NODE_ENV=production pnpm --filter backend build: ผ่าน; assert-absent "Development Mode" OK
+e2e (prod build :9341, --workers=1): admin-i18n-affiliate.spec.ts (AC-11) + affiliate-admin-search.spec.ts ("No results")
+  + affiliate-admin-forms.spec.ts (empty/error state ของตาราง affiliate) — 23 passed (1.1m)

@@ -17,10 +17,6 @@
       "affiliates": "Could not load affiliates",
       "entries": "Could not load ledger entries",
       "payouts": "Could not load payouts"
-    },
-    "noResults": {
-      "heading": "No results",
-      "description": "Try changing the filters or search query"
     }
   },
   "programs": {

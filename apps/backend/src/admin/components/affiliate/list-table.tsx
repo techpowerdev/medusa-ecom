@@ -134,8 +134,11 @@ export const AffiliateListTable = <T extends { id: string }>({
           emptyState={{
             // spec 08 กฎ 29b: ชื่อใน heading error ตามชื่อแท็บ — แท็บ Ledger อ่าน resource `entries` (key `list.loadError.<resource>`)
             empty: loadFailed ? { heading: t(`list.loadError.${resource}`), description: error?.message } : { heading: empty },
-            // ADM-40: ผลค้นหาว่าง = ข้อความ "ไม่พบผล" ของ dashboard (en: general.noResultsTitle/noResultsMessage) ไม่ใช่ข้อความตารางว่าง
-            filtered: { heading: t("list.noResults.heading"), description: t("list.noResults.description") },
+            // ADM-40: ผลค้นหาว่าง = ข้อความ "ไม่พบผล" ของ dashboard (key general.noResultsTitle/noResultsMessage — spec 10 กฎ 6) ไม่ใช่ข้อความตารางว่าง
+            filtered: {
+              heading: t("general.noResultsTitle", { ns: "translation" }),
+              description: t("general.noResultsMessage", { ns: "translation" }),
+            },
           }}
         />
       </PageOffsetGate>

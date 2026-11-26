@@ -67,6 +67,9 @@ export const MEDUSA_KEYS: Record<string, string> = {
   "actions.create": "Create",
   "general.unsavedChangesTitle": "Are you sure you want to leave this form?",
   "general.unsavedChangesDescription": "You have unsaved changes that will be lost if you exit this form.",
+  // AI18N-4: ผลค้นหาว่างของตาราง affiliate (components/affiliate/list-table.tsx)
+  "general.noResultsTitle": "No results",
+  "general.noResultsMessage": "Try changing the filters or search query",
 }
 
 const dashboardDir = () => join(require.resolve("@medusajs/dashboard/package.json"), "..")
@@ -149,8 +152,11 @@ export const keyIssues = (fileName: string, src: string, resources: Resources): 
         else issues.push("useTranslation ต้องระบุ namespace เป็น string literal")
       } else if (name === "t" && stringArg(a0) && ours.includes(stringArg(a0)!) && stringArg(a1)) {
         calls.push({ ns: stringArg(a0), key: stringArg(a1)! })
+      } else if (name === "t" && stringArg(a0) && ours.includes(stringArg(a0)!) && a1 && ts.isTemplateExpression(a1)) {
+        // helper ที่ key เป็น template (enum `t("<ns>", \`<prefix>.${value}\`)`) — ตรวจด้วย missingEnumKeys (กฎ 7)
       } else if (name === "t" && stringArg(a0) && ours.includes(stringArg(a0)!) && a1) {
-        // helper ที่ key ไม่ใช่ literal (enum `t("<ns>", \`<prefix>.${value}\`)`) — ตรวจด้วย missingEnumKeys (กฎ 7)
+        // key แบบ identifier/expression อื่นตรวจแบบ static ไม่ได้ (nit review AI18N-3) — ให้เขียนเป็น literal หรือ template ของ enum
+        issues.push(`${stringArg(a0)}: key ไม่ใช่ literal/template (${a1.getText()})`)
       } else if (name === "t" && stringArg(a0)) {
         calls.push({ key: stringArg(a0)!, ns: stringArg(objectProp(a1, "ns")) })
       } else if (name === "defineRouteConfig") {
@@ -185,13 +191,11 @@ export type GuardIssue = { rule: GuardRule; text: string; line: number }
 
 /** ชื่อเฉพาะ/หน่วยที่คงละตินได้ (กฎ 14 allowlist) */
 export const LATIN_TOKENS = ["THB", "CSV", "URL", "ID"]
-/** literal ที่ function export ใน lib คืนได้ (กฎ 14e) — ค่าภายในที่ไม่ใช่ข้อความแสดงผล */
-export const RETURN_ALLOWLIST: string[] = [
-  // AI18N-3: `PoolStockState` ของ lib/evoucher-pool-delete.ts (ค่า enum ภายใน — ข้อความแสดงผลอยู่ใน ecom-evoucher `stock.*`)
-  "no_codes",
-  "low",
-  "ok",
-]
+/** literal ที่ function export ใน lib คืนได้ (กฎ 14e) ต่อไฟล์ — ค่าภายในที่ไม่ใช่ข้อความแสดงผล (ผูกกับไฟล์ — nit review AI18N-3) */
+export const RETURN_ALLOWLIST: Record<string, string[]> = {
+  // AI18N-3: `PoolStockState` (ค่า enum ภายใน — ข้อความแสดงผลอยู่ใน ecom-evoucher `stock.*`)
+  "lib/evoucher-pool-delete.ts": ["no_codes", "low", "ok"],
+}
 
 const TEXT_PROPS = new Set([
   "title",
@@ -385,7 +389,7 @@ export const guardIssues = (fileName: string, src: string, { pending = false, er
         if (returned && fn && exportedFunction(fn)) {
           // template (path ของ API ฯลฯ) ตรวจด้วยเงื่อนไขประโยคด้านบนแล้ว
           literalsOf(returned)
-            .filter((l) => !l.template && hasLatinWord(l.text) && !RETURN_ALLOWLIST.includes(l.text))
+            .filter((l) => !l.template && hasLatinWord(l.text) && !RETURN_ALLOWLIST[fileName]?.includes(l.text))
             .forEach((l) => add("e", l.node, `return ${l.text}`))
         }
       }

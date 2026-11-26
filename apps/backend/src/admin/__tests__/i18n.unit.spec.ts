@@ -12,6 +12,7 @@ import { fieldErrorMap } from "../lib/form-validation"
 import {
   type Json,
   type Resources,
+  RETURN_ALLOWLIST,
   THAI,
   dashboardTranslations,
   guardIssues,
@@ -121,6 +122,15 @@ describe("key ที่ใช้ในโค้ดมีจริง (AC-3, ก�
     expect(keyIssues("routes/x/page.tsx", route, res)).toEqual(["ecom-common:nav.missing"])
   })
 
+  // nit review AI18N-3: helper ที่ key เป็น template (enum — ตรวจด้วย missingEnumKeys) ข้ามได้ แต่ key เป็น identifier ตรวจไม่ได้ → รายงาน
+  it("fixture: helper key แบบ template ข้าม, แบบ identifier รายงาน", () => {
+    const res = resources as Resources
+    const template = `import { t } from "../i18n/t"\nexport const f = (v: string) => t("ecom-common", \`confirmDiscard.\${v}\`)`
+    expect(keyIssues("lib/x.ts", template, res)).toEqual([])
+    const identifier = `import { t } from "../i18n/t"\nconst KEY = "nope"\nexport const f = () => t("ecom-common", KEY)`
+    expect(keyIssues("lib/x.ts", identifier, res)).toEqual(["ecom-common: key ไม่ใช่ literal/template (KEY)"])
+  })
+
   it("fixture enum (กฎ 7): ค่าใหม่ใน array/union ที่ไม่มี key → คืนค่านั้น", () => {
     const res: Resources = { en: { ns: { status: { draft: "Draft", active: "Active" } } }, th: {} }
     expect(missingEnumKeys(res, "ns", "status", ["draft", "active"])).toEqual([])
@@ -225,6 +235,17 @@ describe("guard static (AC-5, กฎ 9, 14)", () => {
     ["g", "routes/x/page.tsx", `export const config = defineRouteConfig({ label: LABEL, translationNs: NS })`],
   ])("fixture (%s) ถูกจับ: %s %s", (rule, file, src) => {
     expect(rules(file, src)).toContain(rule)
+  })
+
+  // nit review AI18N-3: RETURN_ALLOWLIST ผูกกับไฟล์ — ค่าที่อนุญาตในไฟล์หนึ่งยังถูกจับในไฟล์อื่น และทุกค่าอยู่ในไฟล์นั้นจริง
+  it("RETURN_ALLOWLIST ผูกกับไฟล์: ไฟล์มีอยู่และค่าเป็น literal ในไฟล์นั้น; ไฟล์อื่นคืนค่าเดียวกัน → (e)", () => {
+    for (const [file, values] of Object.entries(RETURN_ALLOWLIST)) {
+      expect(adminFiles).toContain(file)
+      values.forEach((value) => expect(read(file)).toContain(`"${value}"`))
+    }
+    const src = `export const state = (low: boolean) => (low ? "low" : "ok")`
+    expect(rules("lib/x.ts", src)).toEqual(["e", "e"])
+    expect(rules("lib/evoucher-pool-delete.ts", src)).toEqual([])
   })
 
   it("fixture (c) new Error ในไฟล์ที่แสดงต่อผู้ใช้ถูกจับ ไฟล์อื่นไม่จับ", () => {

@@ -116,6 +116,20 @@ describe("enum/ค่าคงที่ของกลุ่ม affiliate มี
     expect(missingEnumKeys(res, NS, "payoutForm.fields", Object.keys(form))).toEqual([])
   })
 
+  // review AI18N-4: ข้อความที่ตรงกับ key ของ Medusa ใช้ key นั้น (กฎ 6) — ไม่ซ้ำใน ecom-affiliate
+  it("ผลค้นหาว่างของตารางใช้ general.noResults* ของ Medusa", () => {
+    const src = read("components/affiliate/list-table.tsx")
+    expect(src).toContain('heading: t("general.noResultsTitle", { ns: "translation" })')
+    expect(src).toContain('description: t("general.noResultsMessage", { ns: "translation" })')
+    expect(resources.en[NS].list).not.toHaveProperty("noResults")
+    expect(resources.th[NS].list).not.toHaveProperty("noResults")
+  })
+
+  it("th: toast หลัง mark paid ไม่ซ้ำกับปุ่มยืนยัน", () => {
+    expect(th("markPaid.done")).not.toBe(th("markPaid.confirm"))
+    expect(th("markPaid.done")).toMatch(THAI)
+  })
+
   it("ค่า en ของสถานะ = ค่าดิบเดิม (badge แสดงค่า enum ตรงๆ ก่อนแปล)", () => {
     for (const prefix of ["programs", "affiliates", "ledger", "payouts"] as const) {
       const status = resources.en[NS][prefix].status as Record<string, string>
