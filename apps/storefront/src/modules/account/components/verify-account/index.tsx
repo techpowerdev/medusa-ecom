@@ -37,17 +37,17 @@ const VerifyAccount = () => {
       className="max-w-sm w-full flex flex-col items-center text-center gap-y-4"
       data-testid="verify-account-page"
     >
-      <h1 className="text-large-semi uppercase">ยืนยันอีเมล</h1>
+      <h1 className="text-base leading-6 font-semibold uppercase">ยืนยันอีเมล</h1>
 
       {state === "verifying" && (
-        <p className="text-base-regular text-foreground">
+        <p className="text-sm leading-6 font-normal text-foreground">
           กำลังยืนยันอีเมลของคุณ...
         </p>
       )}
 
       {state === "success" && (
         <>
-          <p className="text-base-regular text-foreground">
+          <p className="text-sm leading-6 font-normal text-foreground">
             ยืนยันอีเมลเรียบร้อยแล้ว คุณเข้าสู่ระบบบัญชีได้แล้ว
           </p>
           <LocalizedClientLink href="/account" className={buttonVariants()}>
@@ -59,7 +59,7 @@ const VerifyAccount = () => {
       {state === "error" && (
         <>
           <p
-            className="text-base-regular text-foreground"
+            className="text-sm leading-6 font-normal text-foreground"
             data-testid="verify-account-error"
           >
             ลิงก์ยืนยันนี้ไม่ถูกต้องหรือหมดอายุแล้ว เข้าสู่ระบบเพื่อรับอีเมลยืนยันใหม่
