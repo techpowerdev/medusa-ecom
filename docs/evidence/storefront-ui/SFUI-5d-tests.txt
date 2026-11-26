@@ -392,3 +392,18 @@ env ในเครื่อง: Node 22.23.3, backend prod build :9170 (DB medu
  Test Files  132 passed (132)
       Tests  2022 passed (2022)
 -- build (prod): exit 0
+
+## D-1 (qa SFUI): ปุ่มชำระเงินหน้า order-pay คงความสูง 48px (h-12) ของ size large เดิม (2026-11-26)
+### red — e2e/sfui-button-lg.unit.spec.ts (หลัง merge SFUI-5c ก่อนแก้)
+    +   "src/modules/order/components/order-pay/pay-buttons.tsx:42",
+    +   "src/modules/order/components/order-pay/pay-buttons.tsx:135",
+  1 failed
+  1 passed
+### green
+  2 passed (569ms)
+$ tsc --noEmit
+✖ 27 problems (0 errors, 27 warnings)
+
+ Test Files  132 passed (132)
+      Tests  2023 passed (2023)
+  204 passed (1.4s)
