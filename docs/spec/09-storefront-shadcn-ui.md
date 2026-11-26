@@ -2,6 +2,7 @@
 Status: accepted (owner 2026-11-26: ADR-030 accepted, Q1 = ยอมรับ, Q2 = งด release ระหว่าง SFUI-2..6) — **ทำงานแบบ stack ได้** (owner อนุญาต 2026-11-26 เป็นข้อยกเว้นของกติกา
 "ห้ามแตก branch จาก PR ที่ยังไม่ merge" เฉพาะชุด SFUI): SFUI-1a แตกจาก branch เอกสาร `docs/SFUI-shadcn-adr-spec`, task ถัดไปแตกต่อจาก branch ของ task ที่อยู่ใน Depends
 (task ขนานแตกจาก SFUI-2 ตัวเดียวกัน; SFUI-6 แตกจาก branch ที่รวม 3a..5e แล้ว) โดยไม่ต้องรอ PR merge → เปิด PR ทั้งชุดพร้อมกันตอนท้าย (base = `develop`) แล้ว merge ตามลำดับในตาราง Tasks
+· SFUI-1a..7 ☑ (#565–#581); รอบ 45 เก็บกวาด (SFUI-8, 9a–9e, 10) ดูหัวข้อ "ส่วนเก็บกวาดหลัง SFUI-7" (owner 2026-11-26 "เก็บต่อเลย")
 Goal (owner's words, 2026-11-26): เปลี่ยน storefront (`apps/storefront`) จาก UI ของ Medusa เป็น shadcn/ui (Radix) — แทนทั้ง 4 ชั้น (shim `common/components/ui`,
 `@medusajs/ui-preset` + `thai-ui-preset.js` + class `txt-*`/`h*-webs`, `@medusajs/icons` → `lucide-react`, `@headlessui/react` → Radix ผ่าน shadcn) และถอด `tailwindcss-radix`;
 อัป Tailwind v3 → v4 ก่อนแล้วใช้ shadcn CLI รุ่นล่าสุด; ยอมให้หน้าตาเปลี่ยนเป็นสไตล์ shadcn แต่ยังใช้สี brand ตาม ADR-008
@@ -42,9 +43,9 @@ none
    ค่า theme เดิม (brand, grey, breakpoints `2xsmall`/`xsmall`/`small`/`medium`/`large`/`xlarge`/`2xlarge`, `borderRadius` `soft`/`base`/`rounded`/`large`/`circle`, `max-w-8xl`,
    `text-3xl` = 2rem, keyframes/animation `ring`, `fade-in-right`, `fade-in-top`, `fade-out-top`, `accordion-*`, `enter`, `leave`, `slide-in`) ย้ายเป็น `@theme` ชื่อ class เดิมใช้ได้
    (`accordion-*` ของ v3 และ token `--chart-*`/`--sidebar-*` ที่ shadcn init สร้างถูกลบใน SFUI-6 เพราะไม่มีผู้ใช้ — `Accordion` ของ shadcn ใช้ `animate-accordion-down/up` ของ `tw-animate-css`);
-   class เดิมใน `globals.css` ที่ถูก `@apply` (`text-xsmall-regular` … `text-3xl-semi`) เป็น `@utility`
+   class เดิมใน `globals.css` ที่ถูก `@apply` (`text-xsmall-regular` … `text-3xl-semi`) เป็น `@utility` (ลบใน SFUI-10 — กฎ 24)
 2. `components.json` ตาม ADR-030 ข้อ 2 (style `new-york`, ติดตั้งด้วย `pnpm dlx shadcn@4.23.1 init -b radix`, `tailwind.config: ""`, `baseColor: "neutral"`, `iconLibrary: "lucide"`,
-   aliases `@/components`, `@/components/ui`, `@/lib/utils`, `@/lib`, `@/hooks`); `tsconfig.json` มี `"@/*": ["*"]`; `src/lib/utils.ts` export `cn` ที่สร้างด้วย `createCn` จาก `cn/config` โดย extend classGroups `font-size` ด้วย utility ขนาดฟอนต์ `text-*` ของ `globals.css` (`FONT_SIZE_UTILITIES`) — กัน tailwind-merge ตัด `text-xl-semi` ฯลฯ เมื่อคู่กับ `text-ui-fg-*` (ตัดสิน 2026-11-26 ระหว่าง SFUI-2) — ใช้กับโค้ดนอก `src/components/ui/`;
+   aliases `@/components`, `@/components/ui`, `@/lib/utils`, `@/lib`, `@/hooks`); `tsconfig.json` มี `"@/*": ["*"]`; `src/lib/utils.ts` export `cn` ที่สร้างด้วย `createCn` จาก `cn/config` โดย extend classGroups `font-size` ด้วย utility ขนาดฟอนต์ `text-*` ของ `globals.css` (`FONT_SIZE_UTILITIES`) — กัน tailwind-merge ตัด `text-xl-semi` ฯลฯ เมื่อคู่กับ `text-ui-fg-*` (ตัดสิน 2026-11-26 ระหว่าง SFUI-2) — ใช้กับโค้ดนอก `src/components/ui/` (**จนถึง SFUI-10** — หลังจากนั้น `src/lib/utils.ts` = `export { cn } from "cn"` ตาม ADR-030 ข้อ 3; กฎ 24);
    **component ใน `src/components/ui/*` ใช้ `cn` ตามผล CLI (`import { cn } from "cn"` — SFUI-7, owner 2026-11-26)** ซึ่งไม่รู้จัก utility ขนาดฟอนต์ของเรา (ถือเป็นสีตัวอักษร: ตัด `text-<สี>` ของ primitive
    หรือถูกตัดเมื่อคู่กับ `text-<สี>`) และ package `cn` 0.5.2 ไม่มี config ระดับ global (config ทำได้แค่ `createCn` ของ `cn/config` ที่ได้ฟังก์ชันใหม่ หรือ `cn build`/`withCn` ที่สร้างตาราง
    ให้ `cn/engine` — `import { cn } from "cn"` ใช้ตารางค่าเริ่มต้นเสมอ) → **className/argument ที่ส่งเข้า component ของ `@/components/**` ห้ามมี `text-{xsmall,small,base,large,xl,2xl,3xl}-{regular,semi}`**
@@ -158,7 +159,7 @@ none
   SFUI-2 ส่งต่อไป shadcn แล้ว pattern ในไฟล์นี้หาย → ลบ key `SFUI-2` ออก (การลบไฟล์ shim ใน SFUI-6 ยังถูกบังคับผ่านไฟล์ผู้ใช้ที่ import `@modules/common/components/ui` ซึ่งอยู่ใต้ key ของ 3x/4/5x
   และ AC-16); หลัง SFUI-6 ไฟล์นี้เหลือเฉพาะการตรวจ (a) กับรายการว่าง
   — reviewer ตรวจ (ไม่ใช่ static): task ที่จะ merge ลบ key ของตัวเองออกจาก `PENDING` ครบ และไม่ลบ key ของ task อื่น
-- AC-7 (SFUI-1b, กฎ 2) static: `components.json` มีค่าตามกฎ 2 ทุก field; `tsconfig.json` มี `@/*`; `src/lib/utils.ts` export `cn` (สร้างด้วย `createCn` ตามกฎ 2 และทุก utility ขนาดฟอนต์ใน `globals.css` อยู่ใน `FONT_SIZE_UTILITIES`); `vitest.config.mts` มี alias `"@"` → `src` และ `include` ครอบ `src/**/*.test.ts` + `src/**/*.test.tsx`;
+- AC-7 (SFUI-1b, กฎ 2) static: `components.json` มีค่าตามกฎ 2 ทุก field; `tsconfig.json` มี `@/*`; `src/lib/utils.ts` export `cn` (สร้างด้วย `createCn` ตามกฎ 2 และทุก utility ขนาดฟอนต์ใน `globals.css` อยู่ใน `FONT_SIZE_UTILITIES` — **SFUI-10 แทนข้อนี้ด้วย AC-24 ข้อ (c)**); `vitest.config.mts` มี alias `"@"` → `src` และ `include` ครอบ `src/**/*.test.ts` + `src/**/*.test.tsx`;
   unit `src/lib/utils.test.ts` ที่ `import { cn } from "@/lib/utils"` (ผ่าน alias ไม่ใช่ path สัมพัทธ์) ผ่าน: `cn("px-2", "px-4") === "px-4"`
 - AC-8 (SFUI-2, กฎ 3, 14, 20) unit (jsdom) `src/components/ui/button.test.tsx` (SFUI-7 ย้ายเป็น `src/components/button.test.tsx` ทดสอบ wrapper `src/components/button.tsx`) — ต้อง**ถูกรันจริง** (ปรากฏในผล `pnpm --filter storefront test:unit` ของ PR; include `*.test.tsx` จาก SFUI-1b) — ของ `src/components/button.tsx` (SFUI-2–6 อยู่ใน `src/components/ui/button.tsx`): `isLoading` → ปุ่ม disabled และข้อความมีอักษรไทย; `buttonVariants({ variant: "outline", size: "sm" })` คืน string;
   shim `Button`/`Badge`/`Label`/`Input`/`Table`/`IconButton`/`buttonClassName`/`clx` ส่งต่อไป shadcn (`Button` ที่ render มี `data-slot="button"`); e2e AC-4 ข้อ (2);
@@ -240,6 +241,102 @@ qa เก็บ evidence ทุก task ที่มี UI (ทุก task ย�
 - **stack (owner อนุญาต 2026-11-26)**: แต่ละ task แตก branch ต่อจาก branch ของ Depends ในเครื่องโดยไม่รอ merge (task ขนานแตกจาก `feat/SFUI-2-*` ตัวเดียวกัน; SFUI-6 แตกจาก
   branch ที่รวม 3a..5e) → เปิด PR ทั้งชุดพร้อมกันตอนท้าย (base = `develop`) → merge ตามลำดับข้างบน ทีละตัวตามกติกา merge ของ CLAUDE.md (sync `origin/develop` + CI เขียวก่อนแต่ละตัว)
 - **งด release `develop → main`** ตั้งแต่ SFUI-2 merge จนถึง SFUI-6 merge ยกเว้น hotfix (owner 2026-11-26)
+
+## ส่วนเก็บกวาดหลัง SFUI-7 (รอบ 45 — owner 2026-11-26 "เก็บต่อเลย")
+Goal (owner's words): (1) เลิกใช้ utility ขนาดฟอนต์ของ Medusa starter (`text-{xsmall,small,base,large,xl,2xl,3xl}-{regular,semi}` 13 ตัวที่ `globals.css` นิยามด้วย `@utility`)
+แทนด้วย utility มาตรฐานของ Tailwind ที่ได้ค่าเท่าเดิม แล้วลบนิยาม + `cn` ที่ extend (`FONT_SIZE_UTILITIES`/`createCn`); (2) แก้ rule floating label ใน `globals.css` ที่จับ `<label>` ทุกตัวที่ตามหลัง `<input>`
+Out of scope: เปลี่ยนค่าที่ render ของ element ใดนอกจากรายการของกฎ 23 · utility อื่นใน `globals.css` (`content-container`, `contrast-btn`, `no-scrollbar`, `--text-3xl` ของ `@theme`) · `src/components/ui/*` (กฎ 3)
+ADR: ไม่มีฉบับใหม่ — อยู่ในกรอบ ADR-030 (ข้อ 3 กำหนด `src/lib/utils.ts` = `export { cn } from "cn"` อยู่แล้ว; `createCn` เป็นทางเลี่ยงชั่วคราวของ SFUI-2 ที่หมดเหตุผลเมื่อไม่มี utility ขนาดฟอนต์ของเราเอง)
+และการแก้ floating label เป็นการแก้บั๊ก (owner สั่ง) ไม่มีทางเลือกเชิงสถาปัตยกรรม
+
+### What Medusa already gives us
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| utility ขนาดฟอนต์ `text-*-regular/semi` | Medusa Next.js Starter (`globals.css` — เราย้ายเป็น `@utility` ใน SFUI-1a) | **เลิกใช้** → utility มาตรฐานของ Tailwind v4 (`text-*`, `leading-*`, `font-*`) |
+| floating label ของช่องกรอก | Starter (`common/components/input` + rule `input ~ label` ใน `globals.css`) | **แก้** ให้ผูกเฉพาะ input ของ `common/components/input` |
+| `cn` | shadcn (package `cn` ตาม ADR-030 ข้อ 3) | ใช้ตามเดิมไม่ extend |
+
+Data model / Workflows / API routes: none · Admin UI: none · Storefront pages: ไม่มีหน้าใหม่ — PDP (และหน้าที่ระบุในกฎ 23c) หน้าตาเปลี่ยนตามกฎ 23
+
+### Business rules (ต่อจากกฎ 21)
+22. (SFUI-9a–9e) แทน token `text-{xsmall,small,base,large,xl,2xl,3xl}-{regular,semi}` **ทุกจุด**ในไฟล์ของ task (รวม comment, ค่า default ของ prop, ค่าคงที่, template literal) ด้วย utility มาตรฐาน
+    ที่ให้ **ค่าที่ render ที่ปลาย develop** (commit ที่ branch แตกออกมา ก่อนแก้ใดๆ) ของ `font-size`, `line-height`, `font-weight` เท่าเดิมทั้งบน element นั้นและลูกที่สืบทอดค่า — กฎ 19 ชนะ:
+    (a) ค่าเริ่มต้นตามตาราง map ของกฎ 2 (`xsmall-*` → `text-[10px] leading-4`, `small-*` → `text-xs leading-5`, `base-*` → `text-sm leading-6`, `large-*` → `text-base leading-6`, `xl-*` → `text-2xl leading-[36px]`,
+        `2xl-*` → `text-[30px] leading-[48px]`, `3xl-*` → `text-[32px] leading-[44px]` + `font-normal`/`font-semibold`) ใช้ได้เฉพาะเมื่อ token ไม่ชนกับ class อื่น
+    (b) token อยู่ใน `cn(...)`/`cn` ของ wrapper ร่วมกับ class ที่ตั้ง font-size/line-height/font-weight (รวมแบบมีเงื่อนไข) → ผลปัจจุบันมาจาก `cn` ที่ extend (token เป็นกลุ่ม font-size: font-size ที่มาทีหลังตัด token
+        ทั้งก้อนรวม line-height/น้ำหนัก และ token ที่มาทีหลังตัด `text-<ขนาด>`/`leading-*` ก่อนหน้า) ซึ่งต่างจาก `cn` มาตรฐานหลังแทน → เขียน class ที่ให้ผลลัพธ์เท่าค่าที่ render เดิม**ทุกกิ่งของเงื่อนไข**
+    (c) className เดียวกันมีสอง class ที่ตั้ง property เดียวกันโดยไม่มี variant (เช่น token + `font-medium`, token + `text-xs`) → ผลขึ้นกับลำดับใน CSS ที่ compile ไม่ใช่ลำดับใน className →
+        คงเฉพาะ class ที่ชนะจริง (ห้ามเหลือสอง class ไม่มี variant ที่ตั้ง property เดียวกันในจุดที่แทน)
+    (d) element ที่ property ถูกทับด้วย rule ที่ specificity สูงกว่า (floating label กฎ 23, `<hN>` ที่ผู้เรียกตั้งขนาดเอง) → แทนตาม (a)–(c) ของ class; ค่าที่ render ไม่เปลี่ยนเพราะ rule เดิมยังชนะ (กฎ 23 เป็นเจ้าของการเปลี่ยน)
+    (e) ห้ามสร้าง `@utility`/component/ค่าคงที่ใหม่มาแทน token (เขียน utility ตรงทุกจุด); comment ที่อ้างชื่อ token เขียนใหม่เป็นค่า (เช่น "12px/20px/400")
+    — builder บันทึกใน PR: ตารางจุดที่เข้า (b)/(c) พร้อมค่าที่วัดที่ปลาย develop และ class ที่เลือก
+23. (SFUI-8) floating label: (a) rule `input:focus ~ label`, `input:not(:placeholder-shown) ~ label` และ `input:focus ~ label` (transition) ใน `globals.css` ต้องไม่จับ `<label>` อื่นนอกจาก label ลอยของ
+    `src/modules/common/components/input/index.tsx` — วิธีที่แนะนำ: ลบสอง rule ออกจาก `globals.css` แล้วใส่ `peer` ให้ input (ผ่าน `className` ของ `Input` จาก `ui/` — กฎ 3) และ variant `peer-focus:`/`peer-not-placeholder-shown:`
+    บน label; ถ้า variant ให้ค่าไม่เท่าเดิม ใช้ selector ใน `globals.css` ที่ผูก attribute เฉพาะ เช่น `label[data-floating-label]` ได้ (ห้ามผูกด้วย `data-slot="input"` เพราะ `Input` ของ shadcn ใช้ที่อื่นด้วย)
+    (b) label ลอยทำงานเหมือนเดิมทุกค่า: ตอนว่างและไม่ focus = ตำแหน่ง/ขนาดเดิม (สืบทอด `text-sm leading-5`), ตอน focus หรือมีค่า = `font-size` 10px, `line-height` 16px, น้ำหนัก 400, เลื่อนขึ้น 12px
+        (v4 ใช้ property `translate` — วัดค่าจริงที่ปลาย develop), ตอน focus = `left: 0px` + transition 300ms; ค่าที่เติมจากโค้ดลอยทันทีไม่มี transition (CORE-4e)
+    (c) **เปลี่ยนหน้าตา (แก้บั๊กที่ owner สั่ง — มีมาตั้งแต่ starter)**: `<label>` ที่ไม่ใช่ floating label แต่เคยถูก rule เดิมจับ ได้ค่าตาม className ของตัวเอง (หรือที่สืบทอด) และไม่เลื่อน
+        — อย่างน้อย `option-button` (`products/components/product-actions/option-select.tsx`) และ label ที่ครอบ `product-quantity-select` (`product-actions/index.tsx`) บน PDP:
+        12px / 20px / 400 (`text-small-regular` → `text-xs leading-5 font-normal`) และ `translate` = `none` (เดิม 10px/16px และ -12px); builder หา `<label>` อื่นที่ตรง selector เดิมบนหน้าใน AC-17 + หน้า group buy
+        + หน้าที่มี `Checkbox`/`RadioGroup` ใน `<form>` (Radix สร้าง `<input>` ซ่อนเป็นพี่น้อง) ด้วย `document.querySelectorAll("input:not(:placeholder-shown) ~ label")` ที่ปลาย develop แล้วระบุใน PR
+        พร้อมค่าก่อน/หลัง; label ที่ค่าหลังไม่ตรง className ของตัวเอง = blocker
+    (d) SFUI-8 ไม่แก้ไฟล์ของ SFUI-9x (`option-select.tsx`, `product-actions/index.tsx` เป็นของ 9b) — ค่าหลังแก้ของ (c) ได้จาก token หรือ utility ที่แทนแล้วก็เท่ากัน (กฎ 22a)
+24. (SFUI-10) หลัง SFUI-8 และ 9a–9e merge: ลบ `@utility text-*-regular/semi` ทั้ง 13 ตัวจาก `globals.css`; `src/lib/utils.ts` = `export { cn } from "cn"` (ADR-030 ข้อ 3 — ไม่มี `cn/config`, `createCn`, `FONT_SIZE_UTILITIES`);
+    test ที่อ้าง token/`createCn` ปรับตาม (`src/lib/utils.test.ts` คง `cn("px-2", "px-4") === "px-4"`, `src/styles/theme-css.test.ts`, AC-7 ใน `e2e/sfui-shadcn-init.unit.spec.ts`, ตัวอย่าง class ใน `e2e/sfui-legacy.unit.spec.ts`);
+    guard static กัน token กลับมา (AC-24); กฎ 2 ส่วนที่ห้ามส่ง token เข้า `@/components/**` (AC-19) คงไว้ (ไม่มีผลเมื่อไม่มี token)
+25. ทุก task ของรอบ 45: e2e เดิมผ่านโดยไม่แก้ locator/assertion (กฎ 19) — ข้อยกเว้นเดียวคือ assertion ที่ยึดค่าบั๊กของกฎ 23c (ถ้ามี) ซึ่ง SFUI-8 แก้พร้อมเหตุผลใน PR; `src/components/ui/*`, `apps/backend/**`,
+    `package.json`/lockfile ไม่ถูกแก้ (กฎ 3, 18)
+
+### Acceptance criteria (ต่อจาก AC-19)
+- AC-20 (SFUI-9a–9e, กฎ 22) static (คำสั่งใน PR + reviewer): `grep -rnoE "\btext-(xsmall|small|base|large|xl|2xl|3xl)-(regular|semi)\b"` บนไฟล์ในขอบเขตของ task = 0 บรรทัด
+- AC-21 (SFUI-9a–9e, กฎ 22) e2e ใหม่ `e2e/sfui-9<x>-font.spec.ts` (ลูกค้าที่ login + seed ของ CORE-2; รูปแบบเดียวกับ `sfui-5b-catalog.spec.ts`): Given หน้าในขอบเขตของ task When อ่าน
+  `getComputedStyle` (`fontSize`, `lineHeight`, `fontWeight`) Then เท่าค่าที่วัดที่ปลาย develop ก่อนแก้ — จุดตัวอย่าง = **ทุก token ที่ต่างกันในขอบเขตอย่างน้อย 1 จุด + ทุกจุดที่เข้ากฎ 22b/22c** ที่ render ได้ด้วย seed
+  (จุดที่ render ไม่ได้ระบุใน PR พร้อมเหตุผล); หาด้วย `data-testid` (หรือ role ภายใน container ที่มี testid); ห้ามใช้ element ที่ถูก rule floating label เดิมจับ (กฎ 23c — เป็นของ AC-23);
+  **spec นี้ต้องผ่านทั้งบน commit ฐาน (ก่อนแก้ — รันไฟล์ spec ใหม่บน worktree ของ commit ฐาน) และหลังแก้** — แนบผลรันทั้งสองใน PR/evidence; e2e ทุก spec ที่อ้างหน้าในขอบเขต (รวม `sfui-5*`, `sfui-6-parity`, `sfui-3e-shipping`) ผ่านโดยไม่แก้
+- AC-22 (SFUI-8, กฎ 23a) static `e2e/sfui-8-floating-label.unit.spec.ts`: Given `globals.css` Then ไม่มี selector ที่ลงท้ายด้วย `~ label` หรือ `+ label` โดย `label` ไม่มี class/attribute กำกับ
+  (เช่น `input:focus ~ label`); ถ้าใช้ทางเลือก attribute ของกฎ 23a: attribute นั้นพบใน `src/**/*.tsx` เฉพาะ `common/components/input/index.tsx`
+- AC-23 (SFUI-8, กฎ 23b–c) e2e ใหม่ `e2e/sfui-8-floating-label.spec.ts`:
+  (1) Given หน้า login/register และ checkout `step=address` When ยังไม่กรอก Then label ลอยมี `translate` = `none` และขนาดสืบทอดเดิม; When focus ช่อง Then label 10px/16px/400 และ `translate` เลื่อนขึ้น 12px, `left` = 0px;
+      When กรอกแล้ว blur Then ยัง 10px/16px และเลื่อนขึ้น 12px — ค่าทุกตัวเท่าที่วัดที่ปลาย develop (spec ผ่านบน commit ฐานด้วย สำหรับข้อ 1);
+  (2) Given PDP `/<cc>/products/t-shirt` Then ทุก `option-button` และ label ที่ครอบ `product-quantity-select` เป็น 12px/20px/400, `translate` = `none` และ `option-button` ไม่ทับ `legend` ของ fieldset
+      (`option-button.top >= legend.bottom`) — ข้อนี้ **ล้มบน commit ฐาน** (บั๊กที่แก้) แนบผลใน PR; (3) label อื่นในรายการของกฎ 23c ได้ค่าตาม className ของตัวเอง;
+  e2e `core-38-mobile-layout` (AC-132), `sfui-5a-common`, `core-4e-checkout-polish`, `core-24-pdp-quantity`, `core-25-pdp-option-reset`, `core-14b-add-variant`, `fs-21-customer-limit`, `fs-23-pdp-cart-aware-limit`,
+  `flash-sale-fs15`, `group-buy-join`, `group-buy-ui-polish` ผ่าน (กฎ 25)
+- AC-24 (SFUI-10, กฎ 24) static `e2e/sfui-10-font-utilities.unit.spec.ts`: (a) ทุกไฟล์ใน `apps/storefront/src/**` (รวม `.css`, test, comment) ไม่มี regex ของ AC-20; (b) `globals.css` ไม่มี `@utility text-`;
+  (c) `src/lib/utils.ts` มีเพียง `export { cn } from "cn"` และไม่มีไฟล์ใน `src/` ที่อ้าง `cn/config`, `createCn`, `FONT_SIZE_UTILITIES`; `pnpm --filter storefront build`, `typecheck`, `lint`, `test:unit`,
+  `test:e2e:unit` ผ่าน; e2e storefront ทั้งชุดผ่านใน CI (รวม AC-21 ของทุก 9x และ AC-23)
+- AC-25 (ทุก task รอบ 45, กฎ 25) reviewer: `git diff origin/develop --stat -- apps/backend apps/storefront/src/components/ui apps/storefront/package.json pnpm-lock.yaml` ว่าง
+
+### Test plan
+| ชนิด | AC |
+|---|---|
+| static (`test:e2e:unit`) | AC-22, AC-24 |
+| unit (Vitest) | AC-24 (`utils.test.ts`, `theme-css.test.ts` ที่ปรับ) |
+| e2e (Playwright) | AC-21 (ทุก 9x), AC-23 + ชุดเดิมทั้งหมด (กฎ 25) |
+| คำสั่ง/reviewer | AC-20, AC-25 |
+qa เก็บ evidence ทุก task (UI): 9a–9e screenshot ก่อน/หลังของหน้าตัวอย่าง (ต้องเหมือนกัน); SFUI-8 ก่อน/หลังของ PDP (ป้ายตัวเลือก/จำนวน) + ช่องกรอกที่ label ลอย; SFUI-10 ไม่มี UI ใหม่ (ไม่ต้อง qa ถ้า CI e2e ผ่าน)
+
+### Tasks (รอบ 45)
+เจ้าของไฟล์: แต่ละไฟล์มี task เดียว ยกเว้น `globals.css`: SFUI-8 (rule floating label) → SFUI-10 (`@utility`) ตามลำดับ · ขอบเขตโฟลเดอร์ของ 9a–9e = ขอบเขตของ 5a–5e **รวม**ไฟล์ที่ 5x เคยยกเว้นให้ 3x/4 แล้ว
+(งานเหล่านั้น merge แล้ว) · จำนวนนับ ณ `b2b27ccc` (grep regex ของ AC-20 บน `src/`)
+
+| Task | งาน — ไฟล์ที่เป็นเจ้าของ | AC | Depends | ∥ | LOC |
+|---|---|---|---|---|---|
+| SFUI-8 | floating label (กฎ 23): `src/styles/globals.css` (เฉพาะ rule `… ~ label` ใน `@layer utilities`), `src/modules/common/components/input/index.tsx`, ใหม่ `e2e/sfui-8-floating-label.{spec,unit.spec}.ts`, assertion เดิมที่ยึดค่าบั๊ก (ถ้ามี — กฎ 25) | AC-22, AC-23, AC-25 | PR เอกสารรอบ 45 | ∥ 9a–9e | ~150 |
+| SFUI-9a | common + layout + หน้าคงที่: `src/modules/{common,layout,skeletons,shipping,policies}/**` (ยกเว้น `common/components/input/**` ของ SFUI-8), `src/app/not-found.tsx`, `src/app/[countryCode]/(main)/**` ที่ไม่อยู่ใน 9b–9e (`not-found.tsx`, `verify-account/**` ฯลฯ) — ~21 จุด/14 ไฟล์; ใหม่ `e2e/sfui-9a-font.spec.ts` | AC-20, AC-21, AC-25 | PR เอกสารรอบ 45 | ∥ | ~120 |
+| SFUI-9b | catalog: `src/modules/{products,store,home,categories,collections,search}/**`, `src/app/[countryCode]/(main)/{store,products,categories,collections,search}/**` — ~50 จุด/22 ไฟล์; ใหม่ `e2e/sfui-9b-font.spec.ts` | AC-20, AC-21, AC-25 | PR เอกสารรอบ 45 | ∥ | ~200 |
+| SFUI-9c | checkout + cart + returns: `src/modules/{checkout,cart,returns}/**`, `src/app/[countryCode]/(checkout)/**`, `src/app/[countryCode]/(main)/cart/**` — ~20 จุด/11 ไฟล์; ใหม่ `e2e/sfui-9c-font.spec.ts` | AC-20, AC-21, AC-25 | PR เอกสารรอบ 45 | ∥ | ~120 |
+| SFUI-9d | account + order: `src/modules/{account,order}/**`, `src/app/[countryCode]/(main)/{account,order}/**` (ยกเว้น `account/@dashboard/vouchers/**` ของ 9e) — ~63 จุด/20 ไฟล์; ใหม่ `e2e/sfui-9d-font.spec.ts` | AC-20, AC-21, AC-25 | PR เอกสารรอบ 45 | ∥ | ~250 |
+| SFUI-9e | ฟีเจอร์: `src/modules/{group-buy,affiliate,evoucher}/**`, `src/app/[countryCode]/(main)/{affiliate,g}/**`, `src/app/[countryCode]/(main)/account/@dashboard/vouchers/**` — ~63 จุด/14 ไฟล์; ใหม่ `e2e/sfui-9e-font.spec.ts` | AC-20, AC-21, AC-25 | PR เอกสารรอบ 45 | ∥ | ~250 |
+| SFUI-10 | ปิดงาน (กฎ 24): `src/styles/globals.css` (ลบ `@utility` 13 ตัว), `src/lib/utils.ts`, `src/lib/utils.test.ts`, `src/styles/theme-css.test.ts`, `e2e/sfui-shadcn-init.unit.spec.ts` (AC-7), `e2e/sfui-legacy.unit.spec.ts` (ตัวอย่าง class), ใหม่ `e2e/sfui-10-font-utilities.unit.spec.ts` | AC-24, AC-25 | SFUI-8, SFUI-9a..9e ทั้งหมด | — | ~120 |
+
+ลำดับ: (SFUI-8 ∥ 9a ∥ 9b ∥ 9c ∥ 9d ∥ 9e) → SFUI-10
+- ไฟล์ที่ไม่อยู่ในขอบเขตใดแต่ grep พบ token → เป็นของ 9x ตามโฟลเดอร์ที่ใกล้ที่สุด แจ้ง planner ถ้าไม่ชัด; รวมแล้วเกิน ~450 LOC ให้หยุดแตกตามโฟลเดอร์ย่อยแล้วแจ้ง planner
+- กลุ่มขนานไม่มีไฟล์ร่วม (SFUI-8 ไม่แตะไฟล์ของ 9x — กฎ 23d); `globals.css` แตะโดย 8 → 10 เท่านั้น
+- **stack (วิธีเดียวกับรอบ 44 — owner อนุญาต 2026-11-26, ADR-030)**: SFUI-8 และ 9a–9e แตก branch จาก branch เอกสาร `docs/SFUI2-font-utilities`; SFUI-10 แตกจาก branch ที่รวม 8 + 9a..9e แล้ว
+  โดยไม่รอ merge → เปิด PR ทั้งชุดตอนท้าย (base = `develop`) → merge ตามลำดับข้างบน ทีละตัวตามกติกา merge ของ CLAUDE.md (sync `origin/develop` + CI เขียวก่อนแต่ละตัว); "ปลาย develop" ของกฎ 22/AC-21
+  = commit ที่ branch ของ task แตกออกมา (ก่อนแก้)
+- ไม่งด release ระหว่างรอบ 45 (แต่ละ task merge แล้ว develop ยังสมบูรณ์: 9x ไม่เปลี่ยนค่าที่ render, SFUI-8 เป็นการแก้บั๊ก, SFUI-10 ลบของที่ไม่มีผู้ใช้)
 
 ## Open questions
 - ~~Q1~~ ตัดสินแล้ว (owner 2026-11-26): **ยอมรับ** browser ขั้นต่ำของ Tailwind v4 (Safari 16.4+, Chrome 111+, Firefox 128+)
