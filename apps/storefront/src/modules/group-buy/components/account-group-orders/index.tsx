@@ -25,7 +25,7 @@ const STATUS_LABEL: Record<Exclude<GroupBuyMembershipView["kind"], "pay" | "proc
 export default function AccountGroupOrders({ data, now }: Props) {
   if (!data) {
     return (
-      <p className="text-base-regular text-destructive mb-8" data-testid="group-orders-error">
+      <p className="text-sm leading-6 font-normal text-destructive mb-8" data-testid="group-orders-error">
         โหลดคำสั่งซื้อแบบกลุ่มไม่สำเร็จ กรุณาลองใหม่อีกครั้ง
       </p>
     )
@@ -34,14 +34,14 @@ export default function AccountGroupOrders({ data, now }: Props) {
 
   return (
     <section className="mb-10 flex flex-col gap-y-4" data-testid="group-orders">
-      <h2 className="text-large-semi">คำสั่งซื้อแบบกลุ่ม</h2>
+      <h2 className="text-base leading-6 font-semibold">คำสั่งซื้อแบบกลุ่ม</h2>
       <ul className="flex flex-col gap-y-6">
         {data.memberships.map((m) => (
           <GroupOrderRow key={m.id} membership={m} view={groupBuyMembershipView(m, now)} />
         ))}
       </ul>
       {data.count > data.memberships.length && (
-        <p className="text-small-regular text-muted-foreground" data-testid="group-orders-truncated">
+        <p className="text-xs leading-5 font-normal text-muted-foreground" data-testid="group-orders-truncated">
           {`แสดง ${data.memberships.length} รายการล่าสุดจากทั้งหมด ${data.count} รายการ`}
         </p>
       )}
@@ -58,25 +58,25 @@ function GroupOrderRow({ membership: m, view }: { membership: GroupBuyMembership
       data-order-id={m.order_id}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="text-base-semi" data-testid="group-order-campaign">
+        <span className="text-sm leading-6 font-semibold" data-testid="group-order-campaign">
           {m.campaign?.name ?? "แคมเปญซื้อกลุ่ม"}
         </span>
         {view.kind === "pay" ? (
-          <span className="text-small-semi text-primary underline-offset-4" data-testid="group-pay-deadline">
+          <span className="text-xs leading-5 font-semibold text-primary underline-offset-4" data-testid="group-pay-deadline">
             {`ชำระเงินภายใน ${formatDateTime(view.deadline)}`}
           </span>
         ) : view.kind === "processing" ? (
           // GB-22 (spec 04 กฎข้อ 45b): ได้รับเงินแล้วแต่ order ยังเป็น draft — ไม่มีปุ่มชำระ
-          <span className="text-small-semi" data-testid="group-order-processing">
+          <span className="text-xs leading-5 font-semibold" data-testid="group-order-processing">
             {PROCESSING_MESSAGE}
           </span>
         ) : (
-          <span className="text-small-semi" data-testid="group-order-status" data-status={view.kind}>
+          <span className="text-xs leading-5 font-semibold" data-testid="group-order-status" data-status={view.kind}>
             {STATUS_LABEL[view.kind]}
           </span>
         )}
       </div>
-      <div className="flex flex-wrap items-center gap-x-4 text-small-regular text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-4 text-xs leading-5 font-normal text-muted-foreground">
         {m.order && <span data-testid="group-order-display-id">{`คำสั่งซื้อ #${m.order.display_id}`}</span>}
         <span>{`เข้าร่วมเมื่อ ${formatDate(m.joined_at)}`}</span>
         <span>{`${m.units} ชิ้น`}</span>
@@ -87,7 +87,7 @@ function GroupOrderRow({ membership: m, view }: { membership: GroupBuyMembership
         )}
       </div>
       {view.kind === "cancelled" && view.refundNotice && (
-        <p className="text-small-regular text-muted-foreground" data-testid="group-order-refund-notice">
+        <p className="text-xs leading-5 font-normal text-muted-foreground" data-testid="group-order-refund-notice">
           {REFUND_NOTICE_MESSAGE}
         </p>
       )}

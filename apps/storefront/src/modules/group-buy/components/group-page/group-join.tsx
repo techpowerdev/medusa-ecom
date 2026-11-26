@@ -122,7 +122,7 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
   // หน้า render ใหม่หลัง server action (เช่น setShippingMethod) ตอนกลุ่มหมดเวลา → ซ่อนฟอร์มแต่ยังแสดงผลของ join ที่ล้ม
   if (!joinable) {
     return error ? (
-      <p className="text-small-regular text-rose-500" role="alert" data-testid="group-join-error">
+      <p className="text-xs leading-5 font-normal text-rose-500" role="alert" data-testid="group-join-error">
         {error}
       </p>
     ) : null
@@ -130,7 +130,7 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
 
   return (
     <section className="flex flex-col gap-y-4 rounded-rounded border border-border p-4" data-testid="group-join">
-      <h2 className="text-large-semi">เลือกสินค้าที่ต้องการ</h2>
+      <h2 className="text-base leading-6 font-semibold">เลือกสินค้าที่ต้องการ</h2>
       <div className="flex flex-col gap-y-4" data-testid="group-options">
         {(product.options ?? []).map((option) => (
           <OptionSelect
@@ -145,7 +145,7 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
         ))}
       </div>
       <div className="flex items-end gap-x-3">
-        <label className="flex flex-col gap-y-1 text-small-regular">
+        <label className="flex flex-col gap-y-1 text-xs leading-5 font-normal">
           จำนวน
           <select
             value={quantity}
@@ -199,13 +199,13 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
         </ul>
       )}
       {overLimit && (
-        <p className="text-small-regular text-rose-500" data-testid="group-units-limit">
+        <p className="text-xs leading-5 font-normal text-rose-500" data-testid="group-units-limit">
           เลือกได้สูงสุด {maxUnitsPerPerson} ชิ้นต่อคน (เลือกแล้ว {units} ชิ้น)
         </p>
       )}
 
       {addresses && addresses.length === 0 && (
-        <p className="text-small-regular">
+        <p className="text-xs leading-5 font-normal">
           ยังไม่มีที่อยู่สำหรับจัดส่ง{" "}
           <LocalizedClientLink href="/account/addresses" className="underline" data-testid="group-add-address-link">
             เพิ่มที่อยู่
@@ -214,7 +214,7 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
       )}
       {addresses && addresses.length > 0 && (
         <div className="flex flex-col gap-y-2">
-          <label className="flex flex-col gap-y-1 text-small-regular">
+          <label className="flex flex-col gap-y-1 text-xs leading-5 font-normal">
             ที่อยู่จัดส่ง
             <select
               value={addressId}
@@ -248,7 +248,7 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
       )}
 
       {prepared && !noShipping && (
-        <label className="flex flex-col gap-y-1 text-small-regular">
+        <label className="flex flex-col gap-y-1 text-xs leading-5 font-normal">
           วิธีจัดส่ง
           <select
             value={shippingId}
@@ -270,7 +270,7 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
       )}
 
       {(error || noShipping) && (
-        <p className="text-small-regular text-rose-500" role="alert" data-testid="group-join-error">
+        <p className="text-xs leading-5 font-normal text-rose-500" role="alert" data-testid="group-join-error">
           {error ?? NO_SHIPPING}
         </p>
       )}

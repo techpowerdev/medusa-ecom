@@ -38,13 +38,13 @@ export default async function AffiliatePayoutsPage({ params, searchParams }: Pro
 
   return (
     <div className="content-container py-8 flex flex-col gap-y-6" data-testid="affiliate-payouts-page">
-      <h1 className="text-xl-semi">การจ่ายเงิน</h1>
+      <h1 className="text-2xl leading-[36px] font-semibold">การจ่ายเงิน</h1>
       {!result ? (
         <StatusNotice status={affiliate.status} />
       ) : result.payouts.length ? (
         <table className="w-full text-left">
           <thead>
-            <tr className="text-small-regular text-muted-foreground">
+            <tr className="text-xs leading-5 font-normal text-muted-foreground">
               <th>งวด</th>
               <th>ยอด</th>
               <th>สถานะ</th>
