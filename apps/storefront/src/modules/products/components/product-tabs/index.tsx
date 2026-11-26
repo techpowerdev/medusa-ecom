@@ -45,7 +45,7 @@ const ProductTabs = ({ product }: ProductTabsProps) => {
 
 const ProductInfoTab = ({ product }: ProductTabsProps) => {
   return (
-    <div className="text-small-regular py-8">
+    <div className="text-xs leading-5 font-normal py-8">
       <div className="grid grid-cols-2 gap-x-8">
         <div className="flex flex-col gap-y-4">
           <div>
@@ -82,7 +82,7 @@ const ProductInfoTab = ({ product }: ProductTabsProps) => {
 
 const ShippingInfoTab = () => {
   return (
-    <div className="text-small-regular py-8">
+    <div className="text-xs leading-5 font-normal py-8">
       <div className="grid grid-cols-1 gap-y-8">
         <div className="flex items-start gap-x-2">
           <FastDelivery />

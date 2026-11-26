@@ -111,7 +111,7 @@ const OptionRefinements = () => {
                   onClick={() => refine(value.value)}
                   aria-pressed={value.isRefined}
                   className={cn(
-                    "border-border border text-small-regular h-10 rounded-rounded px-3 flex items-center gap-x-1.5 transition-colors duration-150",
+                    "border-border border text-xs leading-5 font-normal h-10 rounded-rounded px-3 flex items-center gap-x-1.5 transition-colors duration-150",
                     value.isRefined
                       ? "border-primary text-foreground"
                       : "text-muted-foreground hover:text-foreground"

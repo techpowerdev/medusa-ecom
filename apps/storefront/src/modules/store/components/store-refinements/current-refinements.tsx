@@ -108,7 +108,7 @@ const CurrentRefinements = ({ currencyCode }: { currencyCode: string }) => {
                 onClick={() => refine(refinement)}
                 aria-label={`ลบตัวกรอง ${label}`}
                 title={label}
-                className="border-primary text-foreground border text-small-regular h-8 max-w-full rounded-rounded px-3 flex items-center gap-x-1.5 transition-colors duration-150 hover:bg-muted"
+                className="border-primary text-foreground border text-xs leading-5 font-normal h-8 max-w-full rounded-rounded px-3 flex items-center gap-x-1.5 transition-colors duration-150 hover:bg-muted"
                 data-testid="remove-refinement"
               >
                 <span className="truncate">{label}</span>

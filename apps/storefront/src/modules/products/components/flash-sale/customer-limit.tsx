@@ -15,13 +15,13 @@ export default function FlashCustomerLimit({
   }
   return (
     <>
-      <p className="text-small-regular" data-testid="flash-customer-limit">
+      <p className="text-xs leading-5 font-normal" data-testid="flash-customer-limit">
         จำกัด {limit.limit} ชิ้นต่อคน
         {limit.remaining != null && ` (เหลือสิทธิ์ ${limit.remaining} ชิ้น)`}
       </p>
       {limit.remaining === 0 && (
         <p
-          className="text-small-regular text-destructive"
+          className="text-xs leading-5 font-normal text-destructive"
           role="alert"
           data-testid="flash-customer-limit-reached"
         >

@@ -12,7 +12,7 @@ export default function FlashQtyExceedsRemaining({
   }
   return (
     <p
-      className="text-small-regular text-destructive"
+      className="text-xs leading-5 font-normal text-destructive"
       role="alert"
       data-testid="flash-qty-exceeds-remaining"
     >
