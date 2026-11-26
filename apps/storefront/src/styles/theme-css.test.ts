@@ -163,8 +163,8 @@ describe("globals.css — Tailwind v4 CSS-first คงค่า theme เดิ�
 describe("legacy-medusa.css — ชั้นเข้ากันได้ของ preset (กฎ 16)", () => {
   // SFUI-4: variant radix-state-* ถูกลบพร้อมผู้ใช้คนสุดท้าย (product-tabs/accordion.tsx ใช้ data-[state=…] ของ shadcn แทน)
   it("สี/เงา ui-* generate ได้", async () => {
-    const root = await compile(["text-ui-fg-subtle", "border-ui-border-base", "shadow-borders-base"])
-    expect(declsOf(root, ".text-ui-fg-subtle").color).toBe("var(--color-ui-fg-subtle)")
+    const root = await compile(["bg-ui-bg-base", "border-ui-border-base", "shadow-borders-base"])
+    expect(declsOf(root, ".bg-ui-bg-base")["background-color"]).toBe("var(--color-ui-bg-base)")
     expect(declsOf(root, ".border-ui-border-base")["border-color"]).toBe("var(--color-ui-border-base)")
     expect(declsOf(root, ".shadow-borders-base")["--tw-shadow"]).toBeDefined()
   })
