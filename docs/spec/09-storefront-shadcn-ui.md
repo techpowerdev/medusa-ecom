@@ -3,7 +3,8 @@ Status: accepted (owner 2026-11-26: ADR-030 accepted, Q1 = ยอมรับ, Q
 "ห้ามแตก branch จาก PR ที่ยังไม่ merge" เฉพาะชุด SFUI): SFUI-1a แตกจาก branch เอกสาร `docs/SFUI-shadcn-adr-spec`, task ถัดไปแตกต่อจาก branch ของ task ที่อยู่ใน Depends
 (task ขนานแตกจาก SFUI-2 ตัวเดียวกัน; SFUI-6 แตกจาก branch ที่รวม 3a..5e แล้ว) โดยไม่ต้องรอ PR merge → เปิด PR ทั้งชุดพร้อมกันตอนท้าย (base = `develop`) แล้ว merge ตามลำดับในตาราง Tasks
 · SFUI-1a..7 ☑ (#565–#581); รอบ 45 เก็บกวาด (SFUI-8, 9a–9e, 10) ดูหัวข้อ "ส่วนเก็บกวาดหลัง SFUI-7" (owner 2026-11-26 "เก็บต่อเลย");
-รอบ 48 ฟอร์ม (SFUI-11a..13, ADR-032 accepted 2026-11-27) ☑ (#605–#610; เอกสาร #604) ดูหัวข้อ "ส่วนฟอร์ม (รอบ 48)"
+รอบ 48 ฟอร์ม (SFUI-11a..13, ADR-032 accepted 2026-11-27) ☑ (#605–#610; เอกสาร #604) ดูหัวข้อ "ส่วนฟอร์ม (รอบ 48)";
+รอบ 49 select เป็น Radix + ช่องตำบล/ที่อยู่ไทย (SFUI-15..18c, ADR-033 accepted 2026-11-28) — accepted, ดูหัวข้อ "ส่วน select + ที่อยู่ไทย (รอบ 49)"
 Goal (owner's words, 2026-11-26): เปลี่ยน storefront (`apps/storefront`) จาก UI ของ Medusa เป็น shadcn/ui (Radix) — แทนทั้ง 4 ชั้น (shim `common/components/ui`,
 `@medusajs/ui-preset` + `thai-ui-preset.js` + class `txt-*`/`h*-webs`, `@medusajs/icons` → `lucide-react`, `@headlessui/react` → Radix ผ่าน shadcn) และถอด `tailwindcss-radix`;
 อัป Tailwind v3 → v4 ก่อนแล้วใช้ shadcn CLI รุ่นล่าสุด; ยอมให้หน้าตาเปลี่ยนเป็นสไตล์ shadcn แต่ยังใช้สี brand ตาม ADR-008
@@ -541,6 +542,205 @@ builder รัน e2e **ทุก** spec ที่อ้างหน้าที
 - **stack** (วิธีเดียวกับรอบ 44–45 — owner อนุญาต 2026-11-27, Q5): 11a แตกจาก branch เอกสาร `docs/storefront-form-fields`, 11b จาก 11a, 12a/12b/12c จาก 11b, 13 จาก branch ที่รวม 12a..12c → เปิด PR ทั้งชุดตอนท้าย (base = `develop`)
 - ~~**release v0.4.0 (#603) พักจนรอบ 48 merge ครบ** (owner 2026-11-27) — ระหว่าง 11a merge ถึง 12c merge หน้าตาฟอร์มผสม จึงไม่ release กลางรอบ~~ สิ้นสุดแล้ว — merge ครบ 2026-11-27 (#605 → #610)
 - ถ้า `shadcn@4.23.1 add field`/`input-group` ต้องการ dependency ใหม่ หรือ registry ต่างจากที่ ADR-032 บันทึก (`label`+`separator`, `button`+`input`+`textarea`) → หยุดแจ้ง planner
+
+## ส่วน select + ที่อยู่ไทย (รอบ 49 — owner 2026-11-28, ก่อน release v0.4.0)
+Status: accepted (owner 2026-11-28 — ADR-033 accepted: D1 = ใช้ component ของ shadcn จาก CLI + ประกอบตามตัวอย่าง docs, D2–D5/D7 = ก, D6 = ข; Q-R49-1 = ก, Q-R49-2 = ข, Q-R49-3 = stack ได้,
+Q-R49-4 = ตำบลบังคับกรอก) · release v0.4.0 (#603) **พักจนรอบ 49 + SFUI-14 (#612) merge ครบ** (owner 2026-11-28)
+· **#612 (SFUI-14) แก้ spec 09 ด้วย** (เพิ่มกฎ 38 + 38b และ AC-38, AC-39 ในส่วนฟอร์มรอบ 48) — **เลขของรอบ 49 จึงเลื่อนหนีแล้ว: กฎ 39–57, AC-40–AC-54**;
+PR ที่ merge ทีหลัง (เอกสารรอบ 49 หรือ #612) sync `origin/develop` แล้วเก็บทั้งสองฝั่งของ spec 09 (ส่วนรอบ 49 อยู่หลังส่วนที่ #612 แก้ทั้งหมด)
+Goal (owner's words, 2026-11-28): (1) "ปรับพวก select เช่น ช่อง จำนวน และอื่นๆ ให้ใช้ shadcn อย่าใช้ native" — ทุก `<select>` ของ storefront รวมที่รอบ 48 ตัดออก (Q3: จำนวนบน PDP/ตะกร้า);
+(2) ฟอร์มที่อยู่ทุกจุดเพิ่มช่อง **ตำบล/แขวง** ใช้ field `address_2` ของ Medusa (ไม่แก้ backend/migration) และเรียงช่องแบบที่อยู่ไทย: บ้านเลขที่/หมู่/ซอย/ถนน (`address_1`) → ตำบล/แขวง (`address_2`)
+→ อำเภอ/เขต (`city`) → จังหวัด (`province`) → รหัสไปรษณีย์ (`postal_code`)
+Out of scope: autocomplete ที่อยู่จากรหัสไปรษณีย์ (owner ไม่อนุมัติ) · ตัวเลือกภูมิภาค `layout/country-select` และ `checkout/address-select` (เป็น Radix อยู่แล้ว — ไม่แตะยกเว้นการแสดง `address_2` กฎ 57) ·
+`<select>` ใน iframe ของ Stripe · `apps/backend/**` · `src/components/ui/*`, `globals.css` (SFUI-14 #612 เป็นเจ้าของ), `package.json`/lockfile · error ราย field จาก server (backlog เดิม)
+ทางเลือก select: ADR-033 (accepted) · ที่อยู่ไทย: owner ตัดสิน field (`address_2`) และบังคับกรอกแล้ว จึงไม่มี ADR
+
+### What Medusa already gives us
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| select ของ storefront | ไม่มี (starter ใช้ `<select>` native) — shadcn registry 4.23.1: `select` (Radix), `field`, `label` **ติดตั้งด้วย CLI แล้ว** ใน `ui/`; `native-select` (native — ไม่ใช้), `combobox` (Base UI — dependency ใหม่ ขัด ADR-030), `form` (react-hook-form + zod — ไม่ใช้ Q-R49-6) | **ใช้** `ui/select` + `ui/field` + `ui/label` ตรงที่ผู้เรียก ประกอบตามตัวอย่าง docs (ADR-033 D1) — ยืนยันตรง registry ด้วย `add --dry-run --diff` ไม่มี component กลางใหม่ |
+| ส่งค่าใน `<form>` / `required` | Radix render `<select>` ซ่อนที่มี `name`/`required`/`disabled`/`autoComplete` | ใช้ตามนั้น (กฎ 42) |
+| error ระดับช่องของ select | shadcn docs: ใส่ `Field data-invalid` + `SelectTrigger aria-invalid` เอง — ไม่มี validation | **custom เล็ก**: ขยาย `useFieldError` เดิม (กฎ 43) |
+| ตำบล/แขวง | Address ของ Medusa (cart/order/customer) มี `address_1`, `address_2`, `city`, `province`, `postal_code` | **ใช้ `address_2` as-is** (owner) — ไม่ใช้ `metadata`, ไม่ migration |
+| ส่งที่อยู่ให้ Stripe | `payment-button` ส่ง `line2 = address_2`, `state = province` อยู่แล้ว | as-is |
+| อีเมลแจ้งคำสั่งซื้อ | ไม่มี template ที่ render ที่อยู่ใน `apps/backend/src/subscribers` (ตรวจ 2026-11-28) | none |
+| plugin จาก medusajs.com/integrations | ไม่มี UI storefront/ที่อยู่ไทย | — |
+
+Data model / Workflows / API routes: none · Admin UI: none (dashboard ของ Medusa แสดง `address_2` เป็น "Address 2" ตามเดิม) · Storefront pages: ไม่มีหน้าใหม่
+
+### Inventory `<select>` (ณ `58e2436a`) — control 11 ตัว, task เจ้าของ
+| Task | ไฟล์ใน `src/modules/` (หน้า) | testid | ข้อมูล / พฤติกรรม |
+|---|---|---|---|
+| 16d | `products/components/product-actions/index.tsx` (PDP) | `product-quantity-select` | `<select name="quantity">` ในฟอร์ม POST `/<cc>/cart/add` (no-JS — spec 01 กฎ 59); controlled `qty`; disabled เมื่อหมด/กำลังเพิ่ม; option `pdpQuantityOptions` (จำกัดสิทธิ์ flash) |
+| 16c | `cart/components/cart-item-select` ← `cart/components/item` (`/cart`) | `product-select-button` | ไม่อยู่ใน `<form>`; controlled `item.quantity`; เปลี่ยน → server action `updateLineItem` ทันที; option ว่าง disabled `เลือก...` + `cartQuantityOptions` |
+| 16a | `returns/components/return-request-form` (ขอคืนสินค้า) | `return-item-quantity`, `return-item-reason` (ต่อแถว) | `NativeSelect` ใน `<form action>` (`useActionState`); `name` `quantity:<line>`/`reason:<line>`; uncontrolled `defaultValue` + remount ด้วย `key`; placeholder `จำนวน`/`เลือกเหตุผล` |
+| 16a | `group-buy/components/group-page/group-join.tsx` (`/g/<token>`) | `group-quantity`, `group-address-select`, `group-shipping-option` | `NativeSelect` ไม่อยู่ใน `<form>`; controlled; `placeholder={false}` สองตัวแรก, `เลือกวิธีจัดส่ง` ตัวที่สาม; disabled ขณะ `busy` |
+| 16b | `account/components/profile-billing-address` (`/account/profile`) | `billing-country-code-select` | `NativeSelect` `name="country_code"` `required` uncontrolled; option `เลือก...` + `<option value="">-</option>` + ประเทศ |
+| 16b | `checkout/components/country-select` ← `checkout/components/{shipping-address,billing_address}` (`/checkout?step=address`) | `shipping-country-select`, `billing-country-select` | controlled + `required` + `autoComplete="country"`; คงค่าหลัง form reset (spec 01 กฎ 110d — hack `defaultSelected`) |
+| 16b | `checkout/components/country-select` ← `account/components/address-card/{add-address,edit-address-modal}` (`Dialog`) | `country-select` | uncontrolled (`defaultValue` ใน edit) + `required` |
+
+ไม่ใช่ `<select>`: ตัวเลือกสินค้า (`option-select` = radio + label), sort/filter (`RadioGroup`), `group-selection-quantity` (`<input type="number">`) · ไม่มี select ตัวใดที่เปลี่ยนแล้ว navigate
+(ตัวเลือกภูมิภาค `layout/country-select` เป็น Radix แล้ว) · e2e ใช้ `selectOption` กับ select ของเรา ~47 ครั้ง/25 ไฟล์ (+ `toHaveValue`/อ่าน `<option>` ~18 จุด) — รวม `support/stripe.ts` ~บรรทัด 116 (`shipping-country-select` ของเรา — เปลี่ยนใน 16b);
+`fillCard` ในไฟล์เดียวกัน (~บรรทัด 158) เป็น select ใน iframe ของ Stripe (ไม่แตะ)
+
+### Business rules — select (ต่อจากกฎ 38/38b ของ SFUI-14 #612; ADR-033)
+39. ขอบเขต = ทุก control ในตาราง inventory; หลัง SFUI-17 ไม่มี `<select` ใน JSX ของ `src/modules/**`, `src/app/**` และไม่มี `common/components/native-select`, `cart/components/cart-item-select`
+40. (ADR-033 D1 — owner: "ทุก component ที่มีอยู่แล้วใน shadcn ให้ใช้คำสั่ง add ของ shadcn … อย่าสร้างหรือประกอบเองโดยไม่จำเป็น")
+    (a) component: `select`, `field`, `label` ใน `ui/` (มีแล้ว) — SFUI-15 รัน `pnpm dlx shadcn@4.23.1 add select --dry-run --diff`, `… add field …`, `… add label …` ทีละตัวต้องได้ "No changes."
+        (ไม่ตรง → `add <name> --overwrite` + hash ใน `shadcn-ui.json`, ไม่รับการแก้ `package.json`/lockfile/`globals.css` — กฎ 3); **ไม่สร้าง component กลางใหม่** (ไม่มี `SelectField`/wrapper)
+    (b) ผู้เรียกประกอบตรงที่ใช้ตามตัวอย่าง docs ของ shadcn: `Field` (`data-invalid` เมื่อ error) → `FieldLabel htmlFor={id}` (+ `<span aria-hidden="true">*</span>` เมื่อ `required` — กฎ 30) → `Select`
+        (`name`, `required`, `disabled`, `autoComplete`, `value`/`onValueChange` หรือ `defaultValue`) → `SelectTrigger id={id} data-testid="<t>" data-value={ค่าปัจจุบัน} aria-invalid` →
+        `SelectValue placeholder="…"` (children = ข้อความของ**ค่าปัจจุบัน** → HTML จาก server มีข้อความ) → `SelectContent data-testid="<t>-options"` → `SelectItem value data-testid="<t>-option" data-value={value}` →
+        **Radix 2.4.1: `SelectValue` ที่มี children แสดง children ตายตัว** → ผู้เรียกทุกจุดต้องรู้ค่าปัจจุบัน: controlled ใช้ `value` ของตัวเอง; แบบที่เดิม uncontrolled
+        (คืนสินค้า `quantity:`/`reason:`, `billing-country-code-select`, `country-select` ใน add/edit address) เก็บค่าปัจจุบันใน state จาก `onValueChange` (เริ่มจาก `defaultValue`;
+        ยังส่ง `defaultValue` + `name` ให้ `Select` ตามเดิม) แล้วคำนวณ children และ `data-value` ของ trigger จาก state นั้น — ข้อความบน trigger ต้องตรงค่าใน `FormData` เสมอ;
+        `FieldError` (กฎ 43); `id` จาก `useId()`; ไม่มี label ที่มองเห็น → ไม่มี `Field` และ `SelectTrigger aria-label` ไทย; className ที่ส่งเข้า part ของ `ui/` เป็น layout เท่านั้น (`w-full`/`w-auto`) — กฎ 28
+    (c) **ส่วนที่เขียนเองได้ — เท่านี้** (ADR-033 ข้อ 2): (1) error ระดับช่อง = ขยาย `useFieldError` เดิมใน `common/components/input/index.tsx` (กฎ 43); (2) กัน form reset ทับค่า controlled
+        ใน `checkout/components/country-select` (กฎ 42 — ผู้ใช้เดียว ไม่แยก hook); (3) `CountrySelect` คงไว้เป็น component ของโดเมน (แปลง `region.countries` เป็น `SelectItem`, ผู้ใช้ 4 ฟอร์ม);
+        (4) helper e2e (กฎ 48) — ห้ามมี helper/hook/component อื่นสำหรับ select (reviewer ตรวจ; แยกเป็น helper ได้เมื่อมีผู้ใช้จริง ≥ 2 และระบุเหตุผลใน PR)
+41. (D2) ค่า `""` = ยังไม่เลือก แสดง placeholder (trigger มี `data-placeholder`); item = option เดิมที่ value ไม่ว่าง ลำดับ/ข้อความ/disabled เดิม; placeholder เดิมคงข้อความ
+    (`เลือก...`, `เลือกประเทศ`, `จำนวน`, `เลือกเหตุผล`, `เลือกวิธีจัดส่ง`); `<option value="">-</option>` ของ `billing-country-code-select` ตัดออก; `placeholder={false}` เลิกใช้ (ช่องที่ไม่เคยมี option ว่างมีค่าเสมอ)
+42. (D4) ใน `<form>`: `FormData` ชื่อ/ค่าเดิม (กฎ 13/33a) ผ่าน select ซ่อนของ Radix (`name`, `required`, `disabled`, `autoComplete`); uncontrolled ใช้ `defaultValue`;
+    **controlled คงค่าปัจจุบันเมื่อฟอร์ม reset** (React 19 reset หลัง action — spec 01 กฎ 110d): `onValueChange` ของผู้เรียกไม่ถูกเรียกจาก reset — กันใน `CountrySelect` (controlled ในฟอร์มมีเฉพาะ
+    ประเทศของ checkout); เลิก hack `defaultSelected`; `onValueChange(value: string)` แทน `onChange` แบบ event (ผู้เรียกปรับเอง)
+43. (D3 — แทนกฎ 32 ส่วน `<select>`) `useFieldError` (export เดิม) ขยายให้รับ select: `invalid` ของ select ซ่อน (listener แบบ capture บน element ของ `Field`) → `preventDefault()`,
+    `<t>-error` (`FieldError`) = `fieldErrorMessage(validity, { label, control: "select" })` (`กรุณาเลือก<label>`), `Field data-invalid` + `SelectTrigger aria-invalid="true"` (ตาม docs) + `aria-describedby` อ้าง id ของ error,
+    focus trigger ของช่องแรกที่ผิดตามลำดับ DOM (กฎ 32c); ค่าเปลี่ยนจน valid → error/`aria-invalid` หาย; prop/ค่า `error` ของผู้เรียกแสดงแบบเดียวกัน; ไม่เขียน logic ข้อความซ้ำ
+    (ใช้กับ select ที่ `required` ทุกตัว: ประเทศ 4 ฟอร์ม + `billing-country-code-select`)
+44. a11y: trigger `role="combobox"` ชื่อที่เข้าถึงได้ = ข้อความ label (ไม่มี `*`) หรือ `aria-label`; `aria-required="true"` เมื่อ `required`; คีย์บอร์ดตามกฎ 12; disabled → trigger `disabled`
+45. หน้าตา (ADR-033 ข้อ 3): trigger/กล่องรายการ = default ของ shadcn (`h-9` = 36px, `SelectContent` `item-aligned`) — **ยกเว้นกฎ 19/27** เฉพาะ trigger/กล่องรายการ/label ของ control ในตาราง inventory;
+    ช่องในแถวเดียวกันสูงเท่ากัน (กฎ 35); PDP: label `จำนวน` เหนือ trigger (`Field` vertical เหมือน `group-quantity`); ตะกร้า: ไม่มี label ที่มองเห็น — `aria-label="จำนวน"`; การ์ดตะกร้า 375px ไม่ล้น (core-47)
+46. มือถือ (Q-R49-1 = ก, owner 2026-11-28): popover ของ Radix ทุกอุปกรณ์; แตะ trigger แล้ว `<t>-options` อยู่ในจอทั้งกล่อง เลือกได้ และหน้าไม่ล้นแนวนอน (AC-17)
+47. no-JS (Q-R49-2 = ข, owner 2026-11-28): `Select` ของ PDP **ไม่มี `name`** (โหมด JS ส่งจำนวนผ่าน `addToCart` ไม่ใช้ `FormData`) → ฟอร์ม no-JS ไม่ส่ง `quantity` → route `/<cc>/cart/add`
+    ได้จำนวน 1 จาก `clampLineItemQuantity` (มีอยู่แล้ว — ไม่แก้ route); ปิด JS แล้ว trigger แสดง `1` แต่เปิดไม่ได้; ไม่มี native fallback; ช่องอื่นไม่รองรับการปิด JS (กฎ 32f ไม่ใช้กับ select)
+    (a) **ประกาศการแทนถ้อยคำ (ไม่แก้ไฟล์ spec 01 — แบบเดียวกับกฎ 27c; มีผลตั้งแต่ SFUI-16d merge)**:
+        - spec 01 **กฎข้อ 59** — "ทั้งโหมด JS และฟอร์ม no-JS" → "โหมด JS; ฟอร์ม no-JS ส่งจำนวน 1 เสมอ (ไม่มีตัวเลือกเมื่อปิด JS)" (การส่งจำนวนข้าม login ตาม CORE-14b ยังมีผล)
+        - spec 01 **AC-44** — "บน PDP ที่เลือก quantity 3 … Then cart มี line ของ variant นั้น `quantity=3`" → "กด Add to cart บน PDP (ไม่เลือกจำนวน) … URL มี `add_variant=` และ**ไม่มี** `add_quantity` (`loginPathForAddToCart` ใส่เฉพาะ quantity > 1),
+          HTML ไม่มี `name="add_quantity"` … login แล้ว cart มี `quantity=1`"
+        - spec 01 **AC-94** — ท่อน no-JS "เลือก 2 แล้ว submit และ login Then cart มี qty 2" → "submit (ไม่เลือกจำนวน) และ login Then cart มี qty 1"; ท่อน JS (เลือก 3 → qty 3) ยังมีผล
+48. e2e (D7): helper `e2e/support/select.ts` — `chooseOption(trigger, value)` (อ่าน testid ของ trigger, คลิกซ้ำจน `aria-expanded="true"` แล้วคลิก `<t>-option[data-value=…]` ใน `<t>-options`,
+    รอ `data-value` ของ trigger เปลี่ยน), `expectSelected(trigger, value)` (`data-value`), `selectOptions(trigger)` → `{ placeholder, options: [value, ข้อความ, disabled][] }` (เปิด-อ่าน-`Escape`);
+    หาด้วย testid เท่านั้น (ไม่ใช้ `getByRole`/`getByText`/`selectOption`); loop "เลือกซ้ำจน hydrate" เดิมถูกแทนด้วย helper
+49. แก้ e2e เดิมได้เฉพาะบรรทัดที่โต้ตอบ/อ่าน select: `selectOption` → `chooseOption`, `toHaveValue` บน testid ของ select → `expectSelected`, ตัวอ่าน `<option>`/`locator("option")` → `selectOptions`,
+    `xpath=..` ของ select ในตะกร้า (core-19c) → trigger; ค่าที่คาดของ AC-34 เปลี่ยนตามกฎ 41; assertion ผลทางธุรกิจคงเดิม — ยกเว้น no-JS ของ core-14b (spec 01 AC-44) และ core-24 (spec 01 AC-94)
+    ที่เปลี่ยนตามกฎ 47a (ลบ `selectOption`, คาดจำนวน 1); `support/stripe.ts` `fillCard` (iframe ของ Stripe) คง `selectOption`
+50. testid เดิมคงที่ (อยู่บน trigger); testid ใหม่ `<t>-options`, `<t>-option` (+ `<t>-label`/`<t>-error` กฎ 29) ไม่ชน baseline; ข้อความไทยของ baseline คงอยู่ (กฎ 10); `aria-label` ใหม่เป็นไทย
+51. ไม่แก้ `src/components/ui/*` ด้วยมือ (ถ้า `--dry-run --diff` ไม่ตรง ใช้ `add --overwrite` เท่านั้น — กฎ 40a), `globals.css`, `package.json`/lockfile, `apps/backend/**`; ไม่ add `native-select`/`combobox`/`form`
+
+### Business rules — ที่อยู่ไทย (owner 2026-11-28)
+52. ตำบล/แขวง = `address_2` ของ Medusa ทุกที่ (cart shipping/billing, ที่อยู่ของลูกค้า, ที่อยู่ใบเสร็จในโปรไฟล์ = ที่อยู่ของลูกค้า); ช่องใหม่ใน checkout: `name` `shipping_address.address_2` testid `shipping-address-2-input`,
+    `billing_address.address_2` testid `billing-address-2-input` (testid เดียวกับช่องของ `profile-billing-address` — คนละหน้า); ช่องบัญชีเดิม (`address-2-input`, `billing-address-2-input`) เปลี่ยน label เป็นตำบล
+53. label/ลำดับ DOM ในทั้ง 5 ฟอร์ม (checkout `shipping-address`, `billing_address`, บัญชี `add-address`, `edit-address-modal`, `profile-billing-address`):
+    ชื่อ → นามสกุล → บริษัท → **`บ้านเลขที่ หมู่ ซอย ถนน`** (`address_1`, placeholder `เช่น 99/1 หมู่ 2 ซ.สุขุมวิท 3 ถ.สุขุมวิท`, `autoComplete="address-line1"`) →
+    **`ตำบล/แขวง`** (`address_2`, `autoComplete="address-level3"`) → `เขต/อำเภอ` (`city` — ข้อความเดิม) → `จังหวัด` → `รหัสไปรษณีย์` → ประเทศ → (อีเมล/เบอร์โทรศัพท์ตามฟอร์มเดิม);
+    label เดิม `ที่อยู่` (ช่อง `address_1`) และ `อาคาร ห้อง ฯลฯ` เลิกใช้ — `e2e/support/sfui-baseline.json` แก้ได้**เฉพาะ** 3 ข้อความ: `ที่อยู่` (ลบเมื่อ AC-5 ไม่พบแล้ว), `อาคาร ห้อง ฯลฯ` (ลบ),
+    `MISSING_ADDRESS_MESSAGE` (ค่าใหม่ตามกฎ 55) + เพิ่ม testid `shipping-address-2-input` (รายการเดียวกับ AC-54)
+54. การจัดวาง (แทนแถวที่อยู่ของตารางกฎ 37b): ≥ 768px คู่ **ชื่อ–นามสกุล, ตำบล/แขวง–เขต/อำเภอ, จังหวัด–รหัสไปรษณีย์** (`md:grid-cols-2`; เลิก `md:grid-cols-[144px_1fr]`)
+    + checkout `shipping-address` อีเมล–เบอร์โทรศัพท์ (เดิม); บริษัท, บ้านเลขที่…, ประเทศ, เบอร์โทรศัพท์ (billing/บัญชี) แถวละช่อง; < 768px แถวละช่อง (กฎ 37a) — คู่ ที่อยู่–บริษัท, ประเทศ–จังหวัด,
+    รหัสไปรษณีย์–เขต/อำเภอ, จังหวัด–ประเทศ ของรอบ 48 ยกเลิก
+55. บังคับกรอก (Q-R49-4 — owner 2026-11-28: บังคับ): ช่องตำบล `required` ทั้ง 5 ฟอร์ม และ `REQUIRED_ADDRESS_FIELDS` เพิ่ม `address_2` (ช่องว่างล้วนถือว่าไม่กรอก — spec 01 กฎ 110b);
+    `MISSING_ADDRESS_MESSAGE` = `กรุณากรอกชื่อ นามสกุล ที่อยู่ ตำบล/แขวง เขต/อำเภอ และรหัสไปรษณีย์ให้ครบ (ช่องที่มีแต่ช่องว่างถือว่ายังไม่ได้กรอก)`;
+    **ข้อมูลเดิมที่ไม่มี `address_2` ยังใช้ได้**: order/ที่อยู่เดิมแสดงผลได้ (กฎ 57), group join ด้วยที่อยู่ที่บันทึกไว้ไม่ตรวจเพิ่ม, เลือกที่อยู่เดิมใน checkout → ช่องตำบลว่างแสดง error ระดับช่อง (กฎ 32) จนกรอก
+56. การไหลของข้อมูล: `lib/data/cart.ts` `addressFrom` อ่าน `<prefix>.address_2` (ตัดช่องว่าง/zero-width เหมือนช่องอื่น) แทน `""`; `lib/util/compare-addresses.ts` และ
+    `checkout/components/shipping-address` (`SAVED_ADDRESS_FIELDS`, state เริ่มต้น, `setFormAddress`) + `billing_address` (state) มี `address_2`; `lib/data/customer.ts`, `lib/data/group-join.ts`,
+    backend `join-group.ts` และ `payment-button` (`line2`) มี `address_2` อยู่แล้ว — ไม่แก้
+57. แสดงผลตามลำดับไทย: helper pure `src/lib/util/address-lines.ts` (ผู้ใช้ ≥ 2) คืน `[ "<address_1> <address_2> <city> <province> <postal_code>" (ข้ามช่องว่าง), "<COUNTRY>" ]`
+    ใช้ที่ `checkout/components/addresses` (สรุปจัดส่ง/ใบเสร็จ 3 กล่อง), `checkout/components/shipping` (ข้อความที่อยู่), `order/components/shipping-details`, `checkout/components/address-select` (รายการ),
+    การ์ด `edit-address-modal`, สรุป `profile-billing-address`, `group-join` (`addressLabel` = ชื่อ + บรรทัดแรก); ไม่มีจุลภาค/ช่องว่างซ้อนเมื่อช่องใดว่าง
+
+### Acceptance criteria (ต่อจาก AC-39 ของ SFUI-14 #612)
+- AC-40 (SFUI-15, กฎ 40b, 42, 44) unit `src/modules/common/components/input/select-field-error.test.tsx` (render `Field` + `Select*` ของ `ui/` จริงตามโครงกฎ 40b ในไฟล์ test — ไม่มี component กลาง;
+  polyfill jsdom; ไม่ mock primitive): `<t>-label` อยู่ก่อน trigger, trigger `role="combobox"` ชื่อ `ประเทศ`, `aria-required="true"`, `*` อยู่ใน `aria-hidden`; `renderToString` มีข้อความของค่าที่เลือก (children ของ `SelectValue`);
+  ใน `<form>` เลือก item (คีย์บอร์ด) → `new FormData(form).get(name)` = ค่า และ trigger `data-value` = ค่า; `defaultValue` เข้า `FormData`;
+  แบบ `defaultValue` + state จาก `onValueChange` (กฎ 40b): เลือก item อื่น → ข้อความของ trigger เปลี่ยนเป็นข้อความของ item นั้น และตรงกับค่าใน `FormData` (เทียบ item ที่มี `data-value` = ค่าใน `FormData`)
+- AC-41 (SFUI-15, กฎ 43) unit (ไฟล์เดียวกัน) — `useFieldError` กับ select: ช่อง `required` ว่างใน `<form>` → `form.requestSubmit()` ไม่ส่ง, event `invalid` `defaultPrevented`, `<t>-error` = `fieldErrorMessage` ของ select
+  (`กรุณาเลือกประเทศ`), `Field` มี `data-invalid`, trigger `aria-invalid="true"` + `aria-describedby` มี id ของ `<t>-error`, `document.activeElement` = trigger; เลือกค่าแล้ว error หาย; สองช่องผิด → focus ช่องแรก;
+  test เดิมของ `Input` ใน `input.test.tsx` ผ่านไม่แก้
+- AC-42 (SFUI-15, กฎ 40a, 48, 51) static `e2e/sfui-15-select.unit.spec.ts` + บันทึกใน PR: `--dry-run --diff` ของ `select`, `field`, `label` ได้ "No changes." (แนบผลใน PR); AC-19 ผ่าน;
+  ไม่มีไฟล์ใหม่ใน `src/components/**` และ `src/modules/common/components/**` นอกจาก test (ไม่มี component กลางของ select); `e2e/support/select.ts` ไม่มี `getByRole`/`getByText`/`selectOption`
+- AC-43 (SFUI-16a) e2e: `core-20-return-request`, `core-20c/20d-return-window`, `core-55-return-receive`, `core-71-return-contact-store`, `group-buy-join`, `group-buy-ui-polish`, `core-32-shipping-profile-filter`,
+  `sfui-12c-feature-forms`, `sfui-8-floating-label`, `sfui-9e-font` ผ่านโดยแก้ตามกฎ 49 เท่านั้น; ใหม่ `e2e/sfui-16-select.spec.ts` (ส่วน 16a): `return-item-quantity` เปิดด้วย `Enter`, `ArrowDown` + `Enter` เปลี่ยนค่า, `Escape` ไม่เปลี่ยน;
+  เลือก `return-item-reason` แล้วข้อความบน trigger = ข้อความของ item ที่เลือก (กฎ 40b);
+  trigger สูง 36px; `selectOptions` ของ `group-shipping-option` มี placeholder `เลือกวิธีจัดส่ง` และไม่มี item value ว่าง
+- AC-44 (SFUI-16b) e2e: checkout/บัญชีผ่านโดยแก้ตามกฎ 49 (`core-store`, `core-38`, `core-52`, `core-63`, `core-23c`, `ev-7c`, `ev-7d`, `thai-ui-checkout`, `affiliate-last-click`, `support/stripe.ts` (~บรรทัด 116 `shipping-country-select` — ไม่ใช่ `fillCard`),
+  `sfui-11-form-field`, `sfui-11b-field-errors`, `sfui-12a/12b`, `core-4e/4g/4j`, `sfui-9a`) — โดยเฉพาะ: core-52 ค่าประเทศคงหลัง error ของ server (`expectSelected`), sfui-11b `shipping-country-select-error` = `กรุณาเลือกประเทศ`
+  และ focus อยู่ที่ trigger, `billing-country-code-select` ไม่มี item `-` (กฎ 41); unit `core-52-address-form-state.test.ts` (controlled + `form.reset()` → ค่าไม่เปลี่ยน, `onValueChange` ไม่ถูกเรียก)
+  และ `checkout-thai-polish.test.ts` (placeholder `เลือกประเทศ`) ปรับตาม `CountrySelect` ใหม่
+- AC-45 (SFUI-16c) e2e: `core-44`, `core-47`, `core-48`, `pay-18`, `core-14g`, `core-19c`, `core-42`, `flash-sale-fs15` (ตะกร้า), `fs-21` (ตะกร้า) ผ่านโดยแก้ตามกฎ 49; ใหม่ (ใน `sfui-16-select.spec.ts`):
+  เลือก 2 ใน `product-select-button` → server action `updateLineItem` ถูกส่ง **1 ครั้ง** และ cart ใน backend จำนวน 2; trigger ชื่อที่เข้าถึงได้ `จำนวน`
+- AC-46 (SFUI-16d, กฎ 47) e2e: `core-24` (JS), `core-14b` (JS), `flash-sale-fs15` (PDP), `fs-21`, `fs-23`, `sfui-8-floating-label` (ป้าย PDP) ผ่านโดยแก้ตามกฎ 49;
+  **no-JS (กฎ 47a)**: `core-14b` (spec 01 AC-44) — ไม่เลือกจำนวน กด `add-product-button` → URL มี `add_variant=` และไม่มี `add_quantity`
+  (`lib/util/pending-add-to-cart.ts` `loginPathForAddToCart` ใส่เฉพาะ quantity > 1 — route/util ไม่แก้), HTML ของหน้า login ไม่มี `name="add_quantity"`, login แล้ว cart มี `quantity=1`;
+  `core-24` (spec 01 AC-94) no-JS — เกณฑ์ URL/HTML เดียวกัน, submit แล้ว login → cart qty 1;
+  ใหม่ (ใน `sfui-16-select.spec.ts`): ปิด JS → ไม่มี `select[name="quantity"]` ในหน้า และ `product-quantity-select` แสดง `1`; เปิด JS → `product-quantity-select` เป็น `button[role="combobox"]`, เลือก 3 แล้วเพิ่ม → cart qty 3
+- AC-47 (SFUI-17, กฎ 39, 40c) static (ขยาย `sfui-13-form-guard.unit.spec.ts`): ไม่มี `<select` ใน JSX ของ `src/modules/**`/`src/app/**`; ไม่มีไดเรกทอรี/การ import `common/components/native-select`, `cart/components/cart-item-select`;
+  `ALLOW_LIST` ไม่มีรายการ `select`; ทุก `<SelectTrigger` ในไฟล์ของตาราง inventory มี `id` ที่ตรงกับ `htmlFor` ของ `FieldLabel` ในไฟล์เดียวกัน (ข้อความ expression เดียวกัน) หรือมี `aria-label`
+  (แทนข้อตรวจ label ของ `NativeSelect` ใน `FIELD_COMPONENTS`); `selectOption(` ใน `e2e/**` มีเฉพาะใน `fillCard` ของ `support/stripe.ts` (select ใน iframe ของ Stripe)
+- AC-48 (ทุก task select) reviewer: `git diff origin/develop --stat -- apps/backend apps/storefront/package.json pnpm-lock.yaml apps/storefront/src/styles/globals.css apps/storefront/src/components/ui` ว่าง;
+  diff ของ e2e เดิมเปลี่ยนเฉพาะบรรทัดตามกฎ 49; AC-5, AC-17, AC-19 ผ่าน; e2e storefront ทั้งชุดผ่านใน CI
+- AC-49 (SFUI-16b, 16c, กฎ 46) e2e ใน `sfui-16-select.spec.ts`: viewport 390×844 — แตะ `shipping-country-select` และ `product-select-button` → `<t>-options` มองเห็นและ boundingBox อยู่ในจอทั้งกล่อง, เลือก item ได้, `scrollWidth <= innerWidth`
+- AC-50 (SFUI-18a, กฎ 56–57) unit: `src/lib/util/address-lines.test.ts` ลำดับครบ/ข้ามช่องว่าง (ไม่มี `,` หรือช่องว่างซ้อน); `compare-addresses` ต่างกันแค่ `address_2` → `false`;
+  `addressFrom` (ใน `core-63-address-invisible.test.ts`) ส่ง `address_2` ที่ตัดช่องว่าง/zero-width แล้ว (เดิมคาด `""`)
+- AC-51 (SFUI-18a) e2e ใหม่ `e2e/sfui-18-thai-address.spec.ts`: ที่อยู่ที่บันทึกไว้มี `address_2` (สร้างผ่าน API) → checkout เลือกจาก `shipping-address-select` แล้วส่ง → `cart.shipping_address.address_2` = ค่านั้น (API);
+  `shipping-address-summary` ของ checkout และหน้าคำสั่งซื้อมี `address_1`, `address_2`, `city`, `province`, `postal_code` ตามลำดับ (`indexOf` เพิ่มขึ้น); ที่อยู่เดิมไม่มี `address_2` แสดงได้ไม่มี `,` ซ้อน;
+  group join ด้วยที่อยู่ที่มี `address_2` → cart ของกลุ่มมี `address_2`
+- AC-52 (SFUI-18b, กฎ 52–54) e2e (ใน `sfui-18-thai-address.spec.ts`): ทั้ง 5 ฟอร์ม — label ของ `address_1` และตำบลตามกฎ 53 (`expectThai`), ลำดับ DOM ของ testid ตามกฎ 53 (`compareDocumentPosition`),
+  กรอกตำบลแล้วบันทึก → ค่าใน API (cart, `/store/customers/me/addresses`, ที่อยู่ใบเสร็จของโปรไฟล์) = ค่าที่กรอก; จัดวาง 375/767 แถวละช่อง, 768/1280 คู่ตามกฎ 54 (เกณฑ์ AC-37) — แก้ `sfui-12a/12b` ส่วน AC-37 ให้ตรงตารางใหม่
+- AC-53 (SFUI-18c, กฎ 55) unit `address-required` + `error-message.test.ts`: `address_2` ว่าง/ช่องว่างล้วน → missing, ข้อความใหม่; e2e: ส่งโดยตำบลว่าง → `shipping-address-2-input-error` = `fieldErrorMessage` จาก label จริง;
+  ตำบลเป็นช่องว่างล้วน → `address-error-message` = `MISSING_ADDRESS_MESSAGE`; e2e เดิมที่กรอกฟอร์มที่อยู่เพิ่มบรรทัดกรอกตำบล (เพิ่มเท่านั้น)
+- AC-54 (SFUI-18a/18b/18c) reviewer: `apps/backend/**` ไม่ถูกแก้; `sfui-baseline.json` เปลี่ยนเฉพาะรายการของกฎ 53: ข้อความ `ที่อยู่`, `อาคาร ห้อง ฯลฯ`, `MISSING_ADDRESS_MESSAGE`
+  และ testid ใหม่ `shipping-address-2-input`; diff ของ e2e ใน 18c เป็นบรรทัดเพิ่ม (กรอกตำบล) เท่านั้น
+
+### Test plan
+| ชนิด | AC |
+|---|---|
+| static (`test:e2e:unit`) | AC-42, AC-47 (+ AC-5, AC-19, AC-35 เดิม) |
+| unit (Vitest + jsdom) | AC-40, AC-41, AC-50, AC-53 (unit) |
+| e2e (Playwright) | AC-43–AC-46, AC-49, AC-51–AC-53 + ชุดเดิม (กฎ 49) |
+| reviewer | AC-48, AC-54 |
+qa: หน้าตา select/popover และช่องที่อยู่ที่เปลี่ยนเป็น default ของ shadcn — ไม่ใช่ defect (กฎ 45); evidence `docs/evidence/storefront-select/<task>/` ≤ 5 รูป (15 ไม่มี UI ไม่ต้อง qa) ·
+builder รัน e2e **ทุก** spec ที่อ้างหน้าที่แตะ (grep path/testid) ก่อน push
+
+### Tasks (รอบ 49)
+เจ้าของไฟล์ร่วม (แก้ตามลำดับ stack): `e2e/sfui-13-form-guard.unit.spec.ts` (16c → 16d → 17), `flash-sale-fs15`/`fs-21` (16c → 16d), `sfui-8-floating-label` (16a → 16d),
+ฟอร์มที่อยู่ + `sfui-12a/12b`/`core-52` + `sfui-baseline.json` + `sfui-18-thai-address.spec.ts` (16b → 18a → 18b → 18c), `group-join.tsx` (16a → 18a), `input/index.tsx` (15 เท่านั้น) · ไม่แตะ `globals.css` (SFUI-14 #612) · ผู้เรียกทุกจุดประกอบ `Field` + `Select*` ตามกฎ 40b (ไม่มี component กลาง)
+
+| Task | งาน — ไฟล์ที่เป็นเจ้าของ | AC | Depends | ∥ | LOC |
+|---|---|---|---|---|---|
+| SFUI-15 | ฐาน: ยืนยัน `select`/`field`/`label` ตรง registry (`add --dry-run --diff`, กฎ 40a), ขยาย `useFieldError` ใน `common/components/input/index.tsx` ให้รับ select (กฎ 43), unit ใหม่ `common/components/input/select-field-error.test.tsx`, ใหม่ `e2e/support/select.ts`, ใหม่ `e2e/sfui-15-select.unit.spec.ts` | AC-40–AC-42, AC-48 | PR เอกสารรอบ 49 (stack) | — | ~300 |
+| SFUI-16a | คืนสินค้า + group buy → `Field` + `Select*` (กฎ 40b): `returns/components/return-request-form`, `group-buy/components/group-page/group-join.tsx` (3 ตัว); e2e ตาม AC-43 + ใหม่ `sfui-16-select.spec.ts` (ส่วน 16a) | AC-43, AC-48 | SFUI-15 | ∥ 16b, 16c | ~280 |
+| SFUI-16b | ประเทศ: `checkout/components/country-select` (`Field` + `Select*` + กัน reset ทับค่า, ลบ hack `defaultSelected`), ผู้เรียก `checkout/components/{shipping-address,billing_address}` (`onValueChange`), `account/components/{address-card/add-address,address-card/edit-address-modal}`, `account/components/profile-billing-address` (ประกอบเอง — ไม่ใช่ `CountrySelect`); unit 2 ไฟล์ + e2e ตาม AC-44, AC-49 (checkout) | AC-44, AC-48, AC-49 | SFUI-15 | ∥ 16a, 16c | ~420 — เกินเพดานเพราะ e2e ~20 ไฟล์แก้บรรทัดแบบกลไก (~120 LOC ผ่าน helper); แยกไม่ได้เพราะ `CountrySelect` ใช้ร่วม 4 ฟอร์ม — แยกแล้ว PR แรกแดง; เกิน ~500 หยุดแจ้ง planner |
+| SFUI-16c | จำนวนในตะกร้า: ลบ `cart/components/cart-item-select/` แล้วประกอบ `Select*` (ไม่มี `Field`, `aria-label="จำนวน"`) ใน `cart/components/item/index.tsx`; ลบรายการ allow-list ของไฟล์นี้; e2e ตาม AC-45, AC-49 (ตะกร้า) | AC-45, AC-48, AC-49 | SFUI-15 | ∥ 16a, 16b | ~250 |
+| SFUI-16d | จำนวนบน PDP: `products/components/product-actions/index.tsx` (`Field` + `Select*` ไม่มี `name`, label `จำนวน` — กฎ 47); ลบรายการ allow-list; e2e ตาม AC-46 รวม no-JS ของ `core-14b`/`core-24` (กฎ 47a) | AC-46, AC-48 | SFUI-16a, SFUI-16c | — | ~200 |
+| SFUI-17 | ปิดงาน select: ลบ `common/components/native-select/`, ส่วน `NativeSelect` ใน `input/input.test.tsx`; guard `sfui-13-form-guard` ข้อ AC-47 (แทน `FIELD_COMPONENTS` ของ `NativeSelect` ด้วยข้อตรวจ `SelectTrigger`) | AC-47, AC-48 | SFUI-16d, SFUI-16b | ∥ 18a, 18b, 18c | ~170 |
+| SFUI-18a | ที่อยู่ไทย — ข้อมูล + การแสดงผล (กฎ 56–57): `lib/data/cart.ts` (`addressFrom`), `lib/util/compare-addresses.ts`, ใหม่ `lib/util/address-lines.{ts,test.ts}`, state ของ `checkout/components/{shipping-address,billing_address}`, จุดแสดงผล 7 ไฟล์ในกฎ 57; unit `core-63-address-invisible.test.ts`; e2e ใหม่ `sfui-18-thai-address.spec.ts` (AC-51) + e2e ที่ assert รูปแบบสรุปที่อยู่เดิม (grep `address-summary`) | AC-50, AC-51, AC-54 | SFUI-16a, SFUI-16b | ∥ 16c, 16d, 17 | ~300 |
+| SFUI-18b | ที่อยู่ไทย — ฟอร์ม **ยังไม่บังคับ** (กฎ 52–54): ช่องตำบล (ไม่มี `required`) + ลำดับ + label/placeholder + จัดวาง ใน 5 ฟอร์ม, `sfui-baseline.json` (`ที่อยู่`, `อาคาร ห้อง ฯลฯ`, testid ใหม่ — AC-54), แก้ AC-37 ใน `sfui-12a/12b`, ส่วน AC-52 ของ `sfui-18-thai-address.spec.ts` | AC-52, AC-54 | SFUI-18a | — | ~300 |
+| SFUI-18c | ที่อยู่ไทย — บังคับกรอก (กฎ 55): `required` ของช่องตำบลใน 5 ฟอร์ม, `lib/util/address-required.ts` (+ test, `error-message.test.ts`, `core-63-address-invisible.test.ts` ส่วนข้อความ), `sfui-baseline.json` (`MISSING_ADDRESS_MESSAGE`), **เพิ่มบรรทัดกรอกตำบล** ใน e2e/`support/stripe.ts` และ fixture ที่อยู่ที่บันทึกไว้ (ผ่าน API) ที่ไฟล์ e2e ใช้ (~15 ไฟล์ — เพิ่มอย่างเดียว), ส่วน AC-53 ของ `sfui-18-thai-address.spec.ts` | AC-53, AC-54 | SFUI-18b | — | ~250 |
+
+ลำดับ: SFUI-15 → (16a ∥ 16b ∥ 16c) → 16d (หลัง 16a + 16c) → 17 (หลัง 16d + 16b) · 18a (หลัง 16a + 16b) → 18b → 18c · merge จริงทีละตัว: 15 → 16a → 16b → 16c → 16d → 17 → 18a → 18b → 18c
+(18b ยังไม่บังคับกรอก → e2e เดิมที่กรอกที่อยู่ผ่านโดยไม่ต้องเพิ่มบรรทัด; 18c เพิ่ม `required` พร้อมบรรทัดกรอกตำบลใน PR เดียว — แต่ละ PR เขียวได้เอง)
+(sync `origin/develop` + CI เขียวก่อนแต่ละตัว) · **stack** แบบรอบ 44–48 (Q-R49-3 = ได้, owner 2026-11-28): 15 แตกจาก branch เอกสาร `docs/storefront-shadcn-select`, task ที่มี Depends สองตัวแตกจาก branch ที่รวมทั้งสองแล้ว →
+เปิด PR ทั้งชุดตอนท้าย (base = `develop`) · release v0.4.0 (#603) พักจน 18c และ SFUI-14 (#612) merge
+
+### Open questions (รอบ 49)
+- ~~Q-R49-1~~ = ก (owner 2026-11-28): popover ของ Radix ทุกอุปกรณ์
+- ~~Q-R49-2~~ = **ข** (owner 2026-11-28): ปิด JS แล้วจำนวนบน PDP = 1 เสมอ — แทนถ้อยคำ spec 01 กฎ 59, AC-44, AC-94 (กฎ 47a)
+- ~~Q-R49-3~~ = stack ได้ (owner 2026-11-28)
+- ~~Q-R49-4~~ = บังคับกรอก (owner 2026-11-28 — ตามข้อเสนอ; กฎ 55) · ข้อสังเกต: ที่อยู่ในบัญชีที่ลูกค้าเคยกรอก "อาคาร ห้อง ฯลฯ" ไว้ใน `address_2` จะแสดงในช่องตำบล (ลูกค้าแก้เอง — ไม่ย้ายข้อมูล)
+- ~~ADR-033 D1–D7~~ = accepted (owner 2026-11-28): D1 = ใช้ component ของ shadcn จาก CLI + ประกอบตามตัวอย่าง docs (ไม่มี `SelectField`), D2–D5/D7 = ก, D6 = ข
+- **Q-R49-5 (ทบทวนรอบ 48 — ไม่แก้ในรอบนี้)**: component ร่วมของรอบ 48 ที่ "ประกอบเอง" ทั้งที่ shadcn มีตัวอย่าง/ชิ้นส่วนให้ — ควรย้ายไปประกอบตามตัวอย่าง docs ตรงที่ผู้เรียกไหม?
+  ข้อสังเกตของ planner (ตรวจ registry 4.23.1 + โค้ดที่ `58e2436a`):
+  (a) `common/components/input` (`Input` ที่มี label/`*`/`useId`/error/ปุ่มรหัสผ่าน) — ชิ้นส่วนเป็นของ shadcn ครบ (`field`, `input`, `input-group`) แต่ห่อเป็น component กลางของเรา ผู้เรียก ~45 ช่อง;
+      สิ่งที่ shadcn **ไม่มี** จริงคือ `*` (กฎ 30), error ไทยจาก validation native (`useFieldError`) และ `useId`/`aria-describedby` อัตโนมัติ
+  (b) `common/components/native-select` — shadcn **มี** `native-select` ใน registry แต่รอบ 44 เลือกเขียนเอง (wrapper `w-fit` ทำ CORE-4g ล้ม) — ถูกลบใน SFUI-17 อยู่แล้ว
+  (c) `common/components/checkbox` — `Field orientation="horizontal"` + `Checkbox` ตามตัวอย่าง docs บวกการกัน reset (`onClick` + `defaultChecked`, qa #353) ซึ่ง shadcn ไม่มี — เหตุผลเดียวกับกฎ 42
+  (d) `useFieldError` — shadcn ไม่มี validation นอก `form` (react-hook-form) → จำเป็นถ้าไม่ใช้ `form`
+  (e) นอกฟอร์ม: registry มี `spinner` แต่ `Button` wrapper (`isLoading`) และ `cart/components/item` ใช้ icon หมุนของเรา (`common/icons/spinner`/`LoaderCircle`)
+  **เสนอ**: ไม่ย้ายตอนนี้ (ก่อน v0.4.0) — ถ้า owner ต้องการ ให้เป็น backlog หลัง v0.4.0: (a) แตก `Input` ออกเป็นการประกอบตาม docs ทีละฟอร์ม + คง `useFieldError` เป็น hook, (e) ใช้ `spinner` ของ shadcn
+- **Q-R49-6 (`form` ของ shadcn)**: registry มี `form` (react-hook-form + `@hookform/resolvers` + `zod` — dependency ใหม่ 3 ตัว, state/validation ฟอร์มย้ายไป client แทน server action + `useActionState`)
+  ถ้าใช้จะแทน `useFieldError` ได้ แต่ต้องเขียนฟอร์มทุกตัวใหม่และ e2e การคงค่าหลัง error (CORE-4f/4h/20d/23c/52) เสี่ยง — **ไม่เลือกในรอบนี้** (ADR-032 D1 ค เดิม); **เสนอ คงไม่ใช้** · ถาม owner ว่ายืนยันไหม
+- ข้อเสนอของ planner ที่ owner แย้งได้ (ไม่ใช่คำถามบังคับ): label `บ้านเลขที่ หมู่ ซอย ถนน` + placeholder ตัวอย่าง, ป้าย `เขต/อำเภอ` คงข้อความเดิม, คู่ช่องใหม่ (กฎ 54), บริษัทอยู่ก่อนบ้านเลขที่,
+  รูปแบบสรุปที่อยู่บรรทัดเดียวตามลำดับไทย (กฎ 57), ตัด option `-` ของประเทศในที่อยู่ใบเสร็จ (กฎ 41)
 
 ## Open questions
 - ~~ADR-032 D1–D5~~ ตัดสินแล้ว (owner 2026-11-27): **รับตามข้อเสนอ** — D1 = ก, D2 = ก (placeholder เฉพาะเบอร์โทร/รหัสไปรษณีย์), D3 = ก (`*` อย่างเดียว ไม่ใส่ "(ไม่บังคับ)"),
