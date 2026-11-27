@@ -77,6 +77,7 @@ const Register = ({ setCurrentView }: Props) => {
             name="phone"
             type="tel"
             autoComplete="tel"
+            placeholder="เช่น 0812345678"
             defaultValue={fields?.phone}
             data-testid="phone-input"
           />

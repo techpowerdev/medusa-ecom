@@ -93,7 +93,7 @@ const AddAddress = ({
         </DialogDescription>
         <form onSubmit={onSubmit}>
           <div className="flex flex-col gap-y-2">
-            <div className="grid grid-cols-2 gap-x-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <Input
                 label="ชื่อ"
                 name="first_name"
@@ -128,12 +128,13 @@ const AddAddress = ({
               autoComplete="address-line2"
               data-testid="address-2-input"
             />
-            <div className="grid grid-cols-[144px_1fr] gap-x-2">
+            <div className="grid grid-cols-1 md:grid-cols-[144px_1fr] gap-2">
               <Input
                 label="รหัสไปรษณีย์"
                 name="postal_code"
                 required
                 autoComplete="postal-code"
+                placeholder="เช่น 10110"
                 data-testid="postal-code-input"
               />
               <Input
@@ -144,23 +145,28 @@ const AddAddress = ({
                 data-testid="city-input"
               />
             </div>
-            <Input
-              label="จังหวัด"
-              name="province"
-              autoComplete="address-level1"
-              data-testid="state-input"
-            />
-            <CountrySelect
-              region={region}
-              name="country_code"
-              required
-              autoComplete="country"
-              data-testid="country-select"
-            />
+            {/* SFUI-12a (spec 09 กฎ 37b): จังหวัด–ประเทศ แถวเดียวกันที่ ≥ 768px */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <Input
+                label="จังหวัด"
+                name="province"
+                autoComplete="address-level1"
+                data-testid="state-input"
+              />
+              <CountrySelect
+                region={region}
+                name="country_code"
+                required
+                autoComplete="country"
+                data-testid="country-select"
+              />
+            </div>
             <Input
               label="เบอร์โทรศัพท์"
               name="phone"
-              autoComplete="phone"
+              type="tel"
+              autoComplete="tel"
+              placeholder="เช่น 0812345678"
               data-testid="phone-input"
             />
           </div>

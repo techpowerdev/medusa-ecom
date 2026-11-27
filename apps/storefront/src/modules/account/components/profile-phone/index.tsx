@@ -61,8 +61,9 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
           <Input
             label="เบอร์โทรศัพท์"
             name="phone"
-            type="phone"
-            autoComplete="phone"
+            type="tel"
+            autoComplete="tel"
+            placeholder="เช่น 0812345678"
             defaultValue={customer.phone ?? ""}
             data-testid="phone-input"
           />
