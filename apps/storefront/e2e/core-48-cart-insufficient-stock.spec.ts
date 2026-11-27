@@ -39,17 +39,12 @@ const isUpdateBody = (quantity: number) => (body: string) => {
   }
 }
 
-/** เลือกจำนวนแล้วรอ server action ของ updateLineItem ตอบจริง — ก่อน hydrate เสร็จ selectOption เปลี่ยนแค่ DOM จึงเลือกซ้ำ (review #287) */
+/** เลือกจำนวนแล้วรอ server action ของ updateLineItem ตอบจริง — chooseOption รอ hydrate เอง (SFUI-17, spec 09 กฎ 48) จึงเลือกครั้งเดียว */
 async function selectQuantity(page: Page, quantity: number) {
   const select = page.getByTestId("product-select-button")
-  await expect(async () => {
-    const updated = page.waitForResponse(
-      (res) => isServerAction(res.request(), isUpdateBody(quantity)),
-      { timeout: 5_000 }
-    )
-    await chooseOption(select, String(quantity), { waitValue: false })
-    expect((await updated).status(), "server action ของ updateLineItem").toBe(200)
-  }).toPass()
+  const updated = page.waitForResponse((res) => isServerAction(res.request(), isUpdateBody(quantity)))
+  await chooseOption(select, String(quantity), { waitValue: false })
+  expect((await updated).status(), "server action ของ updateLineItem").toBe(200)
 }
 
 /** error อยู่ภายใน product-row (การ์ดที่ 375) และอยู่ในจอ ไม่ทำให้หน้าล้น */

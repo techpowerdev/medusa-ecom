@@ -20,7 +20,7 @@ import {
 import { chooseOption, expectSelected, selectOptions } from "./support/select"
 import { addToCartFromPdp, isAddToCartBody, isServerAction, waitForServerAction } from "./support/server-action"
 
-// SFUI-16 (spec 09 รอบ 49 กฎ 40b–46; ADR-033): select ของ storefront เป็น Select ของ shadcn (Radix) — 16a: คืนสินค้า + group buy join (AC-43), 16b: ประเทศ (AC-44/49), 16c: จำนวนในตะกร้า (AC-45/49)
+// SFUI-16 (spec 09 รอบ 49 กฎ 40b–46; ADR-033): select ของ storefront เป็น Select ของ shadcn (Radix) — 16a: คืนสินค้า + group buy join (AC-43), 16b: ประเทศ (AC-44/49), 16c: จำนวนในตะกร้า (AC-45/49), 16d: จำนวนบน PDP (AC-46)
 // หา element ด้วย data-testid เท่านั้น (trigger `<t>`, `<t>-options`, `<t>-option` + data-value)
 
 const heightOf = (control: Locator) => control.evaluate((el) => getComputedStyle(el).height)
@@ -145,6 +145,7 @@ test.describe("SFUI-16b ประเทศ", () => {
     const options = page.getByTestId("shipping-country-select-options")
     await step("แตะ trigger → กล่องรายการมองเห็นและอยู่ในจอทั้งกล่อง", async () => {
       await trigger.scrollIntoViewIfNeeded()
+      // แตะเอง ไม่ใช้ helper: open() ของ support/select.ts ใช้ click (pointerType mouse) — AC-49 ต้องการการแตะ (touch) บนมือถือ
       await expect(async () => {
         if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.tap()
         await expect(trigger).toHaveAttribute("aria-expanded", "true", { timeout: 1_000 })
@@ -261,7 +262,10 @@ test.describe("AC-49 (ตะกร้า): มือถือ 390×844 แตะ
     const trigger = page.getByTestId("product-select-button")
     const options = page.getByTestId("product-select-button-options")
 
-    /** แตะซ้ำจน `aria-expanded="true"` (ก่อน hydrate แตะแล้วไม่เปิด — เหมือน helper `chooseOption` แต่เป็น tap) */
+    /**
+     * แตะซ้ำจน `aria-expanded="true"` (ก่อน hydrate แตะแล้วไม่เปิด) — ไม่ใช้ helper: open() ของ support/select.ts ใช้ click
+     * (pointerType mouse) แต่ AC-49 ต้องการการแตะ (touch) บนมือถือ
+     */
     const tapOpen = async (el: Locator) => {
       await expect(async () => {
         if ((await el.getAttribute("aria-expanded")) !== "true") await el.tap()
