@@ -21,7 +21,7 @@ type FieldErrorOptions<T extends Control> = {
   control: "input" | "select"
   error?: string
   description?: React.ReactNode
-  props?: {
+  props: {
     title?: string
     value?: unknown
     onChange?: React.ChangeEventHandler<T>
@@ -30,7 +30,10 @@ type FieldErrorOptions<T extends Control> = {
   }
 }
 
-/** select ซ่อนที่ Radix render ข้าง trigger (พี่น้องใน element เดียวกัน) — ที่อยู่ของ name/required/validity */
+/**
+ * select ซ่อนที่ Radix render ข้าง trigger (พี่น้องใน element เดียวกัน) — ที่อยู่ของ name/required/validity
+ * ผู้เรียกต้องวาง `SelectTrigger` เป็นลูกตรงของ `Select` (ห้ามห่อด้วย div) ตามกฎ 40b ไม่อย่างนั้นหา select ซ่อนไม่เจอ
+ */
 function hiddenSelectOf(trigger: Element | null): HTMLSelectElement | null {
   const select = trigger?.parentElement && Array.from(trigger.parentElement.children).find((el) => el.tagName === "SELECT")
   return (select as HTMLSelectElement | undefined) ?? null
@@ -47,7 +50,7 @@ const validatable = (el: Element | null): Validatable | null =>
  * `invalid` → preventDefault + ข้อความไทยใน FieldError, focus ช่องแรกที่ผิดของฟอร์ม; ค่าเปลี่ยน (พิมพ์/เลือก/value จากโค้ด) จน valid → ล้าง
  * prop `error` ของผู้เรียกแสดงแบบเดียวกัน; aria-describedby อ้างเฉพาะ id ที่มี element จริง
  * SFUI-15 (กฎ 43; ADR-033 D3): select ของ Radix — `controlProps` ใส่ที่ `SelectTrigger`, `fieldProps` ที่ `Field`; `invalid` เกิดที่ select ซ่อน
- * (ไม่ bubble) จึงฟังแบบ capture บน `Field`, ค่าเปลี่ยนฟังจาก `change` ที่ Radix ส่งจาก select ซ่อน; focus ที่ trigger
+ * (ไม่ bubble) จึงฟังแบบ capture บน `Field`; ค่าเปลี่ยน — ผู้เรียกเก็บค่าใน state และส่ง `props.value` (กฎ 40b) → effect ด้านล่างล้าง error เมื่อ valid; focus ที่ trigger
  */
 export function useFieldError<T extends Control>(
   ref: React.ForwardedRef<T>,
@@ -60,7 +63,7 @@ export function useFieldError<T extends Control>(
   const shown = error || nativeError
   const errorId = `${id}-error`
   const descriptionId = `${id}-description`
-  const { title, value, onChange, onInvalid } = props ?? {}
+  const { title, value, onChange, onInvalid } = props
 
   const recheck = (el: Validatable) =>
     setNativeError(el.validity.valid ? null : fieldErrorMessage(el.validity, { label, title, control }))
@@ -74,27 +77,21 @@ export function useFieldError<T extends Control>(
     if (!activeInvalid && document.activeElement !== focusTarget) focusTarget.focus()
   }
 
-  // select ของ Radix: ฟังที่ Field (select ซ่อนอยู่ใน Field ข้าง trigger)
+  // select ของ Radix: ฟัง invalid แบบ capture ที่ Field (select ซ่อนอยู่ใน Field ข้าง trigger) — handler ล่าสุดผ่าน ref, ผูก listener ครั้งเดียว
+  const onFieldInvalidRef = useRef<(e: Event) => void>(() => {})
+  useEffect(() => {
+    onFieldInvalidRef.current = (e: Event) => {
+      if (isSelectTrigger(inner.current) && e.target === hiddenSelectOf(inner.current))
+        handleInvalid(e, e.target as HTMLSelectElement, inner.current!)
+    }
+  })
   useEffect(() => {
     const fieldEl = field.current
     if (!fieldEl) return
-    const isHidden = (target: EventTarget | null) =>
-      isSelectTrigger(inner.current) && target === hiddenSelectOf(inner.current)
-    const onFieldInvalid = (e: Event) => {
-      if (isHidden(e.target)) handleInvalid(e, e.target as HTMLSelectElement, inner.current!)
-    }
-    const onFieldChange = (e: Event) => {
-      if (!isHidden(e.target)) return
-      const el = e.target as HTMLSelectElement
-      setNativeError((prev) => (prev === null || el.validity.valid ? null : prev))
-    }
-    fieldEl.addEventListener("invalid", onFieldInvalid, true)
-    fieldEl.addEventListener("change", onFieldChange)
-    return () => {
-      fieldEl.removeEventListener("invalid", onFieldInvalid, true)
-      fieldEl.removeEventListener("change", onFieldChange)
-    }
-  })
+    const listener = (e: Event) => onFieldInvalidRef.current(e)
+    fieldEl.addEventListener("invalid", listener, true)
+    return () => fieldEl.removeEventListener("invalid", listener, true)
+  }, [])
 
   // value จากโค้ด (เช่น เลือกที่อยู่ที่บันทึกไว้) ไม่มี event ของช่อง — ตรวจ validity ใหม่หลัง commit เมื่อมีข้อความค้าง
   useEffect(() => {
@@ -102,7 +99,7 @@ export function useFieldError<T extends Control>(
   }, [value, nativeError])
 
   const describedBy =
-    [props?.["aria-describedby"], description ? descriptionId : null, shown ? errorId : null].filter(Boolean).join(" ") || undefined
+    [props["aria-describedby"], description ? descriptionId : null, shown ? errorId : null].filter(Boolean).join(" ") || undefined
 
   return {
     fieldProps: { ref: field, "data-invalid": shown ? true : undefined },
