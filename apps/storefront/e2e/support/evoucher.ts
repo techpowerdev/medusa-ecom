@@ -24,7 +24,7 @@ export async function call(
 
 export type Voucher = { variantId: string; handle: string; partnerName: string; partnerId: string; poolId: string }
 
-export type PoolReadyVariant = { productId: string; variantId: string; handle: string; inventoryItemId: string }
+export type PoolReadyVariant = { productId: string; variantId: string; handle: string }
 
 /**
  * EV-27 (spec 02 กฎข้อ 43g): product + variant ที่ผ่านเงื่อนไขสร้าง pool ของ widget (manage inventory, inventory item เดียว
@@ -62,7 +62,7 @@ export async function createPoolReadyVariant(
     location_id: stock_locations[0].id,
     stocked_quantity: 0,
   })
-  return { productId: product.id, variantId, handle: product.handle, inventoryItemId }
+  return { productId: product.id, variantId, handle: product.handle }
 }
 
 /** voucher variant (ไม่มี shipping profile) + pool + import `count` code (`code,pin,expires_at?`) ผ่าน admin API (`count` 0 = pool ว่าง ไม่ import) */

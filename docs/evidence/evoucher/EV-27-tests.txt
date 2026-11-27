@@ -93,3 +93,48 @@ Tests:       2717 passed, 2717 total
 ### AC-59 diff: git diff --name-only origin/develop...HEAD | grep apps/backend/src/(workflows|api)/ → 0 บรรทัด
 
 ### pnpm lint: 0 errors (warning เดิม ไม่มีในไฟล์ที่แตะ) · pnpm typecheck: ผ่าน · NODE_ENV=production pnpm --filter backend build: สำเร็จ
+
+## รอบแก้ nit จาก review #602 (2026-11-27) — commit ต่อจาก 746e03ba
+แก้: (1) ใช้ isFetching ของ Tanstack Query แทน openedAt (prerequisiteCheck) (2) enum key PrerequisiteCode ใน i18n-evoucher (3) ศัพท์ไทยตาม th.json ของ dashboard (4) ลบ PoolReadyVariant.inventoryItemId (5) ไม่มี product_id → error variantMissing
+
+### RED ข้อ 5 (+1): prerequisiteCheck ยังไม่มี
+    ✕ is an error (no message) when the variant has no product_id — not stuck loading
+    ✕ is loading while pending or while refetching cached data
+    ✕ is an error with the API message when the request failed
+    ✕ is an error (no message) when the variant is not on the product
+    ✕ returns the issues once fetched
+Tests:       5 failed, 12 passed, 17 total
+
+### RED ข้อ 2: ลบ en variantWidget.prerequisites.stockLocation ชั่วคราว → test enum ล้ม (คืนไฟล์แล้ว)
+    ✕ variantWidget.prerequisites (PrerequisiteCode) (11 ms)
+Tests:       1 failed, 18 skipped, 19 total
+
+### GREEN
+#### evoucher-pool-prerequisites.unit.spec.ts + i18n-evoucher.unit.spec.ts
+  prerequisiteCheck
+    ✓ is an error (no message) when the variant has no product_id — not stuck loading
+    ✓ is loading while pending or while refetching cached data
+    ✓ is an error with the API message when the request failed
+    ✓ is an error (no message) when the variant is not on the product
+    ✓ returns the issues once fetched (1 ms)
+    ✓ variantWidget.prerequisites (PrerequisiteCode) (8 ms)
+Tests:       36 passed, 36 total
+#### jest src/admin
+Test Suites: 29 passed, 29 total
+Tests:       961 passed, 961 total
+#### backend test:unit (ทั้งชุด)
+Test Suites: 138 passed, 138 total
+Tests:       2723 passed, 2723 total
+#### storefront --project=unit (รวม evidence-budget)
+  234 passed (1.6s)
+#### e2e/evoucher-admin-pool-prerequisites.spec.ts (prod build :9381, DB medusa_ev27, Redis db 13)
+  ✓  1 [chromium] › e2e/evoucher-admin-pool-prerequisites.spec.ts:60:7 › lng=th › (a)+(b) เงื่อนไขไม่ครบ → รายการแทนฟอร์ม ไม่มี POST; แก้ผ่าน API แล้วกดใหม่ได้ผลล่าสุดจนเห็นฟอร์มและสร้างได้
+  ✓  2 [chromium] › e2e/evoucher-admin-pool-prerequisites.spec.ts:176:7 › lng=th › (c) variant ที่มี pool แล้ว → ไม่มีกล่องเงื่อนไขและไม่มีปุ่ม Create pool
+  ✓  3 [chromium] › e2e/evoucher-admin-pool-prerequisites.spec.ts:191:7 › lng=th › (d) GET /admin/products/:id ล้ม → error แทนฟอร์ม ไม่มี POST; ยกเลิก mock แล้วกดใหม่ได้ผลตรวจจริง
+  ✓  4 [chromium] › e2e/evoucher-admin-pool-prerequisites.spec.ts:60:7 › lng=en › (a)+(b) เงื่อนไขไม่ครบ → รายการแทนฟอร์ม ไม่มี POST; แก้ผ่าน API แล้วกดใหม่ได้ผลล่าสุดจนเห็นฟอร์มและสร้างได้
+  ✓  5 [chromium] › e2e/evoucher-admin-pool-prerequisites.spec.ts:176:7 › lng=en › (c) variant ที่มี pool แล้ว → ไม่มีกล่องเงื่อนไขและไม่มีปุ่ม Create pool
+  ✓  6 [chromium] › e2e/evoucher-admin-pool-prerequisites.spec.ts:191:7 › lng=en › (d) GET /admin/products/:id ล้ม → error แทนฟอร์ม ไม่มี POST; ยกเลิก mock แล้วกดใหม่ได้ผลตรวจจริง
+  6 passed
+#### regression: admin-form-pilot, admin-create-double-submit, admin-modal-return-focus, evoucher-admin-forms, admin-i18n-evoucher, admin-dialog-title
+  41 passed (55.0s)
+#### pnpm lint: 0 errors · pnpm typecheck: ผ่าน · NODE_ENV=production pnpm --filter backend build: สำเร็จ

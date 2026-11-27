@@ -21,10 +21,7 @@ import {
   type PoolFormBody,
   poolFormSchema,
 } from "../lib/evoucher-pool-form"
-import {
-  EVOUCHER_POOL_PREREQUISITE_FIELDS,
-  evoucherPoolPrerequisites,
-} from "../lib/evoucher-pool-prerequisites"
+import { EVOUCHER_POOL_PREREQUISITE_FIELDS, prerequisiteCheck } from "../lib/evoucher-pool-prerequisites"
 import { useSingleFlight } from "../lib/single-flight"
 
 // ตัวเลือก partner ของฟอร์ม Create pool คงเพดานเดิม (ทำเป็น Combobox ค้นหาได้นอกขอบเขต ADM-5)
@@ -59,24 +56,14 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
     enabled: open,
   })
 
-  // EV-27 (spec 02 กฎข้อ 43a): เงื่อนไขของ variant โหลดเมื่อเปิด modal — ผลที่ใช้ต้องได้มาหลังกดเปิดครั้งนี้
-  // (staleTime: 0 + enabled ทำให้ refetch ตอนเปิด แต่ระหว่างนั้น cache เก่ายังอยู่ → ถือว่ายังโหลดจนได้ผลใหม่)
-  const [openedAt, setOpenedAt] = useState(0)
+  // EV-27 (spec 02 กฎข้อ 43a): เงื่อนไขของ variant โหลดใหม่ทุกครั้งที่เปิด modal (staleTime: 0 + enabled)
+  // ระหว่าง refetch (`isFetching`) แสดง loading แทนข้อมูลเก่าใน cache — prerequisiteCheck
   const product = useProduct(
     variant.product_id ?? "",
     { fields: EVOUCHER_POOL_PREREQUISITE_FIELDS },
     { enabled: open && !!variant.product_id, staleTime: 0 }
   )
-  const checked =
-    product.status === "success"
-      ? product.dataUpdatedAt >= openedAt
-      : product.status === "error" && product.errorUpdatedAt >= openedAt
-  const issues =
-    checked && product.status === "success"
-      ? product.product
-        ? evoucherPoolPrerequisites(product.product, variant.id)
-        : null
-      : undefined
+  const check = prerequisiteCheck(variant.product_id, variant.id, product)
 
   const create = useMutation({
     mutationFn: (body: PoolFormBody) =>
@@ -155,7 +142,6 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
                       variant: "secondary",
                       onClick: () => {
                         submitOnce.release()
-                        setOpenedAt(Date.now())
                         setOpen(true)
                       },
                       children: t("variantWidget.createPool"),
@@ -201,7 +187,7 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
 
       <FocusModal open={open} onOpenChange={confirmClose}>
         <FocusModal.Content {...restoreFocus}>
-          {issues && issues.length === 0 ? (
+          {check.state === "issues" && check.issues.length === 0 ? (
               <Form {...form}>
                 <KeyboundForm
                   noValidate
@@ -269,14 +255,14 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
               <FocusModal.Body className="flex flex-1 justify-center overflow-auto py-16">
                 <div className="flex w-full max-w-lg flex-col gap-y-4">
                   {title}
-                  {!checked ? (
+                  {check.state === "loading" ? (
                     <Text size="small" className="text-ui-fg-subtle" data-testid="evoucher-pool-prerequisites-loading">
                       {t("general.loading")}
                     </Text>
-                  ) : !issues ? (
+                  ) : check.state === "error" ? (
                     <Text size="small" className="text-ui-fg-error" data-testid="evoucher-pool-prerequisites-error">
                       {t("variantWidget.prerequisites.loadError", {
-                        message: product.error?.message ?? t("variantWidget.prerequisites.variantMissing"),
+                        message: check.message ?? t("variantWidget.prerequisites.variantMissing"),
                       })}
                     </Text>
                   ) : (
@@ -284,7 +270,7 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
                       <Text size="small" weight="plus">
                         {t("variantWidget.prerequisites.title")}
                       </Text>
-                      {issues.map((issue) => (
+                      {check.issues.map((issue) => (
                         <div
                           key={issue.code}
                           className="flex items-start justify-between gap-x-4"

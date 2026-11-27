@@ -63,3 +63,34 @@ export const evoucherPoolPrerequisites = (
   }
   return issues
 }
+
+export type PrerequisiteCheck =
+  | { state: "loading" }
+  | { state: "error"; message?: string }
+  | { state: "issues"; issues: PrerequisiteIssue[] }
+
+// กฎข้อ 43c กรณี 1–3: สถานะของ modal จากผล `useProduct` — `isFetching` เป็น true ตั้งแต่ render แรกที่ `enabled` เปลี่ยน
+// จึงไม่ใช้ข้อมูลเก่าใน cache ระหว่าง refetch; ไม่มี `product_id` = error (query ไม่ถูกเปิด จะค้าง loading)
+// error ที่ไม่มี `message` = ไม่พบ variant — widget แสดง `variantWidget.prerequisites.variantMissing`
+export const prerequisiteCheck = (
+  productId: string | null | undefined,
+  variantId: string,
+  query: {
+    status: "pending" | "error" | "success"
+    isFetching: boolean
+    product?: PrerequisiteProduct | null
+    error?: { message: string } | null
+  }
+): PrerequisiteCheck => {
+  if (!productId) {
+    return { state: "error" }
+  }
+  if (query.isFetching || query.status === "pending") {
+    return { state: "loading" }
+  }
+  if (query.status === "error") {
+    return { state: "error", message: query.error?.message }
+  }
+  const issues = query.product ? evoucherPoolPrerequisites(query.product, variantId) : null
+  return issues ? { state: "issues", issues } : { state: "error" }
+}

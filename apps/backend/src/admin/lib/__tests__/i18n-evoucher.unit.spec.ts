@@ -8,7 +8,7 @@ import { OrderChangeType } from "@medusajs/framework/utils"
 import { getI18n } from "react-i18next"
 
 import { ACTIVE_ORDER_CHANGE_REFUND_MESSAGE } from "../../../api/admin/payments/middlewares"
-import { type Resources, THAI, keyIssues, missingEnumKeys } from "../../__tests__/i18n-check"
+import { type Resources, THAI, keyIssues, missingEnumKeys, unionLiterals } from "../../__tests__/i18n-check"
 import resources from "../../i18n"
 import { allocateErrorMessage, allocateResultToast } from "../evoucher-allocate"
 import { httpUrlMessage, PARTNER_PARSE_OPTIONS, partnerFormSchema } from "../evoucher-partner-form"
@@ -123,6 +123,14 @@ describe("enum ของกลุ่มมี key ครบ (AC-3, กฎ 7)", (
   ] as const)("%s", (prefix, values) => {
     expect(values.length).toBeGreaterThan(0)
     expect(missingEnumKeys(resources as Resources, NS, prefix, values)).toEqual([])
+  })
+
+  // EV-27 (spec 02 กฎข้อ 43c): widget ใช้ key template `variantWidget.prerequisites.${code}`
+  it("variantWidget.prerequisites (PrerequisiteCode)", () => {
+    const file = "lib/evoucher-pool-prerequisites.ts"
+    const values = unionLiterals(file, read(file), "PrerequisiteCode")
+    expect(values).toEqual(["manageInventory", "inventoryItem", "shippingProfile", "stockLocation"])
+    expect(missingEnumKeys(resources as Resources, NS, "variantWidget.prerequisites", values)).toEqual([])
   })
 })
 

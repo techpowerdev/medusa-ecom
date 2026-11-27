@@ -1,5 +1,6 @@
 import {
   evoucherPoolPrerequisites,
+  prerequisiteCheck,
   type PrerequisiteProduct,
   type PrerequisiteVariant,
 } from "../evoucher-pool-prerequisites"
@@ -109,5 +110,40 @@ describe("evoucherPoolPrerequisites", () => {
 
   it("returns null when the variant is not on the product", () => {
     expect(evoucherPoolPrerequisites(product(readyVariant()), "variant_missing")).toBeNull()
+  })
+})
+
+// กฎข้อ 43c กรณี 1–3: สถานะที่ modal แสดงจากผลของ useProduct (ใช้ isFetching ของ Tanstack Query — refetch ตอนเปิดซ้ำ = loading)
+describe("prerequisiteCheck", () => {
+  const ready = product(readyVariant())
+  const success = { status: "success" as const, isFetching: false, product: ready, error: null }
+
+  it("is an error (no message) when the variant has no product_id — not stuck loading", () => {
+    expect(prerequisiteCheck(undefined, VARIANT_ID, { status: "pending", isFetching: false })).toEqual({ state: "error" })
+    expect(prerequisiteCheck("", VARIANT_ID, { status: "pending", isFetching: false })).toEqual({ state: "error" })
+  })
+
+  it("is loading while pending or while refetching cached data", () => {
+    expect(prerequisiteCheck(PRODUCT_ID, VARIANT_ID, { status: "pending", isFetching: true })).toEqual({ state: "loading" })
+    expect(prerequisiteCheck(PRODUCT_ID, VARIANT_ID, { ...success, isFetching: true })).toEqual({ state: "loading" })
+  })
+
+  it("is an error with the API message when the request failed", () => {
+    expect(
+      prerequisiteCheck(PRODUCT_ID, VARIANT_ID, { status: "error", isFetching: false, error: { message: "boom" } })
+    ).toEqual({ state: "error", message: "boom" })
+  })
+
+  it("is an error (no message) when the variant is not on the product", () => {
+    expect(prerequisiteCheck(PRODUCT_ID, "variant_missing", success)).toEqual({ state: "error" })
+  })
+
+  it("returns the issues once fetched", () => {
+    expect(prerequisiteCheck(PRODUCT_ID, VARIANT_ID, success)).toEqual({ state: "issues", issues: [] })
+    const failing = product(readyVariant(), { shipping_profile: { id: "sp_1" } })
+    expect(prerequisiteCheck(PRODUCT_ID, VARIANT_ID, { ...success, product: failing })).toEqual({
+      state: "issues",
+      issues: [{ code: "shippingProfile", to: `/products/${PRODUCT_ID}/shipping-profile` }],
+    })
   })
 })
