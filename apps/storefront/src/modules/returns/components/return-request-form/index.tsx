@@ -52,6 +52,7 @@ function ReturnItemFields({
         </FieldLabel>
         <Select name={quantityName} defaultValue={values[quantityName] ?? "0"} onValueChange={setQuantity}>
           <SelectTrigger id={`${id}-quantity`} data-testid="return-item-quantity" data-value={quantity}>
+            {/* ค่าเริ่ม "0" จึงไม่แสดง placeholder จริง — คงข้อความเดิมไว้ตามกฎ 41 */}
             <SelectValue placeholder="จำนวน">{quantity}</SelectValue>
           </SelectTrigger>
           <SelectContent data-testid="return-item-quantity-options">

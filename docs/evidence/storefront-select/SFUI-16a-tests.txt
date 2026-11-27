@@ -1,5 +1,5 @@
 # SFUI-16a — evidence (spec 09 รอบ 49 กฎ 40b, 41, 44, 45, 48–50; AC-43, AC-48; ADR-033)
-# ฐาน: feat/SFUI-15-select-base 53451689 (stack); Node 24.12.0; storefront prod build (next start :8481), backend medusa start จาก .medusa/server (NODE_ENV=production, :9481), DB medusa_sfui16a, Redis db 12; Stripe test key จาก shell + stripe listen → :9481
+# ฐาน: feat/SFUI-15-select-base 3b6b9e00 (stack; rebase แล้ว — e2e ด้านล่างรันบนฐาน 53451689, sfui-16 รันซ้ำบน 3b6b9e00 ท้ายไฟล์); Node 24.12.0; storefront prod build (next start :8481), backend medusa start จาก .medusa/server (NODE_ENV=production, :9481), DB medusa_sfui16a, Redis db 12; Stripe test key จาก shell + stripe listen → :9481
 
 ## ขอบเขต
 - returns/components/return-request-form: return-item-quantity, return-item-reason → Field + Select* (uncontrolled defaultValue + name, ค่าปัจจุบันใน state จาก onValueChange — กฎ 40b)
@@ -74,3 +74,11 @@
 ✓  49 [chromium] › e2e/sfui-9e-font.spec.ts:56:5 › AC-21: คำสั่งซื้อแบบกลุ่มในหน้า account คงขนาด/ระยะบรรทัด/น้ำหนักเดิม (3.3s)
 ✓  50 [chromium] › e2e/sfui-9e-font.spec.ts:70:5 › AC-21: affiliate portal (login, earnings) คงขนาด/ระยะบรรทัด/น้ำหนักเดิม (874ms)
 ✓  51 [chromium] › e2e/sfui-9e-font.spec.ts:90:5 › AC-21: หน้าบัตรกำนัล (ยังไม่มีรายการ) คงขนาด/ระยะบรรทัด/น้ำหนักเดิม (502ms)
+
+## รันซ้ำหลัง rebase บน 3b6b9e00 + แก้ nit review (openWithEnter ไม่กด Enter ซ้ำเมื่อเปิดแล้ว): e2e/sfui-16-select.spec.ts --repeat-each=3 บน prod build ใหม่ — 6 passed
+✓  1 [chromium] › e2e/sfui-16-select.spec.ts:31:7 › 16a: ฟอร์มคืนสินค้า (AC-43) › return-item-quantity: Enter เปิด, ArrowDown + Enter เปลี่ยนค่า, Escape ไม่เปลี่ยน; เลือกเหตุผลแล้วข้อความ trigger = ข้อความของ item; สูง 36px (6.1s)
+✓  3 [chromium] › e2e/sfui-16-select.spec.ts:31:7 › 16a: ฟอร์มคืนสินค้า (AC-43) › return-item-quantity: Enter เปิด, ArrowDown + Enter เปลี่ยนค่า, Escape ไม่เปลี่ยน; เลือกเหตุผลแล้วข้อความ trigger = ข้อความของ item; สูง 36px (7.4s)
+✓  2 [chromium] › e2e/sfui-16-select.spec.ts:31:7 › 16a: ฟอร์มคืนสินค้า (AC-43) › return-item-quantity: Enter เปิด, ArrowDown + Enter เปลี่ยนค่า, Escape ไม่เปลี่ยน; เลือกเหตุผลแล้วข้อความ trigger = ข้อความของ item; สูง 36px (8.3s)
+✓  4 [chromium] › e2e/sfui-16-select.spec.ts:83:7 › 16a: group buy join (AC-43) › selectOptions ของ group-shipping-option มี placeholder เลือกวิธีจัดส่ง และไม่มี item value ว่าง; ทั้งสามช่องสูง 36px (3.0s)
+✓  5 [chromium] › e2e/sfui-16-select.spec.ts:83:7 › 16a: group buy join (AC-43) › selectOptions ของ group-shipping-option มี placeholder เลือกวิธีจัดส่ง และไม่มี item value ว่าง; ทั้งสามช่องสูง 36px (2.4s)
+✓  6 [chromium] › e2e/sfui-16-select.spec.ts:83:7 › 16a: group buy join (AC-43) › selectOptions ของ group-shipping-option มี placeholder เลือกวิธีจัดส่ง และไม่มี item value ว่าง; ทั้งสามช่องสูง 36px (1.8s)

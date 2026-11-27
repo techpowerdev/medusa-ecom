@@ -16,8 +16,11 @@ const triggerText = (trigger: Locator) => trigger.locator('[data-slot="select-va
 /** เปิดด้วย Enter ที่ trigger (ซ้ำจน hydrate); ระบุ `current` → รอ focus อยู่ที่ item ของค่าปัจจุบัน */
 async function openWithEnter(page: Page, trigger: Locator, testId: string, current?: string) {
   await expect(async () => {
-    await trigger.focus()
-    await page.keyboard.press("Enter")
+    // รอบ retry: เปิดแล้วไม่กด Enter ซ้ำ (Enter บน item ที่ focus = เลือกค่า) — แบบเดียวกับ open() ของ support/select.ts
+    if ((await trigger.getAttribute("aria-expanded")) !== "true") {
+      await trigger.focus()
+      await page.keyboard.press("Enter")
+    }
     await expect(trigger).toHaveAttribute("aria-expanded", "true", { timeout: 1_000 })
   }).toPass()
   if (current === undefined) return
