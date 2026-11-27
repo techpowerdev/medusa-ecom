@@ -5,6 +5,7 @@ import { Page } from "@playwright/test"
 import { deleteAllThenExpectOk } from "./support/cleanup"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { isServerAction } from "./support/server-action"
+import { chooseOption, expectSelected } from "./support/select"
 import {
   STOREFRONT_COUNTRY as CC,
   Customer,
@@ -131,8 +132,8 @@ test("AC-138: /cart ที่ 1024/1280 คอลัมน์สรุปไม�
         await page.setViewportSize(VIEWPORTS[0])
         await page.goto(`/${CC}/cart`)
         const select = page.getByTestId("product-select-button")
-        await expect(select).toHaveValue("99")
-        expect(await select.inputValue()).toBe("99")
+        await expectSelected(select, "99")
+        expect(await select.getAttribute("data-value")).toBe("99")
         // review #287: ก่อน hydrate เสร็จ selectOption เปลี่ยนแค่ DOM (onChange ยังไม่ผูก → ไม่มี action) — เลือกซ้ำจนกว่า
         // server action ของ updateLineItem({ quantity: 2 }) ตอบจริง (เลือก 2 ซ้ำ = idempotent) แล้วจึงตรวจ Store API
         await expect(async () => {
@@ -140,7 +141,7 @@ test("AC-138: /cart ที่ 1024/1280 คอลัมน์สรุปไม�
             (res) => isServerAction(res.request(), isUpdateToTwoBody),
             { timeout: 5_000 }
           )
-          await select.selectOption("2")
+          await chooseOption(select, "2")
           expect((await updated).status(), "server action ของ updateLineItem").toBe(200)
         }).toPass()
         await expect
@@ -148,7 +149,7 @@ test("AC-138: /cart ที่ 1024/1280 คอลัมน์สรุปไม�
             message: "จำนวนของ line ตาม Store API",
           })
           .toBe(2)
-        await expect(select).toHaveValue("2")
+        await expectSelected(select, "2")
       }
     )
   } finally {

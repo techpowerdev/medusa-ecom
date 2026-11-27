@@ -1,14 +1,25 @@
 import crypto from "node:crypto"
 
-import type { Locator, Page } from "@playwright/test"
+import type { APIRequestContext, BrowserContext, Locator, Page } from "@playwright/test"
 
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { addAddresses, poolGroup } from "./support/group-buy"
-import { STOREFRONT_COUNTRY as CC, adminHeaders, createCustomer, fulfillAndShip, placeOrder, publishableKey, signInAs } from "./support/medusa"
+import {
+  STOREFRONT_COUNTRY as CC,
+  Customer,
+  adminHeaders,
+  cartReadyForPayment,
+  createCustomer,
+  fulfillAndShip,
+  ok,
+  placeOrder,
+  publishableKey,
+  signInAs,
+} from "./support/medusa"
 import { chooseOption, expectSelected, selectOptions } from "./support/select"
-import { addToCartFromPdp } from "./support/server-action"
+import { addToCartFromPdp, isServerAction } from "./support/server-action"
 
-// SFUI-16 (spec 09 รอบ 49 กฎ 40b–46; ADR-033): select ของ storefront เป็น Select ของ shadcn (Radix) — 16a: คืนสินค้า + group buy join (AC-43), 16b: ประเทศ (AC-44/49)
+// SFUI-16 (spec 09 รอบ 49 กฎ 40b–46; ADR-033): select ของ storefront เป็น Select ของ shadcn (Radix) — 16a: คืนสินค้า + group buy join (AC-43), 16b: ประเทศ (AC-44/49), 16c: จำนวนในตะกร้า (AC-45/49)
 // หา element ด้วย data-testid เท่านั้น (trigger `<t>`, `<t>-options`, `<t>-option` + data-value)
 
 const heightOf = (control: Locator) => control.evaluate((el) => getComputedStyle(el).height)
@@ -154,6 +165,124 @@ test.describe("SFUI-16b ประเทศ", () => {
       await chooseOption(trigger, CC)
       await expectSelected(trigger, CC)
       await expect(options).toBeHidden()
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    })
+  })
+})
+
+// ---- SFUI-16c: จำนวนในตะกร้า (`product-select-button`) — AC-45, AC-49 (ตะกร้า) ----
+
+type CartFixture = { pk: string; customer: Customer; cartId: string; lineId: string }
+
+/** ลูกค้าที่ login + cart 1 line จำนวน 1 (เจ้าของ cart — CORE-6/CORE-12) แล้วผูก cookie cart ให้ browser */
+async function cartWithOneLine(request: APIRequestContext, context: BrowserContext, baseURL: string): Promise<CartFixture> {
+  const admin = await adminHeaders(request)
+  const pk = await publishableKey(request, admin)
+  const customer = await createCustomer(request, pk)
+  const cartId = await cartReadyForPayment(request, pk, customer)
+  const { cart } = await ok(
+    await request.get(`${BACKEND_URL}/store/carts/${cartId}`, {
+      headers: { "x-publishable-api-key": pk, authorization: `Bearer ${customer.token}` },
+      params: { fields: "items.id" },
+    }),
+    "read cart"
+  )
+  await signInAs(context, baseURL, customer)
+  await context.addCookies([{ name: "_medusa_cart_id", value: cartId, url: baseURL }])
+  return { pk, customer, cartId, lineId: cart.items[0].id }
+}
+
+async function lineQuantity(request: APIRequestContext, { pk, customer, cartId }: CartFixture) {
+  const { cart } = await ok(
+    await request.get(`${BACKEND_URL}/store/carts/${cartId}`, {
+      headers: { "x-publishable-api-key": pk, authorization: `Bearer ${customer.token}` },
+      params: { fields: "items.quantity" },
+    }),
+    "read cart"
+  )
+  return cart.items[0].quantity as number
+}
+
+/** body ของ `updateLineItem({ lineId, quantity })` ของ line นี้ */
+const isUpdateBody = (lineId: string, quantity: number) => (body: string) => {
+  try {
+    const [arg] = JSON.parse(body)
+    return arg?.lineId === lineId && arg?.quantity === quantity
+  } catch {
+    return false
+  }
+}
+
+test("AC-45: เลือก 2 ใน product-select-button → updateLineItem ถูกส่ง 1 ครั้ง, cart ใน backend จำนวน 2, ชื่อที่เข้าถึงได้ จำนวน", async ({
+  page,
+  context,
+  request,
+  baseURL,
+  step,
+}) => {
+  test.setTimeout(120_000)
+  const fixture = await cartWithOneLine(request, context, baseURL!)
+  const trigger = page.getByTestId("product-select-button")
+  const updates: string[] = []
+  page.on("request", (req) => {
+    if (isServerAction(req, isUpdateBody(fixture.lineId, 2))) updates.push(req.postData() ?? "")
+  })
+
+  await step("trigger เป็น combobox ชื่อ จำนวน แสดงจำนวนจริง", async () => {
+    await page.goto(`/${CC}/cart`)
+    await expect(trigger).toHaveAttribute("role", "combobox")
+    await expect(trigger).toHaveAccessibleName("จำนวน")
+    await expectSelected(trigger, "1")
+    await expect(trigger).toHaveText("1")
+  })
+
+  await step("เลือก 2 → backend จำนวน 2 และ action ถูกส่ง 1 ครั้ง", async () => {
+    await chooseOption(trigger, "2")
+    await expect.poll(() => lineQuantity(request, fixture), { message: "จำนวนของ line ตาม Store API" }).toBe(2)
+    await expect(trigger).toHaveText("2")
+    await page.waitForLoadState("networkidle")
+    expect(updates, "server action updateLineItem({ quantity: 2 })").toHaveLength(1)
+  })
+})
+
+test.describe("AC-49 (ตะกร้า): มือถือ 390×844 แตะ trigger แล้วกล่องรายการอยู่ในจอ", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
+
+  test("product-select-button-options อยู่ในจอทั้งกล่อง เลือกได้ และหน้าไม่ล้นแนวนอน", async ({
+    page,
+    context,
+    request,
+    baseURL,
+    step,
+  }) => {
+    test.setTimeout(120_000)
+    const fixture = await cartWithOneLine(request, context, baseURL!)
+    const trigger = page.getByTestId("product-select-button")
+    const options = page.getByTestId("product-select-button-options")
+
+    /** แตะซ้ำจน `aria-expanded="true"` (ก่อน hydrate แตะแล้วไม่เปิด — เหมือน helper `chooseOption` แต่เป็น tap) */
+    const tapOpen = async (el: Locator) => {
+      await expect(async () => {
+        if ((await el.getAttribute("aria-expanded")) !== "true") await el.tap()
+        await expect(el).toHaveAttribute("aria-expanded", "true", { timeout: 1_000 })
+      }).toPass()
+    }
+
+    await step("แตะ trigger → กล่องรายการมองเห็นและอยู่ในจอ", async () => {
+      await page.goto(`/${CC}/cart`)
+      await tapOpen(trigger)
+      await expect(options).toBeVisible()
+      const box = (await options.boundingBox())!
+      expect(box.x).toBeGreaterThanOrEqual(0)
+      expect(box.y).toBeGreaterThanOrEqual(0)
+      expect(box.x + box.width).toBeLessThanOrEqual(390)
+      expect(box.y + box.height).toBeLessThanOrEqual(844)
+    })
+
+    await step("แตะ item 3 → เลือกได้ backend จำนวน 3 และหน้าไม่ล้นแนวนอน", async () => {
+      await options.locator('[data-testid="product-select-button-option"][data-value="3"]').tap()
+      await expectSelected(trigger, "3")
+      await expect.poll(() => lineQuantity(request, fixture)).toBe(3)
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
     })
   })

@@ -55,7 +55,7 @@ const COMMON_CONTROLS = ["input", "native-select", "checkbox"].map((name) => `sr
 type Allowed = { file: string; tag: "input" | "select"; match: Record<string, string>; why: string }
 
 /** allow-list ของกฎ 26 (ไฟล์ + element) — `<input type="hidden">` ยกเว้นทุกไฟล์ใน src/modules, src/app */
-const ALLOW_LIST: Allowed[] = [
+const ALLOW_LIST: Allowed[] = ([
   { file: "store/components/store-search-box/index.tsx", tag: "input", match: { type: "search", "data-testid": "store-search-input" }, why: "ช่องค้นหา" },
   { file: "search/components/search-form/index.tsx", tag: "input", match: { type: "search", "data-testid": "search-query-input" }, why: "ช่องค้นหา" },
   { file: "layout/components/search/index.tsx", tag: "input", match: { type: "search", "data-testid": "search-input" }, why: "ช่องค้นหาใน drawer" },
@@ -74,15 +74,13 @@ const ALLOW_LIST: Allowed[] = [
     match: { name: "quantity", "data-testid": "product-quantity-select" },
     why: "จำนวนบน PDP",
   },
-  // testid มาจากผู้เรียก (spread props)
-  { file: "cart/components/cart-item-select/index.tsx", tag: "select", match: {}, why: "จำนวนในตะกร้า" },
   {
     file: "group-buy/components/group-page/group-join.tsx",
     tag: "input",
     match: { type: "number", "data-testid": "group-selection-quantity" },
     why: "จำนวนต่อแถวในรายการที่เลือก (select สามตัวของไฟล์นี้อยู่ในขอบเขต — ห้ามมี <select>)",
   },
-].map((a) => ({ ...a, file: `src/modules/${a.file}` }) as Allowed)
+] as Allowed[]).map((a) => ({ ...a, file: `src/modules/${a.file}` }))
 
 /** ไฟล์ของตาราง inventory (spec 09 รอบ 48) — profile-password ไม่ render ในหน้า profile จึงตรวจได้แค่ static */
 const INVENTORY = [

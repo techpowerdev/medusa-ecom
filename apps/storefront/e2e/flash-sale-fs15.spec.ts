@@ -2,6 +2,7 @@ import { APIResponse, APIRequestContext } from "@playwright/test"
 
 import { CHECKOUT_CONFLICTS } from "../src/lib/util/checkout-error"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
+import { chooseOption } from "./support/select"
 import {
   STOREFRONT_COUNTRY as CC,
   Headers,
@@ -187,7 +188,7 @@ test("AC-21: cart มี line ของสินค้า flash qty 3 ขณะ 
   })
 
   await step("ลดจำนวนเป็น 2 → คำเตือนหายไป", async () => {
-    await page.getByTestId("product-select-button").selectOption("2")
+    await chooseOption(page.getByTestId("product-select-button"), "2")
     await expect(page.getByTestId("cart-flash-exceeds-remaining")).toHaveCount(0)
   })
 })
