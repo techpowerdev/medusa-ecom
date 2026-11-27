@@ -128,6 +128,7 @@ const AddAddress = ({
               <Input
                 label="ตำบล/แขวง"
                 name="address_2"
+                required
                 autoComplete="address-level3"
                 data-testid="address-2-input"
               />

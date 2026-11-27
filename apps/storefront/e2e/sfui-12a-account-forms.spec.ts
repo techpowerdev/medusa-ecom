@@ -34,7 +34,7 @@ const BILLING: Fields = [
   ["billing-last-name-input", true],
   ["billing-company-input", false],
   ["billing-address-1-input", true, ADDRESS_1],
-  ["billing-address-2-input", false],
+  ["billing-address-2-input", true], // SFUI-18c (กฎ 55): ตำบลบังคับ
   ["billing-city-input", true],
   ["billing-province-input", false],
   ["billing-postcal-code-input", true, POSTAL],
@@ -46,7 +46,7 @@ const ADDRESS: Fields = [
   ["last-name-input", true],
   ["company-input", false],
   ["address-1-input", true, ADDRESS_1],
-  ["address-2-input", false],
+  ["address-2-input", true], // SFUI-18c (กฎ 55): ตำบลบังคับ
   ["city-input", true],
   ["state-input", false],
   ["postal-code-input", true, POSTAL],

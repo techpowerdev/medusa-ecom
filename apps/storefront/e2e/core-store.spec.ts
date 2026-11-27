@@ -86,6 +86,7 @@ test("AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture �
     await page.getByTestId("shipping-first-name-input").fill("Somchai")
     await page.getByTestId("shipping-last-name-input").fill("Jaidee")
     await page.getByTestId("shipping-address-input").fill("1 Sukhumvit Rd")
+    await page.getByTestId("shipping-address-2-input").fill("คลองเตยเหนือ")
     await page.getByTestId("shipping-postal-code-input").fill("10110")
     await page.getByTestId("shipping-city-input").fill("Bangkok")
     await chooseOption(page.getByTestId("shipping-country-select"), CC)

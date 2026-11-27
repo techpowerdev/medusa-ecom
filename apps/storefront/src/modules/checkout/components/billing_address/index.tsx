@@ -76,6 +76,7 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
           autoComplete="address-level3"
           value={formData["billing_address.address_2"]}
           onChange={handleChange}
+          required
           data-testid="billing-address-2-input"
         />
         <Input

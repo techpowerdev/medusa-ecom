@@ -160,6 +160,7 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
             <Input
               label="ตำบล/แขวง"
               name="address_2"
+              required
               autoComplete="address-level3"
               defaultValue={billingAddress?.address_2 || undefined}
               data-testid="billing-address-2-input"

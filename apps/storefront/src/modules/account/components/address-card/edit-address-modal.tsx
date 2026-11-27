@@ -191,6 +191,7 @@ const EditAddress: React.FC<EditAddressProps> = ({
               <Input
                 label="ตำบล/แขวง"
                 name="address_2"
+                required
                 autoComplete="address-level3"
                 defaultValue={address.address_2 || undefined}
                 data-testid="address-2-input"
