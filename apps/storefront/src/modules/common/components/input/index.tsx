@@ -22,7 +22,7 @@ type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> & {
 // ช่องรหัสผ่านใช้ InputGroup + ปุ่มแสดง/ซ่อน (`<t>-toggle`); ขนาดตาม default ของ shadcn (h-9) ไม่ override
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   (
-    { type, name, label, id, required, errors: _errors, touched: _touched, "data-testid": testId, ...props },
+    { type, name, label, id, required, className, errors: _errors, touched: _touched, "data-testid": testId, ...props },
     ref
   ) => {
     const autoId = useId()
@@ -31,8 +31,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 
     const control = { ...props, id: inputId, name, required, "data-testid": testId, ref }
 
+    // className ของผู้เรียก = layout ภายนอก (เช่นตำแหน่งใน grid) → ที่ Field ไม่ส่งลง control (กฎ 28)
     return (
-      <Field>
+      <Field className={className}>
         <FieldLabel htmlFor={inputId} data-testid={testId && `${testId}-label`}>
           {label}
           {required && (

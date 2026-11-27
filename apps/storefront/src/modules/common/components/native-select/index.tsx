@@ -26,7 +26,7 @@ const NativeSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
     const select = (
       <div
         data-slot="native-select-wrapper"
-        className={cn("group/native-select relative w-full has-[select:disabled]:opacity-50", className)}
+        className={cn("group/native-select relative w-full has-[select:disabled]:opacity-50", !label && className)}
       >
         <select
           ref={ref}
@@ -57,8 +57,9 @@ const NativeSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
 
     if (!label) return select
 
+    // มี label → className ของผู้เรียก (layout) อยู่ที่ Field; ไม่มี label → อยู่ที่ wrapper ของ select (กฎ 28)
     return (
-      <Field>
+      <Field className={className}>
         <FieldLabel htmlFor={selectId} data-testid={testId && `${testId}-label`}>
           {label}
           {required && (

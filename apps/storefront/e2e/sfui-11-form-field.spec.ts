@@ -45,6 +45,13 @@ const boxOf = (control: Locator) =>
     return { top: box.top, left: box.left, right: box.right }
   })
 
+const labelText = (label: Locator) =>
+  label.evaluate((el) => {
+    const clone = el.cloneNode(true) as HTMLElement
+    clone.querySelectorAll('[aria-hidden="true"]').forEach((n) => n.remove())
+    return (clone.textContent ?? "").trim()
+  })
+
 async function expectLabelAbove(scope: Locator, fields: Fields) {
   for (const [id, required] of Object.entries(fields)) {
     const control = scope.getByTestId(id)
@@ -58,6 +65,8 @@ async function expectLabelAbove(scope: Locator, fields: Fields) {
       await control.evaluate((el) => (el as HTMLInputElement).labels?.[0]?.getAttribute("data-testid") ?? null),
       `${id}: labels[0]`
     ).toBe(`${id}-label`)
+    // ชื่อที่เข้าถึงได้ = ข้อความ label ใน DOM โดยไม่รวม * (aria-hidden — กฎ 30)
+    await expect(control, id).toHaveAccessibleName(await labelText(label))
     if (required) {
       await expect(control, id).toHaveAttribute("required", "")
       await expect(label.locator('[aria-hidden="true"]'), id).toHaveText("*")
@@ -88,6 +97,15 @@ test("AC-28: login และ register — label เหนือช่อง, * �
     await expectLabelAbove(login, LOGIN)
     await expectThai(page, labelIds(LOGIN))
     expect(await login.getByTestId("email-input").evaluate((el) => getComputedStyle(el).height)).toBe("36px")
+    await expect(login.getByTestId("email-input")).toHaveAccessibleName("อีเมล")
+    // ชื่อของปุ่มตามสถานะ (กฎ 34) — ค่าจากโค้ดของ common/components/input
+    const toggle = login.getByTestId("password-input-toggle")
+    await expect(toggle).toHaveAccessibleName("แสดงรหัสผ่าน")
+    await expect(toggle).toHaveAttribute("aria-pressed", "false")
+    await toggle.click()
+    await expect(toggle).toHaveAccessibleName("ซ่อนรหัสผ่าน")
+    await expect(login.getByTestId("password-input")).toHaveAttribute("type", "text")
+    await toggle.click()
     expect(await translatedLabels(login)).toEqual([])
     await evidence("01-login-1280")
   })
@@ -133,6 +151,9 @@ test("AC-28: checkout step=address — label เหนือช่อง, checkb
       await expectLabelAbove(main, SHIPPING)
       await expectThai(page, [...labelIds(SHIPPING), "billing-address-checkbox-label"])
 
+      await expect(page.getByTestId("billing-address-checkbox")).toHaveAccessibleName(
+        await labelText(page.getByTestId("billing-address-checkbox-label"))
+      )
       const checkbox = (await page.getByTestId("billing-address-checkbox").boundingBox())!
       const checkboxLabel = (await page.getByTestId("billing-address-checkbox-label").boundingBox())!
       expect(checkboxLabel.x, "label ของ checkbox อยู่ขวาของ checkbox").toBeGreaterThanOrEqual(checkbox.x + checkbox.width)

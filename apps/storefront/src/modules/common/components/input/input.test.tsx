@@ -156,3 +156,34 @@ describe("Checkbox (Field แนวนอน)", () => {
     expect(accessibleName(box)).toBe("ใช้ที่อยู่จัดส่งเป็นที่อยู่สำหรับออกใบเสร็จ")
   })
 })
+
+// review #SFUI-11a blocker 1 (กฎ 28): className ของผู้เรียกเป็น layout ภายนอก → อยู่ที่ Field ไม่ไหลลง control
+describe("className ของผู้เรียกอยู่ที่ Field", () => {
+  it("Input (ข้อความและรหัสผ่าน) และ NativeSelect ที่มี label: className อยู่ที่ [data-slot=field] ไม่อยู่บน control", () => {
+    render(
+      <>
+        <Input label="ที่อยู่" name="address_1" className="md:col-span-2" data-testid="a" />
+        <Input label="รหัสผ่าน" name="password" type="password" className="md:col-span-2" data-testid="p" />
+        <NativeSelect label="ประเทศ" name="country_code" className="md:col-span-2" data-testid="s">
+          <option value="th">ไทย</option>
+        </NativeSelect>
+      </>
+    )
+    for (const id of ["a", "p", "s"]) {
+      const control = byTestId(id)
+      expect(control.closest('[data-slot="field"]')?.classList.contains("md:col-span-2"), id).toBe(true)
+      expect(control.classList.contains("md:col-span-2"), id).toBe(false)
+    }
+  })
+
+  it("NativeSelect ไม่มี label: className คงอยู่ที่ wrapper ของ select (เช่น min-w-[12rem] ของ returns)", () => {
+    render(
+      <NativeSelect name="reason" className="min-w-[12rem]" data-testid="r">
+        <option value="x">x</option>
+      </NativeSelect>
+    )
+    const select = byTestId("r")
+    expect(select.classList.contains("min-w-[12rem]")).toBe(false)
+    expect(select.closest('[data-slot="native-select-wrapper"]')?.classList.contains("min-w-[12rem]")).toBe(true)
+  })
+})
