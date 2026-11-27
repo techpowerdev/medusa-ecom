@@ -18,6 +18,7 @@ import { PDP_QUANTITY_OPTIONS } from "@lib/util/pending-add-to-cart"
 import { findVariantByOptions } from "@lib/util/product-variant-options"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import NativeSelect from "@modules/common/components/native-select"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
 import { useParams, useRouter } from "next/navigation"
 import { useRef, useState } from "react"
@@ -145,21 +146,22 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
         ))}
       </div>
       <div className="flex items-end gap-x-3">
-        <label className="flex flex-col gap-y-1 text-xs leading-5 font-normal">
-          จำนวน
-          <select
-            value={quantity}
-            onChange={(e) => setQuantity(Number(e.target.value))}
-            className="rounded-md border border-border bg-muted px-3 py-1.5"
-            data-testid="group-quantity"
-          >
-            {PDP_QUANTITY_OPTIONS.map((q) => (
-              <option key={q} value={q}>
-                {q}
-              </option>
-            ))}
-          </select>
-        </label>
+        {/* SFUI-12c (spec 09 กฎ 28, 31a): NativeSelect + label เหนือช่อง; เดิมไม่มี option ว่าง → placeholder={false}
+            w-auto = กว้างตามเนื้อหาข้างปุ่มเพิ่มในรายการเหมือน <label> เดิม (Field เป็น w-full) */}
+        <NativeSelect
+          label="จำนวน"
+          placeholder={false}
+          value={quantity}
+          onChange={(e) => setQuantity(Number(e.target.value))}
+          className="w-auto"
+          data-testid="group-quantity"
+        >
+          {PDP_QUANTITY_OPTIONS.map((q) => (
+            <option key={q} value={q}>
+              {q}
+            </option>
+          ))}
+        </NativeSelect>
         <Button
           variant="outline"
           disabled={!variant || busy}
@@ -214,25 +216,23 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
       )}
       {addresses && addresses.length > 0 && (
         <div className="flex flex-col gap-y-2">
-          <label className="flex flex-col gap-y-1 text-xs leading-5 font-normal">
-            ที่อยู่จัดส่ง
-            <select
-              value={addressId}
-              onChange={(e) => {
-                setAddressId(e.target.value)
-                updateSelection(selection)
-              }}
-              disabled={busy}
-              className="rounded-md border border-border px-3 py-1.5"
-              data-testid="group-address-select"
-            >
-              {addresses.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {addressLabel(a)}
-                </option>
-              ))}
-            </select>
-          </label>
+          <NativeSelect
+            label="ที่อยู่จัดส่ง"
+            placeholder={false}
+            value={addressId}
+            onChange={(e) => {
+              setAddressId(e.target.value)
+              updateSelection(selection)
+            }}
+            disabled={busy}
+            data-testid="group-address-select"
+          >
+            {addresses.map((a) => (
+              <option key={a.id} value={a.id}>
+                {addressLabel(a)}
+              </option>
+            ))}
+          </NativeSelect>
           {!prepared && (
             <Button
               variant="outline"
@@ -248,25 +248,21 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
       )}
 
       {prepared && !noShipping && (
-        <label className="flex flex-col gap-y-1 text-xs leading-5 font-normal">
-          วิธีจัดส่ง
-          <select
-            value={shippingId}
-            onChange={(e) => setShippingId(e.target.value)}
-            disabled={busy}
-            className="rounded-md border border-border px-3 py-1.5"
-            data-testid="group-shipping-option"
-          >
-            <option value="" disabled>
-              เลือกวิธีจัดส่ง
+        // option ว่าง disabled เดิมมาจาก placeholder ของ NativeSelect (เหลือตัวเดียว — กฎ 31a)
+        <NativeSelect
+          label="วิธีจัดส่ง"
+          placeholder="เลือกวิธีจัดส่ง"
+          value={shippingId}
+          onChange={(e) => setShippingId(e.target.value)}
+          disabled={busy}
+          data-testid="group-shipping-option"
+        >
+          {prepared.shipping_options.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.name} — {convertToLocale({ amount: o.amount, currency_code: prepared.currency_code })}
             </option>
-            {prepared.shipping_options.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name} — {convertToLocale({ amount: o.amount, currency_code: prepared.currency_code })}
-              </option>
-            ))}
-          </select>
-        </label>
+          ))}
+        </NativeSelect>
       )}
 
       {(error || noShipping) && (

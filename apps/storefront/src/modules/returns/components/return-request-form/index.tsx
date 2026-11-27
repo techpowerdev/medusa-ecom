@@ -76,38 +76,37 @@ const ReturnRequestForm = ({ orderId, displayId, lines, reasons }: Props) => {
                     <p className="text-sm leading-[1.4rem] text-muted-foreground">{line.variantTitle}</p>
                   )}
                 </div>
-                <label className="flex flex-col gap-y-1 text-sm">
-                  <span>จำนวนที่คืน</span>
+                {/* SFUI-12c (spec 09 กฎ 28–29, 31a): label เหนือช่องของ field — id จาก useId จึงไม่ซ้ำต่อแถว; option เดิม (รวม option ว่าง)
+                    w-auto = ความกว้างตามเนื้อหาในแถว small:flex-row เท่า <label> เดิม (Field เป็น w-full) */}
+                <NativeSelect
+                  label="จำนวนที่คืน"
+                  name={`quantity:${line.id}`}
+                  defaultValue={values[`quantity:${line.id}`] ?? "0"}
+                  placeholder="จำนวน"
+                  className="w-auto"
+                  data-testid="return-item-quantity"
+                >
+                  {Array.from({ length: line.maxQuantity + 1 }, (_, n) => (
+                    <option key={n} value={String(n)}>
+                      {n}
+                    </option>
+                  ))}
+                </NativeSelect>
+                {reasons.length > 0 && (
                   <NativeSelect
-                    name={`quantity:${line.id}`}
-                    defaultValue={values[`quantity:${line.id}`] ?? "0"}
-                    placeholder="จำนวน"
-                    data-testid="return-item-quantity"
+                    label="เหตุผล"
+                    name={`reason:${line.id}`}
+                    defaultValue={values[`reason:${line.id}`] ?? ""}
+                    placeholder="เลือกเหตุผล"
+                    className="w-auto min-w-[12rem]"
+                    data-testid="return-item-reason"
                   >
-                    {Array.from({ length: line.maxQuantity + 1 }, (_, n) => (
-                      <option key={n} value={String(n)}>
-                        {n}
+                    {reasons.map((reason) => (
+                      <option key={reason.id} value={reason.id}>
+                        {reason.label}
                       </option>
                     ))}
                   </NativeSelect>
-                </label>
-                {reasons.length > 0 && (
-                  <label className="flex flex-col gap-y-1 text-sm">
-                    <span>เหตุผล</span>
-                    <NativeSelect
-                      name={`reason:${line.id}`}
-                      defaultValue={values[`reason:${line.id}`] ?? ""}
-                      placeholder="เลือกเหตุผล"
-                      className="min-w-[12rem]"
-                      data-testid="return-item-reason"
-                    >
-                      {reasons.map((reason) => (
-                        <option key={reason.id} value={reason.id}>
-                          {reason.label}
-                        </option>
-                      ))}
-                    </NativeSelect>
-                  </label>
                 )}
               </li>
             ))}

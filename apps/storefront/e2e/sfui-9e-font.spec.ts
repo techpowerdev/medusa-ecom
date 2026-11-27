@@ -29,6 +29,7 @@ const BASE_SEMI = at("14px", "24px", "600") // เดิม text-base-semi
 const LARGE_SEMI = at("16px", "24px", "600") // เดิม text-large-semi
 const XL_SEMI = at("24px", "36px", "600") // เดิม text-xl-semi
 const XXL_SEMI = at("30px", "48px", "600") // เดิม text-2xl-semi
+const FIELD_LABEL = at("14px", "19.25px", "500") // FieldLabel ของ shadcn (text-sm leading-snug font-medium) — SFUI-12c
 
 async function signInNewCustomer(page: Page, baseURL: string, pk: string) {
   await signInAs(page.context(), baseURL, await createCustomer(page.request, pk))
@@ -46,8 +47,9 @@ test("AC-21: หน้ากลุ่ม /g/<token> คงขนาด/ระย
   expect(await font(page.getByTestId("group-status"))).toEqual(BASE_SEMI)
   expect(await font(page.getByTestId("group-member-count"))).toEqual(BASE)
   expect(await font(page.getByTestId("group-join").getByRole("heading", { level: 2 }))).toEqual(LARGE_SEMI)
-  // label ที่ครอบ select จำนวน (ไม่ตามหลัง <input> จึงไม่ถูก rule floating label จับ — font() ตรวจ)
-  expect(await font(page.getByTestId("group-join").locator("label", { has: page.getByTestId("group-quantity") }))).toEqual(SMALL)
+  // SFUI-12c (spec 09 กฎ 27a/b, AC-29): label ของ select จำนวนเป็น FieldLabel ของ shadcn เหนือช่อง (เดิม <label> ครอบ select 12px/20px/400)
+  // → ค่าที่ render จริงบน build ของ 12c; ยังไม่ถูก rule floating label จับ (font() ตรวจ)
+  expect(await font(page.getByTestId("group-quantity-label"))).toEqual(FIELD_LABEL)
   await evidence("01-group-page")
 })
 
