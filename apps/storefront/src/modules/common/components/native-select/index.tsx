@@ -35,6 +35,9 @@ const NativeSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
       description,
       props,
     })
+    // ไม่มี label → ข้อความ "กรุณาเลือก<label>" (กฎ 32b) สร้างไม่ได้: ไม่ดัก invalid ให้ใช้ bubble ของ browser ตามเดิม (review 11b)
+    const { onInvalid: _fieldOnInvalid, ...controlPropsWithoutInvalid } = controlProps
+    const selectControlProps = label ? controlProps : controlPropsWithoutInvalid
 
     const select = (
       <div
@@ -51,7 +54,7 @@ const NativeSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
             "aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40"
           )}
           {...props}
-          {...controlProps}
+          {...selectControlProps}
         >
           {placeholder !== false && (
             <option disabled value="">

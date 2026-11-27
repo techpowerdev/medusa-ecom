@@ -217,6 +217,23 @@ describe("error ระดับช่อง (กฎ 32)", () => {
     expect(byTestId("first-name-input").hasAttribute("aria-describedby")).toBe(false)
   })
 
+  it("NativeSelect ไม่มี label + required: invalid ไม่ถูก preventDefault (ใช้ bubble ของ browser ตามเดิม) และไม่มี <t>-error (review 11b)", () => {
+    render(
+      <NativeSelect name="country_code" required defaultValue="" placeholder={false} data-testid="nolabel">
+        <option value="">-</option>
+        <option value="th">ไทย</option>
+      </NativeSelect>
+    )
+    const select = byTestId<HTMLSelectElement>("nolabel")
+    const event = new Event("invalid", { cancelable: true })
+    act(() => {
+      select.dispatchEvent(event)
+    })
+    expect(event.defaultPrevented).toBe(false)
+    expect(document.querySelector('[data-testid="nolabel-error"]')).toBeNull()
+    expect(select.hasAttribute("aria-invalid")).toBe(false)
+  })
+
   it("invalid บนช่อง required ที่ว่าง → defaultPrevented และแสดง กรุณากรอก<label>; กรอกจน valid → error หาย", () => {
     render(<Input label="อีเมล" name="email" required data-testid="email-input" />)
     const input = byTestId<HTMLInputElement>("email-input")
