@@ -116,26 +116,20 @@ const AddAddress = ({
               data-testid="company-input"
             />
             <Input
-              label="ที่อยู่"
+              label="บ้านเลขที่ หมู่ ซอย ถนน"
               name="address_1"
               required
               autoComplete="address-line1"
+              placeholder="เช่น 99/1 หมู่ 2 ซ.สุขุมวิท 3 ถ.สุขุมวิท"
               data-testid="address-1-input"
             />
-            <Input
-              label="อาคาร ห้อง ฯลฯ"
-              name="address_2"
-              autoComplete="address-line2"
-              data-testid="address-2-input"
-            />
-            <div className="grid grid-cols-1 md:grid-cols-[144px_1fr] gap-2">
+            {/* SFUI-18b (spec 09 กฎ 53–54): ตำบล/แขวง–เขต/อำเภอ และ จังหวัด–รหัสไปรษณีย์ แถวเดียวกันที่ ≥ 768px */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <Input
-                label="รหัสไปรษณีย์"
-                name="postal_code"
-                required
-                autoComplete="postal-code"
-                placeholder="เช่น 10110"
-                data-testid="postal-code-input"
+                label="ตำบล/แขวง"
+                name="address_2"
+                autoComplete="address-level3"
+                data-testid="address-2-input"
               />
               <Input
                 label="เขต/อำเภอ"
@@ -145,7 +139,6 @@ const AddAddress = ({
                 data-testid="city-input"
               />
             </div>
-            {/* SFUI-12a (spec 09 กฎ 37b): จังหวัด–ประเทศ แถวเดียวกันที่ ≥ 768px */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <Input
                 label="จังหวัด"
@@ -153,14 +146,22 @@ const AddAddress = ({
                 autoComplete="address-level1"
                 data-testid="state-input"
               />
-              <CountrySelect
-                region={region}
-                name="country_code"
+              <Input
+                label="รหัสไปรษณีย์"
+                name="postal_code"
                 required
-                autoComplete="country"
-                data-testid="country-select"
+                autoComplete="postal-code"
+                placeholder="เช่น 10110"
+                data-testid="postal-code-input"
               />
             </div>
+            <CountrySelect
+              region={region}
+              name="country_code"
+              required
+              autoComplete="country"
+              data-testid="country-select"
+            />
             <Input
               label="เบอร์โทรศัพท์"
               name="phone"

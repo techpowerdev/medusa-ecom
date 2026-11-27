@@ -15,6 +15,7 @@ import {
   type Customer,
 } from "./support/medusa"
 import { chooseOption } from "./support/select"
+import { expectThai } from "./support/thai-text"
 import { addToCartFromPdp, waitForServerAction } from "./support/server-action"
 
 // SFUI-18a (spec 09 กฎ 56–57, AC-51): ตำบล/แขวง = address_2 ของ Medusa — ไหลจากที่อยู่ที่บันทึกไว้ลง cart/order/group cart
@@ -156,4 +157,215 @@ test("AC-51: group join ด้วยที่อยู่ที่มี address
   } finally {
     await db.end()
   }
+})
+
+// SFUI-18b (spec 09 กฎ 52–54, AC-52): ทั้ง 5 ฟอร์ม — label/ลำดับ DOM แบบที่อยู่ไทย และค่าตำบล/แขวงที่กรอกถูกบันทึก (การจัดวาง 375/767/768/1280
+// ตรวจใน sfui-12a/12b ส่วน AC-37)
+const ADDRESS_1_LABEL = "บ้านเลขที่ หมู่ ซอย ถนน"
+const SUBDISTRICT_LABEL = "ตำบล/แขวง"
+
+/** ข้อความ label โดยไม่รวม * (aria-hidden) */
+const labelText = (scope: Locator, id: string) =>
+  scope.getByTestId(`${id}-label`).evaluate((el) => {
+    const clone = el.cloneNode(true) as HTMLElement
+    clone.querySelectorAll('[aria-hidden="true"]').forEach((n) => n.remove())
+    return (clone.textContent ?? "").trim()
+  })
+
+/** testid เรียงตามลำดับ DOM (compareDocumentPosition) */
+async function expectDomOrder(scope: Locator, ids: string[]) {
+  const ok = await scope.evaluate(
+    (root, list) =>
+      list.every((id, i) => {
+        if (i === 0) return true
+        const a = root.querySelector(`[data-testid="${list[i - 1]}"]`)
+        const b = root.querySelector(`[data-testid="${id}"]`)
+        return !!a && !!b && (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+      }),
+    ids
+  )
+  expect(ok, ids.join(" → ")).toBe(true)
+}
+
+/** label ของบ้านเลขที่…/ตำบลตามกฎ 53 และเป็นไทย */
+async function expectAddressLabels(scope: Locator, address1: string, address2: string) {
+  expect(await labelText(scope, address1)).toBe(ADDRESS_1_LABEL)
+  expect(await labelText(scope, address2)).toBe(SUBDISTRICT_LABEL)
+  await expectThai(scope.page(), [`${address1}-label`, `${address2}-label`])
+}
+
+const fill = async (scope: Locator, values: Record<string, string>) => {
+  for (const [id, value] of Object.entries(values)) await scope.getByTestId(id).fill(value)
+}
+
+test("AC-52: checkout ที่อยู่จัดส่ง + ใบเสร็จ — ลำดับ/label แบบไทย และตำบลที่กรอกลง cart", async ({ page, context, request, baseURL, step }) => {
+  test.setTimeout(150_000)
+  const pk = await publishableKey(request, await adminHeaders(request))
+  const customer = await createCustomer(request, pk)
+  await signInAs(context, baseURL!, customer)
+  await page.goto(`/${CC}/products/t-shirt`)
+  await addToCartFromPdp(page, { request, pk, customer })
+  await page.goto(`/${CC}/checkout?step=address`)
+  const main = page.locator("main")
+
+  await step("ที่อยู่จัดส่ง: ลำดับ DOM และ label", async () => {
+    await expectDomOrder(main, [
+      "shipping-first-name-input",
+      "shipping-last-name-input",
+      "shipping-company-input",
+      "shipping-address-input",
+      "shipping-address-2-input",
+      "shipping-city-input",
+      "shipping-province-input",
+      "shipping-postal-code-input",
+      "shipping-country-select",
+      "shipping-email-input",
+      "shipping-phone-input",
+    ])
+    await expectAddressLabels(main, "shipping-address-input", "shipping-address-2-input")
+    await expect(page.getByTestId("shipping-address-2-input")).toHaveAttribute("name", "shipping_address.address_2")
+    await expect(page.getByTestId("shipping-address-2-input")).toHaveAttribute("autocomplete", "address-level3")
+    await expect(main.locator('input[name="shipping_address.address_2"]'), "ไม่มี name ซ้ำ (hidden ของ 18a ถูกแทนแล้ว)").toHaveCount(1)
+  })
+
+  await step("ที่อยู่ใบเสร็จ: ลำดับ DOM และ label", async () => {
+    await page.getByTestId("billing-address-checkbox").click()
+    await expect(page.getByTestId("billing-first-name-input")).toBeVisible()
+    await expectDomOrder(main, [
+      "billing-first-name-input",
+      "billing-last-name-input",
+      "billing-company-input",
+      "billing-address-input",
+      "billing-address-2-input",
+      "billing-city-input",
+      "billing-province-input",
+      "billing-postal-input",
+      "billing-country-select",
+      "billing-phone-input",
+    ])
+    await expectAddressLabels(main, "billing-address-input", "billing-address-2-input")
+    await expect(main.locator('input[name="billing_address.address_2"]')).toHaveCount(1)
+  })
+
+  await step("กรอกตำบลแล้วส่ง → cart มี address_2 ที่กรอก", async () => {
+    await fill(main, {
+      "shipping-first-name-input": "สมหญิง",
+      "shipping-last-name-input": "รักไทย",
+      "shipping-address-input": "99/1 หมู่ 2",
+      "shipping-address-2-input": "คลองเตยเหนือ",
+      "shipping-city-input": "วัฒนา",
+      "shipping-postal-code-input": "10110",
+      "billing-first-name-input": "สมหญิง",
+      "billing-last-name-input": "รักไทย",
+      "billing-address-input": "7 ถนนสีลม",
+      "billing-address-2-input": "สุริยวงศ์",
+      "billing-city-input": "บางรัก",
+      "billing-postal-input": "10500",
+    })
+    await chooseOption(page.getByTestId("billing-country-select"), CC)
+    await page.getByTestId("submit-address-button").click()
+    await expect(page).toHaveURL(/step=delivery/)
+    const { cart } = await ok(
+      await request.get(`${BACKEND_URL}/store/carts/${await cartIdOf(context)}?fields=id,*shipping_address,*billing_address`, {
+        headers: headersOf(pk, customer),
+      }),
+      "cart"
+    )
+    expect(cart.shipping_address.address_2).toBe("คลองเตยเหนือ")
+    expect(cart.billing_address.address_2).toBe("สุริยวงศ์")
+  })
+})
+
+test("AC-52: บัญชี — เพิ่ม/แก้ที่อยู่ และที่อยู่ใบเสร็จของโปรไฟล์: ลำดับ/label แบบไทย และตำบลที่กรอกถูกบันทึก", async ({
+  page,
+  context,
+  request,
+  baseURL,
+  step,
+}) => {
+  test.setTimeout(150_000)
+  const pk = await publishableKey(request, await adminHeaders(request))
+  const customer = await createCustomer(request, pk)
+  await signInAs(context, baseURL!, customer)
+  const ACCOUNT_ORDER = [
+    "first-name-input",
+    "last-name-input",
+    "company-input",
+    "address-1-input",
+    "address-2-input",
+    "city-input",
+    "state-input",
+    "postal-code-input",
+    "country-select",
+    "phone-input",
+  ]
+  const addresses = async () =>
+    (await ok(await request.get(`${BACKEND_URL}/store/customers/me/addresses`, { headers: headersOf(pk, customer) }), "addresses"))
+      .addresses as { id: string; address_2: string | null; is_default_billing: boolean }[]
+
+  await step("add-address: ลำดับ/label แล้วบันทึก → address_2 ใน API", async () => {
+    await page.goto(`/${CC}/account/addresses`)
+    await page.getByTestId("add-address-button").click()
+    const modal = page.getByTestId("add-address-modal")
+    await expect(modal).toBeVisible()
+    await expectDomOrder(modal, ACCOUNT_ORDER)
+    await expectAddressLabels(modal, "address-1-input", "address-2-input")
+    await fill(modal, {
+      "first-name-input": "สมหญิง",
+      "last-name-input": "รักไทย",
+      "address-1-input": "99/1 หมู่ 2",
+      "address-2-input": "คลองเตยเหนือ",
+      "city-input": "วัฒนา",
+      "postal-code-input": "10110",
+    })
+    await chooseOption(modal.getByTestId("country-select"), CC)
+    await modal.getByTestId("save-button").click()
+    await expect(modal).toBeHidden()
+    await expect.poll(async () => (await addresses()).map((a) => a.address_2)).toEqual(["คลองเตยเหนือ"])
+  })
+
+  await step("edit-address-modal: ลำดับ/label แล้วแก้ตำบล → address_2 ใน API เปลี่ยน", async () => {
+    await page.getByTestId("address-edit-button").first().click()
+    const modal = page.getByTestId("edit-address-modal")
+    await expect(modal).toBeVisible()
+    await expectDomOrder(modal, ACCOUNT_ORDER)
+    await expectAddressLabels(modal, "address-1-input", "address-2-input")
+    await expect(modal.getByTestId("address-2-input")).toHaveValue("คลองเตยเหนือ")
+    await modal.getByTestId("address-2-input").fill("คลองตันเหนือ")
+    await modal.getByTestId("save-button").click()
+    await expect(modal).toBeHidden()
+    await expect.poll(async () => (await addresses()).map((a) => a.address_2)).toEqual(["คลองตันเหนือ"])
+  })
+
+  await step("profile-billing-address: ลำดับ/label แล้วบันทึก → ที่อยู่ใบเสร็จมี address_2", async () => {
+    await page.goto(`/${CC}/account/profile`)
+    const billing = page.getByTestId("account-billing-address-editor")
+    await billing.getByTestId("edit-button").click()
+    await expect(billing.getByTestId("edit-panel")).toHaveAttribute("data-open", "true")
+    await expectDomOrder(billing, [
+      "billing-first-name-input",
+      "billing-last-name-input",
+      "billing-company-input",
+      "billing-address-1-input",
+      "billing-address-2-input",
+      "billing-city-input",
+      "billing-province-input",
+      "billing-postcal-code-input",
+      "billing-country-code-select",
+      "billing-phone-input",
+    ])
+    await expectAddressLabels(billing, "billing-address-1-input", "billing-address-2-input")
+    await fill(billing, {
+      "billing-first-name-input": "สมหญิง",
+      "billing-last-name-input": "รักไทย",
+      "billing-address-1-input": "7 ถนนสีลม",
+      "billing-address-2-input": "สุริยวงศ์",
+      "billing-city-input": "บางรัก",
+      "billing-postcal-code-input": "10500",
+      "billing-phone-input": "0812345678",
+    })
+    await chooseOption(billing.getByTestId("billing-country-code-select"), CC)
+    await billing.getByTestId("save-button").click()
+    await expect.poll(async () => (await addresses()).find((a) => a.is_default_billing)?.address_2).toBe("สุริยวงศ์")
+  })
 })

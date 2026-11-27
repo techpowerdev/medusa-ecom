@@ -138,9 +138,7 @@ const ShippingAddress = ({
           />
         </div>
       )}
-      {/* SFUI-18a (spec 09 กฎ 56): ตำบล/แขวง (address_2) ไปกับฟอร์มเพื่อไม่ให้ setAddresses ทับค่าที่มีอยู่ด้วยค่าว่าง — ช่องที่มองเห็นมาใน SFUI-18b */}
-      <input type="hidden" name="shipping_address.address_2" value={formData["shipping_address.address_2"]} />
-      {/* SFUI-12b (spec 09 กฎ 37): < 768px แถวละช่อง, ≥ md คู่ตามตารางกฎ 37b (breakpoint มาตรฐานของ Tailwind) */}
+      {/* SFUI-18b (spec 09 กฎ 53–54): ลำดับแบบที่อยู่ไทย; < 768px แถวละช่อง, ≥ md คู่ ชื่อ–นามสกุล, ตำบล/แขวง–เขต/อำเภอ, จังหวัด–รหัสไปรษณีย์ (ช่องอื่นเต็มแถว) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input
           label="ชื่อ"
@@ -161,21 +159,49 @@ const ShippingAddress = ({
           data-testid="shipping-last-name-input"
         />
         <Input
-          label="ที่อยู่"
-          name="shipping_address.address_1"
-          autoComplete="address-line1"
-          value={formData["shipping_address.address_1"]}
-          onChange={handleChange}
-          required
-          data-testid="shipping-address-input"
-        />
-        <Input
           label="บริษัท"
           name="shipping_address.company"
           value={formData["shipping_address.company"]}
           onChange={handleChange}
           autoComplete="organization"
+          className="md:col-span-2"
           data-testid="shipping-company-input"
+        />
+        <Input
+          label="บ้านเลขที่ หมู่ ซอย ถนน"
+          name="shipping_address.address_1"
+          autoComplete="address-line1"
+          placeholder="เช่น 99/1 หมู่ 2 ซ.สุขุมวิท 3 ถ.สุขุมวิท"
+          value={formData["shipping_address.address_1"]}
+          onChange={handleChange}
+          required
+          className="md:col-span-2"
+          data-testid="shipping-address-input"
+        />
+        <Input
+          label="ตำบล/แขวง"
+          name="shipping_address.address_2"
+          autoComplete="address-level3"
+          value={formData["shipping_address.address_2"]}
+          onChange={handleChange}
+          data-testid="shipping-address-2-input"
+        />
+        <Input
+          label="เขต/อำเภอ"
+          name="shipping_address.city"
+          autoComplete="address-level2"
+          value={formData["shipping_address.city"]}
+          onChange={handleChange}
+          required
+          data-testid="shipping-city-input"
+        />
+        <Input
+          label="จังหวัด"
+          name="shipping_address.province"
+          autoComplete="address-level1"
+          value={formData["shipping_address.province"]}
+          onChange={handleChange}
+          data-testid="shipping-province-input"
         />
         <Input
           label="รหัสไปรษณีย์"
@@ -187,15 +213,6 @@ const ShippingAddress = ({
           required
           data-testid="shipping-postal-code-input"
         />
-        <Input
-          label="เขต/อำเภอ"
-          name="shipping_address.city"
-          autoComplete="address-level2"
-          value={formData["shipping_address.city"]}
-          onChange={handleChange}
-          required
-          data-testid="shipping-city-input"
-        />
         <CountrySelect
           name="shipping_address.country_code"
           autoComplete="country"
@@ -205,15 +222,8 @@ const ShippingAddress = ({
             setFormData((prev) => ({ ...prev, "shipping_address.country_code": value }))
           }
           required
+          className="md:col-span-2"
           data-testid="shipping-country-select"
-        />
-        <Input
-          label="จังหวัด"
-          name="shipping_address.province"
-          autoComplete="address-level1"
-          value={formData["shipping_address.province"]}
-          onChange={handleChange}
-          data-testid="shipping-province-input"
         />
       </div>
       <div className="my-8">

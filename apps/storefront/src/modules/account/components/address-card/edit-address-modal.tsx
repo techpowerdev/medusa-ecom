@@ -178,29 +178,22 @@ const EditAddress: React.FC<EditAddressProps> = ({
               data-testid="company-input"
             />
             <Input
-              label="ที่อยู่"
+              label="บ้านเลขที่ หมู่ ซอย ถนน"
               name="address_1"
               required
               autoComplete="address-line1"
+              placeholder="เช่น 99/1 หมู่ 2 ซ.สุขุมวิท 3 ถ.สุขุมวิท"
               defaultValue={address.address_1 || undefined}
               data-testid="address-1-input"
             />
-            <Input
-              label="อาคาร ห้อง ฯลฯ"
-              name="address_2"
-              autoComplete="address-line2"
-              defaultValue={address.address_2 || undefined}
-              data-testid="address-2-input"
-            />
-            <div className="grid grid-cols-1 md:grid-cols-[144px_1fr] gap-2">
+            {/* SFUI-18b (spec 09 กฎ 53–54): ตำบล/แขวง–เขต/อำเภอ และ จังหวัด–รหัสไปรษณีย์ แถวเดียวกันที่ ≥ 768px */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <Input
-                label="รหัสไปรษณีย์"
-                name="postal_code"
-                required
-                autoComplete="postal-code"
-                placeholder="เช่น 10110"
-                defaultValue={address.postal_code || undefined}
-                data-testid="postal-code-input"
+                label="ตำบล/แขวง"
+                name="address_2"
+                autoComplete="address-level3"
+                defaultValue={address.address_2 || undefined}
+                data-testid="address-2-input"
               />
               <Input
                 label="เขต/อำเภอ"
@@ -211,7 +204,6 @@ const EditAddress: React.FC<EditAddressProps> = ({
                 data-testid="city-input"
               />
             </div>
-            {/* SFUI-12a (spec 09 กฎ 37b): จังหวัด–ประเทศ แถวเดียวกันที่ ≥ 768px */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <Input
                 label="จังหวัด"
@@ -220,15 +212,24 @@ const EditAddress: React.FC<EditAddressProps> = ({
                 defaultValue={address.province || undefined}
                 data-testid="state-input"
               />
-              <CountrySelect
-                name="country_code"
-                region={region}
+              <Input
+                label="รหัสไปรษณีย์"
+                name="postal_code"
                 required
-                autoComplete="country"
-                defaultValue={address.country_code || undefined}
-                data-testid="country-select"
+                autoComplete="postal-code"
+                placeholder="เช่น 10110"
+                defaultValue={address.postal_code || undefined}
+                data-testid="postal-code-input"
               />
             </div>
+            <CountrySelect
+              name="country_code"
+              region={region}
+              required
+              autoComplete="country"
+              defaultValue={address.country_code || undefined}
+              data-testid="country-select"
+            />
             <Input
               label="เบอร์โทรศัพท์"
               name="phone"

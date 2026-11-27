@@ -244,7 +244,8 @@ test("AC-35 (กฎ 28–30): ทุก Input/CountrySelect/Checkbox ของ c
   // จำนวนช่องในตาราง inventory: 12a 43 + 12b 22 + 12c 11 = 76 (กันตัวนับหลุดเพราะ import เปลี่ยนรูป — เพิ่ม/ลดช่องต้องแก้ spec ก่อน)
   // − 5 ของ SFUI-16a (spec 09 รอบ 49: select ของคืนสินค้า 2 + group join 3 เป็น Field + Select* ของ shadcn — ไม่ใช่ NativeSelect แล้ว)
   // − 1: SFUI-16b ประเทศของ profile-billing-address ประกอบ Select ของ shadcn ตรงที่ใช้ (spec 09 กฎ 40b — ไม่ใช่ component ของ common)
-  expect(counted).toBe(70)
+  // + 2: SFUI-18b ช่องตำบล/แขวงของ checkout (shipping-address-2-input, billing-address-2-input — spec 09 กฎ 52)
+  expect(counted).toBe(72)
 })
 
 test("AC-37 (3): container ของช่องในไฟล์ inventory ไม่มี breakpoint ของ starter และ grid-cols-2/[…] มี md: — ยกเว้นระดับฟอร์มตามค่าคงที่ ไฟล์ + class", () => {

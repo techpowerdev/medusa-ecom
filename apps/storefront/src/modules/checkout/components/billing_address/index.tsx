@@ -30,9 +30,7 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
 
   return (
     <>
-      {/* SFUI-18a (spec 09 กฎ 56): ตำบล/แขวง (address_2) ไปกับฟอร์มเพื่อไม่ให้ setAddresses ทับค่าที่มีอยู่ด้วยค่าว่าง — ช่องที่มองเห็นมาใน SFUI-18b */}
-      <input type="hidden" name="billing_address.address_2" value={formData["billing_address.address_2"]} />
-      {/* SFUI-12b (spec 09 กฎ 37): < 768px แถวละช่อง, ≥ md คู่ตามตารางกฎ 37b (breakpoint มาตรฐานของ Tailwind) */}
+      {/* SFUI-18b (spec 09 กฎ 53–54): ลำดับแบบที่อยู่ไทย; < 768px แถวละช่อง, ≥ md คู่ ชื่อ–นามสกุล, ตำบล/แขวง–เขต/อำเภอ, จังหวัด–รหัสไปรษณีย์ (ช่องอื่นเต็มแถว) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input
           label="ชื่อ"
@@ -53,21 +51,49 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
           data-testid="billing-last-name-input"
         />
         <Input
-          label="ที่อยู่"
-          name="billing_address.address_1"
-          autoComplete="address-line1"
-          value={formData["billing_address.address_1"]}
-          onChange={handleChange}
-          required
-          data-testid="billing-address-input"
-        />
-        <Input
           label="บริษัท"
           name="billing_address.company"
           value={formData["billing_address.company"]}
           onChange={handleChange}
           autoComplete="organization"
+          className="md:col-span-2"
           data-testid="billing-company-input"
+        />
+        <Input
+          label="บ้านเลขที่ หมู่ ซอย ถนน"
+          name="billing_address.address_1"
+          autoComplete="address-line1"
+          placeholder="เช่น 99/1 หมู่ 2 ซ.สุขุมวิท 3 ถ.สุขุมวิท"
+          value={formData["billing_address.address_1"]}
+          onChange={handleChange}
+          required
+          className="md:col-span-2"
+          data-testid="billing-address-input"
+        />
+        <Input
+          label="ตำบล/แขวง"
+          name="billing_address.address_2"
+          autoComplete="address-level3"
+          value={formData["billing_address.address_2"]}
+          onChange={handleChange}
+          data-testid="billing-address-2-input"
+        />
+        <Input
+          label="เขต/อำเภอ"
+          name="billing_address.city"
+          autoComplete="address-level2"
+          value={formData["billing_address.city"]}
+          onChange={handleChange}
+          required
+          data-testid="billing-city-input"
+        />
+        <Input
+          label="จังหวัด"
+          name="billing_address.province"
+          autoComplete="address-level1"
+          value={formData["billing_address.province"]}
+          onChange={handleChange}
+          data-testid="billing-province-input"
         />
         <Input
           label="รหัสไปรษณีย์"
@@ -79,15 +105,6 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
           required
           data-testid="billing-postal-input"
         />
-        <Input
-          label="เขต/อำเภอ"
-          name="billing_address.city"
-          autoComplete="address-level2"
-          value={formData["billing_address.city"]}
-          onChange={handleChange}
-          required
-          data-testid="billing-city-input"
-        />
         <CountrySelect
           name="billing_address.country_code"
           autoComplete="country"
@@ -97,15 +114,8 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
             setFormData((prev) => ({ ...prev, "billing_address.country_code": value }))
           }
           required
+          className="md:col-span-2"
           data-testid="billing-country-select"
-        />
-        <Input
-          label="จังหวัด"
-          name="billing_address.province"
-          autoComplete="address-level1"
-          value={formData["billing_address.province"]}
-          onChange={handleChange}
-          data-testid="billing-province-input"
         />
         <Input
           label="เบอร์โทรศัพท์"
@@ -114,6 +124,7 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
           placeholder="เช่น 0812345678"
           value={formData["billing_address.phone"]}
           onChange={handleChange}
+          className="md:col-span-2"
           data-testid="billing-phone-input"
         />
       </div>
