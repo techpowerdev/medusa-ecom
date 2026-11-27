@@ -1,6 +1,7 @@
 import { APIRequestContext, Page, Route } from "@playwright/test"
 
 import { ADMIN_UI_OPTIONS, PAGINATION_TEXT, loginAdmin } from "./support/admin"
+import { createPoolReadyVariant } from "./support/evoucher"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { adminHeaders, Headers } from "./support/medusa"
 
@@ -90,12 +91,9 @@ test("AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง p
   })
 
   await step("ฟอร์ม Create pool บนหน้า variant → ทุก input หาได้ด้วย label", async () => {
-    const { product } = await call(request, admin, "/admin/products", {
-      title: `EV-9 voucher ${Date.now()}`,
-      options: [{ title: "Value", values: ["500"] }],
-      variants: [{ title: "500 THB", options: { Value: "500" }, prices: [{ currency_code: "thb", amount: 500 }] }],
-    })
-    await page.goto(`${BACKEND_URL}/app/products/${product.id}/variants/${product.variants[0].id}`)
+    // EV-27 (spec 02 กฎข้อ 43g): variant ที่ผ่านเงื่อนไข — ไม่งั้นกด Create pool ได้รายการเงื่อนไขแทนฟอร์ม
+    const { productId, variantId } = await createPoolReadyVariant(request, admin, `EV-9 voucher ${Date.now()}`)
+    await page.goto(`${BACKEND_URL}/app/products/${productId}/variants/${variantId}`)
     await page.getByRole("button", { name: "Create pool" }).click()
     for (const label of POOL_LABELS) {
       await expect(page.getByLabel(label, { exact: true })).toBeVisible()

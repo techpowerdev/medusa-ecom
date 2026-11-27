@@ -590,9 +590,9 @@ Status: draft
 ### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 47)
 | ความต้องการ | Medusa มีให้ | วิธีใช้ |
 |---|---|---|
-| ข้อมูล `manage_inventory`, inventory item (`required_quantity`, variant ที่ใช้ร่วม), location level, shipping profile ของ product | `GET /admin/products/:id` + `fields` ผ่าน hook `useProduct` ของ `@medusajs/dashboard/hooks` (หน้า product ของ dashboard เองขอ `*shipping_profile` — `PRODUCT_DETAIL_FIELDS`); path ของ inventory ตรงกับที่ backend ใช้ใน `query.graph` | **ใช้ตามที่มี** — ไม่เพิ่ม API (กฎข้อ 43a); dashboard 2.22.1 ไม่ export hook ราย variant/inventory item (`hooks.d.ts` มีแค่ `useProduct`, `useProductVariants`) |
+| ข้อมูล `manage_inventory`, inventory item (`required_quantity`, variant ที่ใช้ร่วม), location level, shipping profile ของ product | `GET /admin/products/:id` + `fields` ผ่าน hook `useProduct` ของ `@medusajs/dashboard/hooks` (หน้า product ของ dashboard เองขอ `*shipping_profile` — `PRODUCT_DETAIL_FIELDS`); path ของ inventory ตรงกับที่ backend ใช้ใน `query.graph` | **ใช้ตามที่มี** — ไม่เพิ่ม API (กฎข้อ 43a); dashboard 2.22.1 export hook ของ variant ด้วย (`useProductVariants`, `useVariants`/`useInfiniteVariants` — `hooks.d.ts`) แต่ไม่มี hook ราย inventory item; ใช้ `useProduct` เพราะได้ shipping profile ของ product และ inventory ของ variant ใน request เดียว |
 | หน้าแก้แต่ละเงื่อนไข | route ของ dashboard 2.22.1: `/products/:id/variants/:variant_id/edit` (สวิตช์ manage inventory), `/products/:id/variants/:variant_id/manage-items` (inventory item), `/products/:id/shipping-profile`, `/inventory/:inventory_item_id/locations` (`app.js` route table) | **ลิงก์ไปหน้าของ Medusa** (กฎข้อ 43c) — ไม่สร้างฟอร์มแก้เอง |
-| รายการเงื่อนไขใน modal/ลิงก์ | `FocusModal` (ใช้อยู่แล้ว), `Alert`, `Text` ของ `@medusajs/ui`; `Header` ของเรา (`components/common/header`, dashboard ไม่ export); `Link` ของ `react-router-dom` | ใช้ตามที่มี — ไม่สร้าง component ใหม่ |
+| รายการเงื่อนไขใน modal/ลิงก์ | `FocusModal` (ใช้อยู่แล้ว), `Text` ของ `@medusajs/ui`; `Header` ของเรา (`components/common/header`, dashboard ไม่ export); `Link` ของ `react-router-dom` | ใช้ตามที่มี — ไม่สร้าง component ใหม่ |
 | ข้อความไทย/อังกฤษ | i18n ของ Medusa admin + namespace `ecom-evoucher` (ADR-031, spec 10 กฎ 5 parity) | เพิ่ม key ใต้ `variantWidget.prerequisites.*` |
 | ด่านจริงตอนสร้าง/นำเข้า | `validateEvoucherVariantStep`, `resolveEvoucherPoolInventoryStep` (ของเรา) | **คงเดิม** |
 
@@ -625,11 +625,11 @@ Status: draft
         `createPoolReadyVariant` ใน `e2e/support/evoucher.ts` (แยกจากส่วนต้นของ `createVoucher` — ผู้ใช้ ≥ 2 ที่) ไม่ copy
 
 ### Acceptance criteria (รอบ 47)
-- AC-57 (EV-27, กฎข้อ 43b) unit `src/admin/lib/__tests__/evoucher-pool-prerequisites.unit.spec.ts` (ไฟล์ใหม่ — ล้มบน develop เพราะไม่มี module): variant พร้อม (manage on, item เดียว qty 1 ไม่ใช้ร่วม, location 1, `shipping_profile: null`) → `[]`;
+- AC-57 ☑ #602 (EV-27, กฎข้อ 43b) unit `src/admin/lib/__tests__/evoucher-pool-prerequisites.unit.spec.ts` (ไฟล์ใหม่ — ล้มบน develop เพราะไม่มี module): variant พร้อม (manage on, item เดียว qty 1 ไม่ใช้ร่วม, location 1, `shipping_profile: null`) → `[]`;
   `shipping_profile` ไม่มี field → `[]`; `manage_inventory=false` + 0 item → code `["manageInventory","inventoryItem"]` (ไม่มี `stockLocation`); 2 item → `["inventoryItem"]`; `required_quantity=2` → `["inventoryItem"]`;
   item มี variant อื่นใน `inventory.variants` → `["inventoryItem"]`; มี shipping profile → `["shippingProfile"]`; location 0 และ 2 → `["stockLocation"]`; ไม่ผ่านทุกข้อ → ลำดับ `manageInventory, inventoryItem, shippingProfile` ตามกฎ 43b;
   `to` ของแต่ละ code เท่ากับ path ในกฎ 43b ตรงตัว (แทน id จริงของ fixture); `variantId` ไม่พบใน `product.variants` → `null` (widget แสดงแบบกรณี 2 ของกฎ 43c — error แทนฟอร์ม)
-- AC-58 (EV-27, กฎข้อ 43c–e) e2e admin `apps/storefront/e2e/evoucher-admin-pool-prerequisites.spec.ts` รันทั้ง `lng=th` (`ADMIN_UI_OPTIONS_TH`) และ `lng=en` (`ADMIN_UI_OPTIONS`); ค่าที่คาดสร้างจาก `adminText(lng, "ecom-evoucher", key)`;
+- AC-58 ☑ #602 (EV-27, กฎข้อ 43c–e) e2e admin `apps/storefront/e2e/evoucher-admin-pool-prerequisites.spec.ts` รันทั้ง `lng=th` (`ADMIN_UI_OPTIONS_TH`) และ `lng=en` (`ADMIN_UI_OPTIONS`); ค่าที่คาดสร้างจาก `adminText(lng, "ecom-evoucher", key)`;
   `th` ต้องตรง regex อักษรไทย, `en` ต้องไม่มีอักษรไทย; หาด้วย testid (ข้อยกเว้นเฉพาะ element ของหน้า Medusa ตาม ADR-018):
   (a) product ที่มี shipping profile Default + variant `manage_inventory=false` (สร้างผ่าน Admin API) → ก่อนกด: ไม่มี `evoucher-pool-prerequisites` บนหน้า และ `evoucher-pool-create` enabled;
       กดปุ่ม → ใน dialog เห็น `evoucher-pool-prerequisites` (หัวข้อ `prerequisites.title`) มี `evoucher-pool-prereq-manageInventory`, `-inventoryItem`, `-shippingProfile` ข้อความตรง key และไม่มี `-stockLocation`;
@@ -638,11 +638,11 @@ Status: draft
   (b) แก้ผ่าน Admin API (manage inventory + inventory item, `shipping_profile_id: null`) **โดยไม่ reload** → กลับหน้า variant (ปิด drawer ของ Medusa / goto ภายใน SPA) แล้วกดปุ่มอีกครั้ง → รายการเหลือ `evoucher-pool-prereq-stockLocation` เท่านั้น ยังไม่มี `evoucher-pool-form`;
       ปิด dialog เพิ่ม location level ผ่าน API แล้วกดใหม่ → ไม่มี `evoucher-pool-prerequisites`, เห็น `evoucher-pool-form` + heading `variantWidget.createTitle` (แทน `{{title}}` ด้วยชื่อ variant — หาด้วย role + ชื่อภายใน dialog); กรอกแล้ว Save → POST 1 ครั้งและ 200
   (c) variant ที่มี pool แล้ว (`createVoucher`) → ไม่มี `evoucher-pool-prerequisites` และไม่มี `evoucher-pool-create` บนหน้า (regression กฎ 43d)
-  (d) `GET /admin/products/:id` ถูก route mock ให้ตอบ 500 → กดปุ่ม → `evoucher-pool-prerequisites-error` แสดงข้อความ `loadError` (`{{message}}` แทนแล้ว) ไม่มี `evoucher-pool-form` และ POST = 0;
+  (d) `GET /admin/products/:id` ถูก route mock ให้ตอบ 500 (mock เฉพาะ pathname `/admin/products/<id>` ตรงตัว — ไม่โดน `/admin/products/<id>/variants/...` ที่หน้า variant ใช้; ติดตั้งหลังหน้า variant โหลดครบ) → กดปุ่ม → `evoucher-pool-prerequisites-error` แสดงข้อความ `loadError` (`{{message}}` แทนแล้ว) ไม่มี `evoucher-pool-form` และ POST = 0;
       ยกเลิก mock ปิด dialog แล้วกดใหม่ → ได้ผลตรวจจริง (ไม่ค้าง error)
-- AC-59 (EV-27, กฎข้อ 43f–g) regression: `git diff --name-only origin/develop...HEAD` ไม่มี path ใต้ `apps/backend/src/workflows/` หรือ `apps/backend/src/api/`;
-  e2e ทุก spec ที่ grep พบ `Create pool`/`variantWidget` (`admin-form-pilot`, `admin-create-double-submit`, `admin-modal-return-focus`, `evoucher-admin-forms`, `admin-i18n-evoucher`, `admin-dialog-title`, `evoucher-admin-pool-delete`) ผ่าน
-  โดย fixture ที่เปิดฟอร์มใช้ `createPoolReadyVariant`; static: `createPoolReadyVariant` ถูก import ใน ≥ 2 ไฟล์ (รวม `createVoucher`); unit parity/guard ของ spec 10 (AC-2, AC-5) ผ่านกับ key ใหม่
+- AC-59 ☑ #602 (EV-27, กฎข้อ 43f–g) regression: `git diff --name-only origin/develop...HEAD` ไม่มี path ใต้ `apps/backend/src/workflows/` หรือ `apps/backend/src/api/`;
+  e2e ที่เปิด Create pool บนหน้า variant — `admin-form-pilot`, `admin-create-double-submit`, `admin-modal-return-focus`, `evoucher-admin-forms` — ผ่านโดย fixture ใช้ `createPoolReadyVariant`;
+  e2e ที่เปิดหน้า variant ที่มี pool แล้ว (`admin-i18n-evoucher`) และ static ของ dialog title (`admin-dialog-title`) ผ่าน; static: `createPoolReadyVariant` ถูก import ใน ≥ 2 ไฟล์ (รวม `createVoucher`); unit parity/guard ของ spec 10 (AC-2, AC-5) ผ่านกับ key ใหม่
 
 ### แผนการทดสอบ (รอบ 47)
 - unit: AC-57 (+ parity/guard ของ spec 10 ใน AC-59) · e2e admin: AC-58, AC-59 · integration: none (backend ไม่เปลี่ยน — test เดิมของ AC-11/กฎข้อ 14/import ต้องผ่านตาม CI)
@@ -650,12 +650,12 @@ Status: draft
 ### Tasks (รอบ 47)
 | ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
 |----|------|------|------|----|---------|------|
-| EV-27 | (admin UI) กด "Create pool" แล้วตรวจเงื่อนไข → ไม่ครบแสดงรายการไทย/อังกฤษพร้อมลิงก์ไปหน้า Medusa **แทนฟอร์ม** ไม่ยิง POST (กฎข้อ 43, Q15 = ข); qa | `src/admin/lib/evoucher-pool-prerequisites.ts` (ใหม่ + unit), `src/admin/widgets/variant-evoucher-pool.tsx`, `src/admin/i18n/json/{en,th}/ecom-evoucher.json`, `apps/storefront/e2e/evoucher-admin-pool-prerequisites.spec.ts` (ใหม่), `e2e/support/evoucher.ts` (`createPoolReadyVariant`), fixture ของ e2e ที่เปิด Create pool (กฎ 43g) | ~110 LOC + ~350 LOC test | AC-57, AC-58, AC-59 | ไม่มี (นอกจาก PR เอกสารนี้) | ∥ AI18N-N2 (spec 10 — คนละไฟล์ ยกเว้น `ecom-*.json` ถ้า N2 แตะ `ecom-evoucher.json` ตัวหลัง sync เก็บทั้งสองฝั่ง) |
+| EV-27 | ☑ #602 — (admin UI) กด "Create pool" แล้วตรวจเงื่อนไข → ไม่ครบแสดงรายการไทย/อังกฤษพร้อมลิงก์ไปหน้า Medusa **แทนฟอร์ม** ไม่ยิง POST (กฎข้อ 43, Q15 = ข); qa | `src/admin/lib/evoucher-pool-prerequisites.ts` (ใหม่ + unit), `src/admin/widgets/variant-evoucher-pool.tsx`, `src/admin/i18n/json/{en,th}/ecom-evoucher.json`, `apps/storefront/e2e/evoucher-admin-pool-prerequisites.spec.ts` (ใหม่), `e2e/support/evoucher.ts` (`createPoolReadyVariant`), fixture ของ e2e ที่เปิด Create pool (กฎ 43g) | ~110 LOC + ~350 LOC test | AC-57, AC-58, AC-59 | ไม่มี (นอกจาก PR เอกสารนี้) | ∥ AI18N-N2 (spec 10 — คนละไฟล์ ยกเว้น `ecom-*.json` ถ้า N2 แตะ `ecom-evoucher.json` ตัวหลัง sync เก็บทั้งสองฝั่ง) |
 
 ## คำถามที่ยังเปิดอยู่
 - ~~Q16~~ ตัดสินแล้ว (owner 2026-11-27): **(ก)** ไม่ทำตอนนี้ — คำถามเดิม: (รอบ 47 — ไม่บล็อก EV-27) pool ที่มีอยู่แล้วแต่ variant ไม่ผ่านเงื่อนไขของ import (เช่นลบ location level ทีหลัง หรือสร้าง pool ผ่าน API โดยไม่มี location) — import บนหน้า pool
   (`routes/evouchers/pools/[id]`) ยังได้ toast ข้อความอังกฤษของ backend (`import-evoucher-codes.ts:83`) หลังเลือกไฟล์:
-  (ก) **[ข้อเสนอ]** ไม่ทำตอนนี้ — EV-27 ทำให้ pool ที่สร้างผ่าน UI มี location ครบแล้ว เหลือเฉพาะกรณีแก้ทีหลัง/สร้างผ่าน API ซึ่งเกิดยาก
+  (ก) **[เลือก]** ไม่ทำตอนนี้ — EV-27 ทำให้ pool ที่สร้างผ่าน UI มี location ครบแล้ว เหลือเฉพาะกรณีแก้ทีหลัง/สร้างผ่าน API ซึ่งเกิดยาก
   (ข) task ใหม่ EV-28: ปุ่มนำเข้าโค้ดบนหน้า pool ตรวจเงื่อนไขเดียวกันเมื่อกด (ใช้ `evoucherPoolPrerequisites` ร่วม — ผู้ใช้ที่ 2) แล้วแสดงรายการแทนฟอร์ม import แบบ Q15 = ข (~60 LOC + ~120 LOC test)
 - ~~Q15~~ ตัดสินแล้ว (owner 2026-11-27): **(ข)** ปุ่ม "Create pool" กดได้เสมอ (ยกเว้นระหว่างส่ง/โหลดตามกฎกันกดซ้ำเดิม); กดแล้วเงื่อนไขไม่ครบ → แสดงรายการเงื่อนไขพร้อมลิงก์ไปแก้
   **แทนฟอร์ม** และไม่ยิง request สร้าง pool; หน้า variant ของสินค้าปกติไม่มีกล่องเงื่อนไขค้าง — กฎข้อ 43c, AC-58;
