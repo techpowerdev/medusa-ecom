@@ -625,11 +625,11 @@ Status: draft
         `createPoolReadyVariant` ใน `e2e/support/evoucher.ts` (แยกจากส่วนต้นของ `createVoucher` — ผู้ใช้ ≥ 2 ที่) ไม่ copy
 
 ### Acceptance criteria (รอบ 47)
-- AC-57 (EV-27, กฎข้อ 43b) unit `src/admin/lib/__tests__/evoucher-pool-prerequisites.unit.spec.ts` (ไฟล์ใหม่ — ล้มบน develop เพราะไม่มี module): variant พร้อม (manage on, item เดียว qty 1 ไม่ใช้ร่วม, location 1, `shipping_profile: null`) → `[]`;
+- AC-57 ☑ #602 (EV-27, กฎข้อ 43b) unit `src/admin/lib/__tests__/evoucher-pool-prerequisites.unit.spec.ts` (ไฟล์ใหม่ — ล้มบน develop เพราะไม่มี module): variant พร้อม (manage on, item เดียว qty 1 ไม่ใช้ร่วม, location 1, `shipping_profile: null`) → `[]`;
   `shipping_profile` ไม่มี field → `[]`; `manage_inventory=false` + 0 item → code `["manageInventory","inventoryItem"]` (ไม่มี `stockLocation`); 2 item → `["inventoryItem"]`; `required_quantity=2` → `["inventoryItem"]`;
   item มี variant อื่นใน `inventory.variants` → `["inventoryItem"]`; มี shipping profile → `["shippingProfile"]`; location 0 และ 2 → `["stockLocation"]`; ไม่ผ่านทุกข้อ → ลำดับ `manageInventory, inventoryItem, shippingProfile` ตามกฎ 43b;
   `to` ของแต่ละ code เท่ากับ path ในกฎ 43b ตรงตัว (แทน id จริงของ fixture); `variantId` ไม่พบใน `product.variants` → `null` (widget แสดงแบบกรณี 2 ของกฎ 43c — error แทนฟอร์ม)
-- AC-58 (EV-27, กฎข้อ 43c–e) e2e admin `apps/storefront/e2e/evoucher-admin-pool-prerequisites.spec.ts` รันทั้ง `lng=th` (`ADMIN_UI_OPTIONS_TH`) และ `lng=en` (`ADMIN_UI_OPTIONS`); ค่าที่คาดสร้างจาก `adminText(lng, "ecom-evoucher", key)`;
+- AC-58 ☑ #602 (EV-27, กฎข้อ 43c–e) e2e admin `apps/storefront/e2e/evoucher-admin-pool-prerequisites.spec.ts` รันทั้ง `lng=th` (`ADMIN_UI_OPTIONS_TH`) และ `lng=en` (`ADMIN_UI_OPTIONS`); ค่าที่คาดสร้างจาก `adminText(lng, "ecom-evoucher", key)`;
   `th` ต้องตรง regex อักษรไทย, `en` ต้องไม่มีอักษรไทย; หาด้วย testid (ข้อยกเว้นเฉพาะ element ของหน้า Medusa ตาม ADR-018):
   (a) product ที่มี shipping profile Default + variant `manage_inventory=false` (สร้างผ่าน Admin API) → ก่อนกด: ไม่มี `evoucher-pool-prerequisites` บนหน้า และ `evoucher-pool-create` enabled;
       กดปุ่ม → ใน dialog เห็น `evoucher-pool-prerequisites` (หัวข้อ `prerequisites.title`) มี `evoucher-pool-prereq-manageInventory`, `-inventoryItem`, `-shippingProfile` ข้อความตรง key และไม่มี `-stockLocation`;
@@ -640,7 +640,7 @@ Status: draft
   (c) variant ที่มี pool แล้ว (`createVoucher`) → ไม่มี `evoucher-pool-prerequisites` และไม่มี `evoucher-pool-create` บนหน้า (regression กฎ 43d)
   (d) `GET /admin/products/:id` ถูก route mock ให้ตอบ 500 (mock เฉพาะ pathname `/admin/products/<id>` ตรงตัว — ไม่โดน `/admin/products/<id>/variants/...` ที่หน้า variant ใช้; ติดตั้งหลังหน้า variant โหลดครบ) → กดปุ่ม → `evoucher-pool-prerequisites-error` แสดงข้อความ `loadError` (`{{message}}` แทนแล้ว) ไม่มี `evoucher-pool-form` และ POST = 0;
       ยกเลิก mock ปิด dialog แล้วกดใหม่ → ได้ผลตรวจจริง (ไม่ค้าง error)
-- AC-59 (EV-27, กฎข้อ 43f–g) regression: `git diff --name-only origin/develop...HEAD` ไม่มี path ใต้ `apps/backend/src/workflows/` หรือ `apps/backend/src/api/`;
+- AC-59 ☑ #602 (EV-27, กฎข้อ 43f–g) regression: `git diff --name-only origin/develop...HEAD` ไม่มี path ใต้ `apps/backend/src/workflows/` หรือ `apps/backend/src/api/`;
   e2e ที่เปิด Create pool บนหน้า variant — `admin-form-pilot`, `admin-create-double-submit`, `admin-modal-return-focus`, `evoucher-admin-forms` — ผ่านโดย fixture ใช้ `createPoolReadyVariant`;
   e2e ที่เปิดหน้า variant ที่มี pool แล้ว (`admin-i18n-evoucher`) และ static ของ dialog title (`admin-dialog-title`) ผ่าน; static: `createPoolReadyVariant` ถูก import ใน ≥ 2 ไฟล์ (รวม `createVoucher`); unit parity/guard ของ spec 10 (AC-2, AC-5) ผ่านกับ key ใหม่
 

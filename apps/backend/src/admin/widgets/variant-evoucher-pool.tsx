@@ -61,7 +61,8 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
   const product = useProduct(
     variant.product_id ?? "",
     { fields: EVOUCHER_POOL_PREREQUISITE_FIELDS },
-    { enabled: open && !!variant.product_id, staleTime: 0 }
+    // refetch เฉพาะตอนเปิด modal — ปิด refetch ตอน reconnect/focus ไม่ให้ฟอร์มสลับเป็น loading (unmount) ระหว่างกรอก (review #602)
+    { enabled: open && !!variant.product_id, staleTime: 0, refetchOnReconnect: false, refetchOnWindowFocus: false }
   )
   const check = prerequisiteCheck(variant.product_id, variant.id, product)
 
