@@ -1,6 +1,6 @@
 # ROADMAP — milestone, ลำดับ PR, สถานะ
 
-อัปเดตล่าสุด: 2026-11-27 (รอบ 47 แก้ข้อค้นพบทดสอบ manual ก่อน v0.4.0 ☑ #600–#602; รอบ 46 ☑ #593–#599; ยังไม่ release) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
+อัปเดตล่าสุด: 2026-11-27 (รอบ 48 ฟอร์ม storefront แบบ shadcn — ADR-032 accepted, พร้อมเริ่ม; รอบ 47 ☑ #600–#602; release v0.4.0 #603 พักจนรอบ 48 merge) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
 [`docs/roadmap/history.md`](roadmap/history.md) และ follow-up เก่า (รอบ 13–39) อยู่ที่
 [`docs/roadmap/followups-archive.md`](roadmap/followups-archive.md)
 
@@ -10,9 +10,9 @@
   รอบ 43 ส่วน v0.3.1 (OPS-36 #554, PAY-23 #555, PAY-24 #556, OPS-39 #559) เป็น 🚀 · OPS-40 (PII ค่าเดี่ยวจาก review #559) ☑ #562 (merge 2026-11-26 — ข้อยกเว้น d1/d2/d3 ของกฎ 22d + กรณีรู้แล้ว `cart_13rjFZ` → OPS-41), **ไม่อยู่ใน v0.3.1**
 - **ยังไม่ release หลัง v0.3.1**: OPS-40 + รอบ 44 (SFUI, 16 task) + รอบ 45 (7 task) + รอบ 46 (admin ไทย, 4 task + AI18N-N1 #599 + เอกสาร #598 — ☑ 2026-11-27) อยู่ใน `develop` เท่านั้น ·
   owner **ยังไม่ go-live** (release `develop → main` เป็นของ owner)
-- **รอบปัจจุบัน**: ไม่มี — รอบ 47 (แก้ข้อค้นพบทดสอบ manual: AI18N-N2 #600, EV-27 #602) ปิดแล้ว รอ owner release v0.4.0; รอบ 43 กลุ่ม "หลัง go-live" (14 task) รอ owner สั่ง
-- **รอ owner ตัดสิน**: ไม่มีคำถามค้างของรอบ 43 — เหลือเฉพาะเรื่องก่อน go-live (Stripe live, ค่าส่ง, staging); รอบ 44: ไม่มีคำถามค้าง (ADR-030 accepted, Q1/Q2 ตอบแล้ว 2026-11-26); รอบ 45: ไม่มีคำถามค้าง (owner สั่ง "เก็บต่อเลย" 2026-11-26);
-  รอบ 46: ไม่มีคำถามค้าง (ADR-031 accepted, Q1 = ก 2026-11-26); รอบ 47: ไม่มีคำถามค้าง (Q15 = ข, Q16 = ก 2026-11-27)
+- **รอบปัจจุบัน**: **รอบ 48** — ฟอร์ม storefront ใช้หน้าตา default ของ shadcn (spec 09 "ส่วนฟอร์ม", ADR-032 accepted 2026-11-27, 6 task, stack) เริ่ม SFUI-11a ได้ ·
+  **release v0.4.0 (#603) พักจนรอบ 48 merge ครบ** (owner 2026-11-27) · รอบ 47 ปิดแล้ว (AI18N-N2 #600, EV-27 #602) · รอบ 43 "หลัง go-live" (14 task) รอ owner สั่ง
+- **รอ owner ตัดสิน**: เฉพาะเรื่องก่อน go-live (Stripe live, ค่าส่ง, staging); รอบ 43–48: ไม่มีคำถามค้าง (รอบ 48 ตอบครบ 2026-11-27)
 - **ขั้นต่อไป**: go-live (checklist ข้อ 1–16) → **v1.0.0** (ร้านเปิดจริงครั้งแรก)
 
 ### Release
@@ -23,7 +23,7 @@
 | v0.2.0 | 🚀 | 2026-11-19 | #423 (`e274d387`), tag `v0.2.0` | task ใน milestone/Admin UI ที่ merge หลัง v0.1.0 ถึงรอบ 39 |
 | v0.3.0 | 🚀 | 2026-11-24 | #521 (`47c3e545`), tag `v0.3.0`, [GitHub Release](https://github.com/techpowerdev/medusa-ecom/releases/tag/v0.3.0) | แก้จากการทดสอบ manual (รอบ 40 = 32 task) + รอบ 41 (36 task; PAY-13 ✕) |
 | v0.3.1 | 🚀 | 2026-11-25 | #561 (`88bb0b63`), tag `v0.3.1` | รอบ 42 (21 task 🚀 — history หัวข้อ "รอบ 42 — ผลจริง") + 4 task ก่อน go-live ของรอบ 43 (3 🚀 train #557 + OPS-39 🚀 #559; Q-R43-ฉ = ก แก้เพิ่ม + OPS-39 owner 2026-11-25) |
-| (ยังไม่ release → v0.4.0) | ☑ ใน develop | — | — | OPS-40 #562 + รอบ 44 (#565–#581) + รอบ 45 (#583–#590) + รอบ 46 (#593–#599) + รอบ 47 เมื่อ merge — รอ owner |
+| (ยังไม่ release → v0.4.0) | ☑ ใน develop · ⏸ #603 | — | #603 (พัก) | OPS-40 #562 + รอบ 44 (#565–#581) + รอบ 45 (#583–#590) + รอบ 46 (#593–#599) + รอบ 47 (#600–#602) + **รอบ 48 เมื่อ merge ครบ** (owner 2026-11-27) |
 | go-live | ☐ owner ยังไม่ go-live | — | — | หลัง v0.3.1 + OPS-40 (☑ #562) + Go-live checklist ข้อ 1–16 |
 | v1.0.0 | ☐ | — | — | release แรกที่เปิดร้านจริง: Go-live checklist ครบ + smoke test บน production ผ่าน (Q-R43-จ owner 2026-11-25) |
 | หลัง go-live | ☐ รอ owner สั่ง | — | — | รอบ 43 อีก 14 task (รวม OPS-41) |
@@ -157,7 +157,7 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 - เริ่มได้เมื่อ PR เอกสารรอบ 46 (รวมแก้ CLAUDE.md หัวข้อ Language ตาม ADR-031) พร้อม — stack ไม่ต้องรอ merge · Q1 = ก: ไม่ตั้งไทยเป็นค่าเริ่มต้น (กฎ 15/AC-12 ไม่ทำ)
 - จุดเสี่ยงที่ต้องผ่าน (review เอกสาร): ห้ามเรียก `t` ตอนโหลด module (กฎ 4, AC-4c, guard 14f) · jest ใช้ i18next instance แยก ไม่ init instance กลาง (กฎ 16, AC-4b)
 
-## รอบ 47 — แก้ข้อค้นพบจากทดสอบ manual ก่อน release v0.4.0 (รอบปัจจุบัน)
+## รอบ 47 — แก้ข้อค้นพบจากทดสอบ manual ก่อน release v0.4.0 (☑ merge ครบ 2026-11-27)
 
 ที่มา: owner ทดสอบ manual 2026-11-27 แล้วอนุมัติแก้ · **คำตัดสิน owner 2026-11-27**: ช่องวันที่ใน admin คงเป็น พ.ศ. ตาม Medusa (ไม่แก้ — ไม่มี task)
 
@@ -169,7 +169,30 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 - ∥ ทั้งสองตัว · ไฟล์ร่วมที่อาจชน: `src/admin/i18n/json/{en,th}/*.json` (ตัวหลัง sync เก็บทั้งสองฝั่ง) · backend validation ของ e-voucher คงเดิม
 - EV-27 แก้ fixture ของ e2e admin เดิมที่เปิด Create pool (กฎข้อ 43g) — รัน e2e ทุก spec ที่อ้าง widget ก่อน push
 
+## รอบ 48 — ฟอร์ม storefront ใช้หน้าตา default ของ shadcn (spec 09 "ส่วนฟอร์ม", ADR-032 accepted 2026-11-27) (รอบปัจจุบัน)
+
+ที่มา: owner 2026-11-27 ก่อน release v0.4.0 — ทุกฟอร์ม: label เหนือช่อง (เลิก floating label), ข้อความ error, ป้าย `*`, placeholder ตามความเหมาะสม ·
+**ตั้งใจเปลี่ยนหน้าตาช่องกรอก** → ยกเว้นกฎ "คง computed style" เฉพาะช่องกรอก (spec 09 กฎ 27) · **#603 พักจน merge ครบ** · ช่องสูง 36px ตาม shadcn ·
+จัดวาง: < 1024px (`small`) แถวละช่อง, ≥ 1024px คู่ที่สัมพันธ์กันแถวเดียว (กฎ 37, AC-37)
+
+| Task | spec | งาน (สั้น) | Depends | UI/qa | สถานะ |
+|---|---|---|---|---|---|
+| SFUI-11a | 09 | `shadcn add field input-group` + `Input`/`NativeSelect`/`Checkbox`/`CountrySelect` เป็น `Field` (label เหนือช่อง, `*`, `useId`) + แก้ e2e ที่ยึด floating label | PR เอกสารรอบ 48 (stack) | ✓ | ☐ |
+| SFUI-11b | 09 | error ระดับช่องจาก validation native เป็นไทย (`aria-invalid`/`aria-describedby`, focus ช่องแรก) | SFUI-11a (stack) | ✓ | ☐ |
+| SFUI-12a | 09 | ฟอร์ม account (login/register/profile/ที่อยู่): placeholder, label ประเทศ, `tel`, จัดวาง | SFUI-11b (stack) | ✓ | ☐ |
+| SFUI-12b | 09 | ฟอร์ม checkout (ที่อยู่จัดส่ง/ใบเสร็จ/อีเมล/โค้ดส่วนลด) + จัดวาง | SFUI-11b (stack) | ✓ | ☐ |
+| SFUI-12c | 09 | คืนสินค้า + group buy + affiliate login/สมัคร | SFUI-11b (stack) | ✓ | ☐ |
+| SFUI-13 | 09 | guard static: ช่องฟอร์มทุกตัวผ่าน component ร่วม (allow-list กฎ 26) | SFUI-12a..12c | — | ☐ |
+
+- ลำดับ: 11a → 11b → (12a ∥ 12b ∥ 12c) → 13 · stack แบบรอบ 44–45 (Q5) · ไม่มี dependency ใหม่ · admin ไม่กระทบ
+- **ไฟล์ร่วม** (แก้ตามลำดับ stack): `common/components/{input,native-select}` 11a → 11b · `profile-billing-address` 11a → 12a · `e2e/sfui-8-floating-label.spec.ts` 11a → 12c
+- 11a ~450 LOC (e2e เดิมต้องแก้ใน PR เดียวกัน — รายการปิดใน AC-29); เกิน ~500 หยุดแจ้ง planner
+- backlog หลัง v0.4.0 (Q4, owner 2026-11-27 — ยังไม่มี task/AC): error จาก server ราย field (server action คืน `fieldErrors`)
+
 ## คำถามที่รอ owner
+
+- **รอบ 48**: ไม่มีคำถามค้าง — owner 2026-11-27 "รับตามข้อเสนอ": ADR-032 = accepted, ~~D1–D5~~ = ก (D3 `*` อย่างเดียว ไม่ใส่ "(ไม่บังคับ)"), ช่องสูง 36px,
+  ~~Q3~~ = allow-list กฎ 26, ~~Q4~~ = ไม่ทำรอบนี้ (backlog หลัง v0.4.0), ~~Q5~~ = stack ได้; เพิ่มกติกาจัดวาง (spec 09 กฎ 37)
 
 - **รอบ 47**: ไม่มีคำถามค้าง — ~~Q16~~ = ก (owner 2026-11-27): pool ที่มีแล้วแต่ไม่ผ่านเงื่อนไข import ไม่ทำตอนนี้ ·
   ~~Q15~~ = ข (owner 2026-11-27): ปุ่ม Create pool กดได้เสมอ ไม่ครบ → รายการเงื่อนไขแทนฟอร์ม ไม่ยิง POST
@@ -232,6 +255,7 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 | รอบ 45 เก็บกวาดหลัง SFUI-7 | 09 | ☑ | 7 ☑ (#584–#590; เอกสาร #583) | ฟอนต์ `text-*-regular/semi` + floating label; stack แบบรอบ 44; ไม่งด release |
 | รอบ 46 admin ภาษาไทย | 10 | ☑ | 5 ☑ (#594–#597 + AI18N-N1 #599; เอกสาร #593, #598) | ADR-031 accepted 2026-11-26; stack แบบรอบ 44; Q1 = ก; ยังไม่ release |
 | รอบ 47 ทดสอบ manual ก่อน v0.4.0 | 02, 10 | ☑ | 2 ☑ (#600, #602; เอกสาร #601) | AI18N-N2, EV-27; วันที่ admin คง พ.ศ. (owner 2026-11-27) |
+| รอบ 48 ฟอร์ม storefront แบบ shadcn | 09 | ☐ | 6 ☐ | ADR-032 accepted 2026-11-27; stack; #603 (v0.4.0) พักจน merge ครบ |
 | รอบ 43 | 01, 03, 04, 06–08 | ◐ | 4 🚀 + 1 ☑ + 14 ☐ | 4 🚀 (3 train #557 + OPS-39 #559) ใน v0.3.1; OPS-40 ☑ #562 ก่อน go-live (ไม่อยู่ใน v0.3.1); 14 ตัวหลัง go-live (รวม OPS-41) |
 
 จำนวน task นับจากตารางใน history.md ณ 2026-11-24 และตารางรอบ 43 ด้านบน ณ 2026-11-25 (task ที่อยู่หลาย milestone นับที่ milestone หลักของ spec)
