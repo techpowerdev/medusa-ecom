@@ -15,6 +15,7 @@ import {
   publishableKey,
   signInAs,
 } from "./support/medusa"
+import { chooseOption } from "./support/select"
 
 // CORE-55 (spec 01 กฎข้อ 113, AC-154, ADR-022): ลูกค้าขอคืนจากหน้าเว็บ แล้วแอดมินกด Receive items ในหน้า order ของ Medusa
 // ต้องรับของได้จริง (Medusa 2.22.1 ทิ้ง return.location_id เป็น null → confirm ตอบ 500) — หน้า order เป็นของ Medusa ใส่ data-testid
@@ -116,7 +117,7 @@ test("AC-154: ลูกค้าขอคืนจากหน้าเว็บ
     await page.goto(`/${CC}/account/orders/details/${order.id}`)
     await page.getByTestId("order-return-button").click()
     await expect(page).toHaveURL(new RegExp(`/${CC}/account/orders/details/${order.id}/return$`))
-    await page.getByTestId("return-item").first().getByTestId("return-item-quantity").selectOption("1")
+    await chooseOption(page.getByTestId("return-item").first().getByTestId("return-item-quantity"), "1")
     await page.getByTestId("return-submit-button").click()
     await expect(page.getByTestId("order-return-success")).toBeVisible()
     await evidence("01-store-return-success")

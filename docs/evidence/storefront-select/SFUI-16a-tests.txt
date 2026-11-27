@@ -1,0 +1,76 @@
+# SFUI-16a — evidence (spec 09 รอบ 49 กฎ 40b, 41, 44, 45, 48–50; AC-43, AC-48; ADR-033)
+# ฐาน: feat/SFUI-15-select-base 53451689 (stack); Node 24.12.0; storefront prod build (next start :8481), backend medusa start จาก .medusa/server (NODE_ENV=production, :9481), DB medusa_sfui16a, Redis db 12; Stripe test key จาก shell + stripe listen → :9481
+
+## ขอบเขต
+- returns/components/return-request-form: return-item-quantity, return-item-reason → Field + Select* (uncontrolled defaultValue + name, ค่าปัจจุบันใน state จาก onValueChange — กฎ 40b)
+- group-buy/components/group-page/group-join.tsx: group-quantity, group-address-select, group-shipping-option → Field + Select* (controlled)
+- ไม่แตะ common/components/**, e2e/support/select.ts, ui/, globals.css, package.json/lockfile, backend
+
+## Red / ลำดับ
+- static sfui-13-form-guard AC-35 ล้มหลังเปลี่ยน 5 ช่อง (counted 71 ≠ 76) → แก้ค่าคาดเป็น 71 (ดู "ต่างจาก spec" ใน PR)
+- e2e/sfui-16-select.spec.ts เขียนหลังแก้ component (ไม่ได้รันบนฐาน native — บนฐานไม่มี trigger role=combobox/aria-expanded จึงล้มแน่นอน); รอบแรกล้ม 1:
+  ArrowDown แล้ว Enter ทันทีได้ค่าเดิม (Radix ย้าย focus ใน setTimeout) → รอ focus ถึง item ก่อน Enter; เปิดครั้งที่สองไม่รอ focus ที่ item ปัจจุบัน
+  → ผ่าน 3 รอบติด (--repeat-each=3: 6 passed)
+
+## Green: vitest ทั้งหมด
+ Test Files  135 passed (135)
+      Tests  2060 passed (2060)
+## Green: playwright project unit (รวม evidence-budget, AC-5, AC-19, sfui-13 guard)
+248 passed
+## pnpm lint: 0 errors (warning เดิม: backend 4, storefront 27) · pnpm typecheck: ผ่าน · pnpm --filter storefront build: ผ่าน
+
+## AC-48: git diff origin/develop --stat -- apps/backend apps/storefront/package.json pnpm-lock.yaml apps/storefront/src/styles/globals.css apps/storefront/src/components/ui
+ว่าง (diff ของ common/ มาจาก SFUI-15 ที่เป็นฐานของ stack เท่านั้น — git diff HEAD~ -- src/modules/common e2e/support = 0 บรรทัด)
+
+## e2e AC-43 + spec ที่อ้างหน้าคืนสินค้า/หน้ากลุ่ม (prod build, chromium, --workers=2): 51 passed
+✓   2 [chromium] › e2e/core-20c-return-window.spec.ts:59:5 › AC-96: line qty 3 fulfilled 3 shipped 2 และขอคืนไปแล้ว 1 → เลือกคืนได้สูงสุด 1; ส่งแล้วหน้า order detail เห็นสถานะใหม่ทันที (4.8s)
+✓   1 [chromium] › e2e/core-20-return-request.spec.ts:22:5 › AC-65: ลูกค้าขอคืนสินค้าจาก order ที่ส่งแล้ว → return requested ใช้ Standard return; order ที่ยังไม่ fulfill ไม่มีปุ่ม (5.0s)
+✓   3 [chromium] › e2e/core-20c-return-window.spec.ts:216:5 › AC-96: URL /th แต่ order อยู่ region อื่นที่ return_window_days=7 → ปุ่มคิดจาก region ของ order; admin แก้ค่าแล้วมีผลทันที (2.2s)
+✓   5 [chromium] › e2e/core-30-login-return.spec.ts:30:5 › AC-123: หน้ากลุ่ม — ไม่ login กด join → login พร้อม return_to → กลับหน้ากลุ่ม ไม่มี membership ใหม่ (1.0s)
+✓   6 [chromium] › e2e/core-30-login-return.spec.ts:52:5 › AC-123: return_to ถูกแก้เป็น URL ภายนอก → login แล้วอยู่ที่ /th/account (606ms)
+✓   4 [chromium] › e2e/core-20d-return-window.spec.ts:143:5 › AC-102 (a): region ไม่ตั้ง return_window_days → ปุ่มขอคืน, หน้า /returns และ JSON-LD ใช้ค่าเริ่มต้นของ backend (4.2s)
+✓   8 [chromium] › e2e/core-20d-return-window.spec.ts:220:5 › AC-102 (b): line A ส่งเมื่อ window + 1 วันก่อน, line B ส่งเมื่อวาน → ฟอร์มเลือกได้เฉพาะ B และ backend ตอบ 200 (3.6s)
+✓   9 [chromium] › e2e/core-20d-return-window.spec.ts:283:5 › AC-102 (c, e): backend ตอบ 400 RETURN_WINDOW_EXPIRED → ข้อความไทยเฉพาะ code และฟอร์มคงจำนวน/เหตุผลที่เลือก (4.0s)
+✓  10 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:38:5 › AC-125 checkout: ขั้น delivery ของ cart t-shirt มี Standard ไม่มี Digital delivery (2.6s)
+✓  11 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:60:5 › AC-125 หน้ากลุ่ม: หลังกด group-shipping-load ไม่มี option ของ Digital delivery (2.3s)
+✓  12 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:128:7 › CORE-33 › AC-127 checkout: cart t-shirt ที่ค้าง Digital delivery ไม่มี radio ติ๊ก ปุ่ม disabled จนเลือก Standard (5.2s)
+✓  13 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:178:7 › CORE-35 › AC-129 checkout: cart ค้าง Digital delivery เปิด step=payment/review ตรงๆ → กลับ delivery; เลือก Standard แล้วไป payment ได้ (4.1s)
+✓  14 [chromium] › e2e/core-55-return-receive.spec.ts:101:5 › AC-154: ลูกค้าขอคืนจากหน้าเว็บ → แอดมินกด Receive items ในหน้า order ได้ → return received และ stock +1 (7.8s)
+✓  15 [chromium] › e2e/core-71-return-contact-store.spec.ts:63:7 › AC-170: ขอคืนสินค้าเมื่อ location ไม่มีของ › error location ไม่มีของ → เห็น return-contact-store (ไทย + ลิงก์ /contact) ไม่เห็น ลองใหม่ (5.8s)
+✓  16 [chromium] › e2e/core-71-return-contact-store.spec.ts:94:7 › AC-170: ขอคืนสินค้าเมื่อ location ไม่มีของ › error อื่น → ข้อความเดิม (return-error) ไม่มี return-contact-store (4.2s)
+✓  17 [chromium] › e2e/group-buy-group-page.spec.ts:17:7 › หน้ากลุ่ม (AC-16a) › ไม่ login: จำนวนสมาชิก ความคืบหน้า นับถอยหลัง ลิงก์แชร์ และ reload หลังคนที่ 3 join (8.0s)
+✓  18 [chromium] › e2e/group-buy-group-page.spec.ts:60:7 › หน้ากลุ่ม (AC-16a) › 375px: ไม่เลื่อนแนวนอน (3.9s)
+✓  19 [chromium] › e2e/group-buy-group-page.spec.ts:71:7 › หน้ากลุ่ม (AC-16a) › token ไม่มีจริง → หน้าไม่พบ (384ms)
+✓   7 [chromium] › e2e/core-30-login-return.spec.ts:61:5 › AC-123: หน้าแรก — ไม่ login กดสร้างทีม → login แล้วกลับ /th และจำนวนทีมไม่เพิ่ม (1.1m)
+✓  20 [chromium] › e2e/group-buy-home-campaigns.spec.ts:176:5 › AC-48: การ์ด group buy 2 แบบ + การ์ด flash บนหน้าแรก ข้อความไทย (16.8s)
+✓  22 [chromium] › e2e/group-buy-home-campaigns.spec.ts:210:5 › AC-48: login แล้ว dblclick สร้างทีม → POST ครั้งเดียว ไปหน้าทีมใหม่ที่มีลิงก์แชร์ ไม่ join อัตโนมัติ (2.7s)
+✓  23 [chromium] › e2e/group-buy-home-campaigns.spec.ts:238:5 › AC-48: ยังไม่ login กดสร้างทีม → หน้า login และไม่สร้างทีม (707ms)
+✓  24 [chromium] › e2e/group-buy-home-campaigns.spec.ts:248:5 › 375px: การ์ดแคมเปญไม่ทำให้หน้าเลื่อนแนวนอน (2.1s)
+✓  25 [chromium] › e2e/group-buy-home-campaigns.spec.ts:258:5 › AC-48: POST สร้างทีมตอบ 400 (ต้นแบบถูกแก้เป็น 2 สินค้า) → group-create-team-error ไทย ไม่เปลี่ยนหน้า (3.1s)
+✓  21 [chromium] › e2e/group-buy-join.spec.ts:89:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › A: หลาย variant + ที่อยู่ H2 + วิธีส่ง → cart ใหม่ join ครั้งเดียว, cart C ไม่ถูกแตะ, aff ลง draft order (15.2s)
+✓  26 [chromium] › e2e/group-buy-not-started.spec.ts:32:7 › หน้ากลุ่ม: แคมเปญยังไม่เริ่ม และลิงก์แชร์ (AC-66) › (a) starts_at ในอนาคต → ไม่มีฟอร์ม join แสดงเวลาเริ่มเป็นภาษาไทย (1.8s)
+✓  28 [chromium] › e2e/group-buy-not-started.spec.ts:46:7 › หน้ากลุ่ม: แคมเปญยังไม่เริ่ม และลิงก์แชร์ (AC-66) › (b) แคมเปญเริ่มแล้ว → group-share-link เป็น /th/g/<token> และมีฟอร์ม join (2.1s)
+✓  29 [chromium] › e2e/group-buy-not-started.spec.ts:61:7 › หน้ากลุ่ม: นับถอยหลังเมื่อแคมเปญยังไม่เริ่ม (AC-70) › (a) starts_at ในอนาคต → ไม่มี group-countdown มี group-starts-at (1.2s)
+✓  30 [chromium] › e2e/group-buy-not-started.spec.ts:71:7 › หน้ากลุ่ม: นับถอยหลังเมื่อแคมเปญยังไม่เริ่ม (AC-70) › (b) แคมเปญเริ่มแล้ว → มี group-countdown ไม่มี group-starts-at (1.2s)
+✓  27 [chromium] › e2e/group-buy-join.spec.ts:171:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › B ไม่มีที่อยู่ → join disabled + ลิงก์เพิ่มที่อยู่, ไม่มี cart ใหม่ (6.0s)
+✓  31 [chromium] › e2e/group-buy-ui-polish.spec.ts:36:7 › GB-12: UI ของ group buy (AC-51) › group-selection แสดงชื่อสินค้า + variant และราคาต่อชิ้นตาม GET /store/products (2.8s)
+✓  33 [chromium] › e2e/group-buy-ui-polish.spec.ts:84:7 › GB-12: UI ของ group buy (AC-51) › 375px: กล่องยืนยันออกจากกลุ่มสองแถว ปุ่มไม่ตัดคำ ไม่ล้นจอ; 639px สองแถว, 640/768/1280px แถวเดียว; ไม่มี no-orders-container (2.0s)
+✓  34 [chromium] › e2e/group-buy-ui-polish.spec.ts:140:7 › GB-12: UI ของ group buy (AC-51) › ลูกค้าที่ไม่มีทั้ง order ปกติและคำสั่งซื้อแบบกลุ่ม → no-orders-container 1 อัน (898ms)
+✓  32 [chromium] › e2e/group-buy-join.spec.ts:185:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › รายการรวมเกิน max_units_per_person → group-units-limit และไม่มี cart ใหม่ (6.5s)
+✓  35 [chromium] › e2e/sfui-12c-feature-forms.spec.ts:145:7 › ฟอร์มคืนสินค้า › AC-34 (12c): ทุกแถว return-item-quantity/return-item-reason มี label ของตัวเองเหนือช่อง, labels[0] ชี้ถูกแถว, id ไม่ซ้ำ (4.9s)
+✓  37 [chromium] › e2e/sfui-12c-feature-forms.spec.ts:170:7 › ฟอร์มคืนสินค้า › AC-34 (12c, กฎ 31a): option ของ return-item-quantity/return-item-reason เท่าเดิม (option ว่างเดิม) (4.2s)
+✓  36 [chromium] › e2e/group-buy-join.spec.ts:205:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_GROUP_FULL → group-join-error ข้อความไทย และ C ไม่เปลี่ยน (8.4s)
+✓  38 [chromium] › e2e/sfui-12c-feature-forms.spec.ts:222:7 › group buy join › AC-34 (12c): group-quantity/group-address-select/group-shipping-option มี label เหนือช่อง (3.5s)
+✓  40 [chromium] › e2e/sfui-12c-feature-forms.spec.ts:239:7 › group buy join › AC-34 (12c, กฎ 31a): option ของ select ใน group join เท่าเดิม — quantity/address ไม่มี option ว่าง, วิธีจัดส่งมีตัวเดียว (5.4s)
+✓  39 [chromium] › e2e/group-buy-join.spec.ts:205:9 › join จากหน้ากลุ่ม (AC-28, AC-47) › join ตอบ 409 GB_UNITS_LIMIT_EXCEEDED → group-join-error ข้อความไทย และ C ไม่เปลี่ยน (9.0s)
+✓  41 [chromium] › e2e/sfui-12c-feature-forms.spec.ts:269:5 › AC-34 (12c): affiliate login และสมัคร — label เหนือช่อง, * ทุกช่อง (บังคับ), ไม่มี placeholder, label รหัสแนะนำคงเดิม (1.6s)
+✓  43 [chromium] › e2e/sfui-16-select.spec.ts:28:7 › 16a: ฟอร์มคืนสินค้า (AC-43) › return-item-quantity: Enter เปิด, ArrowDown + Enter เปลี่ยนค่า, Escape ไม่เปลี่ยน; เลือกเหตุผลแล้วข้อความ trigger = ข้อความของ item; สูง 36px (7.4s)
+✓  42 [chromium] › e2e/group-buy-join.spec.ts:229:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › กลุ่มหมดเวลาระหว่างอยู่บนหน้า → join ตอบ 400 และ group-join-error ยังแสดงหลังปุ่มหาย (11.2s)
+✓  44 [chromium] › e2e/sfui-16-select.spec.ts:80:7 › 16a: group buy join (AC-43) › selectOptions ของ group-shipping-option มี placeholder เลือกวิธีจัดส่ง และไม่มี item value ว่าง; ทั้งสามช่องสูง 36px (4.2s)
+✓  46 [chromium] › e2e/sfui-5e-features.spec.ts:9:5 › หน้ากลุ่ม: ส่วนลด ลิงก์แชร์ และแถบความคืบหน้าใช้สี primary; ปุ่มเพิ่มในรายการเป็น outline ของ shadcn (980ms)
+✓  45 [chromium] › e2e/group-buy-join.spec.ts:244:7 › join จากหน้ากลุ่ม (AC-28, AC-47) › ยังไม่ login: กด join → หน้า login ไม่มี server action (ไม่มี join/cart ใหม่) (AC-47) (3.8s)
+✓  48 [chromium] › e2e/sfui-9e-font.spec.ts:38:5 › AC-21: หน้ากลุ่ม /g/<token> คงขนาด/ระยะบรรทัด/น้ำหนักเดิม (2.2s)
+✓  47 [chromium] › e2e/sfui-8-floating-label.spec.ts:66:5 › AC-23 (2)(3): PDP และหน้า group buy — option-button และ label ของจำนวน 12px/20px/400 ไม่เลื่อน ไม่ทับ legend (5.5s)
+✓  49 [chromium] › e2e/sfui-9e-font.spec.ts:56:5 › AC-21: คำสั่งซื้อแบบกลุ่มในหน้า account คงขนาด/ระยะบรรทัด/น้ำหนักเดิม (3.3s)
+✓  50 [chromium] › e2e/sfui-9e-font.spec.ts:70:5 › AC-21: affiliate portal (login, earnings) คงขนาด/ระยะบรรทัด/น้ำหนักเดิม (874ms)
+✓  51 [chromium] › e2e/sfui-9e-font.spec.ts:90:5 › AC-21: หน้าบัตรกำนัล (ยังไม่มีรายการ) คงขนาด/ระยะบรรทัด/น้ำหนักเดิม (502ms)

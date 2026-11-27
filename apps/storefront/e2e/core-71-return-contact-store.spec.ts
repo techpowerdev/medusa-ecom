@@ -12,6 +12,7 @@ import {
   signInAs,
 } from "./support/medusa"
 import { expectThai } from "./support/thai-text"
+import { chooseOption, expectSelected } from "./support/select"
 
 // CORE-71: spec 01 AC-170 / กฎข้อ 129 — backend (CORE-55) ปฏิเสธการคืนเมื่อ location ของ return option ไม่มีของ
 // → ลองใหม่ไม่ช่วย ฟอร์มต้องบอกให้ติดต่อร้าน (`return-contact-store` + ลิงก์ /contact); error อื่นคงข้อความเดิม
@@ -68,7 +69,7 @@ test.describe("AC-170: ขอคืนสินค้าเมื่อ location
 
     await step("เลือกจำนวนแล้วส่งคำขอคืน", async () => {
       await page.goto(`/${CC}/account/orders/details/${orderId}/return`)
-      await page.getByTestId("return-item").first().getByTestId("return-item-quantity").selectOption("1")
+      await chooseOption(page.getByTestId("return-item").first().getByTestId("return-item-quantity"), "1")
       await page.getByTestId("return-submit-button").click()
     })
 
@@ -80,7 +81,7 @@ test.describe("AC-170: ขอคืนสินค้าเมื่อ location
       await expect(page.getByTestId("return-contact-store-link")).toHaveAttribute("href", `/${CC}/contact`)
       await expect(page.getByTestId("return-error")).toHaveCount(0)
       await expect(page.getByTestId("return-request-container")).not.toContainText("ลองใหม่")
-      await expect(page.getByTestId("return-item").first().getByTestId("return-item-quantity")).toHaveValue("1")
+      await expectSelected(page.getByTestId("return-item").first().getByTestId("return-item-quantity"), "1")
       await evidence("01-return-contact-store")
     })
 
@@ -95,7 +96,7 @@ test.describe("AC-170: ขอคืนสินค้าเมื่อ location
 
     await step("ส่งคำขอคืนแล้วเห็นข้อความเดิม", async () => {
       await page.goto(`/${CC}/account/orders/details/${orderId}/return`)
-      await page.getByTestId("return-item").first().getByTestId("return-item-quantity").selectOption("1")
+      await chooseOption(page.getByTestId("return-item").first().getByTestId("return-item-quantity"), "1")
       await page.getByTestId("return-submit-button").click()
       await expect(page.getByTestId("return-error")).toHaveText("ส่งคำขอคืนสินค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง", {
         timeout: 30_000,

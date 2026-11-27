@@ -11,6 +11,7 @@ import {
   publishableKey,
   signInAs,
 } from "./support/medusa"
+import { chooseOption, selectOptions } from "./support/select"
 
 // CORE-20c: spec 01 AC-96 / กฎข้อ 60 — จำนวนที่คืนได้นับ shipped_quantity, ช่วงคืนจาก region ของ order (ไม่ใช่ countryCode
 // ใน URL) และสถานะใหม่เห็นทันทีหลังส่ง return; test ที่แก้ metadata ใช้ region แยกของ test เท่านั้น (ไม่แตะ region "th" ที่ใช้ร่วม)
@@ -103,9 +104,9 @@ test("AC-96: line qty 3 fulfilled 3 shipped 2 และขอคืนไปแ�
     await page.getByTestId("order-return-button").click()
     await expect(page).toHaveURL(new RegExp(`/${CC}/account/orders/details/${order.id}/return$`))
     const quantity = page.getByTestId("return-item").first().getByTestId("return-item-quantity")
-    // ไม่นับ placeholder (option disabled value="") ของ NativeSelect
-    await expect(quantity.locator('option:not([value=""])')).toHaveText(["0", "1"])
-    await quantity.selectOption("1")
+    // item ของ select (ไม่รวม placeholder — spec 09 กฎ 41)
+    expect((await selectOptions(quantity)).options.map(([, text]) => text)).toEqual(["0", "1"])
+    await chooseOption(quantity, "1")
     await evidence("01-return-max-shipped")
   })
 

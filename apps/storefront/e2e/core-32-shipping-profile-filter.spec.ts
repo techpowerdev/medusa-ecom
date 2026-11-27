@@ -12,6 +12,7 @@ import {
   type Customer,
   variantOf,
 } from "./support/medusa"
+import { selectOptions } from "./support/select"
 
 // CORE-32 (spec 01 กฎข้อ 89, AC-125): cart ที่มีสินค้าต้องจัดส่ง (t-shirt) ไม่เห็น option "Digital delivery"
 // ทั้งที่ checkout และหน้ากลุ่ม — id ของ option มาจาก GET /store/shipping-options?cart_id= ด้วย type.code (ไม่ match ข้อความ)
@@ -84,8 +85,9 @@ test("AC-125 หน้ากลุ่ม: หลังกด group-shipping-load
 
   const shipping = page.getByTestId("group-shipping-option")
   await expect(shipping).toBeVisible()
-  await expect(shipping.locator(`option[value="${ids.standard}"]`)).toHaveCount(1)
-  await expect(shipping.locator(`option[value="${ids.digital}"]`)).toHaveCount(0)
+  const values = (await selectOptions(shipping)).options.map(([value]) => value)
+  expect(values.filter((v) => v === ids.standard)).toHaveLength(1)
+  expect(values).not.toContain(ids.digital)
   await evidence("02-group-shipping-no-digital")
 })
 

@@ -15,6 +15,7 @@ import {
   signInAs,
   variantOf,
 } from "./support/medusa"
+import { expectSelected, selectOptions } from "./support/select"
 import { expectThai } from "./support/thai-text"
 
 // SFUI-12c (spec 09 รอบ 48 กฎ 28–31a, 33; AC-34 ส่วน 12c): ฟอร์มคืนสินค้า, ชุดช่องของ group buy join และ login/สมัครของ affiliate portal
@@ -34,10 +35,6 @@ const AFFILIATE_REGISTER: Fields = {
 }
 
 type Option = [value: string, text: string, disabled: boolean]
-const optionsOf = (select: Locator): Promise<Option[]> =>
-  select.evaluate((el) =>
-    Array.from((el as HTMLSelectElement).options).map((o): [string, string, boolean] => [o.value, (o.textContent ?? "").trim(), o.disabled])
-  )
 
 /** กล่องของ control — ช่องรหัสผ่านใช้กล่อง InputGroup ที่ครอบ <input> (กฎ 28) */
 const boxOf = (control: Locator) =>
@@ -178,16 +175,18 @@ test.describe("ฟอร์มคืนสินค้า", () => {
     const rows = page.getByTestId("return-item")
     await expect(rows).toHaveCount(2)
     for (const row of await rows.all()) {
-      // แต่ละ line จำนวน 1 → 0..1 และ option ว่าง disabled "จำนวน" เดิม
-      expect(await optionsOf(row.getByTestId("return-item-quantity"))).toEqual([
-        ["", "จำนวน", true],
-        ["0", "0", false],
-        ["1", "1", false],
-      ])
-      expect(await optionsOf(row.getByTestId("return-item-reason"))).toEqual([
-        ["", "เลือกเหตุผล", true],
-        ...reasons.map((r): Option => [r.id, r.label, false]),
-      ])
+      // แต่ละ line จำนวน 1 → 0..1; ค่าเริ่มต้น 0 จึงไม่แสดง placeholder "จำนวน" (spec 09 กฎ 41 — placeholder ไม่ใช่ item)
+      expect(await selectOptions(row.getByTestId("return-item-quantity"))).toEqual({
+        placeholder: null,
+        options: [
+          ["0", "0", false],
+          ["1", "1", false],
+        ],
+      })
+      expect(await selectOptions(row.getByTestId("return-item-reason"))).toEqual({
+        placeholder: "เลือกเหตุผล",
+        options: reasons.map((r): Option => [r.id, r.label, false]),
+      })
     }
   })
 })
@@ -245,18 +244,18 @@ test.describe("group buy join", () => {
     test.setTimeout(180_000)
     const { ctx, addresses } = await groupShopper(request, page, baseURL!)
     await page.goto(`/${CC}/g/${ctx.token}`)
-    expect(await optionsOf(page.getByTestId("group-quantity"))).toEqual(PDP_QUANTITY_OPTIONS.map((q): Option => [String(q), String(q), false]))
+    expect((await selectOptions(page.getByTestId("group-quantity"))).options).toEqual(PDP_QUANTITY_OPTIONS.map((q): Option => [String(q), String(q), false]))
     // ข้อความ = addressLabel ของ group-join.tsx (ชื่อ นามสกุล ที่อยู่ เมือง รหัสไปรษณีย์) — เทียบแบบไม่ขึ้นกับลำดับของ API
     const expected = addresses
       .map((a): Option => [a.id!, [a.first_name, a.last_name, a.address_1, a.city, a.postal_code].filter(Boolean).join(" "), false])
       .sort()
-    expect((await optionsOf(page.getByTestId("group-address-select"))).sort()).toEqual(expected)
+    expect((await selectOptions(page.getByTestId("group-address-select"))).options.sort()).toEqual(expected)
 
     await loadShipping(page)
     const shipping = page.getByTestId("group-shipping-option")
-    await expect(shipping).toHaveValue("")
-    const [first, ...rest] = await optionsOf(shipping)
-    expect(first).toEqual(["", "เลือกวิธีจัดส่ง", true])
+    await expectSelected(shipping, "")
+    const { placeholder, options: rest } = await selectOptions(shipping)
+    expect(placeholder).toBe("เลือกวิธีจัดส่ง")
     expect(rest.length).toBeGreaterThan(0)
     for (const [value, text, disabled] of rest) {
       expect(value, text).not.toBe("")

@@ -10,6 +10,7 @@ import {
   signInAs,
 } from "./support/medusa"
 import { expectThai } from "./support/thai-text"
+import { chooseOption } from "./support/select"
 
 // GB-12 (spec 04 กฎข้อ 32b, 32d, 32e; AC-51 ส่วน e2e): ชื่อ/ราคาต่อชิ้นใน group-selection, กล่องยืนยันออกจากกลุ่มที่ 375px
 // และ empty state เดียวในหน้า orders (countdown กลาง + "ต่อชิ้น" ตรวจด้วย unit)
@@ -60,7 +61,7 @@ test.describe("GB-12: UI ของ group buy (AC-51)", () => {
       .getByTestId("option-button")
       .filter({ hasText: /^S$/ })
       .click()
-    await page.getByTestId("group-quantity").selectOption("2")
+    await chooseOption(page.getByTestId("group-quantity"), "2")
     await page.getByTestId("group-add-variant").click()
 
     const row = page.getByTestId("group-selection-item")
