@@ -573,7 +573,7 @@ function addressFrom(formData: FormData, prefix: "shipping_address" | "billing_a
     first_name: text("first_name"),
     last_name: text("last_name"),
     address_1: text("address_1"),
-    address_2: "",
+    address_2: text("address_2"),
     company: text("company"),
     postal_code: text("postal_code"),
     city: text("city"),

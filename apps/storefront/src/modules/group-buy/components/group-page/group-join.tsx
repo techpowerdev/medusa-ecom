@@ -5,6 +5,7 @@ import { joinGroupBuy, prepareGroupCart, type GroupCart } from "@lib/data/group-
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
 import { groupJoinActionMessage } from "@lib/util/group-join-error"
+import { addressLines } from "@lib/util/address-lines"
 import { loginPathForReturn } from "@lib/util/login-return"
 import {
   addToSelection,
@@ -41,8 +42,9 @@ const PREPARE_FAILED = "เตรียมรายการไม่สำเ�
 const NO_SHIPPING = "ไม่มีวิธีจัดส่งสำหรับที่อยู่นี้ กรุณาเลือกที่อยู่อื่น"
 const JOIN_FAILED = "เข้าร่วมไม่สำเร็จ กรุณาลองใหม่"
 
+// SFUI-18a (spec 09 กฎ 57): ชื่อ + บรรทัดที่อยู่ตามลำดับไทย
 const addressLabel = (a: HttpTypes.StoreCustomerAddress) =>
-  [a.first_name, a.last_name, a.address_1, a.city, a.postal_code].filter(Boolean).join(" ")
+  [a.first_name, a.last_name, addressLines(a)[0]].filter(Boolean).join(" ")
 
 // GB-7a2 (spec 04 กฎข้อ 29c–f, 31): เลือกหลาย variant + ที่อยู่ → cart ใหม่ (c1) → วิธีส่ง → sync aff → join (c2)
 // cart ปัจจุบัน (`_medusa_cart_id`) ไม่ถูกอ่าน/แก้ (กฎข้อ 14c); action ที่สร้างข้อมูลกันกดซ้ำด้วย ref (in-flight) + disabled

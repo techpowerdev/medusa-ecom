@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { setShippingMethod } from "@lib/data/cart"
 import { calculatePriceForShippingOption } from "@lib/data/fulfillment"
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
+import { addressLines } from "@lib/util/address-lines"
 import { convertToLocale } from "@lib/util/money"
 import { selectedShippingOptionId, shippingOptionsForCart } from "@lib/util/shipping-options"
 import { HttpTypes } from "@medusajs/types"
@@ -35,30 +36,9 @@ type ShippingProps = {
   availableShippingMethods: HttpTypes.StoreCartShippingOption[] | null
 }
 
+// SFUI-18a (spec 09 กฎ 57): ที่อยู่ของจุดรับสินค้าตามลำดับไทย บรรทัดเดียว (ไม่มีจุลภาค/ช่องว่างซ้อน)
 function formatAddress(address: HttpTypes.StoreCartAddress) {
-  if (!address) {
-    return ""
-  }
-
-  let ret = ""
-
-  if (address.address_1) {
-    ret += ` ${address.address_1}`
-  }
-
-  if (address.address_2) {
-    ret += `, ${address.address_2}`
-  }
-
-  if (address.postal_code) {
-    ret += `, ${address.postal_code} ${address.city}`
-  }
-
-  if (address.country_code) {
-    ret += `, ${address.country_code.toUpperCase()}`
-  }
-
-  return ret
+  return addressLines(address).filter(Boolean).join(" ")
 }
 
 const Shipping: React.FC<ShippingProps> = ({

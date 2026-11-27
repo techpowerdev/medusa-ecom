@@ -1,6 +1,7 @@
 "use client"
 import { setAddresses } from "@lib/data/cart"
 import useToggleState from "@lib/hooks/use-toggle-state"
+import { addressLines } from "@lib/util/address-lines"
 import compareAddresses from "@lib/util/compare-addresses"
 import { isDigitalOnlyCart } from "@lib/util/digital-checkout"
 import { HttpTypes } from "@medusajs/types"
@@ -135,15 +136,12 @@ const Addresses = ({
                   <p className="text-sm leading-[1.4rem] text-muted-foreground">
                     {cart.billing_address.first_name} {cart.billing_address.last_name}
                   </p>
-                  <p className="text-sm leading-[1.4rem] text-muted-foreground">
-                    {cart.billing_address.address_1}
-                  </p>
-                  <p className="text-sm leading-[1.4rem] text-muted-foreground">
-                    {cart.billing_address.postal_code}, {cart.billing_address.city}
-                  </p>
-                  <p className="text-sm leading-[1.4rem] text-muted-foreground">
-                    {cart.billing_address.country_code?.toUpperCase()}
-                  </p>
+                  {/* SFUI-18a (spec 09 กฎ 57): ที่อยู่ตามลำดับไทย + บรรทัดประเทศ */}
+                  {addressLines(cart.billing_address).map((line, i) => (
+                    <p key={i} className="text-sm leading-[1.4rem] text-muted-foreground">
+                      {line}
+                    </p>
+                  ))}
                 </div>
                 <div className="flex flex-col min-w-0 sm:w-1/2" data-testid="billing-contact-summary">
                   <p className="text-sm leading-[1.4rem] font-medium text-foreground mb-1">ข้อมูลติดต่อ</p>
@@ -168,17 +166,11 @@ const Addresses = ({
                       {cart.shipping_address.first_name}{" "}
                       {cart.shipping_address.last_name}
                     </p>
-                    <p className="text-sm leading-[1.4rem] text-muted-foreground">
-                      {cart.shipping_address.address_1}{" "}
-                      {cart.shipping_address.address_2}
-                    </p>
-                    <p className="text-sm leading-[1.4rem] text-muted-foreground">
-                      {cart.shipping_address.postal_code},{" "}
-                      {cart.shipping_address.city}
-                    </p>
-                    <p className="text-sm leading-[1.4rem] text-muted-foreground">
-                      {cart.shipping_address.country_code?.toUpperCase()}
-                    </p>
+                    {addressLines(cart.shipping_address).map((line, i) => (
+                      <p key={i} className="text-sm leading-[1.4rem] text-muted-foreground">
+                        {line}
+                      </p>
+                    ))}
                   </div>
 
                   <div
@@ -217,17 +209,11 @@ const Addresses = ({
                           {cart.billing_address?.first_name}{" "}
                           {cart.billing_address?.last_name}
                         </p>
-                        <p className="text-sm leading-[1.4rem] text-muted-foreground">
-                          {cart.billing_address?.address_1}{" "}
-                          {cart.billing_address?.address_2}
-                        </p>
-                        <p className="text-sm leading-[1.4rem] text-muted-foreground">
-                          {cart.billing_address?.postal_code},{" "}
-                          {cart.billing_address?.city}
-                        </p>
-                        <p className="text-sm leading-[1.4rem] text-muted-foreground">
-                          {cart.billing_address?.country_code?.toUpperCase()}
-                        </p>
+                        {addressLines(cart.billing_address).map((line, i) => (
+                          <p key={i} className="text-sm leading-[1.4rem] text-muted-foreground">
+                            {line}
+                          </p>
+                        ))}
                       </>
                     )}
                   </div>

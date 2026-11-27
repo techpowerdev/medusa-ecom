@@ -8,6 +8,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useMemo } from "react"
 
+import { addressLines } from "@lib/util/address-lines"
 import compareAddresses from "@lib/util/compare-addresses"
 import { HttpTypes } from "@medusajs/types"
 
@@ -86,19 +87,10 @@ const AddressSelect = ({
                     </span>
                   )}
                   <div className="flex flex-col text-left text-sm leading-6 font-normal mt-2">
-                    <span>
-                      {address.address_1}
-                      {address.address_2 && (
-                        <span>, {address.address_2}</span>
-                      )}
-                    </span>
-                    <span>
-                      {address.postal_code}, {address.city}
-                    </span>
-                    <span>
-                      {address.province && `${address.province}, `}
-                      {address.country_code?.toUpperCase()}
-                    </span>
+                    {/* SFUI-18a (spec 09 กฎ 57): ที่อยู่ตามลำดับไทย + บรรทัดประเทศ */}
+                    {addressLines(address).map((line, i) => (
+                      <span key={i}>{line}</span>
+                    ))}
                   </div>
                 </div>
               </div>
