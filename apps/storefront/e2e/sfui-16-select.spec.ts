@@ -15,9 +15,10 @@ import {
   placeOrder,
   publishableKey,
   signInAs,
+  variantOf,
 } from "./support/medusa"
 import { chooseOption, expectSelected, selectOptions } from "./support/select"
-import { addToCartFromPdp, isServerAction } from "./support/server-action"
+import { addToCartFromPdp, isAddToCartBody, isServerAction, waitForServerAction } from "./support/server-action"
 
 // SFUI-16 (spec 09 รอบ 49 กฎ 40b–46; ADR-033): select ของ storefront เป็น Select ของ shadcn (Radix) — 16a: คืนสินค้า + group buy join (AC-43), 16b: ประเทศ (AC-44/49), 16c: จำนวนในตะกร้า (AC-45/49)
 // หา element ด้วย data-testid เท่านั้น (trigger `<t>`, `<t>-options`, `<t>-option` + data-value)
@@ -284,6 +285,69 @@ test.describe("AC-49 (ตะกร้า): มือถือ 390×844 แตะ
       await expectSelected(trigger, "3")
       await expect.poll(() => lineQuantity(request, fixture)).toBe(3)
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    })
+  })
+})
+
+// ---- SFUI-16d: จำนวนบน PDP (`product-quantity-select`) — AC-46 (กฎ 45, 47) ----
+
+test.describe("16d: จำนวนบน PDP (AC-46)", () => {
+  /** line ของ cart ปัจจุบันใน browser (cookie `_medusa_cart_id`) อ่านด้วย token ของเจ้าของ cart */
+  async function pdpCartLines(page: Page, customer: Customer, pk: string) {
+    const cartId = (await page.context().cookies()).find((c) => c.name === "_medusa_cart_id")?.value
+    expect(cartId, "cart cookie").toBeTruthy()
+    const { cart } = await ok(
+      await page.request.get(`${BACKEND_URL}/store/carts/${cartId}`, {
+        headers: { authorization: `Bearer ${customer.token}`, "x-publishable-api-key": pk },
+        params: { fields: "id,*items" },
+      }),
+      "read cart"
+    )
+    return (cart.items as { variant_id: string; quantity: number }[]).map((i) => ({ variant_id: i.variant_id, quantity: i.quantity }))
+  }
+
+  test.describe("ปิด JavaScript", () => {
+    test.use({ javaScriptEnabled: false })
+
+    test("ไม่มี select[name=quantity] ในหน้า และ product-quantity-select แสดง 1", async ({ page }) => {
+      await page.goto(`/${CC}/products/t-shirt`)
+      await expect(page.getByTestId("add-product-button")).toBeVisible()
+      await expect(page.locator('select[name="quantity"]')).toHaveCount(0)
+      await expect(page.getByTestId("product-quantity-select")).toHaveText("1")
+      await expectSelected(page.getByTestId("product-quantity-select"), "1")
+    })
+  })
+
+  test("เปิด JS: product-quantity-select เป็น button[role=combobox] ชื่อ จำนวน, label อยู่เหนือ trigger, เลือก 3 แล้วเพิ่ม → cart qty 3", async ({
+    page,
+    context,
+    request,
+    baseURL,
+    step,
+  }) => {
+    const pk = await publishableKey(request, await adminHeaders(request))
+    const customer = await createCustomer(request, pk)
+    const { variantId } = await variantOf(request, pk, "t-shirt")
+    await signInAs(context, baseURL!, customer)
+    const trigger = page.getByTestId("product-quantity-select")
+
+    await step("trigger เป็น combobox ชื่อ จำนวน และ label อยู่เหนือ trigger (กฎ 45)", async () => {
+      await page.goto(`/${CC}/products/t-shirt`)
+      expect(await trigger.evaluate((el) => el.tagName)).toBe("BUTTON")
+      await expect(trigger).toHaveAttribute("role", "combobox")
+      await expect(trigger).toHaveAccessibleName("จำนวน")
+      const label = (await page.getByTestId("product-quantity-select-label").boundingBox())!
+      const box = (await trigger.boundingBox())!
+      expect(label.y + label.height, "label อยู่เหนือ trigger").toBeLessThanOrEqual(box.y + 0.5)
+    })
+
+    await step("เลือก 3 แล้วกดเพิ่มลงตะกร้า → cart qty 3", async () => {
+      await chooseOption(trigger, "3")
+      const done = waitForServerAction(page, isAddToCartBody)
+      await page.getByTestId("add-product-button").click()
+      await done
+      await expect(page.getByTestId("add-product-button")).toBeEnabled()
+      expect(await pdpCartLines(page, customer, pk)).toEqual([{ variant_id: variantId, quantity: 3 }])
     })
   })
 })

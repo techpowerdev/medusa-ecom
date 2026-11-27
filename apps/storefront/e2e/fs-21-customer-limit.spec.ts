@@ -1,7 +1,7 @@
 import { APIResponse, Page } from "@playwright/test"
 
 import { BACKEND_URL, expect, test } from "./support/fixtures"
-import { chooseOption } from "./support/select"
+import { chooseOption, selectOptions } from "./support/select"
 import {
   STOREFRONT_COUNTRY as CC,
   Headers,
@@ -136,7 +136,7 @@ test("AC-28 (a): limit 1 ยังไม่เคยซื้อ → PDP เล�
     await expect(limit).toBeVisible()
     await expect(limit).toHaveText(THAI)
     await expect(limit).toContainText("1")
-    await expect(page.getByTestId("product-quantity-select").locator("option")).toHaveCount(1)
+    expect((await selectOptions(page.getByTestId("product-quantity-select"))).options).toHaveLength(1)
     await expect(page.getByTestId("flash-customer-limit-reached")).toHaveCount(0)
     await expect(page.getByTestId("add-product-button")).toBeEnabled()
     await evidence("01-pdp-customer-limit")

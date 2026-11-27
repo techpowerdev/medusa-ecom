@@ -11,6 +11,7 @@ import {
   variantOf,
 } from "./support/medusa"
 import { isAddToCartBody, waitForServerAction } from "./support/server-action"
+import { chooseOption, expectSelected, selectOptions } from "./support/select"
 
 // CORE-24: spec 01 AC-94 (กฎข้อ 59) — ตัวเลือกจำนวนบน PDP ทั้งโหมด JS และ no-JS; หา element ด้วย data-testid เท่านั้น
 // ข้อมูลตั้งต้นจาก seed (CORE-2): region Thailand, t-shirt
@@ -46,12 +47,12 @@ test("AC-94: (JS) เลือก 3 ใน product-quantity-select แล้ว�
   await step("PDP มีตัวเลือกจำนวน 1..10 ค่าเริ่มต้น 1", async () => {
     await page.goto(`/${CC}/products/${PRODUCT}`)
     const select = page.getByTestId("product-quantity-select")
-    await expect(select).toHaveValue("1")
-    await expect(select.locator("option")).toHaveText(Array.from({ length: 10 }, (_, i) => String(i + 1)))
+    await expectSelected(select, "1")
+    expect((await selectOptions(select)).options.map(([, text]) => text)).toEqual(Array.from({ length: 10 }, (_, i) => String(i + 1)))
   })
 
   await step("เลือก 3 แล้วกดเพิ่มลงตะกร้า (server action)", async () => {
-    await page.getByTestId("product-quantity-select").selectOption("3")
+    await chooseOption(page.getByTestId("product-quantity-select"), "3")
     const done = waitForServerAction(page, isAddToCartBody)
     await page.getByTestId("add-product-button").click()
     await done
@@ -67,7 +68,8 @@ test("AC-94: (JS) เลือก 3 ใน product-quantity-select แล้ว�
 test.describe("ปิด JavaScript", () => {
   test.use({ javaScriptEnabled: false })
 
-  test("AC-94: (no-JS, ไม่ล็อกอิน) เลือก 2 แล้ว submit และ login → cart มี qty 2", async ({
+  // SFUI-16d (spec 09 กฎ 47a แทนถ้อยคำ spec 01 AC-94 ท่อน no-JS): ปิด JS ไม่มีตัวเลือกจำนวน → submit แล้ว login ได้ qty 1
+  test("AC-94: (no-JS, ไม่ล็อกอิน) submit (ไม่เลือกจำนวน) และ login → cart มี qty 1", async ({
     page,
     request,
     step,
@@ -77,21 +79,23 @@ test.describe("ปิด JavaScript", () => {
     const customer = await createCustomer(request, pk)
     const { variantId } = await variantOf(request, pk, PRODUCT)
 
-    await step("PDP (ไม่มี JS) เลือก 2 แล้วกดเพิ่มลงตะกร้า → หน้า login คง variant และ quantity", async () => {
+    await step("PDP (ไม่มี JS) กดเพิ่มลงตะกร้า → หน้า login คง variant ไม่มี add_quantity", async () => {
       await page.goto(`/${CC}/products/${PRODUCT}`)
-      await page.getByTestId("product-quantity-select").selectOption("2")
       await page.getByTestId("add-product-button").click()
-      await expect(page).toHaveURL(new RegExp(`/${CC}/account\\?add_variant=.+&add_quantity=2`))
+      await expect(page).toHaveURL(new RegExp(`/${CC}/account\\?add_variant=`))
+      expect(new URL(page.url()).searchParams.has("add_quantity"), "URL ไม่มี add_quantity").toBe(false)
       await expect(page.getByTestId("login-page")).toBeVisible()
-      await evidence("02-nojs-login-quantity-2")
+      const html = await (await page.request.get(page.url())).text()
+      expect(html).not.toContain('name="add_quantity"')
+      await evidence("02-nojs-login-quantity-1")
     })
 
-    await step("ล็อกอิน (ไม่มี JS) → cart มี line ของ variant นั้น quantity=2", async () => {
+    await step("ล็อกอิน (ไม่มี JS) → cart มี line ของ variant นั้น quantity=1", async () => {
       await page.getByTestId("email-input").fill(customer.email)
       await page.getByTestId("password-input").fill(customer.password)
       await page.getByTestId("sign-in-button").click()
       await expect(page).toHaveURL(new RegExp(`/${CC}/cart$`))
-      expect(await cartLines(page, customer, pk)).toEqual([{ variant_id: variantId, quantity: 2 }])
+      expect(await cartLines(page, customer, pk)).toEqual([{ variant_id: variantId, quantity: 1 }])
     })
   })
 })
@@ -155,7 +159,7 @@ test("qa D-1: (JS) เลือกจำนวนเกิน stock → add-to-c
       await page.goto(`/${CC}/products/${handle}`)
       await expect(page.getByTestId("add-product-button")).toBeEnabled({ timeout: 2_000 })
     }).toPass({ timeout: 15_000 })
-    await page.getByTestId("product-quantity-select").selectOption("5")
+    await chooseOption(page.getByTestId("product-quantity-select"), "5")
     await page.getByTestId("add-product-button").click()
     const error = page.getByTestId("add-to-cart-error")
     await expect(error).toBeVisible()
@@ -174,7 +178,7 @@ test("qa D-1: (JS) เลือกจำนวนเกิน stock → add-to-c
 
   await step("กลับไปเลือก S เลือก 2 แล้วกดเพิ่ม → ข้อความหาย และ cart มี qty 2", async () => {
     await page.getByTestId("product-options").getByTestId("option-button").filter({ hasText: "S" }).click()
-    await page.getByTestId("product-quantity-select").selectOption("2")
+    await chooseOption(page.getByTestId("product-quantity-select"), "2")
     const done = waitForServerAction(page, isAddToCartBody)
     await page.getByTestId("add-product-button").click()
     await done

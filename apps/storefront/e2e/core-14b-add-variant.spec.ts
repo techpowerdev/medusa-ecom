@@ -38,7 +38,8 @@ async function cartSnapshot(customerId: string) {
 test.describe("ปิด JavaScript", () => {
   test.use({ javaScriptEnabled: false })
 
-  test("AC-44: no-JS Add to cart quantity 3 → HTML มีฟอร์ม login → ล็อกอินแล้ว cart มี quantity=3", async ({
+  // SFUI-16d (spec 09 กฎ 47a แทนถ้อยคำ spec 01 AC-44): ปิด JS ไม่มีตัวเลือกจำนวน → ไม่มี add_quantity และ cart ได้ quantity=1
+  test("AC-44: no-JS Add to cart (ไม่เลือกจำนวน) → HTML มีฟอร์ม login ไม่มี add_quantity → ล็อกอินแล้ว cart มี quantity=1", async ({
     page,
     request,
     step,
@@ -50,12 +51,11 @@ test.describe("ปิด JavaScript", () => {
     const { variantId } = await variantOf(request, pk, PRODUCT)
     const auth = { authorization: `Bearer ${customer.token}`, "x-publishable-api-key": pk }
 
-    await step("PDP (ไม่มี JS) เลือก quantity 3 แล้วกด Add to cart → ไปหน้า login ที่คง variant และ quantity", async () => {
+    await step("PDP (ไม่มี JS) กด Add to cart → ไปหน้า login ที่คง variant ไม่มี add_quantity", async () => {
       await page.goto(`/${CC}/products/${PRODUCT}`)
-      // CORE-24: เลือกจำนวนจากตัวเลือกจำนวนของ PDP
-      await page.getByTestId("product-quantity-select").selectOption("3")
       await page.getByTestId("add-product-button").click()
-      await expect(page).toHaveURL(new RegExp(`/${CC}/account\\?add_variant=.+&add_quantity=3`))
+      await expect(page).toHaveURL(new RegExp(`/${CC}/account\\?add_variant=`))
+      expect(new URL(page.url()).searchParams.has("add_quantity"), "URL ไม่มี add_quantity").toBe(false)
       await expect(page.getByTestId("login-page")).toBeVisible()
       await evidence("01-nojs-login-after-add")
     })
@@ -66,10 +66,10 @@ test.describe("ปิด JavaScript", () => {
       const html = await res.text()
       expect(html).toContain('data-testid="login-page"')
       expect(html).toContain('data-testid="sign-in-button"')
-      expect(html).toMatch(new RegExp(`name="add_quantity" value="3"`))
+      expect(html).not.toContain('name="add_quantity"')
     })
 
-    await step("ล็อกอิน (ไม่มี JS) → cart มี line ของ variant นั้น quantity=3", async () => {
+    await step("ล็อกอิน (ไม่มี JS) → cart มี line ของ variant นั้น quantity=1", async () => {
       await page.getByTestId("email-input").fill(customer.email)
       await page.getByTestId("password-input").fill(customer.password)
       await page.getByTestId("sign-in-button").click()
@@ -81,9 +81,9 @@ test.describe("ปิด JavaScript", () => {
       expect(res.status()).toBe(200)
       const items = (await res.json()).cart.items as { variant_id: string; quantity: number }[]
       expect(items.map((i) => ({ variant_id: i.variant_id, quantity: i.quantity }))).toEqual([
-        { variant_id: variantId, quantity: 3 },
+        { variant_id: variantId, quantity: 1 },
       ])
-      await evidence("02-nojs-cart-quantity-3")
+      await evidence("02-nojs-cart-quantity-1")
     })
   })
 })

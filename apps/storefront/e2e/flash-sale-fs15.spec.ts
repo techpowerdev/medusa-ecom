@@ -131,7 +131,7 @@ test("AC-21: PDP เลือกจำนวน 3 ขณะ remaining_units=2 �
   const button = page.getByTestId("add-product-button")
 
   await step("เลือก 3 → flash-qty-exceeds-remaining มีอักษรไทย และ add-product-button disabled", async () => {
-    await select.selectOption("3")
+    await chooseOption(select, "3")
     const warning = page.getByTestId("flash-qty-exceeds-remaining")
     await expect(warning).toBeVisible()
     await expect(warning).toHaveText(THAI)
@@ -141,7 +141,7 @@ test("AC-21: PDP เลือกจำนวน 3 ขณะ remaining_units=2 �
   })
 
   await step("เลือก 2 → ไม่มีคำเตือน และปุ่มกดได้", async () => {
-    await select.selectOption("2")
+    await chooseOption(select, "2")
     await expect(page.getByTestId("flash-qty-exceeds-remaining")).toHaveCount(0)
     await expect(button).toBeEnabled()
   })
@@ -154,7 +154,7 @@ test("AC-21: show_remaining=false (remaining_units=null) เลือก 3 → �
       await page.goto(`/${CC}/products/${handle}`)
       await expect(page.getByTestId("flash-price")).toBeVisible()
       await expect(page.getByTestId("flash-remaining")).toHaveCount(0)
-      await page.getByTestId("product-quantity-select").selectOption("3")
+      await chooseOption(page.getByTestId("product-quantity-select"), "3")
       await expect(page.getByTestId("add-product-button")).toBeEnabled()
       await expect(page.getByTestId("flash-qty-exceeds-remaining")).toHaveCount(0)
     })
