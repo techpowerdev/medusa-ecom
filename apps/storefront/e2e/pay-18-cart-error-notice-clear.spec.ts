@@ -51,11 +51,9 @@ test("AC-31: แก้จำนวนสำเร็จ → cart-error-notice �
   const historyBefore = await page.evaluate(() => history.length)
 
   await step("แก้จำนวนเป็น 2 สำเร็จ → notice หาย, URL ไม่มี error, history ไม่เพิ่ม", async () => {
-    // ก่อน hydrate selectOption เปลี่ยนแค่ DOM (review #287) — เลือกซ้ำจน backend ได้จำนวน 2 (idempotent)
-    await expect(async () => {
-      await chooseOption(select, "2")
-      expect(await lineQuantity()).toBe(2)
-    }).toPass({ timeout: 30_000 })
+    // SFUI-17 (spec 09 กฎ 48): chooseOption รอ hydrate เอง แล้วคลิก item ครั้งเดียว — รอ backend ได้จำนวน 2 (ค่าบน trigger ตรวจด้านล่าง)
+    await chooseOption(select, "2", { waitValue: false })
+    await expect.poll(lineQuantity, { timeout: 30_000 }).toBe(2)
     await expect(notice).toHaveCount(0)
     await expect(page).toHaveURL((url) => url.pathname === `/${CC}/cart` && !url.searchParams.has("error"))
     await expectSelected(select, "2")

@@ -7,10 +7,12 @@ import ts from "typescript"
 import { STOREFRONT, readSource, sourceFiles } from "./support/sfui-source"
 
 // SFUI-13 (spec 09 รอบ 48 กฎ 26, 28, 37; AC-35, AC-37 (3) static): guard ไม่ให้ช่องกรอกใหม่หลุดจาก `field` ของ shadcn
-// - ทุก <input>/<select>/<textarea> ของ JSX ใน src/modules, src/app อยู่ใน common/components/{input,native-select,checkbox}
+// - ทุก <input>/<select>/<textarea> ของ JSX ใน src/modules, src/app อยู่ใน common/components/{input,checkbox}
 //   หรือตรงคู่ "ไฟล์ + element" ของ allow-list (กฎ 26) — element ละหนึ่งตัวพอดี ไฟล์ใน allow-list ที่มี element อื่น = ล้ม
 // - `@/components/ui/input` import ได้เฉพาะใน src/components/** และ common/components/input
-// - ทุก Input/NativeSelect/CountrySelect/Checkbox ของ common ในไฟล์ของตาราง inventory มี label
+// - ทุก Input/CountrySelect/Checkbox ของ common ในไฟล์ของตาราง inventory มี label
+// - SFUI-17 (รอบ 49 กฎ 39, 40c, 48; AC-47): ไม่มี <select> ใน JSX, ไม่มี native-select/cart-item-select, ALLOW_LIST ไม่มี select,
+//   ทุก <SelectTrigger> ในไฟล์ของตาราง inventory select มี id = htmlFor ของ FieldLabel หรือ aria-label, e2e เรียก .selectOption() เฉพาะใน fillCard
 // - container ของช่องในไฟล์ inventory ไม่มี breakpoint ของ starter และ grid-cols-2/[…] ต้องมี md: (ยกเว้นระดับฟอร์มตามค่าคงที่)
 // parse ด้วย TypeScript (ไม่นับ comment)
 
@@ -50,7 +52,7 @@ function attrs(tag: Tag, sf: ts.SourceFile): Record<string, string> {
 
 const line = (sf: ts.SourceFile, node: ts.Node) => sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1
 
-const COMMON_CONTROLS = ["input", "native-select", "checkbox"].map((name) => `src/modules/common/components/${name}/`)
+const COMMON_CONTROLS = ["input", "checkbox"].map((name) => `src/modules/common/components/${name}/`)
 
 type Allowed = { file: string; tag: "input" | "select"; match: Record<string, string>; why: string }
 
@@ -159,7 +161,6 @@ function importsOf(file: string) {
 
 const FIELD_COMPONENTS: Record<string, string> = {
   "src/modules/common/components/input": "Input",
-  "src/modules/common/components/native-select": "NativeSelect",
   "src/modules/common/components/checkbox": "Checkbox",
   "src/modules/checkout/components/country-select": "CountrySelect",
 }
@@ -220,7 +221,7 @@ test("AC-35 (กฎ 28): @/components/ui/input import ได้เฉพาะ�
   expect(offenders).toEqual([])
 })
 
-test("AC-35 (กฎ 28–30): ทุก Input/NativeSelect/CountrySelect/Checkbox ของ common ในไฟล์ของตาราง inventory มี label", () => {
+test("AC-35 (กฎ 28–30): ทุก Input/CountrySelect/Checkbox ของ common ในไฟล์ของตาราง inventory มี label", () => {
   const missing: string[] = []
   let counted = 0
   for (const file of INVENTORY) {
@@ -274,4 +275,87 @@ test("AC-37 (b) static: profile-password — รหัสผ่านเดิ�
     expect(a.type, a["data-testid"]).toBe("password")
     expect(a.placeholder, a["data-testid"]).toBeUndefined()
   }
+})
+
+// ---- SFUI-17 (spec 09 รอบ 49 กฎ 39, 40c, 48; AC-47): ปิดงาน select ----
+
+/** ไฟล์ของตาราง inventory select (spec 09 รอบ 49) ที่ประกอบ SelectTrigger เอง — CountrySelect ใช้แทนในผู้เรียก 4 ฟอร์ม */
+const SELECT_INVENTORY = [
+  "products/components/product-actions/index.tsx",
+  "cart/components/item/index.tsx",
+  "returns/components/return-request-form/index.tsx",
+  "group-buy/components/group-page/group-join.tsx",
+  "account/components/profile-billing-address/index.tsx",
+  "checkout/components/country-select/index.tsx",
+].map((f) => `src/modules/${f}`)
+
+const REMOVED_MODULES = ["src/modules/common/components/native-select", "src/modules/cart/components/cart-item-select"]
+
+/** ทุกไฟล์ .ts/.tsx ใต้ dir (รวม test) path สัมพัทธ์กับ apps/storefront */
+function allFiles(dir: string): string[] {
+  return fs.readdirSync(path.join(STOREFRONT, dir), { withFileTypes: true }).flatMap((e) => {
+    const rel = `${dir}/${e.name}`
+    return e.isDirectory() ? allFiles(rel) : /\.tsx?$/.test(e.name) ? [rel] : []
+  })
+}
+
+test.describe("AC-47 (SFUI-17): ไม่มี select native เหลือ", () => {
+  test("ไม่มี <select ใน JSX ของ src/modules/** และ src/app/** (กฎ 39)", () => {
+    const found = [...allFiles("src/modules"), ...allFiles("src/app")]
+      .filter((f) => f.endsWith(".tsx"))
+      .flatMap((file) => {
+        const sf = parse(file)
+        return tagsOf(sf)
+          .filter((tag) => tag.tagName.getText(sf) === "select")
+          .map((tag) => `${file}:${line(sf, tag)}`)
+      })
+    expect(found).toEqual([])
+  })
+
+  test("ไม่มีไดเรกทอรีและการ import ของ common/components/native-select, cart/components/cart-item-select", () => {
+    for (const dir of REMOVED_MODULES) expect(fs.existsSync(path.join(STOREFRONT, dir)), dir).toBe(false)
+    const offenders = allFiles("src").flatMap((file) =>
+      importsOf(file)
+        .filter((i) => i.module && REMOVED_MODULES.includes(asModule(i.module)))
+        .map((i) => `${file} → ${i.module}`)
+    )
+    expect(offenders).toEqual([])
+  })
+
+  test("ALLOW_LIST ไม่มีรายการ select", () => {
+    expect(ALLOW_LIST.filter((a) => a.tag === "select")).toEqual([])
+  })
+
+  test("ทุก <SelectTrigger ในไฟล์ของตาราง inventory select มี id = htmlFor ของ FieldLabel ในไฟล์เดียวกัน หรือมี aria-label", () => {
+    const missing: string[] = []
+    for (const file of SELECT_INVENTORY) {
+      const sf = parse(file)
+      const tags = tagsOf(sf)
+      const htmlFors = new Set(tags.filter((t) => t.tagName.getText(sf) === "FieldLabel").map((t) => attrs(t, sf).htmlFor).filter(Boolean))
+      const triggers = tags.filter((t) => t.tagName.getText(sf) === "SelectTrigger")
+      expect(triggers.length, `${file} มี SelectTrigger`).toBeGreaterThan(0)
+      for (const trigger of triggers) {
+        const a = attrs(trigger, sf)
+        if (!(a.id && htmlFors.has(a.id)) && !a["aria-label"]) missing.push(`${file}:${line(sf, trigger)} id=${a.id}`)
+      }
+    }
+    expect(missing).toEqual([])
+  })
+
+  test("e2e เรียก .selectOption() เฉพาะใน fillCard ของ support/stripe.ts (select ใน iframe ของ Stripe — กฎ 48)", () => {
+    const outside: string[] = []
+    let inFillCard = 0
+    for (const file of allFiles("e2e").filter((f) => f.endsWith(".ts"))) {
+      const sf = ts.createSourceFile(file, readSource(file), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+      walk(sf, (n) => {
+        if (!(ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === "selectOption")) return
+        let owner: ts.Node | undefined = n.parent
+        while (owner && !(ts.isFunctionDeclaration(owner) && owner.name?.text === "fillCard")) owner = owner.parent
+        if (file === "e2e/support/stripe.ts" && owner) inFillCard++
+        else outside.push(`${file}:${line(sf, n)}`)
+      })
+    }
+    expect(outside).toEqual([])
+    expect(inFillCard, "fillCard ยังเลือกประเทศ/ข้อมูลใน iframe ของ Stripe ด้วย selectOption").toBeGreaterThan(0)
+  })
 })

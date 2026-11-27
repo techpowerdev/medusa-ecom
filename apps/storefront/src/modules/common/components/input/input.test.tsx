@@ -4,7 +4,6 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import CheckboxWithLabel from "@modules/common/components/checkbox"
-import NativeSelect from "@modules/common/components/native-select"
 import Input from "./index"
 
 // SFUI-11a (spec 09 กฎ 28–30, 34, AC-27): ช่องกรอกจาก `field` ของ shadcn — render component จริง (ไม่ mock primitive — บทเรียน PAY-16)
@@ -106,38 +105,6 @@ describe("Input (Field ของ shadcn)", () => {
   })
 })
 
-describe("NativeSelect + label", () => {
-  it("label ก่อน select, labels[0] = <t>-label, * ของช่องบังคับ, option ว่าง disabled ตามเดิม", () => {
-    render(
-      <NativeSelect label="ประเทศ" name="country_code" required placeholder="เลือกประเทศ" data-testid="country-select">
-        <option value="th">ไทย</option>
-      </NativeSelect>
-    )
-    const select = byTestId<HTMLSelectElement>("country-select")
-    const label = byTestId("country-select-label")
-    expect(select.tagName).toBe("SELECT")
-    expect(before(label, select)).toBe(true)
-    expect(select.labels?.[0]).toBe(label)
-    expect(label.querySelector('[aria-hidden="true"]')?.textContent).toBe("*")
-    expect(accessibleName(select)).toBe("ประเทศ")
-    expect(Array.from(select.options).map((o) => [o.value, o.text, o.disabled])).toEqual([
-      ["", "เลือกประเทศ", true],
-      ["th", "ไทย", false],
-    ])
-  })
-
-  it("placeholder={false} → ไม่ render option ว่าง (กฎ 31a)", () => {
-    render(
-      <NativeSelect label="จำนวน" name="quantity" placeholder={false} data-testid="q">
-        <option value="1">1</option>
-        <option value="2">2</option>
-      </NativeSelect>
-    )
-    expect(Array.from(byTestId<HTMLSelectElement>("q").options).map((o) => o.value)).toEqual(["1", "2"])
-    expect(byTestId("q-label").querySelector('[aria-hidden="true"]')).toBeNull()
-  })
-})
-
 describe("Checkbox (Field แนวนอน)", () => {
   it("control ก่อน label, label ชี้ id ของ checkbox, id ไม่ซ้ำระหว่างสองตัว", () => {
     render(
@@ -159,32 +126,18 @@ describe("Checkbox (Field แนวนอน)", () => {
 
 // review #SFUI-11a blocker 1 (กฎ 28): className ของผู้เรียกเป็น layout ภายนอก → อยู่ที่ Field ไม่ไหลลง control
 describe("className ของผู้เรียกอยู่ที่ Field", () => {
-  it("Input (ข้อความและรหัสผ่าน) และ NativeSelect ที่มี label: className อยู่ที่ [data-slot=field] ไม่อยู่บน control", () => {
+  it("Input (ข้อความและรหัสผ่าน): className อยู่ที่ [data-slot=field] ไม่อยู่บน control", () => {
     render(
       <>
         <Input label="ที่อยู่" name="address_1" className="md:col-span-2" data-testid="a" />
         <Input label="รหัสผ่าน" name="password" type="password" className="md:col-span-2" data-testid="p" />
-        <NativeSelect label="ประเทศ" name="country_code" className="md:col-span-2" data-testid="s">
-          <option value="th">ไทย</option>
-        </NativeSelect>
       </>
     )
-    for (const id of ["a", "p", "s"]) {
+    for (const id of ["a", "p"]) {
       const control = byTestId(id)
       expect(control.closest('[data-slot="field"]')?.classList.contains("md:col-span-2"), id).toBe(true)
       expect(control.classList.contains("md:col-span-2"), id).toBe(false)
     }
-  })
-
-  it("NativeSelect ไม่มี label: className คงอยู่ที่ wrapper ของ select (เช่น min-w-[12rem] ของ returns)", () => {
-    render(
-      <NativeSelect name="reason" className="min-w-[12rem]" data-testid="r">
-        <option value="x">x</option>
-      </NativeSelect>
-    )
-    const select = byTestId("r")
-    expect(select.classList.contains("min-w-[12rem]")).toBe(false)
-    expect(select.closest('[data-slot="native-select-wrapper"]')?.classList.contains("min-w-[12rem]")).toBe(true)
   })
 })
 
@@ -217,23 +170,6 @@ describe("error ระดับช่อง (กฎ 32)", () => {
     expect(byTestId("first-name-input").hasAttribute("aria-describedby")).toBe(false)
   })
 
-  it("NativeSelect ไม่มี label + required: invalid ไม่ถูก preventDefault (ใช้ bubble ของ browser ตามเดิม) และไม่มี <t>-error (review 11b)", () => {
-    render(
-      <NativeSelect name="country_code" required defaultValue="" placeholder={false} data-testid="nolabel">
-        <option value="">-</option>
-        <option value="th">ไทย</option>
-      </NativeSelect>
-    )
-    const select = byTestId<HTMLSelectElement>("nolabel")
-    const event = new Event("invalid", { cancelable: true })
-    act(() => {
-      select.dispatchEvent(event)
-    })
-    expect(event.defaultPrevented).toBe(false)
-    expect(document.querySelector('[data-testid="nolabel-error"]')).toBeNull()
-    expect(select.hasAttribute("aria-invalid")).toBe(false)
-  })
-
   it("invalid บนช่อง required ที่ว่าง → defaultPrevented และแสดง กรุณากรอก<label>; กรอกจน valid → error หาย", () => {
     render(<Input label="อีเมล" name="email" required data-testid="email-input" />)
     const input = byTestId<HTMLInputElement>("email-input")
@@ -264,9 +200,7 @@ describe("error ระดับช่อง (กฎ 32)", () => {
       root.render(
         <form onSubmit={(e) => { e.preventDefault(); submitted = true }}>
           <Input label="ชื่อ" name="first_name" required data-testid="a" />
-          <NativeSelect label="ประเทศ" name="country_code" required defaultValue="" data-testid="b">
-            <option value="th">ไทย</option>
-          </NativeSelect>
+          <Input label="นามสกุล" name="last_name" required data-testid="b" />
           <button type="submit">ส่ง</button>
         </form>
       )
@@ -275,25 +209,7 @@ describe("error ระดับช่อง (กฎ 32)", () => {
     expect(submitted).toBe(false)
     expect(document.activeElement).toBe(byTestId("a"))
     expect(byTestId("a-error").textContent).toBe("กรุณากรอกชื่อ")
-    expect(byTestId("b-error").textContent).toBe("กรุณาเลือกประเทศ")
+    expect(byTestId("b-error").textContent).toBe("กรุณากรอกนามสกุล")
     expect(byTestId("b").getAttribute("aria-invalid")).toBe("true")
-  })
-
-  it("select: value จากโค้ด (controlled) ที่ทำให้ valid → error หาย (กฎ 32d)", () => {
-    const Harness = ({ value }: { value: string }) => (
-      <form>
-        <NativeSelect label="ประเทศ" name="country_code" required value={value} onChange={() => {}} data-testid="b">
-          <option value="th">ไทย</option>
-        </NativeSelect>
-      </form>
-    )
-    act(() => root.render(<Harness value="" />))
-    act(() => {
-      byTestId("b").dispatchEvent(new Event("invalid", { cancelable: true }))
-    })
-    expect(byTestId("b-error").textContent).toBe("กรุณาเลือกประเทศ")
-    act(() => root.render(<Harness value="th" />))
-    expect(container.querySelector('[data-testid="b-error"]')).toBeNull()
-    expect(byTestId("b").hasAttribute("aria-invalid")).toBe(false)
   })
 })

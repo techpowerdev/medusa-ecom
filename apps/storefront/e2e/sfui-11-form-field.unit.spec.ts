@@ -7,7 +7,8 @@ import { readSource, sourceFiles } from "./support/sfui-source"
 // SFUI-11a (spec 09 กฎ 28, 35, 36, AC-26): ช่องกรอกของ storefront ประกอบจาก `field` ของ shadcn (label เหนือช่อง)
 // ไม่มี floating label เดิม และไม่ส่ง className ที่เปลี่ยนสไตล์ default ของ primitive
 
-const COMMON = ["input", "native-select", "checkbox"].map((name) => `src/modules/common/components/${name}/index.tsx`)
+// SFUI-17 (spec 09 รอบ 49 กฎ 39): native-select ถูกลบ — select ใช้ Select ของ shadcn ประกอบตรงที่ใช้
+const COMMON = ["input", "checkbox"].map((name) => `src/modules/common/components/${name}/index.tsx`)
 const COUNTRY_SELECT = "src/modules/checkout/components/country-select/index.tsx"
 const PROFILE_BILLING = "src/modules/account/components/profile-billing-address/index.tsx"
 
@@ -45,7 +46,7 @@ const classTokens = (el: ts.JsxOpeningElement | ts.JsxSelfClosingElement) => {
   return attr?.initializer ? literals(attr.initializer).flatMap((t) => t.split(/\s+/)).filter(Boolean) : []
 }
 
-test("AC-26 (a): input / native-select / checkbox ของ common import Field และ FieldLabel จาก @/components/ui/field", () => {
+test("AC-26 (a): input / checkbox ของ common import Field และ FieldLabel จาก @/components/ui/field", () => {
   for (const file of COMMON) {
     const sf = parse(file)
     const names = sf.statements
