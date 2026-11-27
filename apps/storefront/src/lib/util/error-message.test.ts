@@ -74,7 +74,8 @@ describe("action ของ lib/data/customer.ts ห่อ error โดยไม�
   const form = new FormData()
   form.set("addressId", "addr_1")
   // CORE-63 (กฎข้อ 121b): ช่องบังคับว่าง → ไม่เรียก Store API — กรอกให้ครบเพื่อทดสอบ error ของ API
-  for (const field of ["first_name", "last_name", "address_1", "postal_code", "city"]) {
+  // SFUI-18c (spec 09 กฎ 55): ตำบล/แขวง (address_2) บังคับกรอกด้วย
+  for (const field of ["first_name", "last_name", "address_1", "address_2", "postal_code", "city"]) {
     form.set(field, "x")
   }
 

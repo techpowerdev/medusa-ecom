@@ -23,6 +23,7 @@ const ADDRESS = {
   "first-name-input": "สมหญิง",
   "last-name-input": "รักดี",
   "address-1-input": "99 ถนนสุขุมวิท",
+  "address-2-input": "คลองเตยเหนือ",
   "postal-code-input": "10110",
   "state-input": "กรุงเทพมหานคร",
   "phone-input": "0812345678",

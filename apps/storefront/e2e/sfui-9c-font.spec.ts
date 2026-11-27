@@ -36,6 +36,7 @@ const savedAddress = {
   last_name: "ใจดี",
   company: "บริษัท ทดสอบ จำกัด",
   address_1: "11 ถนนพระราม 4",
+  address_2: "คลองเตยเหนือ",
   postal_code: "10110",
   city: "วัฒนา",
   province: "กรุงเทพมหานคร",

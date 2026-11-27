@@ -1,6 +1,9 @@
 import { APIRequestContext, BrowserContext, Locator } from "@playwright/test"
 import { Client } from "pg"
 
+import { MISSING_ADDRESS_MESSAGE } from "../src/lib/util/address-required"
+import { fieldErrorMessage } from "../src/lib/util/field-validation"
+
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { addAddresses, poolGroup, type AddressInput } from "./support/group-buy"
 import {
@@ -367,5 +370,73 @@ test("AC-52: บัญชี — เพิ่ม/แก้ที่อยู่ 
     await chooseOption(billing.getByTestId("billing-country-code-select"), CC)
     await billing.getByTestId("save-button").click()
     await expect.poll(async () => (await addresses()).find((a) => a.is_default_billing)?.address_2).toBe("สุริยวงศ์")
+  })
+})
+
+// SFUI-18c (spec 09 กฎ 55, AC-53; Q-R49-4 owner: ตำบลบังคับ): ช่องตำบลว่าง → error ระดับช่อง (กฎ 32b) จาก label จริง;
+// ช่องว่างล้วนผ่าน `required` ของ browser ได้ → server ตอบ MISSING_ADDRESS_MESSAGE; ที่อยู่เดิมที่ไม่มี address_2 ต้องกรอกตำบลก่อนส่ง
+const VALUE_MISSING = { valid: false, valueMissing: true, typeMismatch: false, patternMismatch: false }
+
+test("AC-53: checkout — ตำบลว่าง → error ใต้ช่อง, ช่องว่างล้วน → MISSING_ADDRESS_MESSAGE, ที่อยู่เดิมไม่มี address_2 ต้องกรอกตำบล", async ({
+  page,
+  context,
+  request,
+  baseURL,
+  step,
+}) => {
+  test.setTimeout(150_000)
+  const pk = await publishableKey(request, await adminHeaders(request))
+  const customer = await createCustomer(request, pk)
+  // ที่อยู่ที่บันทึกไว้ก่อนรอบ 49 (ไม่มี address_2)
+  await addAddresses(request, pk, customer, [
+    { first_name: "สมชาย", last_name: "ใจดี", address_1: "11 ถนนพระราม 4", city: "วัฒนา", postal_code: "10110", phone: "0812345678" },
+  ])
+  await signInAs(context, baseURL!, customer)
+  await page.goto(`/${CC}/products/t-shirt`)
+  await addToCartFromPdp(page, { request, pk, customer })
+  await page.goto(`/${CC}/checkout?step=address`)
+  const main = page.locator("main")
+  const subdistrict = page.getByTestId("shipping-address-2-input")
+  const subdistrictError = page.getByTestId("shipping-address-2-input-error")
+  const cartAddress2 = async () =>
+    (
+      await ok(
+        await request.get(`${BACKEND_URL}/store/carts/${await cartIdOf(context)}?fields=id,*shipping_address`, { headers: headersOf(pk, customer) }),
+        "cart"
+      )
+    ).cart.shipping_address?.address_2 ?? null
+
+  await step("เลือกที่อยู่เดิม (ไม่มี address_2) แล้วส่ง → error ใต้ช่องตำบล = fieldErrorMessage จาก label จริง, ไม่ไปขั้นถัดไป", async () => {
+    await page.getByTestId("shipping-address-select").click()
+    await page.getByTestId("shipping-address-option").first().click()
+    await expect(page.getByTestId("shipping-first-name-input")).toHaveValue("สมชาย")
+    await expect(subdistrict).toHaveValue("")
+    await expect(subdistrict).toHaveAttribute("required", "")
+    await page.getByTestId("submit-address-button").click()
+    const label = await labelText(main, "shipping-address-2-input")
+    const expected = fieldErrorMessage(VALUE_MISSING, { label, control: "input" })
+    expect(expected).toBeTruthy()
+    await expect(subdistrictError).toHaveText(expected!)
+    await expect(subdistrict).toBeFocused()
+    await expect(page).toHaveURL(/step=address/)
+  })
+
+  await step("ตำบลเป็นช่องว่างล้วน → address-error-message = MISSING_ADDRESS_MESSAGE และไม่บันทึกลง cart", async () => {
+    await subdistrict.fill("   ")
+    await expect(subdistrictError).toHaveCount(0)
+    const before = await cartAddress2()
+    const saved = waitForServerAction(page, (body) => body.includes(customer.email))
+    await page.getByTestId("submit-address-button").click()
+    await saved
+    await expect(page.getByTestId("address-error-message")).toHaveText(MISSING_ADDRESS_MESSAGE)
+    await expect(page).toHaveURL(/step=address/)
+    expect(await cartAddress2()).toBe(before)
+  })
+
+  await step("กรอกตำบลแล้วส่ง → ไปขั้นจัดส่ง และ cart มี address_2", async () => {
+    await subdistrict.fill("คลองเตย")
+    await page.getByTestId("submit-address-button").click()
+    await expect(page).toHaveURL(/step=delivery/)
+    expect(await cartAddress2()).toBe("คลองเตย")
   })
 })

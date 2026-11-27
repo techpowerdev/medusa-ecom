@@ -91,6 +91,7 @@ test("AC-32: checkout step=address — ช่องว่างแสดง erro
       first_name: "สมชาย",
       last_name: "ใจดี",
       address_1: "11 ถนนพระราม 4",
+      address_2: "คลองเตยเหนือ",
       postal_code: "10110",
       city: "วัฒนา",
       province: "กรุงเทพมหานคร",

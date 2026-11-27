@@ -1,0 +1,86 @@
+SFUI-18c — ที่อยู่ไทย: ตำบล/แขวงบังคับกรอก (กฎ 55; Q-R49-4 owner)
+spec: docs/spec/09-storefront-shadcn-ui.md (รอบ 49 — กฎ 55; AC-53, AC-54) · ฐาน 4fc8a2c1 (SFUI-18b)
+node v24.12.0 (nvm) · 2026-11-28 · e2e: backend NODE_ENV=production build + medusa start (.medusa/server) :9491, storefront next build + start :8491,
+DB medusa_sfui18c (container medusa-ecom-postgres-1), Redis db 13, Stripe test mode + stripe listen (ชุด events ตาม CI)
+
+== 0) RED ก่อนแก้ ==
+-- unit (address-required.test.ts ใหม่, core-63-address-invisible, error-message) บนโค้ดของ 18b: --
+     × REQUIRED_ADDRESS_FIELDS มี address_2 5ms
+     × address_2 ว่าง → missing 1ms
+     × address_2 null → missing 0ms
+     × address_2 ช่องว่าง/zero-width ล้วน (หลัง trimInvisible ของผู้เรียก) → missing 0ms
+     × ไม่มี key address_2 → missing 0ms
+     × ข้อความ MISSING_ADDRESS_MESSAGE ตามกฎ 55 2ms
+     × address_2 ส่งค่าที่ตัดแล้ว; zero-width ล้วน → MISSING_ADDRESS_MESSAGE ไม่เรียก update 4ms
+     × address_2 = ZWSP → ข้อความไทย ไม่เรียก createAddress 4ms
+     × address_2 = ZWSP → ข้อความไทย ไม่เรียก updateAddress 0ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 9 ⎯⎯⎯⎯⎯⎯⎯
+ Test Files  2 failed | 1 passed (3)
+      Tests  9 failed | 34 passed (43)
+-- e2e AC-53 (sfui-18-thai-address -g AC-53) บน prod build ของโค้ด 18b (ก่อนเพิ่ม required): --
+  ✘  1 [chromium] › e2e/sfui-18-thai-address.spec.ts:380:5 › AC-53: checkout — ตำบลว่าง → error ใต้ช่อง, ช่องว่างล้วน → MISSING_ADDRESS_MESSAGE, ที่อยู่เดิมไม่มี address_2 ต้องกรอกตำบล (9.6s)
+    Error: expect(locator).toHaveAttribute(expected) failed
+    Expected: ""
+    Received: serializes to the same string
+  1 failed
+   (ล้มที่ขั้นแรก: ช่อง shipping-address-2-input ยังไม่มี attribute required)
+
+== 1) GREEN — Vitest ==
+ Test Files  137 passed (137)
+      Tests  2070 passed (2070)
+-- verbose ไฟล์ของ AC-53 --
+ ✓ src/lib/util/address-required.test.ts > address-required > REQUIRED_ADDRESS_FIELDS มี address_2 1ms
+ ✓ src/lib/util/address-required.test.ts > address-required > ครบทุกช่อง → ไม่ missing 0ms
+ ✓ src/lib/util/address-required.test.ts > address-required > address_2 ว่าง → missing 0ms
+ ✓ src/lib/util/address-required.test.ts > address-required > address_2 null → missing 0ms
+ ✓ src/lib/util/address-required.test.ts > address-required > address_2 ช่องว่าง/zero-width ล้วน (หลัง trimInvisible ของผู้เรียก) → missing 0ms
+ ✓ src/lib/util/address-required.test.ts > address-required > ไม่มี key address_2 → missing 0ms
+ ✓ src/lib/util/address-required.test.ts > address-required > ข้อความ MISSING_ADDRESS_MESSAGE ตามกฎ 55 0ms
+ ✓ src/core-63-address-invisible.test.ts > setAddresses: ช่องไม่บังคับ (กฎข้อ 121a) > address_2 ส่งค่าที่ตัดแล้ว; zero-width ล้วน → MISSING_ADDRESS_MESSAGE ไม่เรียก update 0ms
+ ✓ src/core-63-address-invisible.test.ts > addCustomerAddress (กฎข้อ 121b) > address_2 = ZWSP → ข้อความไทย ไม่เรียก createAddress 0ms
+ ✓ src/core-63-address-invisible.test.ts > updateCustomerAddress (กฎข้อ 121b) > address_2 = ZWSP → ข้อความไทย ไม่เรียก updateAddress 0ms
+ Test Files  3 passed (3)
+      Tests  43 passed (43)
+
+== 2) Playwright project unit (sfui-baseline AC-5 ที่ MISSING_ADDRESS_MESSAGE ใหม่, guard, evidence-budget) ==
+  253 passed (1.8s)
+
+== 3) e2e ทุก spec ที่อ้างฟอร์มที่อยู่/checkout/บัญชี/group join (grep testid/path) — 55 ไฟล์ 165 test ==
+  ✓  124 [chromium] › e2e/sfui-18-thai-address.spec.ts:62:5 › AC-51: ที่อยู่ที่บันทึกไว้มี address_2 → checkout ส่งลง cart, สรุปของ checkout และหน้าคำสั่งซื้อเรียงแบบไทย (4.9s)
+  ✓  126 [chromium] › e2e/sfui-18-thai-address.spec.ts:110:5 › AC-51: ที่อยู่เดิมไม่มี address_2/จังหวัด แสดงได้ ไม่มีจุลภาคหรือช่องว่างซ้อน (2.2s)
+  ✓  127 [chromium] › e2e/sfui-18-thai-address.spec.ts:132:5 › AC-51: group join ด้วยที่อยู่ที่มี address_2 → cart ของกลุ่มมี address_2 (3.4s)
+  ✓  128 [chromium] › e2e/sfui-18-thai-address.spec.ts:204:5 › AC-52: checkout ที่อยู่จัดส่ง + ใบเสร็จ — ลำดับ/label แบบไทย และตำบลที่กรอกลง cart (4.6s)
+  ✓  129 [chromium] › e2e/sfui-18-thai-address.spec.ts:282:5 › AC-52: บัญชี — เพิ่ม/แก้ที่อยู่ และที่อยู่ใบเสร็จของโปรไฟล์: ลำดับ/label แบบไทย และตำบลที่กรอกถูกบันทึก (3.8s)
+  ✓  130 [chromium] › e2e/sfui-18-thai-address.spec.ts:380:5 › AC-53: checkout — ตำบลว่าง → error ใต้ช่อง, ช่องว่างล้วน → MISSING_ADDRESS_MESSAGE, ที่อยู่เดิมไม่มี address_2 ต้องกรอกตำบล (5.4s)
+  ✘   89 [chromium] › e2e/pay-17-stripe-error-thai.spec.ts:27:7 › ข้อความไทยของ error Stripe ขั้น review (AC-30a) › confirmPayment ได้ card_error/card_declined ข้อความอังกฤษ → stripe-payment-error-message เป็นไทย ไม่มีข้อความของ Stripe (17.2s)
+  ✘  104 [chromium] › e2e/sfui-12a-account-forms.spec.ts:175:5 › AC-34 + AC-37: profile — ชื่อ, เบอร์โทร, ที่อยู่ใบเสร็จ (label ประเทศ, tel, placeholder, คู่ช่องที่ ≥ 768px) (5.9s)
+  ✘  110 [chromium] › e2e/sfui-12a-account-forms.spec.ts:218:5 › AC-34 + AC-37: address book — dialog เพิ่ม/แก้ที่อยู่ (tel, placeholder, label ประเทศ, คู่ช่องที่ ≥ 768px) (5.9s)
+  ✘  109 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:187:5 › AC-34, AC-37: checkout ที่อยู่จัดส่ง + ใบเสร็จ — label เหนือช่อง, placeholder, option เท่าเดิม, แถวละช่อง < 768px / คู่ ≥ 768px (8.2s)
+  ✘  112 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:238:5 › AC-34, AC-37: checkout ของ cart digital-only — อีเมลแถวเดียว, ช่องใบเสร็จเป็นคู่ ≥ 768px (6.5s)
+  5 failed
+  160 passed (4.0m)
+   ล้ม 5: sfui-12a ×2 / sfui-12b ×2 = ตารางช่องยังคาด address-2 ไม่บังคับ → แก้ตาราง (บังคับ) แล้วรันซ้ำ;
+   pay-17 = ค้างขั้น payment ภายใต้โหลด 3 worker (Stripe) — รันเดี่ยวผ่าน:
+  ✓  1 [chromium] › e2e/sfui-12a-account-forms.spec.ts:160:5 › AC-34: register — label เหนือช่อง, placeholder ของเบอร์โทร, type/autocomplete tel (1.0s)
+  ✓  4 [chromium] › e2e/sfui-12a-account-forms.spec.ts:175:5 › AC-34 + AC-37: profile — ชื่อ, เบอร์โทร, ที่อยู่ใบเสร็จ (label ประเทศ, tel, placeholder, คู่ช่องที่ ≥ 768px) (1.4s)
+  ✓  5 [chromium] › e2e/sfui-12a-account-forms.spec.ts:218:5 › AC-34 + AC-37: address book — dialog เพิ่ม/แก้ที่อยู่ (tel, placeholder, label ประเทศ, คู่ช่องที่ ≥ 768px) (4.0s)
+  ✓  6 [chromium] › e2e/sfui-12a-account-forms.spec.ts:263:5 › AC-34 (กฎ 31a): billing-country-code-select และ country-select มี option เท่า commit ฐาน (1.1s)
+  ✓  3 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:187:5 › AC-34, AC-37: checkout ที่อยู่จัดส่ง + ใบเสร็จ — label เหนือช่อง, placeholder, option เท่าเดิม, แถวละช่อง < 768px / คู่ ≥ 768px (8.5s)
+  ✓  7 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:238:5 › AC-34, AC-37: checkout ของ cart digital-only — อีเมลแถวเดียว, ช่องใบเสร็จเป็นคู่ ≥ 768px (2.0s)
+  ✓  8 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:271:5 › AC-34: โค้ดส่วนลด — label เหนือช่อง และ promotion-error ผูก aria-describedby ขณะช่องเปิด (กฎ 32d) (3.4s)
+  ✓  2 [chromium] › e2e/pay-17-stripe-error-thai.spec.ts:27:7 › ข้อความไทยของ error Stripe ขั้น review (AC-30a) › confirmPayment ได้ card_error/card_declined ข้อความอังกฤษ → stripe-payment-error-message เป็นไทย ไม่มีข้อความของ Stripe (14.1s)
+  8 passed (15.1s)
+   รวม 165/165 ผ่าน
+
+== 4) pnpm lint && typecheck ==
+apps/backend lint: ✖ 4 problems (0 errors, 4 warnings)
+apps/storefront lint: ✖ 27 problems (0 errors, 27 warnings)
+lint exit 0 (warning เท่าฐาน) · typecheck storefront exit 0
+
+== 5) storefront build ==
+✓ Compiled successfully in 1095ms
+
+== 6) AC-54: apps/backend ไม่ถูกแก้; sfui-baseline.json เปลี่ยนเฉพาะ MISSING_ADDRESS_MESSAGE ==
+(apps/backend ว่าง)
+-    "กรุณากรอกชื่อ นามสกุล ที่อยู่ รหัสไปรษณีย์ และเขต/อำเภอให้ครบ (ช่องที่มีแต่ช่องว่างถือว่ายังไม่ได้กรอก)",
++    "กรุณากรอกชื่อ นามสกุล ที่อยู่ ตำบล/แขวง เขต/อำเภอ และรหัสไปรษณีย์ให้ครบ (ช่องที่มีแต่ช่องว่างถือว่ายังไม่ได้กรอก)",

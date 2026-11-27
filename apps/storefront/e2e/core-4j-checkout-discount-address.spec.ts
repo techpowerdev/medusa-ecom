@@ -44,10 +44,12 @@ async function backendCodes(request: APIRequestContext, cartId: string, headers:
 const TYPED = {
   "shipping-first-name-input": "สมหญิง",
   "shipping-address-input": "42 ถนนพระราม 4",
+  "shipping-address-2-input": "คลองเตยเหนือ",
   "shipping-city-input": "ปทุมวัน",
   "shipping-email-input": "typed-core4j@example.com",
   "billing-first-name-input": "บริษัท ทดสอบ",
   "billing-address-input": "7 ถนนสีลม",
+  "billing-address-2-input": "คลองเตยเหนือ",
 }
 
 test("AC-111: โค้ดมีช่องว่างหัวท้ายใช้ได้ และค่าที่พิมพ์ในฟอร์มที่อยู่ไม่หายหลังใส่โค้ด", async ({

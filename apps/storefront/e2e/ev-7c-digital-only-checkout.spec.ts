@@ -120,6 +120,7 @@ test("AC-37, AC-3: cart มีแต่ voucher → ไม่มีขั้น 
     await page.getByTestId("billing-first-name-input").fill("สมชาย")
     await page.getByTestId("billing-last-name-input").fill("ใจดี")
     await page.getByTestId("billing-address-input").fill(BILLING.address_1)
+    await page.getByTestId("billing-address-2-input").fill("คลองเตยเหนือ")
     await page.getByTestId("billing-postal-input").fill(BILLING.postal_code)
     // CORE-52 (spec 01 กฎข้อ 110b): เขต/อำเภอเป็นช่องบังคับของที่อยู่ใบกำกับภาษีด้วย
     await page.getByTestId("billing-city-input").fill("วัฒนา")

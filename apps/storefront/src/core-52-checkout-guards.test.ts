@@ -57,12 +57,14 @@ const shirt = { requires_shipping: true }
 const serverCart = (...items: { requires_shipping: boolean }[]) =>
   retrieve.mockResolvedValue({ cart: { id: "cart_1", items } })
 
-const REQUIRED = ["first_name", "last_name", "address_1", "postal_code", "city"] as const
+// SFUI-18c (spec 09 กฎ 55): ตำบล/แขวง บังคับ
+const REQUIRED = ["first_name", "last_name", "address_1", "address_2", "postal_code", "city"] as const
 
 const fillAddress = (form: FormData, prefix: "shipping_address" | "billing_address") => {
   form.set(`${prefix}.first_name`, "สมชาย")
   form.set(`${prefix}.last_name`, "ใจดี")
   form.set(`${prefix}.address_1`, "99 ถนนสุขุมวิท")
+  form.set(`${prefix}.address_2`, "คลองเตยเหนือ")
   form.set(`${prefix}.postal_code`, "10110")
   form.set(`${prefix}.city`, "วัฒนา")
   form.set(`${prefix}.country_code`, "th")

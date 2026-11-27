@@ -40,6 +40,7 @@ const ADDRESS = {
   "first-name-input": "สมหญิง",
   "last-name-input": "รักดี",
   "address-1-input": "99 ถนนสุขุมวิท",
+  "address-2-input": "คลองเตยเหนือ",
   "postal-code-input": "10110",
   "city-input": "วัฒนา",
   "state-input": "กรุงเทพมหานคร",
@@ -153,6 +154,7 @@ test.describe("AC-112", () => {
       "billing-last-name-input": "รักดี",
       "billing-phone-input": "0812345678",
       "billing-address-1-input": "99 ถนนสุขุมวิท",
+      "billing-address-2-input": "คลองเตยเหนือ",
       "billing-postcal-code-input": "10110",
       "billing-city-input": "วัฒนา",
     }
