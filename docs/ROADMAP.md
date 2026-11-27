@@ -1,6 +1,6 @@
 # ROADMAP — milestone, ลำดับ PR, สถานะ
 
-อัปเดตล่าสุด: 2026-11-28 (รอบ 49 select เป็น Radix + ช่องตำบล — ADR-033 accepted; release v0.4.0 #603 **พัก** จนรอบ 49 + SFUI-14 #612 merge) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
+อัปเดตล่าสุด: 2026-11-28 (ปิดรอบ 49 — merge ครบ #612, #614–#622; release v0.4.0 #603 พร้อมให้ owner merge/tag) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
 [`docs/roadmap/history.md`](roadmap/history.md) และ follow-up เก่า (รอบ 13–39) อยู่ที่
 [`docs/roadmap/followups-archive.md`](roadmap/followups-archive.md)
 
@@ -9,11 +9,11 @@
 - **ตอนนี้**: **release v0.3.1 แล้ว (2026-11-25)** — #561 `develop → main` (merge commit `88bb0b63`, tag `v0.3.1`): รอบ 42 (21 task) +
   รอบ 43 ส่วน v0.3.1 (OPS-36 #554, PAY-23 #555, PAY-24 #556, OPS-39 #559) เป็น 🚀 · OPS-40 (PII ค่าเดี่ยวจาก review #559) ☑ #562 (merge 2026-11-26 — ข้อยกเว้น d1/d2/d3 ของกฎ 22d + กรณีรู้แล้ว `cart_13rjFZ` → OPS-41), **ไม่อยู่ใน v0.3.1**
 - **ยังไม่ release หลัง v0.3.1**: OPS-40 + รอบ 44 (SFUI, 16 task) + รอบ 45 (7 task) + รอบ 46 (admin ไทย, 5 task) + รอบ 47 (#600–#602) + รอบ 48 (ฟอร์ม, 6 task #604–#610)
-  อยู่ใน `develop` เท่านั้น · owner **ยังไม่ go-live** (release `develop → main` เป็นของ owner)
-- **รอบปัจจุบัน**: **รอบ 49** (owner 2026-11-28) — `<select>` ทั้ง storefront เป็น `Select` ของ shadcn + ช่องตำบล/ที่อยู่ไทย (9 task, ADR-033 accepted) · SFUI-14 #612 (autofill ใน `globals.css` + แก้ spec 09) ◐ ·
-  **release v0.4.0 (#603) พัก จนรอบ 49 + #612 merge ครบ** (owner 2026-11-28) · รอบ 48 ☑ ครบ 2026-11-27 · รอบ 43 "หลัง go-live" (14 task) รอ owner สั่ง
-- **รอ owner ตัดสิน**: Q-R49-5/6 (ไม่ block รอบ 49) + เรื่องก่อน go-live (Stripe live, ค่าส่ง, staging)
-- **ขั้นต่อไป**: รอบ 49 (stack, เริ่มได้เมื่อ PR เอกสารพร้อม) + #612 merge → owner merge v0.4.0 (#603) → go-live (checklist ข้อ 1–16) → **v1.0.0**
+  + SFUI-14 #612 + รอบ 49 (select/ที่อยู่ไทย, 9 task #614–#622) อยู่ใน `develop` เท่านั้น · owner **ยังไม่ go-live** (release `develop → main` เป็นของ owner)
+- **รอบปัจจุบัน**: ไม่มีรอบที่กำลังทำ — **รอบ 49 ☑ merge ครบ 2026-11-28** (#614–#622 + SFUI-14 #612; qa ผ่าน AC-38–54 ไม่พบ defect) ·
+  **release v0.4.0 (#603) พร้อมให้ owner merge/tag** (เลิกพัก) · รอบ 48 ☑ ครบ 2026-11-27 · รอบ 43 "หลัง go-live" (14 task) รอ owner สั่ง
+- **รอ owner ตัดสิน**: merge/tag v0.4.0 (#603) + Q-R49-5/6 + `disabled={updating}` ของจำนวนในตะกร้า (รอบ 49) + เรื่องก่อน go-live (Stripe live, ค่าส่ง, staging)
+- **ขั้นต่อไป**: owner merge/tag v0.4.0 (#603) → go-live (checklist ข้อ 1–16) → **v1.0.0**
 
 ### Release
 
@@ -23,7 +23,7 @@
 | v0.2.0 | 🚀 | 2026-11-19 | #423 (`e274d387`), tag `v0.2.0` | task ใน milestone/Admin UI ที่ merge หลัง v0.1.0 ถึงรอบ 39 |
 | v0.3.0 | 🚀 | 2026-11-24 | #521 (`47c3e545`), tag `v0.3.0`, [GitHub Release](https://github.com/techpowerdev/medusa-ecom/releases/tag/v0.3.0) | แก้จากการทดสอบ manual (รอบ 40 = 32 task) + รอบ 41 (36 task; PAY-13 ✕) |
 | v0.3.1 | 🚀 | 2026-11-25 | #561 (`88bb0b63`), tag `v0.3.1` | รอบ 42 (21 task 🚀 — history หัวข้อ "รอบ 42 — ผลจริง") + 4 task ก่อน go-live ของรอบ 43 (3 🚀 train #557 + OPS-39 🚀 #559; Q-R43-ฉ = ก แก้เพิ่ม + OPS-39 owner 2026-11-25) |
-| (ยังไม่ release → v0.4.0) | ⏸ พักจนรอบ 49 + SFUI-14 #612 merge (owner 2026-11-28) | — | #603 | OPS-40 #562 + รอบ 44 (#565–#581) + รอบ 45 (#583–#590) + รอบ 46 (#593–#599) + รอบ 47–48 (#600–#610) + รอบ 49 + SFUI-14 #612 |
+| (ยังไม่ release → v0.4.0) | ☐ พร้อม — รอ owner merge/tag (รอบ 49 + #612 merge ครบ 2026-11-28) | — | #603 | OPS-40 #562 + รอบ 44 (#565–#581) + รอบ 45 (#583–#590) + รอบ 46 (#593–#599) + รอบ 47–48 (#600–#610) + SFUI-14 #612 + รอบ 49 (#614–#622) |
 | go-live | ☐ owner ยังไม่ go-live | — | — | หลัง v0.3.1 + OPS-40 (☑ #562) + Go-live checklist ข้อ 1–16 |
 | v1.0.0 | ☐ | — | — | release แรกที่เปิดร้านจริง: Go-live checklist ครบ + smoke test บน production ผ่าน (Q-R43-จ owner 2026-11-25) |
 | หลัง go-live | ☐ รอ owner สั่ง | — | — | รอบ 43 อีก 14 task (รวม OPS-41) |
@@ -192,36 +192,51 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
   nit focus/`form.reset` ของ 11b · comment บรรทัด ~251 ของ `e2e/sfui-13-form-guard.unit.spec.ts`
 - ข้อสังเกต qa (ไม่ใช่ defect/task): ระยะระหว่างคู่ช่องในหน้าบัญชี ~8px เทียบ checkout ~16px · ข้อความ error ห่าง label ของช่องถัดไป ~8px
 
-## รอบ 49 — select เป็น shadcn (Radix) + ช่องตำบล/ที่อยู่ไทย (spec 09 "ส่วน select + ที่อยู่ไทย", ADR-033 accepted 2026-11-28) (☐ พร้อมเริ่ม)
+## รอบ 49 — select เป็น shadcn (Radix) + ช่องตำบล/ที่อยู่ไทย (spec 09 "ส่วน select + ที่อยู่ไทย", ADR-033 accepted 2026-11-28) (☑ merge ครบ 2026-11-28: #614…#622 + SFUI-14 #612)
 
 ที่มา: owner 2026-11-28 ก่อน release v0.4.0 — "select ให้ใช้ shadcn อย่าใช้ native" (11 control รวมจำนวน PDP/ตะกร้า) และฟอร์มที่อยู่เพิ่มตำบล/แขวง (`address_2`, บังคับกรอก)
 เรียงแบบไทย (autocomplete รหัสไปรษณีย์ไม่ทำ) · ใช้ `select`/`field`/`label` ของ shadcn จาก CLI + ประกอบตามตัวอย่าง docs (ไม่มี component กลางใหม่) ·
-ปิด JS แล้วจำนวน PDP = 1 · **#603 พักจนรอบ 49 + SFUI-14 #612 merge** · stack · ไม่แตะ `globals.css` (#612), `ui/*`, backend ·
+ปิด JS แล้วจำนวน PDP = 1 · ~~#603 พักจนรอบ 49 + SFUI-14 #612 merge~~ เลิกพักแล้ว · stack · ไม่แตะ `globals.css` (#612), `ui/*`, backend ·
 **#612 แก้ spec 09 ด้วย** (กฎ 38/38b, AC-38/39 → รอบ 49 เลื่อนเป็นกฎ 39–57, AC-40–54) — ตัวที่ merge ทีหลัง (PR เอกสารรอบ 49 หรือ #612) sync `origin/develop` แล้วเก็บทั้งสองฝั่ง
 
 | Task | spec | งาน (สั้น) | Depends | UI/qa | สถานะ |
 |---|---|---|---|---|---|
-| SFUI-15 | 09 | ยืนยัน `select`/`field`/`label` ตรง registry + `useFieldError` รับ select + helper `e2e/support/select.ts` | PR เอกสารรอบ 49 (stack) | — | ☐ |
-| SFUI-16a | 09 | คืนสินค้า (2) + group buy (3) → `Field` + `Select` ตาม docs + e2e | SFUI-15 | ✓ | ☐ |
-| SFUI-16b | 09 | ประเทศ: `CountrySelect` (กัน reset ทับค่า) checkout/บัญชี + `profile-billing-address` + e2e | SFUI-15 | ✓ | ☐ |
-| SFUI-16c | 09 | จำนวนในตะกร้า → `Select` (`aria-label`), ลบ `cart-item-select` + e2e | SFUI-15 | ✓ | ☐ |
-| SFUI-16d | 09 | จำนวนบน PDP → `Select` ไม่มี `name` (ปิด JS = 1; แทนถ้อยคำ spec 01 กฎ 59/AC-44/AC-94) + e2e | SFUI-16a, 16c | ✓ | ☐ |
-| SFUI-17 | 09 | ลบ `native-select` + guard ไม่มี `<select>`/`selectOption` | SFUI-16b, 16d | — | ☐ |
-| SFUI-18a | 09 | ที่อยู่ไทย: `address_2` ไหลครบ (cart action, compare, state) + แสดงผลลำดับไทย | SFUI-16a, 16b | ✓ | ☐ |
-| SFUI-18b | 09 | ที่อยู่ไทย: ช่องตำบล (ยังไม่บังคับ) + ลำดับ/label/คู่ช่องใหม่ใน 5 ฟอร์ม + e2e | SFUI-18a | ✓ | ☐ |
-| SFUI-18c | 09 | ที่อยู่ไทย: ตำบลบังคับกรอก (UI + server + ข้อความ) + เพิ่มบรรทัดกรอกตำบลใน e2e ~15 ไฟล์ | SFUI-18b | ✓ | ☐ |
+| SFUI-14 | 09 | (defect owner 2026-11-28) กฎ autofill/keyframe ของ starter ใน `globals.css` ทับ shadcn (กฎ 38/38b) | SFUI-11a | ✓ | ☑ #612 |
+| SFUI-15 | 09 | ยืนยัน `select`/`field`/`label` ตรง registry + `useFieldError` รับ select + helper `e2e/support/select.ts` | PR เอกสารรอบ 49 (stack) | — | ☑ #614 |
+| SFUI-16a | 09 | คืนสินค้า (2) + group buy (3) → `Field` + `Select` ตาม docs + e2e | SFUI-15 | ✓ | ☑ #615 |
+| SFUI-16b | 09 | ประเทศ: `CountrySelect` (กัน reset ทับค่า) checkout/บัญชี + `profile-billing-address` + e2e | SFUI-15 | ✓ | ☑ #616 |
+| SFUI-16c | 09 | จำนวนในตะกร้า → `Select` (`aria-label`), ลบ `cart-item-select` + e2e | SFUI-15 | ✓ | ☑ #617 |
+| SFUI-16d | 09 | จำนวนบน PDP → `Select` ไม่มี `name` (ปิด JS = 1; แทนถ้อยคำ spec 01 กฎ 59/AC-44/AC-94) + e2e | SFUI-16a, 16c | ✓ | ☑ #618 |
+| SFUI-17 | 09 | ลบ `native-select` + guard ไม่มี `<select>`/`selectOption` | SFUI-16b, 16d | — | ☑ #619 |
+| SFUI-18a | 09 | ที่อยู่ไทย: `address_2` ไหลครบ (cart action, compare, state) + แสดงผลลำดับไทย | SFUI-16a, 16b | ✓ | ☑ #620 |
+| SFUI-18b | 09 | ที่อยู่ไทย: ช่องตำบล (ยังไม่บังคับ) + ลำดับ/label/คู่ช่องใหม่ใน 5 ฟอร์ม + e2e | SFUI-18a | ✓ | ☑ #621 |
+| SFUI-18c | 09 | ที่อยู่ไทย: ตำบลบังคับกรอก (UI + server + ข้อความ) + เพิ่มบรรทัดกรอกตำบลใน e2e ~15 ไฟล์ | SFUI-18b | ✓ | ☑ #622 |
 
 - ลำดับ: 15 → (16a ∥ 16b ∥ 16c) → 16d → 17 · 18a (หลัง 16a + 16b) → 18b → 18c · merge: 15 → 16a → 16b → 16c → 16d → 17 → 18a → 18b → 18c
-- **ไฟล์ร่วม** (stack ตามลำดับ): `sfui-13-form-guard` 16c → 16d → 17 · ฟอร์มที่อยู่/`sfui-12a/12b`/`core-52`/`sfui-baseline.json` 16b → 18a → 18b → 18c · `group-join.tsx` 16a → 18a
+- **ไฟล์ร่วม** (stack ตามลำดับ): `sfui-13-form-guard` 16a → 16b → 16c → 16d → 17 (16a/16b แก้ตัวนับ) · ฟอร์มที่อยู่/`sfui-12a/12b`/`core-52`/`sfui-baseline.json` 16b → 18a → 18b → 18c · `group-join.tsx` 16a → 18a
 - e2e ~25 ไฟล์เปลี่ยนวิธีโต้ตอบ select ผ่าน helper (spec 09 กฎ 49) — no-JS ของ core-14b/core-24 คาดจำนวน 1; Stripe `fillCard` คง `selectOption`
+- merge จริง 15 → 16a → 16b → 16c → 16d → 17 → 18a → 18b → 18c (#614 → #622, 2026-11-28) + SFUI-14 #612 · ไม่มี dependency ใหม่ · admin/backend ไม่กระทบ
+- qa: SFUI-14 ผ่าน AC-38/39 (`docs/evidence/storefront-forms/SFUI-14/REPORT.md`) · ปลาย stack ผ่าน AC-40–54 ไม่พบ defect
+  (`docs/evidence/storefront-select/SFUI-18c/REPORT.md`; ภาพของ 16a–18c commit มากับ #622)
+- **followup จาก review/qa** (ยังไม่มี task — backlog หลัง v0.4.0):
+  - export `hiddenSelectOf` จาก `common/components/input` ให้ `checkout/components/country-select` ใช้ร่วม (ตอนนี้ซ้ำ)
+  - test "Input ผิดก่อน → select ผิดตามหลัง" (focus ช่องแรก) ใน `select-field-error.test.tsx`
+  - คอมเมนต์อ้าง `NativeSelect` ที่ค้าง: `common/components/input/index.tsx` (~บรรทัด 49), `e2e/sfui-9a-font.spec.ts` (27, 160, 162)
+  - `core-63-address-invisible.test.ts`: describe ชื่อ "ช่องไม่บังคับ" ทั้งที่ `address_2` บังคับแล้ว (spec 09 กฎ 55)
+  - `autoComplete` ของ city ไม่ตรงกัน (บัญชี `locality` vs checkout `address-level2`); `profile-billing-address` postal_code ขาด `autoComplete="postal-code"`
+  - Radix Select: `Escape` แล้ว `Enter` ภายใน ~120ms เลือก item ระหว่าง animation ปิด (default ของ shadcn — qa รอบ 49)
+  - ตรวจ autofill บน Safari/Firefox (กฎ 38 ยืนยันแค่ Chromium)
+  - keyframe เก่าของ starter ที่ไม่มีผู้ใช้ใน `globals.css` (`ring`, `fade-in-right`, `fade-in-top`, `fade-out-top`, `slide-in`; `theme-css.test.ts` ยังอ้าง `animate-fade-in-top`)
+- รอ owner (เปลี่ยนพฤติกรรม): Select จำนวนในตะกร้า `disabled={updating}` ระหว่างอัปเดต — ดูคำถามรอบ 49
 
 ## คำถามที่รอ owner
 
-- **v0.4.0**: #603 **พัก** จนรอบ 49 + SFUI-14 #612 merge ครบ (owner 2026-11-28)
+- **v0.4.0**: #603 พร้อม — รอบ 49 + SFUI-14 #612 merge ครบ 2026-11-28 → owner merge `develop → main` + tag `v0.4.0`
 
 - **รอบ 49**: ADR-033 accepted, ~~Q-R49-1~~ = ก, ~~Q-R49-2~~ = ข, ~~Q-R49-3~~ = stack ได้, ~~Q-R49-4~~ = บังคับ (owner 2026-11-28) · ยังเปิด (ไม่ block รอบ 49):
   - Q-R49-5 ย้าย component ร่วมของรอบ 48 (`Input`, `Checkbox`, spinner) ไปประกอบตามตัวอย่าง docs ของ shadcn ไหม — เสนอ ไม่ทำตอนนี้ (backlog หลัง v0.4.0)
   - Q-R49-6 ใช้ `form` ของ shadcn (react-hook-form + zod — dependency ใหม่ 3 ตัว) ไหม — เสนอ ไม่ใช้ (server action เดิม)
+  - ข้อเสนอจาก review: Select จำนวนในตะกร้า `disabled={updating}` ระหว่างอัปเดต (เปลี่ยนพฤติกรรม) ทำไหม — เสนอ ไม่ทำก่อน v0.4.0 (backlog)
 
 - **รอบ 48**: ไม่มีคำถามค้าง — owner 2026-11-27 "รับตามข้อเสนอ": ADR-032 = accepted, ~~D1–D5~~ = ก (D3 `*` อย่างเดียว ไม่ใส่ "(ไม่บังคับ)"), ช่องสูง 36px,
   ~~Q3~~ = allow-list กฎ 26, ~~Q4~~ = ไม่ทำรอบนี้ (backlog หลัง v0.4.0), ~~Q5~~ = stack ได้; เพิ่มกติกาจัดวาง (spec 09 กฎ 37 — breakpoint มาตรฐาน Tailwind, คู่ช่องตั้งแต่ `md:`)
@@ -288,7 +303,7 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 | รอบ 46 admin ภาษาไทย | 10 | ☑ | 5 ☑ (#594–#597 + AI18N-N1 #599; เอกสาร #593, #598) | ADR-031 accepted 2026-11-26; stack แบบรอบ 44; Q1 = ก; ยังไม่ release |
 | รอบ 47 ทดสอบ manual ก่อน v0.4.0 | 02, 10 | ☑ | 2 ☑ (#600, #602; เอกสาร #601) | AI18N-N2, EV-27; วันที่ admin คง พ.ศ. (owner 2026-11-27) |
 | รอบ 48 ฟอร์ม storefront แบบ shadcn | 09 | ☑ | 6 ☑ (#605–#610; เอกสาร #604) | ADR-032 accepted 2026-11-27; stack; ยังไม่ release (#603) |
-| รอบ 49 select Radix + ที่อยู่ไทย | 09 | ☐ | 9 ☐ | ADR-033 accepted 2026-11-28; stack; #603 พักจนครบ + SFUI-14 #612 |
+| รอบ 49 select Radix + ที่อยู่ไทย | 09 | ☑ | 9 ☑ (#614–#622) + SFUI-14 ☑ #612 | ADR-033 accepted 2026-11-28; stack; ยังไม่ release (#603 พร้อม) |
 | รอบ 43 | 01, 03, 04, 06–08 | ◐ | 4 🚀 + 1 ☑ + 14 ☐ | 4 🚀 (3 train #557 + OPS-39 #559) ใน v0.3.1; OPS-40 ☑ #562 ก่อน go-live (ไม่อยู่ใน v0.3.1); 14 ตัวหลัง go-live (รวม OPS-41) |
 
 จำนวน task นับจากตารางใน history.md ณ 2026-11-24 และตารางรอบ 43 ด้านบน ณ 2026-11-25 (task ที่อยู่หลาย milestone นับที่ milestone หลักของ spec)
