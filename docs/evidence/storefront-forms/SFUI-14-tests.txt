@@ -1,6 +1,52 @@
 SFUI-14 — ขอบช่องกรอกตอน Chrome autofill (spec 09 กฎ 38, AC-38) · base develop 58e2436a · 2026-11-28
 สภาพแวดล้อม: node 24, prod build (next start :8451, medusa start :9451), DB medusa_sfui14, Redis db 13, Chromium เต็ม (channel chromium)
 
+== รอบ 2 (session หลักตัดสิน: ลบ -webkit-box-shadow ด้วย) ==
+-- RED บน commit 50042876 (ยังมี box-shadow inset) — assertion ใหม่ของเงา/ring โฟกัส --
+  ✘  1 [chromium] › e2e/sfui-14-autofill-border.spec.ts:65:5 › AC-38 (1): กฎ autofill ของ globals.css ไม่ตั้งขอบ/เงา และช่องรหัสผ่าน/อีเมลของ login ในสถานะ autofill ขอบ เงา ring โฟกัสเท่าสถานะปกติ (11.7s)
+  ✘  2 [chromium] › e2e/sfui-14-autofill-border.spec.ts:129:7 › Chrome autofill จริง (CDP Autofill.trigger) › AC-38 (2): ฟอร์ม register ที่ Chrome autofill ชื่อ/อีเมล/เบอร์ ขอบ เงา พื้น และ ring โฟกัสของ Input เท่าสถานะปกติ (6.3s)
+    Error: InputGroupInput ใน autofill ไม่มี box-shadow ทับขอบกลุ่ม
+    Received: "rgb(255, 255, 255) 0px 0px 0px 1000px inset"
+    Error: Input ใน autofill เงาเท่าปกติ (shadow-xs)
+    Received: "rgb(255, 255, 255) 0px 0px 0px 1000px inset"
+    Error: InputGroupInput โฟกัสใน autofill
+    Received: "rgb(255, 255, 255) 0px 0px 0px 1000px inset"
+    Error: ring ของ Input โฟกัสใน autofill
+    Received: "rgb(255, 255, 255) 0px 0px 0px 1000px inset"
+    Error: กฎ autofill ที่ตั้งขอบหรือเงา
+    Error: first-name-input: เงาใน autofill เท่าสถานะปกติ
+    Received: "rgb(255, 255, 255) 0px 0px 0px 1000px inset"
+    Error: last-name-input: เงาใน autofill เท่าสถานะปกติ
+    Received: "rgb(255, 255, 255) 0px 0px 0px 1000px inset"
+    Error: email-input: เงาใน autofill เท่าสถานะปกติ
+    Received: "rgb(255, 255, 255) 0px 0px 0px 1000px inset"
+    Error: phone-input: เงาใน autofill เท่าสถานะปกติ
+    Received: "rgb(255, 255, 255) 0px 0px 0px 1000px inset"
+    Error: ring ของ Input โฟกัสใน autofill
+    Received: "rgb(255, 255, 255) 0px 0px 0px 1000px inset"
+  2 failed
+(ทุก "Received" = "rgb(255, 255, 255) 0px 0px 0px 1000px inset" แทน shadow ปกติ / ring 3px; กฎ autofill ทั้ง 9 selector ยังตั้ง box-shadow)
+
+-- GREEN หลังลบ box-shadow (prod build ใหม่) --repeat-each=3 --
+  ✓  1 [chromium] › e2e/sfui-14-autofill-border.spec.ts:65:5 › AC-38 (1): กฎ autofill ของ globals.css ไม่ตั้งขอบ/เงา และช่องรหัสผ่าน/อีเมลของ login ในสถานะ autofill ขอบ เงา ring โฟกัสเท่าสถานะปกติ (2.4s)
+  ✓  2 [chromium] › e2e/sfui-14-autofill-border.spec.ts:65:5 › AC-38 (1): กฎ autofill ของ globals.css ไม่ตั้งขอบ/เงา และช่องรหัสผ่าน/อีเมลของ login ในสถานะ autofill ขอบ เงา ring โฟกัสเท่าสถานะปกติ (2.5s)
+  ✓  3 [chromium] › e2e/sfui-14-autofill-border.spec.ts:65:5 › AC-38 (1): กฎ autofill ของ globals.css ไม่ตั้งขอบ/เงา และช่องรหัสผ่าน/อีเมลของ login ในสถานะ autofill ขอบ เงา ring โฟกัสเท่าสถานะปกติ (2.5s)
+  ✓  4 [chromium] › e2e/sfui-14-autofill-border.spec.ts:129:7 › Chrome autofill จริง (CDP Autofill.trigger) › AC-38 (2): ฟอร์ม register ที่ Chrome autofill ชื่อ/อีเมล/เบอร์ ขอบ เงา พื้น และ ring โฟกัสของ Input เท่าสถานะปกติ (2.7s)
+  ✓  5 [chromium] › e2e/sfui-14-autofill-border.spec.ts:129:7 › Chrome autofill จริง (CDP Autofill.trigger) › AC-38 (2): ฟอร์ม register ที่ Chrome autofill ชื่อ/อีเมล/เบอร์ ขอบ เงา พื้น และ ring โฟกัสของ Input เท่าสถานะปกติ (2.6s)
+  ✓  6 [chromium] › e2e/sfui-14-autofill-border.spec.ts:129:7 › Chrome autofill จริง (CDP Autofill.trigger) › AC-38 (2): ฟอร์ม register ที่ Chrome autofill ชื่อ/อีเมล/เบอร์ ขอบ เงา พื้น และ ring โฟกัสของ Input เท่าสถานะปกติ (2.7s)
+  6 passed (6.7s)
+
+-- e2e ที่เกี่ยว (sfui-11-form-field + sfui-14) --
+  ✓  1 [chromium] › e2e/sfui-11-form-field.spec.ts:92:5 › AC-28: login และ register — label เหนือช่อง, * เฉพาะช่องบังคับ, สูง 36px, 390px ไม่ล้น (1.2s)
+  ✓  2 [chromium] › e2e/sfui-14-autofill-border.spec.ts:65:5 › AC-38 (1): กฎ autofill ของ globals.css ไม่ตั้งขอบ/เงา และช่องรหัสผ่าน/อีเมลของ login ในสถานะ autofill ขอบ เงา ring โฟกัสเท่าสถานะปกติ (1.9s)
+  ✓  4 [chromium] › e2e/sfui-14-autofill-border.spec.ts:129:7 › Chrome autofill จริง (CDP Autofill.trigger) › AC-38 (2): ฟอร์ม register ที่ Chrome autofill ชื่อ/อีเมล/เบอร์ ขอบ เงา พื้น และ ring โฟกัสของ Input เท่าสถานะปกติ (1.4s)
+  ✓  3 [chromium] › e2e/sfui-11-form-field.spec.ts:129:5 › AC-28: checkout step=address — label เหนือช่อง, checkbox แนวนอน, ประเทศสูงเท่าเขต/อำเภอ, 390px ไม่ล้น (5.4s)
+  4 passed (7.1s)
+
+-- vitest: 134 files / 2052 passed · Playwright project unit 245 passed (รวม evidence-budget) · lint 0 errors · typecheck ผ่าน · storefront build ผ่าน
+-- Safari: ยังไม่ได้ยืนยัน (ไม่มี webkit ติดตั้งในเครื่อง และห้าม playwright install)
+
+== รอบ 1 (ลบ border) ==
 == RED (ก่อนแก้ globals.css) e2e/sfui-14-autofill-border.spec.ts ==
   ✘  1 [chromium] › e2e/sfui-14-autofill-border.spec.ts:57:5 › AC-38 (1): กฎ autofill ของ globals.css ไม่ตั้งขอบ และช่องรหัสผ่าน/อีเมลของ login ในสถานะ autofill ขอบเท่าสถานะปกติ (903ms)
   ✘  2 [chromium] › e2e/sfui-14-autofill-border.spec.ts:94:7 › Chrome autofill จริง (CDP Autofill.trigger) › AC-38 (2): ฟอร์ม register ที่ Chrome autofill ชื่อ/อีเมล/เบอร์ ขอบของ Input เท่าสถานะปกติ (1.0s)
@@ -59,4 +105,4 @@ exit 0 — backend 0 errors (4 warnings เดิม), storefront 0 errors (27 w
 ✓ Compiled successfully in 1695ms
 
 
-screenshot: docs/evidence/storefront-forms/SFUI-14/{login-autofill-before,login-autofill-simulated,register-autofill-before,register-autofill-chrome}.png (before = ก่อนแก้, อีกสองรูป = หลังแก้)
+screenshot: docs/evidence/storefront-forms/SFUI-14/{login-autofill-before,register-autofill-before}.png = ก่อนแก้; {login-autofill-simulated,register-autofill-chrome,register-autofill-focus}.png = หลังแก้รอบ 2 (ขอบกลุ่มรหัสผ่านครบ, พื้นไม่ฟ้า, ring โฟกัสเห็น)
