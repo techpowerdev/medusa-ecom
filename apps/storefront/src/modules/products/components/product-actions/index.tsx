@@ -11,11 +11,19 @@ import {
 } from "@lib/util/pending-add-to-cart"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@/components/button"
+import { Field, FieldLabel } from "@/components/ui/field"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import Divider from "@modules/common/components/divider"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
 import { findVariantByOptions, optionsAsKeymap } from "@lib/util/product-variant-options"
 import { useParams, usePathname } from "next/navigation"
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
+import { FormEvent, useEffect, useId, useMemo, useRef, useState } from "react"
 import ProductPrice from "../product-price"
 import FlashSale, { useFlashOffer } from "../flash-sale"
 import FlashQtyExceedsRemaining from "../flash-sale/qty-exceeds-remaining"
@@ -51,8 +59,10 @@ export default function ProductActions({
   )
   const [isUrlVariantApplied, setIsUrlVariantApplied] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
-  // CORE-24 (กฎข้อ 59): จำนวนที่เลือก — ฟอร์ม no-JS ส่งค่าเดียวกันผ่าน `<select name="quantity">`
+  // CORE-24 (กฎข้อ 59): จำนวนที่เลือก — โหมด JS ส่งผ่าน addToCart; SFUI-16d (spec 09 กฎ 47): Select ไม่มี `name`
+  // → ฟอร์ม no-JS ไม่ส่ง quantity และ route /<cc>/cart/add ได้จำนวน 1 (clampLineItemQuantity)
   const [quantity, setQuantity] = useState(1)
+  const quantityId = useId()
   // qa #134 D-1: addToCart ล้ม (เช่นจำนวนเกิน stock) → แสดงข้อความไทย และปลด isAdding ให้ปุ่ม/ตัวเลือกใช้ต่อได้
   const [addError, setAddError] = useState<string | null>(null)
   const countryCode = useParams().countryCode as string
@@ -227,13 +237,19 @@ export default function ProductActions({
 
           <FlashSale {...flash} />
 
-          <label className="flex items-center gap-x-3 text-xs leading-5 font-normal">
-            <span>จำนวน</span>
-            <select
-              name="quantity"
-              value={qty}
-              onChange={(e) =>
-                setQuantity(clampLineItemQuantity(e.target.value))
+          {/* SFUI-16d (spec 09 กฎ 40b, 45, 47; ADR-033): Field + Select ของ shadcn ตามตัวอย่าง docs — label เหนือ trigger (vertical),
+              controlled ด้วย qty; ไม่มี name (no-JS ส่งจำนวน 1 เสมอ — กฎ 47a) */}
+          <Field>
+            <FieldLabel
+              htmlFor={quantityId}
+              data-testid="product-quantity-select-label"
+            >
+              จำนวน
+            </FieldLabel>
+            <Select
+              value={String(qty)}
+              onValueChange={(value) =>
+                setQuantity(clampLineItemQuantity(value))
               }
               disabled={
                 !canBuy ||
@@ -242,16 +258,28 @@ export default function ProductActions({
                 !!disabled ||
                 isAdding
               }
-              className="border border-border bg-muted rounded-md px-3 py-1.5"
-              data-testid="product-quantity-select"
             >
-              {quantityOptions.map((q) => (
-                <option key={q} value={q}>
-                  {q}
-                </option>
-              ))}
-            </select>
-          </label>
+              <SelectTrigger
+                id={quantityId}
+                data-testid="product-quantity-select"
+                data-value={String(qty)}
+              >
+                <SelectValue>{qty}</SelectValue>
+              </SelectTrigger>
+              <SelectContent data-testid="product-quantity-select-options">
+                {quantityOptions.map((q) => (
+                  <SelectItem
+                    key={q}
+                    value={String(q)}
+                    data-testid="product-quantity-select-option"
+                    data-value={String(q)}
+                  >
+                    {q}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
 
           <FlashQtyExceedsRemaining remaining={flashRemaining} />
           <FlashCustomerLimit limit={customerLimit} />

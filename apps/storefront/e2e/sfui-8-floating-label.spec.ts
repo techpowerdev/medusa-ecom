@@ -77,8 +77,12 @@ test("AC-23 (2)(3): PDP และหน้า group buy — option-button แล
   await step("PDP /th/products/t-shirt", async () => {
     await page.goto(`/${CC}/products/t-shirt`)
     await expectOptionButtons(page.getByTestId("product-options").locator("xpath=ancestor::fieldset[1]"))
-    const quantityLabel = page.getByTestId("product-quantity-select").locator("xpath=ancestor::label[1]")
-    expect(await ownStyle(quantityLabel), "label ที่ครอบ product-quantity-select").toEqual(OWN_SMALL)
+    // SFUI-16d (spec 09 กฎ 45): label ของ product-quantity-select เป็น FieldLabel เหนือ trigger (เดิม <label> ครอบ select) — ไม่เลื่อน ไม่ทับช่อง
+    const quantityLabel = page.getByTestId("product-quantity-select-label")
+    expect((await style(quantityLabel)).translate, "label ของ product-quantity-select ไม่เลื่อน").toBe("none")
+    const quantityLabelBox = (await quantityLabel.boundingBox())!
+    const quantityBox = (await page.getByTestId("product-quantity-select").boundingBox())!
+    expect(quantityLabelBox.y + quantityLabelBox.height, "label ของ product-quantity-select อยู่เหนือช่อง").toBeLessThanOrEqual(quantityBox.y + 0.5)
     await evidence("02-pdp-options-quantity")
   })
 

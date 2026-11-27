@@ -69,12 +69,6 @@ const ALLOW_LIST: Allowed[] = ([
   // testid `option-button` อยู่บน <label> ไม่ใช่ <input> (sr-only)
   { file: "products/components/product-actions/option-select.tsx", tag: "input", match: { type: "radio" }, why: "ตัวเลือกสินค้า" },
   {
-    file: "products/components/product-actions/index.tsx",
-    tag: "select",
-    match: { name: "quantity", "data-testid": "product-quantity-select" },
-    why: "จำนวนบน PDP",
-  },
-  {
     file: "group-buy/components/group-page/group-join.tsx",
     tag: "input",
     match: { type: "number", "data-testid": "group-selection-quantity" },
