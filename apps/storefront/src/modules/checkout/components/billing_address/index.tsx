@@ -29,7 +29,8 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-4">
+      {/* SFUI-12b (spec 09 กฎ 37): < 768px แถวละช่อง, ≥ md คู่ตามตารางกฎ 37b (breakpoint มาตรฐานของ Tailwind) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input
           label="ชื่อ"
           name="billing_address.first_name"
@@ -69,6 +70,7 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
           label="รหัสไปรษณีย์"
           name="billing_address.postal_code"
           autoComplete="postal-code"
+          placeholder="เช่น 10110"
           value={formData["billing_address.postal_code"]}
           onChange={handleChange}
           required
@@ -104,6 +106,7 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
           label="เบอร์โทรศัพท์"
           name="billing_address.phone"
           autoComplete="tel"
+          placeholder="เช่น 0812345678"
           value={formData["billing_address.phone"]}
           onChange={handleChange}
           data-testid="billing-phone-input"

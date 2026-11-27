@@ -75,7 +75,8 @@ const Addresses = ({
           <div className="pb-8">
             <input type="hidden" name="checkout_country_code" value={countryCode as string} />
             <BillingAddress cart={cart} />
-            <div className="grid grid-cols-2 gap-4 mt-4">
+            {/* SFUI-12b (spec 09 กฎ 37b): อีเมลไม่มีคู่ — < 768px เต็มแถว, ≥ md ครึ่งแถวตามเดิม */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <Input
                 label="อีเมล"
                 name="email"

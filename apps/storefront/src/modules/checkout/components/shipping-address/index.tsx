@@ -135,7 +135,8 @@ const ShippingAddress = ({
           />
         </div>
       )}
-      <div className="grid grid-cols-2 gap-4">
+      {/* SFUI-12b (spec 09 กฎ 37): < 768px แถวละช่อง, ≥ md คู่ตามตารางกฎ 37b (breakpoint มาตรฐานของ Tailwind) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input
           label="ชื่อ"
           name="shipping_address.first_name"
@@ -175,6 +176,7 @@ const ShippingAddress = ({
           label="รหัสไปรษณีย์"
           name="shipping_address.postal_code"
           autoComplete="postal-code"
+          placeholder="เช่น 10110"
           value={formData["shipping_address.postal_code"]}
           onChange={handleChange}
           required
@@ -216,7 +218,7 @@ const ShippingAddress = ({
           data-testid="billing-address-checkbox"
         />
       </div>
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <Input
           label="อีเมล"
           name="email"
@@ -232,6 +234,7 @@ const ShippingAddress = ({
           label="เบอร์โทรศัพท์"
           name="shipping_address.phone"
           autoComplete="tel"
+          placeholder="เช่น 0812345678"
           value={formData["shipping_address.phone"]}
           onChange={handleChange}
           data-testid="shipping-phone-input"

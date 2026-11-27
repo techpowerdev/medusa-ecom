@@ -1,7 +1,6 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import React from "react"
 
@@ -9,6 +8,7 @@ import { applyPromotions } from "@lib/data/cart"
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
+import Input from "@modules/common/components/input"
 import Trash from "@modules/common/icons/trash"
 import ErrorMessage from "../error-message"
 import { SubmitButton } from "../submit-button"
@@ -49,6 +49,7 @@ type DiscountCodeProps = {
 const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
   const [isOpen, setIsOpen] = React.useState(false)
   const [errorMessage, setErrorMessage] = React.useState("")
+  const errorId = React.useId()
   // CORE-36 (กฎข้อ 94): โค้ดที่กำลังลบ (แสดงสถานะ) + ref กันคลิกซ้อนใน tick เดียว ก่อน state re-render (แบบ CORE-27)
   // CORE-40 (กฎข้อ 98a): ref/สถานะเดียวกันกันทั้งการใส่และการลบ — action โค้ดค้างได้ทีละหนึ่ง
   const [removingCode, setRemovingCode] = React.useState<string | null>(null)
@@ -149,15 +150,18 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
           </Label>
 
           {isOpen && (
-            <div className="flex w-full gap-x-2">
+            // SFUI-12b (spec 09 กฎ 28, 32d): ช่องของ common/components/input (label "โค้ดส่วนลด" เหนือช่อง) — items-end ให้ปุ่มชิดแนวล่างเดียวกับช่อง
+            // promotion-error คงเป็นระดับฟอร์ม (CORE-28) แต่ช่องอ้างด้วย aria-describedby เมื่อมีข้อความ
+            <div className="flex w-full items-end gap-x-2">
               {/* SFUI-5c: คง div ห่อเดิมของ Input ใน shim (ความกว้างช่อง/ปุ่มเท่าเดิม) */}
               <div className="flex flex-col gap-1">
                 <Input
-                  className="size-full"
+                  label="โค้ดส่วนลด"
                   id="promotion-input"
                   name="code"
                   type="text"
                   autoFocus={false}
+                  aria-describedby={errorMessage ? errorId : undefined}
                   data-testid="discount-input"
                 />
               </div>
@@ -172,7 +176,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
           )}
 
           {/* CORE-28 (กฎข้อ 85): error ของการใส่/ลบโค้ดต้องเห็นแม้ช่องใส่โค้ดปิด */}
-          <ErrorMessage error={errorMessage} data-testid="promotion-error" />
+          <ErrorMessage id={errorId} error={errorMessage} data-testid="promotion-error" />
         </form>
 
         {promotions.length > 0 && (
