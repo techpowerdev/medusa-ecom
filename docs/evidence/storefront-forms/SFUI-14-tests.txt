@@ -1,0 +1,62 @@
+SFUI-14 — ขอบช่องกรอกตอน Chrome autofill (spec 09 กฎ 38, AC-38) · base develop 58e2436a · 2026-11-28
+สภาพแวดล้อม: node 24, prod build (next start :8451, medusa start :9451), DB medusa_sfui14, Redis db 13, Chromium เต็ม (channel chromium)
+
+== RED (ก่อนแก้ globals.css) e2e/sfui-14-autofill-border.spec.ts ==
+  ✘  1 [chromium] › e2e/sfui-14-autofill-border.spec.ts:57:5 › AC-38 (1): กฎ autofill ของ globals.css ไม่ตั้งขอบ และช่องรหัสผ่าน/อีเมลของ login ในสถานะ autofill ขอบเท่าสถานะปกติ (903ms)
+  ✘  2 [chromium] › e2e/sfui-14-autofill-border.spec.ts:94:7 › Chrome autofill จริง (CDP Autofill.trigger) › AC-38 (2): ฟอร์ม register ที่ Chrome autofill ชื่อ/อีเมล/เบอร์ ขอบของ Input เท่าสถานะปกติ (1.0s)
+    Error: ช่องรหัสผ่าน (InputGroupInput) ใน autofill ไม่มีขอบซ้อน
+    -   "0px lab(90.952 0 -0.0000119209)",
+    -   "0px lab(90.952 0 -0.0000119209)",
+    -   "0px lab(90.952 0 -0.0000119209)",
+    -   "0px lab(90.952 0 -0.0000119209)",
+    +   "1px rgb(33, 33, 33)",
+    +   "1px rgb(33, 33, 33)",
+    +   "1px rgb(33, 33, 33)",
+    +   "1px rgb(33, 33, 33)",
+    Error: ช่องอีเมล (Input) ใน autofill ขอบเท่าสถานะปกติ
+    -   "1px lab(90.952 0 -0.0000119209)",
+    -   "1px lab(90.952 0 -0.0000119209)",
+    -   "1px lab(90.952 0 -0.0000119209)",
+    -   "1px lab(90.952 0 -0.0000119209)",
+    +   "1px rgb(33, 33, 33)",
+    +   "1px rgb(33, 33, 33)",
+    +   "1px rgb(33, 33, 33)",
+    +   "1px rgb(33, 33, 33)",
+    Error: expect(received).toEqual(expected) // deep equality
+    (ตัด) กฎ autofill ทั้ง 9 selector ของ starter ประกาศ border-*-width/style/color + border-image-* (รวม 153 บรรทัดใน output เต็ม)
+    Error: first-name-input / last-name-input / email-input / phone-input: ขอบใน autofill เท่าสถานะปกติ
+    -   "1px lab(90.952 0 -0.0000119209)" ×4 ด้าน
+    +   "1px rgb(33, 33, 33)" ×4 ด้าน   (Chrome autofill จริงผ่าน CDP)
+  2 failed
+
+== GREEN (หลังแก้) e2e/sfui-14-autofill-border.spec.ts --repeat-each=3 ==
+  ✓  2 [chromium] › e2e/sfui-14-autofill-border.spec.ts:57:5 › AC-38 (1): กฎ autofill ของ globals.css ไม่ตั้งขอบ และช่องรหัสผ่าน/อีเมลของ login ในสถานะ autofill ขอบเท่าสถานะปกติ (3.3s)
+  ✓  1 [chromium] › e2e/sfui-14-autofill-border.spec.ts:57:5 › AC-38 (1): กฎ autofill ของ globals.css ไม่ตั้งขอบ และช่องรหัสผ่าน/อีเมลของ login ในสถานะ autofill ขอบเท่าสถานะปกติ (3.4s)
+  ✓  3 [chromium] › e2e/sfui-14-autofill-border.spec.ts:57:5 › AC-38 (1): กฎ autofill ของ globals.css ไม่ตั้งขอบ และช่องรหัสผ่าน/อีเมลของ login ในสถานะ autofill ขอบเท่าสถานะปกติ (3.4s)
+  ✓  6 [chromium] › e2e/sfui-14-autofill-border.spec.ts:98:7 › Chrome autofill จริง (CDP Autofill.trigger) › AC-38 (2): ฟอร์ม register ที่ Chrome autofill ชื่อ/อีเมล/เบอร์ ขอบของ Input เท่าสถานะปกติ (1.7s)
+  ✓  5 [chromium] › e2e/sfui-14-autofill-border.spec.ts:98:7 › Chrome autofill จริง (CDP Autofill.trigger) › AC-38 (2): ฟอร์ม register ที่ Chrome autofill ชื่อ/อีเมล/เบอร์ ขอบของ Input เท่าสถานะปกติ (1.7s)
+  ✓  4 [chromium] › e2e/sfui-14-autofill-border.spec.ts:98:7 › Chrome autofill จริง (CDP Autofill.trigger) › AC-38 (2): ฟอร์ม register ที่ Chrome autofill ชื่อ/อีเมล/เบอร์ ขอบของ Input เท่าสถานะปกติ (1.7s)
+  6 passed (6.9s)
+
+== e2e ที่เกี่ยว (sfui-11-form-field + sfui-14) ==
+  ✓  1 [chromium] › e2e/sfui-11-form-field.spec.ts:92:5 › AC-28: login และ register — label เหนือช่อง, * เฉพาะช่องบังคับ, สูง 36px, 390px ไม่ล้น (2.0s)
+  ✓  2 [chromium] › e2e/sfui-14-autofill-border.spec.ts:57:5 › AC-38 (1): กฎ autofill ของ globals.css ไม่ตั้งขอบ และช่องรหัสผ่าน/อีเมลของ login ในสถานะ autofill ขอบเท่าสถานะปกติ (1.4s)
+  ✓  4 [chromium] › e2e/sfui-14-autofill-border.spec.ts:98:7 › Chrome autofill จริง (CDP Autofill.trigger) › AC-38 (2): ฟอร์ม register ที่ Chrome autofill ชื่อ/อีเมล/เบอร์ ขอบของ Input เท่าสถานะปกติ (1.1s)
+  ✓  3 [chromium] › e2e/sfui-11-form-field.spec.ts:129:5 › AC-28: checkout step=address — label เหนือช่อง, checkbox แนวนอน, ประเทศสูงเท่าเขต/อำเภอ, 390px ไม่ล้น (5.2s)
+  4 passed (8.2s)
+
+== vitest (pnpm --filter storefront test:unit) ==
+ Test Files  134 passed (134)
+      Tests  2052 passed (2052)
+
+== Playwright project unit (รวม evidence-budget) ==
+  245 passed (2.1s)
+
+== pnpm lint && pnpm typecheck ==
+exit 0 — backend 0 errors (4 warnings เดิม), storefront 0 errors (27 warnings เดิม; ไม่มีใน sfui-14), typecheck backend+storefront Done
+
+== pnpm --filter storefront build ==
+✓ Compiled successfully in 1695ms
+
+
+screenshot: docs/evidence/storefront-forms/SFUI-14/{login-autofill-before,login-autofill-simulated,register-autofill-before,register-autofill-chrome}.png (before = ก่อนแก้, อีกสองรูป = หลังแก้)

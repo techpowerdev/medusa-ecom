@@ -226,7 +226,7 @@
   select:-webkit-autofill,
   select:-webkit-autofill:hover,
   select:-webkit-autofill:focus {
-    border: 1px solid #212121;
+    /* SFUI-14 (spec 09 กฎ 38): ไม่ตั้ง border — selector นี้ (0,1,1) ชนะ border-0 ของ InputGroupInput / border-input ของ Input (0,1,0) ใน layer เดียวกัน */
     -webkit-text-fill-color: #212121;
     -webkit-box-shadow: 0 0 0px 1000px #fff inset;
     transition: background-color 5000s ease-in-out 0s;

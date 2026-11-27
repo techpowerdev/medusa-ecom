@@ -341,6 +341,7 @@ qa เก็บ evidence ทุก task (UI): 9a–9e screenshot ก่อน/�
 
 ## ส่วนฟอร์ม (รอบ 48 — owner 2026-11-27, ก่อน release v0.4.0)
 Status: done — SFUI-11a..13 ☑ (#605–#610, merge 2026-11-27; เอกสาร #604) · AC-26..37 ☑ (qa ไม่พบ defect — `docs/evidence/storefront-forms/SFUI-*/REPORT.md`)
+· SFUI-14 (defect จากทดสอบ manual 2026-11-28 — ขอบช่องกรอกตอน Chrome autofill) กำลังทำ · AC-38
 (owner 2026-11-27 — ADR-032 accepted "รับตามข้อเสนอ" D1–D5 = ก, Q3 = ตามข้อเสนอ, Q4 = ไม่ทำรอบนี้, Q5 = stack ได้; เพิ่มกติกาการจัดวาง กฎ 37 + ความสูง 36px ตาม default)
 Goal (owner's words, 2026-11-27): **ทุกฟอร์มของ storefront** ปรับช่องกรอกให้ "คงตาม default ที่ shadcn ให้มาพร้อม component" — label อยู่เหนือช่อง (ไม่ใช่ floating label อีกต่อไป),
 พร้อมข้อความ error, ป้ายบังคับกรอก (*) และ placeholder ตามความเหมาะสม
@@ -465,6 +466,10 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
         account `account-layout.tsx` `small:grid-cols-[240px_1fr]` → ที่ 768–1023px ฟอร์มกว้างเต็มหน้า (สรุปคำสั่งซื้อ/เมนูบัญชีอยู่ล่าง/บน) และเป็นคู่ช่อง; ที่ ≥ 1024px คอลัมน์ฟอร์มแคบลงเพราะมีคอลัมน์ข้าง
         แต่ยังเป็นคู่ช่อง (เท่ากับ `grid-cols-2` เดิม) — ไม่ขัดกัน; ถ้าคู่ใดที่ 1024–1279px label ตัดสองบรรทัดจนผิดข้อ (c) ให้ builder รายงาน planner (ไม่เปลี่ยน breakpoint เอง)
 
+38. (SFUI-14 — defect owner 2026-11-28) สถานะ autofill ของ browser ต้องไม่เปลี่ยนขอบของช่องกรอก: กฎ `:-webkit-autofill` ของ starter ใน `globals.css` (`@layer utilities`, selector เช่น
+    `input:-webkit-autofill` specificity 0,1,1 ชนะ utility class 0,1,0 ใน layer เดียวกัน) **ห้ามมี property `border*`** — เดิม `border: 1px solid #212121` ทับ `border-0` ของ `InputGroupInput` (กล่องเหลี่ยมดำซ้อนในช่องรหัสผ่าน)
+    และ `border-input` ของ `Input` (ขอบดำ); คง `-webkit-text-fill-color`/`-webkit-box-shadow` inset/`transition` ไว้ (กันพื้นสีของ autofill) · ข้อยกเว้นของกฎ 36 (`globals.css` ไม่ถูกแก้) เฉพาะ task นี้
+
 ### Acceptance criteria (ต่อจาก AC-25)
 - AC-26 (SFUI-11a, กฎ 28, 35, 36) ☑ #605 static `e2e/sfui-11-form-field.unit.spec.ts`: (a) `common/components/{input,native-select,checkbox}/index.tsx` import `Field` และ `FieldLabel` จาก `@/components/ui/field`;
   (b) ไม่มีไฟล์ใน `src/**` (ไม่ใช่ test) ที่มี class `peer-focus:`/`peer-not-placeholder-shown:` หรือ `placeholder=" "`; (c) `CountrySelect`/`profile-billing-address` ไม่ส่ง `h-12` ให้ `NativeSelect`;
@@ -513,13 +518,17 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
   (2) Given viewport `768×1024` และ `1280×800` Then ทุกคู่ในตารางกฎ 37b (`a`, `b` = กล่อง `[data-slot="field"]` แบบข้อ 1; ความสูงเทียบที่กล่อง control — `<select>`/`<input>`/`InputGroup`): `|a.top - b.top| <= 1`, `b.left >= a.right`, ความสูง control เท่ากัน (±1px) และ `<t>-label` ของทั้งคู่ `top` เท่ากัน (±1px); ช่องที่ไม่อยู่ในคู่ไม่มี control อื่นที่ `top` เท่ากัน;
   (3) Given viewport `767×1024` Then เหมือนข้อ (1) (ขอบ breakpoint `md`); static (ใน `sfui-13-form-guard.unit.spec.ts`): container ของช่องกรอกในไฟล์ของตาราง inventory ไม่มี variant breakpoint ของ starter
   (`2xsmall:`/`xsmall:`/`small:`/`medium:`/`large:`/`xlarge:`/`2xlarge:`) และไม่มี `grid-cols-2`/`grid-cols-[…]` ที่ไม่มี prefix `md:` (ยกเว้น container ระดับฟอร์มที่ระบุใน "ไม่มีคู่" ของตาราง)
+- AC-38 (SFUI-14, กฎ 38) e2e ใหม่ `e2e/sfui-14-autofill-border.spec.ts` (Chromium เต็ม — `channel: "chromium"`): (1) Given `/<cc>/account` (login) When จำลอง cascade ของ `:-webkit-autofill` บน `email-input`/`password-input`
+  (สำเนากฎ autofill ทุกข้อใน layer และตำแหน่งเดิม แทน pseudo-class ด้วย attribute selector specificity เท่ากัน — Chrome autofill ช่องรหัสผ่านผ่าน CDP ไม่ได้) Then ขอบทั้งสี่ด้าน (ความกว้าง + สี) ของ
+  `[data-slot=input-group-control]` (border-0) และ `Input` เท่าสถานะปกติ, กฎ autofill ใน CSS ที่โหลดไม่มี property `border*` และยังมี `-webkit-text-fill-color`; (2) Given ฟอร์ม register When Chrome autofill ที่อยู่จริงผ่าน CDP
+  `Autofill.trigger` (ชื่อ/นามสกุล/อีเมล/เบอร์) Then ทุกช่องที่ `:-webkit-autofill` ขอบเท่าสถานะปกติ
 
 ### Test plan
 | ชนิด | AC |
 |---|---|
 | static (`test:e2e:unit`) | AC-26, AC-35 (+ AC-5, AC-19 เดิม) |
 | unit (Vitest + jsdom) | AC-27, AC-30, AC-31 |
-| e2e (Playwright) | AC-28, AC-29 (ที่แก้), AC-32, AC-33, AC-34, AC-37 + ชุดเดิม (กฎ 27a) |
+| e2e (Playwright) | AC-28, AC-29 (ที่แก้), AC-32, AC-33, AC-34, AC-37, AC-38 + ชุดเดิม (กฎ 27a) |
 | reviewer | AC-29 (รายการไฟล์), AC-36 |
 qa: `*` ห่างข้อความ label ~8px (`FieldLabel` = `flex gap-2` ของ shadcn) และช่องสูง 36px เป็น default — ไม่บันทึกเป็น defect (กฎ 28, 35) · qa เก็บ evidence ทุก task ยกเว้น SFUI-13: screenshot ก่อน/หลังของฟอร์มในขอบเขต ≤ 5 รูป (11a: login + checkout ที่อยู่ 1280/390; 11b: error ใต้ช่อง; 12x: ฟอร์มของกลุ่ม) — `docs/evidence/storefront-forms/<task>/`;
 builder รัน e2e **ทุก** spec ที่อ้างหน้าที่แตะ (grep path/testid ใน `apps/storefront/e2e/`) ก่อน push
@@ -536,6 +545,7 @@ builder รัน e2e **ทุก** spec ที่อ้างหน้าที
 | SFUI-12b | ☑ #608 — checkout (ตาราง inventory 12b): `checkout/components/{shipping-address,billing_address,addresses,discount-code}/index.tsx` (**`discount-code` เลิก import `@/components/ui/input` ตรง → ใช้ `common/components/input` พร้อม `label="โค้ดส่วนลด"`**; `ui/label` ที่ครอบ `add-discount-button` คงไว้ — กฎ 19; คง `id="promotion-input"`, `name="code"`, testid เดิม — AC-35), `checkout/components/error-message/index.tsx` (prop `id` ไม่บังคับ — ใช้ผูก `promotion-error`), การจัดวางกฎ 37; e2e ใหม่ `sfui-12b-checkout-forms.spec.ts` | AC-33, AC-34, AC-36, AC-37 | SFUI-11b (stack) | ∥ | ~250 |
 | SFUI-12c | ☑ #609 — returns + group buy + affiliate (ตาราง inventory 12c): `returns/components/return-request-form/index.tsx`, `group-buy/components/group-page/group-join.tsx` (select สามตัว → `NativeSelect` + label โดยชุด option เท่าเดิม — กฎ 31a; `group-selection-quantity` คงเดิม), `affiliate/components/auth-forms/index.tsx` (ไม่ต้องแก้โค้ด — ใช้ `Input` ของ 11a อยู่แล้ว; ตรวจด้วย e2e); e2e ใหม่ `sfui-12c-feature-forms.spec.ts`; แก้ `sfui-9e-font.spec.ts` + ขั้น group buy ของ `sfui-8-floating-label.spec.ts` (AC-29) | AC-29, AC-33, AC-34, AC-36 | SFUI-11b (stack) | ∥ | ~250 |
 | SFUI-13 | ☑ #610 — guard (กฎ 26, 28, 37): ใหม่ `e2e/sfui-13-form-guard.unit.spec.ts` (allow-list ตามกฎ 26 เป็นค่าคงที่ใน test + static ของ AC-37 ข้อ 3) | AC-35, AC-36, AC-37 (static) | SFUI-12a, 12b, 12c | — | ~120 |
+| SFUI-14 | defect owner 2026-11-28 (กฎ 38): `src/styles/globals.css` ลบ `border` ออกจากกฎ `:-webkit-autofill` ของ starter (คง text-fill/box-shadow/transition); e2e ใหม่ `sfui-14-autofill-border.spec.ts` | AC-38 | SFUI-11a | — | ~150 |
 
 ลำดับ: SFUI-11a → SFUI-11b → (12a ∥ 12b ∥ 12c) → SFUI-13 · merge จริงตามลำดับนี้ทีละตัว (sync `origin/develop` + CI เขียวก่อนแต่ละตัว)
 - **stack** (วิธีเดียวกับรอบ 44–45 — owner อนุญาต 2026-11-27, Q5): 11a แตกจาก branch เอกสาร `docs/storefront-form-fields`, 11b จาก 11a, 12a/12b/12c จาก 11b, 13 จาก branch ที่รวม 12a..12c → เปิด PR ทั้งชุดตอนท้าย (base = `develop`)
