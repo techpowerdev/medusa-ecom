@@ -76,8 +76,10 @@ D1 = ก, D2 = ก, D3 = ก (ช่องไม่บังคับ**ไม่
    เฉพาะช่องกรอก/label/ข้อความ error/`<select>` ของฟอร์มในรอบนี้ (กฎ 27)
 4. `NativeSelect` คงเป็น `<select>` ของเรา (spec 09 กฎ 4 — ไม่ใช้ `NativeSelect` ของ shadcn) แต่ใช้ class ตาม registry `native-select` ของ shadcn 4.23.1 และสูงเท่า `Input` (`h-9`)
 5. ห้ามแก้ `src/components/ui/*` (CLAUDE.md, spec 09 กฎ 3) และ Radix เข้าผ่าน `src/components/**` เท่านั้น (ADR-030 ข้อ 4) — `field`/`input-group` อยู่ใน `ui/` จึงไม่ขัด
-6. **การจัดวาง (owner 2026-11-27)**: ต่ำกว่า breakpoint `small` (1024px — `--breakpoint-small` ใน `globals.css`, จุดเดียวกับที่ layout ของ storefront เช่น checkout/affiliate เปลี่ยนเป็นหลายคอลัมน์)
-   ทุกช่องวางแถวละช่อง; ตั้งแต่ `small:` ขึ้นไป คู่ช่องที่สัมพันธ์กันวางแถวเดียวกันได้ — คู่ที่มีอยู่แล้วในฟอร์มเดิมคงไว้ + คู่ที่ planner เสนอ (spec 09 กฎ 37); ใช้ variant ของ theme (`small:`) ไม่ใช้ `sm:`/`md:` ของ Tailwind ค่าเริ่มต้น
+6. **การจัดวาง (owner 2026-11-27 — "เรื่อง breakpoint ใช้ตาม class มาตรฐานของ tailwind")**: ใช้ breakpoint มาตรฐานของ Tailwind (`sm` 640, `md` 768, `lg` 1024 — ค่าเริ่มต้นของ v4
+   ยังมีอยู่คู่กับ breakpoint ของ starter ใน `globals.css` เพราะไม่ได้ reset `--breakpoint-*`; `Input` ของ shadcn เองใช้ `md:text-sm`) **ไม่ใช้ breakpoint ของ starter** (`small:`/`medium:`/`xsmall:` ฯลฯ) กับ grid ของช่องกรอก;
+   ต่ำกว่า `md` (768px) ทุกช่องวางแถวละช่อง; ตั้งแต่ `md:` คู่ช่องที่สัมพันธ์กันวางแถวเดียวกัน (`grid-cols-1 md:grid-cols-2`; ที่เดิมใช้ `grid-cols-[144px_1fr]` → `md:grid-cols-[144px_1fr]`) —
+   คู่ที่มีอยู่แล้วในฟอร์มเดิมคงไว้ + คู่ที่ planner เสนอ (spec 09 กฎ 37) → แท็บเล็ตตั้งแต่ 768px ได้คู่ช่อง
 7. ความสูงช่อง = default ของ shadcn (`h-9` = 36px) ไม่ override (owner 2026-11-27)
 
 ## ผลที่ตามมา
@@ -88,6 +90,8 @@ D1 = ก, D2 = ก, D3 = ก (ช่องไม่บังคับ**ไม่
 − ข้อยกเว้นของกฎ 19 ทำให้ reviewer ต้องแยก "ช่องกรอก" (เปลี่ยนได้) กับส่วนอื่นของหน้า (ต้องคงค่า) — กฎ 27 ระบุขอบเขตเป็นรายการ
 − error จาก server ยังเป็นระดับฟอร์ม (D4 ก) — ราย field อยู่ใน backlog หลัง v0.4.0 (spec 09 Q4, owner 2026-11-27)
 − บนมือถือฟอร์มที่อยู่ของ checkout เปลี่ยนจาก 2 คอลัมน์ (`grid-cols-2` ทุกขนาดจอ) เป็นคอลัมน์เดียว — ฟอร์มยาวขึ้นแต่ช่องกว้างพอสำหรับข้อความไทย
+− grid ของช่อง (`md:` 768) กับ layout ของหน้า (`small:` 1024 ของ starter — checkout `grid-cols-1 small:grid-cols-[1fr_416px]`, account `small:grid-cols-[240px_1fr]`) เปลี่ยนคนละจุด:
+  768–1023px ฟอร์มกว้างเต็มหน้า (สรุปคำสั่งซื้อ/เมนูบัญชีอยู่บน-ล่าง) และได้คู่ช่อง; ≥ 1024px คอลัมน์ฟอร์มแคบลงเพราะมีคอลัมน์ข้าง แต่ยังเป็นคู่ช่อง (เหมือน `grid-cols-2` เดิม) — ไม่ขัดกัน (spec 09 กฎ 37d)
 − release v0.4.0 (#603) พักจนรอบ 48 merge ครบ (owner 2026-11-27)
 
 ## แหล่งอ้างอิง (ตรวจ 2026-11-27)

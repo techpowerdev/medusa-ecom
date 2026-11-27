@@ -173,14 +173,14 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 
 ที่มา: owner 2026-11-27 ก่อน release v0.4.0 — ทุกฟอร์ม: label เหนือช่อง (เลิก floating label), ข้อความ error, ป้าย `*`, placeholder ตามความเหมาะสม ·
 **ตั้งใจเปลี่ยนหน้าตาช่องกรอก** → ยกเว้นกฎ "คง computed style" เฉพาะช่องกรอก (spec 09 กฎ 27) · **#603 พักจน merge ครบ** · ช่องสูง 36px ตาม shadcn ·
-จัดวาง: < 1024px (`small`) แถวละช่อง, ≥ 1024px คู่ที่สัมพันธ์กันแถวเดียว (กฎ 37, AC-37)
+จัดวาง (breakpoint มาตรฐาน Tailwind — owner 2026-11-27): < 768px แถวละช่อง, ≥ `md:` 768px คู่ที่สัมพันธ์กันแถวเดียว (กฎ 37, AC-37)
 
 | Task | spec | งาน (สั้น) | Depends | UI/qa | สถานะ |
 |---|---|---|---|---|---|
 | SFUI-11a | 09 | `shadcn add field input-group` + `Input`/`NativeSelect`/`Checkbox`/`CountrySelect` เป็น `Field` (label เหนือช่อง, `*`, `useId`) + แก้ e2e ที่ยึด floating label | PR เอกสารรอบ 48 (stack) | ✓ | ☐ |
 | SFUI-11b | 09 | error ระดับช่องจาก validation native เป็นไทย (`aria-invalid`/`aria-describedby`, focus ช่องแรก) | SFUI-11a (stack) | ✓ | ☐ |
 | SFUI-12a | 09 | ฟอร์ม account (login/register/profile/ที่อยู่): placeholder, label ประเทศ, `tel`, จัดวาง | SFUI-11b (stack) | ✓ | ☐ |
-| SFUI-12b | 09 | ฟอร์ม checkout (ที่อยู่จัดส่ง/ใบเสร็จ/อีเมล/โค้ดส่วนลด) + จัดวาง | SFUI-11b (stack) | ✓ | ☐ |
+| SFUI-12b | 09 | ฟอร์ม checkout (ที่อยู่จัดส่ง/ใบเสร็จ/อีเมล/โค้ดส่วนลด → `common/components/input`) + จัดวาง | SFUI-11b (stack) | ✓ | ☐ |
 | SFUI-12c | 09 | คืนสินค้า + group buy + affiliate login/สมัคร | SFUI-11b (stack) | ✓ | ☐ |
 | SFUI-13 | 09 | guard static: ช่องฟอร์มทุกตัวผ่าน component ร่วม (allow-list กฎ 26) | SFUI-12a..12c | — | ☐ |
 
@@ -192,7 +192,7 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 ## คำถามที่รอ owner
 
 - **รอบ 48**: ไม่มีคำถามค้าง — owner 2026-11-27 "รับตามข้อเสนอ": ADR-032 = accepted, ~~D1–D5~~ = ก (D3 `*` อย่างเดียว ไม่ใส่ "(ไม่บังคับ)"), ช่องสูง 36px,
-  ~~Q3~~ = allow-list กฎ 26, ~~Q4~~ = ไม่ทำรอบนี้ (backlog หลัง v0.4.0), ~~Q5~~ = stack ได้; เพิ่มกติกาจัดวาง (spec 09 กฎ 37)
+  ~~Q3~~ = allow-list กฎ 26, ~~Q4~~ = ไม่ทำรอบนี้ (backlog หลัง v0.4.0), ~~Q5~~ = stack ได้; เพิ่มกติกาจัดวาง (spec 09 กฎ 37 — breakpoint มาตรฐาน Tailwind, คู่ช่องตั้งแต่ `md:`)
 
 - **รอบ 47**: ไม่มีคำถามค้าง — ~~Q16~~ = ก (owner 2026-11-27): pool ที่มีแล้วแต่ไม่ผ่านเงื่อนไข import ไม่ทำตอนนี้ ·
   ~~Q15~~ = ข (owner 2026-11-27): ปุ่ม Create pool กดได้เสมอ ไม่ครบ → รายการเงื่อนไขแทนฟอร์ม ไม่ยิง POST
