@@ -18,13 +18,14 @@ import { PDP_QUANTITY_OPTIONS } from "@lib/util/pending-add-to-cart"
 import { findVariantByOptions } from "@lib/util/product-variant-options"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import NativeSelect from "@modules/common/components/native-select"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
 import { useParams, useRouter } from "next/navigation"
-import { useRef, useState } from "react"
+import { useId, useRef, useState } from "react"
 import GroupSelectionInfo from "./group-selection-info"
 
 import { Button } from "@/components/button"
+import { Field, FieldLabel } from "@/components/ui/field"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 type Props = {
   token: string
@@ -47,6 +48,7 @@ const addressLabel = (a: HttpTypes.StoreCustomerAddress) =>
 // cart ปัจจุบัน (`_medusa_cart_id`) ไม่ถูกอ่าน/แก้ (กฎข้อ 14c); action ที่สร้างข้อมูลกันกดซ้ำด้วย ref (in-flight) + disabled
 export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson, joinable }: Props) {
   const router = useRouter()
+  const id = useId()
   const countryCode = useParams().countryCode as string
   const inFlight = useRef(false)
   const [options, setOptions] = useState<Record<string, string | undefined>>({})
@@ -64,6 +66,10 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
   const overLimit = !!maxUnitsPerPerson && units > maxUnitsPerPerson
   const variantTitle = (id: string) => product.variants?.find((v) => v.id === id)?.title ?? id
   const noShipping = !!prepared && prepared.shipping_options.length === 0
+  const shippingLabel = (o: GroupCart["shipping_options"][number]) =>
+    `${o.name} — ${convertToLocale({ amount: o.amount, currency_code: prepared!.currency_code })}`
+  const selectedAddress = addresses?.find((a) => a.id === addressId)
+  const selectedShipping = prepared?.shipping_options.find((o) => o.id === shippingId)
 
   // รายการหรือที่อยู่เปลี่ยน → cart ที่เตรียมไว้ใช้ไม่ได้แล้ว เริ่ม (c1) ใหม่ด้วย cart ใหม่ (ไม่แก้ cart เดิมซ้ำ)
   const updateSelection = (next: GroupSelectionItem[]) => {
@@ -146,22 +152,25 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
         ))}
       </div>
       <div className="flex items-end gap-x-3">
-        {/* SFUI-12c (spec 09 กฎ 28, 31a): NativeSelect + label เหนือช่อง; เดิมไม่มี option ว่าง → placeholder={false}
-            w-auto = กว้างตามเนื้อหาข้างปุ่มเพิ่มในรายการเหมือน <label> เดิม (Field เป็น w-full) */}
-        <NativeSelect
-          label="จำนวน"
-          placeholder={false}
-          value={quantity}
-          onChange={(e) => setQuantity(Number(e.target.value))}
-          className="w-auto"
-          data-testid="group-quantity"
-        >
-          {PDP_QUANTITY_OPTIONS.map((q) => (
-            <option key={q} value={q}>
-              {q}
-            </option>
-          ))}
-        </NativeSelect>
+        {/* SFUI-16a (spec 09 กฎ 40b–41; ADR-033): select ของ shadcn ประกอบตามตัวอย่าง docs (controlled) — มีค่าเสมอ ไม่มี placeholder
+            w-auto = กว้างตามเนื้อหาข้างปุ่มเพิ่มในรายการ (Field เป็น w-full) */}
+        <Field className="w-auto">
+          <FieldLabel htmlFor={`${id}-quantity`} data-testid="group-quantity-label">
+            จำนวน
+          </FieldLabel>
+          <Select value={String(quantity)} onValueChange={(v) => setQuantity(Number(v))}>
+            <SelectTrigger id={`${id}-quantity`} data-testid="group-quantity" data-value={String(quantity)}>
+              <SelectValue>{quantity}</SelectValue>
+            </SelectTrigger>
+            <SelectContent data-testid="group-quantity-options">
+              {PDP_QUANTITY_OPTIONS.map((q) => (
+                <SelectItem key={q} value={String(q)} data-testid="group-quantity-option" data-value={String(q)}>
+                  {q}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
         <Button
           variant="outline"
           disabled={!variant || busy}
@@ -216,23 +225,30 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
       )}
       {addresses && addresses.length > 0 && (
         <div className="flex flex-col gap-y-2">
-          <NativeSelect
-            label="ที่อยู่จัดส่ง"
-            placeholder={false}
-            value={addressId}
-            onChange={(e) => {
-              setAddressId(e.target.value)
-              updateSelection(selection)
-            }}
-            disabled={busy}
-            data-testid="group-address-select"
-          >
-            {addresses.map((a) => (
-              <option key={a.id} value={a.id}>
-                {addressLabel(a)}
-              </option>
-            ))}
-          </NativeSelect>
+          <Field>
+            <FieldLabel htmlFor={`${id}-address`} data-testid="group-address-select-label">
+              ที่อยู่จัดส่ง
+            </FieldLabel>
+            <Select
+              value={addressId}
+              onValueChange={(v) => {
+                setAddressId(v)
+                updateSelection(selection)
+              }}
+              disabled={busy}
+            >
+              <SelectTrigger id={`${id}-address`} data-testid="group-address-select" data-value={addressId} className="w-full">
+                <SelectValue>{selectedAddress && addressLabel(selectedAddress)}</SelectValue>
+              </SelectTrigger>
+              <SelectContent data-testid="group-address-select-options">
+                {addresses.map((a) => (
+                  <SelectItem key={a.id} value={a.id} data-testid="group-address-select-option" data-value={a.id}>
+                    {addressLabel(a)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
           {!prepared && (
             <Button
               variant="outline"
@@ -248,21 +264,24 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
       )}
 
       {prepared && !noShipping && (
-        // option ว่าง disabled เดิมมาจาก placeholder ของ NativeSelect (เหลือตัวเดียว — กฎ 31a)
-        <NativeSelect
-          label="วิธีจัดส่ง"
-          placeholder="เลือกวิธีจัดส่ง"
-          value={shippingId}
-          onChange={(e) => setShippingId(e.target.value)}
-          disabled={busy}
-          data-testid="group-shipping-option"
-        >
-          {prepared.shipping_options.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.name} — {convertToLocale({ amount: o.amount, currency_code: prepared.currency_code })}
-            </option>
-          ))}
-        </NativeSelect>
+        // ค่า "" = ยังไม่เลือก แสดง placeholder (กฎ 41) — ลูกค้าต้องเลือกเอง (qa #238 D1)
+        <Field>
+          <FieldLabel htmlFor={`${id}-shipping`} data-testid="group-shipping-option-label">
+            วิธีจัดส่ง
+          </FieldLabel>
+          <Select value={shippingId} onValueChange={setShippingId} disabled={busy}>
+            <SelectTrigger id={`${id}-shipping`} data-testid="group-shipping-option" data-value={shippingId} className="w-full">
+              <SelectValue placeholder="เลือกวิธีจัดส่ง">{selectedShipping && shippingLabel(selectedShipping)}</SelectValue>
+            </SelectTrigger>
+            <SelectContent data-testid="group-shipping-option-options">
+              {prepared.shipping_options.map((o) => (
+                <SelectItem key={o.id} value={o.id} data-testid="group-shipping-option-option" data-value={o.id}>
+                  {shippingLabel(o)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
       )}
 
       {(error || noShipping) && (

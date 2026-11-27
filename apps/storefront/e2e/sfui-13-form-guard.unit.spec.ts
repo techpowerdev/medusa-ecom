@@ -249,7 +249,8 @@ test("AC-35 (กฎ 28–30): ทุก Input/NativeSelect/CountrySelect/Checkbo
   }
   expect(missing).toEqual([])
   // จำนวนช่องในตาราง inventory: 12a 43 + 12b 22 + 12c 11 = 76 (กันตัวนับหลุดเพราะ import เปลี่ยนรูป — เพิ่ม/ลดช่องต้องแก้ spec ก่อน)
-  expect(counted).toBe(76)
+  // − 5 ของ SFUI-16a (spec 09 รอบ 49: select ของคืนสินค้า 2 + group join 3 เป็น Field + Select* ของ shadcn — ไม่ใช่ NativeSelect แล้ว)
+  expect(counted).toBe(71)
 })
 
 test("AC-37 (3): container ของช่องในไฟล์ inventory ไม่มี breakpoint ของ starter และ grid-cols-2/[…] มี md: — ยกเว้นระดับฟอร์มตามค่าคงที่ ไฟล์ + class", () => {

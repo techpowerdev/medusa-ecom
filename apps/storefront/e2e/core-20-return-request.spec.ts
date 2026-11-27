@@ -11,6 +11,7 @@ import {
   signInAs,
 } from "./support/medusa"
 import { expectThai } from "./support/thai-text"
+import { chooseOption } from "./support/select"
 
 // CORE-20: spec 01 AC-65 + Q-F5 (owner 2026-10-26) — ลูกค้าขอคืนสินค้าจากหน้า order detail ผ่าน POST /store/returns ของ Medusa
 // หา element ด้วย data-testid เท่านั้น ตรวจความเป็นไทยด้วย regex อักษรไทย
@@ -58,8 +59,8 @@ test("AC-65: ลูกค้าขอคืนสินค้าจาก order 
     await expect(page).toHaveURL(new RegExp(`/${CC}/account/orders/details/${order.id}/return$`))
     await expectThai(page, ["return-request-heading", "return-submit-button"])
     const row = page.getByTestId("return-item").first()
-    await row.getByTestId("return-item-quantity").selectOption("1")
-    await row.getByTestId("return-item-reason").selectOption(reasonId)
+    await chooseOption(row.getByTestId("return-item-quantity"), "1")
+    await chooseOption(row.getByTestId("return-item-reason"), reasonId)
     await evidence("02-return-form")
   })
 

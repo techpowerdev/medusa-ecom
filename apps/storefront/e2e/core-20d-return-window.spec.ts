@@ -19,6 +19,7 @@ import {
   variantOf,
 } from "./support/medusa"
 import { expectThai } from "./support/thai-text"
+import { chooseOption, expectSelected } from "./support/select"
 
 // CORE-20d: spec 01 AC-102 / กฎข้อ 66 — storefront ตัดสินสิทธิ์คืนแบบเดียวกับ backend (CORE-20b): ค่าเริ่มต้นของ
 // return_window_days เดียวกันทุกหน้า, ช่วงคืนคิดต่อ line, error ไทยเฉพาะ code และฟอร์มคงค่าเมื่อส่งล้ม
@@ -264,7 +265,7 @@ test("AC-102 (b): line A ส่งเมื่อ window + 1 วันก่อ�
     const response = page.waitForResponse(
       (r) => r.request().method() === "POST" && r.request().headers()["next-action"] !== undefined
     )
-    await page.getByTestId("return-item").first().getByTestId("return-item-quantity").selectOption("1")
+    await chooseOption(page.getByTestId("return-item").first().getByTestId("return-item-quantity"), "1")
     await page.getByTestId("return-submit-button").click()
     expect((await response).status()).toBe(200)
     await expect(page.getByTestId("order-return-success")).toBeVisible({ timeout: 30_000 })
@@ -336,14 +337,14 @@ test("AC-102 (c, e): backend ตอบ 400 RETURN_WINDOW_EXPIRED → ข้อ�
     await step("เลือกจำนวน 2 + เหตุผล แล้วส่ง → เห็นข้อความไทยของ RETURN_WINDOW_EXPIRED และค่าที่เลือกยังอยู่", async () => {
       await page.goto(`/${CC}/account/orders/details/${order.id}/return`)
       const item = page.getByTestId("return-item").first()
-      await item.getByTestId("return-item-quantity").selectOption("2")
-      await item.getByTestId("return-item-reason").selectOption(reasonId)
+      await chooseOption(item.getByTestId("return-item-quantity"), "2")
+      await chooseOption(item.getByTestId("return-item-reason"), reasonId)
       await page.getByTestId("return-submit-button").click()
       const error = page.getByTestId("return-error")
       await expect(error).toHaveText(expected)
       await expectThai(page, ["return-error"])
-      await expect(item.getByTestId("return-item-quantity")).toHaveValue("2")
-      await expect(item.getByTestId("return-item-reason")).toHaveValue(reasonId)
+      await expectSelected(item.getByTestId("return-item-quantity"), "2")
+      await expectSelected(item.getByTestId("return-item-reason"), reasonId)
       await expect(page.getByTestId("return-submit-button")).toBeEnabled()
       await evidence("03-return-error-keeps-values")
     })

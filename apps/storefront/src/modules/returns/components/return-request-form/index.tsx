@@ -2,9 +2,10 @@
 
 import { requestReturn, ReturnRequestState } from "@lib/data/returns"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import NativeSelect from "@modules/common/components/native-select"
 import { Button } from "@/components/button"
-import { useActionState } from "react"
+import { Field, FieldLabel } from "@/components/ui/field"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useActionState, useId, useState } from "react"
 
 export type ReturnableLine = {
   id: string
@@ -21,6 +22,70 @@ type Props = {
 }
 
 const INITIAL: ReturnRequestState = { success: false, error: null }
+
+/**
+ * SFUI-16a (spec 09 กฎ 40b–41; ADR-033): ช่องจำนวน/เหตุผลของหนึ่งแถว — select ของ shadcn ประกอบตามตัวอย่าง docs; แยกเป็น component ของแถวเพราะต้องใช้ hook ต่อแถว
+ * (`useId` สำหรับ id ของ trigger และ state ของค่าปัจจุบัน) — แบบ uncontrolled (`defaultValue` + `name`) ที่เก็บค่าจาก `onValueChange` เพื่อแสดงข้อความ/`data-value`
+ * ให้ตรงค่าใน FormData; form reset ของ React 19 → Radix ตั้งค่ากลับเป็น defaultValue และเรียก onValueChange (state ตาม) ส่วน remount ด้วย key → state เริ่มใหม่จาก values
+ */
+function ReturnItemFields({
+  line,
+  reasons,
+  values,
+}: {
+  line: ReturnableLine
+  reasons: Props["reasons"]
+  values: Record<string, string>
+}) {
+  const id = useId()
+  const quantityName = `quantity:${line.id}`
+  const reasonName = `reason:${line.id}`
+  const [quantity, setQuantity] = useState(values[quantityName] ?? "0")
+  const [reason, setReason] = useState(values[reasonName] ?? "")
+
+  return (
+    <>
+      {/* label เหนือช่อง (กฎ 28–29); w-auto = กว้างตามเนื้อหาในแถว small:flex-row (Field เป็น w-full) */}
+      <Field className="w-auto">
+        <FieldLabel htmlFor={`${id}-quantity`} data-testid="return-item-quantity-label">
+          จำนวนที่คืน
+        </FieldLabel>
+        <Select name={quantityName} defaultValue={values[quantityName] ?? "0"} onValueChange={setQuantity}>
+          <SelectTrigger id={`${id}-quantity`} data-testid="return-item-quantity" data-value={quantity}>
+            {/* ค่าเริ่ม "0" จึงไม่แสดง placeholder จริง — คงข้อความเดิมไว้ตามกฎ 41 */}
+            <SelectValue placeholder="จำนวน">{quantity}</SelectValue>
+          </SelectTrigger>
+          <SelectContent data-testid="return-item-quantity-options">
+            {Array.from({ length: line.maxQuantity + 1 }, (_, n) => (
+              <SelectItem key={n} value={String(n)} data-testid="return-item-quantity-option" data-value={String(n)}>
+                {n}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+      {reasons.length > 0 && (
+        <Field className="w-auto min-w-[12rem]">
+          <FieldLabel htmlFor={`${id}-reason`} data-testid="return-item-reason-label">
+            เหตุผล
+          </FieldLabel>
+          <Select name={reasonName} defaultValue={values[reasonName] ?? ""} onValueChange={setReason}>
+            <SelectTrigger id={`${id}-reason`} data-testid="return-item-reason" data-value={reason} className="w-full">
+              <SelectValue placeholder="เลือกเหตุผล">{reasons.find((r) => r.id === reason)?.label}</SelectValue>
+            </SelectTrigger>
+            <SelectContent data-testid="return-item-reason-options">
+              {reasons.map((r) => (
+                <SelectItem key={r.id} value={r.id} data-testid="return-item-reason-option" data-value={r.id}>
+                  {r.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+      )}
+    </>
+  )
+}
 
 // spec 01 CORE-20 (AC-65): เลือก item/จำนวน/เหตุผล → POST /store/returns (server action) ปุ่มถูก disable ระหว่างส่ง
 const ReturnRequestForm = ({ orderId, displayId, lines, reasons }: Props) => {
@@ -76,38 +141,7 @@ const ReturnRequestForm = ({ orderId, displayId, lines, reasons }: Props) => {
                     <p className="text-sm leading-[1.4rem] text-muted-foreground">{line.variantTitle}</p>
                   )}
                 </div>
-                {/* SFUI-12c (spec 09 กฎ 28–29, 31a): label เหนือช่องของ field — id จาก useId จึงไม่ซ้ำต่อแถว; option เดิม (รวม option ว่าง)
-                    w-auto = ความกว้างตามเนื้อหาในแถว small:flex-row เท่า <label> เดิม (Field เป็น w-full) */}
-                <NativeSelect
-                  label="จำนวนที่คืน"
-                  name={`quantity:${line.id}`}
-                  defaultValue={values[`quantity:${line.id}`] ?? "0"}
-                  placeholder="จำนวน"
-                  className="w-auto"
-                  data-testid="return-item-quantity"
-                >
-                  {Array.from({ length: line.maxQuantity + 1 }, (_, n) => (
-                    <option key={n} value={String(n)}>
-                      {n}
-                    </option>
-                  ))}
-                </NativeSelect>
-                {reasons.length > 0 && (
-                  <NativeSelect
-                    label="เหตุผล"
-                    name={`reason:${line.id}`}
-                    defaultValue={values[`reason:${line.id}`] ?? ""}
-                    placeholder="เลือกเหตุผล"
-                    className="w-auto min-w-[12rem]"
-                    data-testid="return-item-reason"
-                  >
-                    {reasons.map((reason) => (
-                      <option key={reason.id} value={reason.id}>
-                        {reason.label}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                )}
+                <ReturnItemFields line={line} reasons={reasons} values={values} />
               </li>
             ))}
           </ul>
