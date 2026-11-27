@@ -1,0 +1,107 @@
+SFUI-16c — จำนวนในตะกร้าเป็น Select ของ shadcn (spec 09 รอบ 49 กฎ 40b, 41, 45, 46, 49; AC-45, AC-48, AC-49; ADR-033)
+วันที่ 2026-11-28 · ฐาน: SFUI-15 (53451689) · node 24 · prod build: backend :9501 (NODE_ENV=production build), storefront next start :8501, DB medusa_sfui16c, Redis db 14
+
+== Red (ก่อนแก้โค้ด) ==
+e2e/sfui-13-form-guard.unit.spec.ts หลังลบรายการ allow-list ของ cart/components/cart-item-select → 1 failed / 4 passed
+  (AC-35: <select> ใน cart-item-select/index.tsx อยู่นอก allow-list) — ผ่านหลังลบไดเรกทอรีและประกอบ Select* ใน cart/components/item
+
+== Vitest (pnpm --filter storefront test:unit) ==
+Test Files  135 passed (135) · Tests  2058 passed (2058)
+
+== Playwright project unit (รวม evidence-budget, sfui-13-form-guard, sfui-15-select) ==
+248 passed
+
+== lint / typecheck / build ==
+pnpm lint: 0 errors (27 warnings เดิม ไม่มีในไฟล์ที่แก้) · pnpm typecheck: ผ่าน · pnpm --filter storefront build: ผ่าน
+
+== e2e ของ AC-45/AC-49 (10 ไฟล์, 22 test) ==
+[1/22] [chromium] › e2e/core-14g-action-stale-jwt.spec.ts:102:5 › AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ยนจำนวน/ลบโค้ด/ใส่โค้ด/ลบสินค้า → SIGN_IN_AGAIN_MESSAGE แถวสินค้ายังอยู่
+[2/22] [chromium] › e2e/core-19c-delete-button-error.spec.ts:104:5 › AC-100: ทุก line ใน cart dropdown (บน /th/cart) มี cart-item-remove-button และ line ในหน้า cart มี product-delete-button
+[3/22] [chromium] › e2e/core-19c-delete-button-error.spec.ts:122:5 › AC-100: ลบใน cart dropdown แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่
+[4/22] [chromium] › e2e/core-19c-delete-button-error.spec.ts:155:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (1280px)
+[5/22] [chromium] › e2e/core-19c-delete-button-error.spec.ts:155:7 › AC-100: ลบในหน้า /th/cart แล้ว server action ตอบ 500 → error ไทย spinner หาย line ยังอยู่ (375px)
+[6/22] [chromium] › e2e/core-19c-delete-button-error.spec.ts:182:5 › AC-104: ลบ cookie _medusa_jwt แล้วกดลบในหน้า /th/cart → cart-item-remove-error บอกให้เข้าสู่ระบบใหม่ line ยังอยู่
+[7/22] [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:85:5 › AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 (จำนวน 1 และ 99 + ส่วนลด) และ layout ที่ 1280 คงเดิม
+[8/22] [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:242:5 › AC-136b: แถวรหัสของการ์ด voucher ไม่มีช่องว่างเมื่อสถานะว่าง และสถานะคัดลอกล้มอยู่ในแถวใต้ปุ่ม
+[9/22] [chromium] › e2e/core-44-cart-summary-qty.spec.ts:68:5 › AC-138: /cart ที่ 1024/1280 คอลัมน์สรุปไม่ล้นเมื่อมีส่วนลด และตัวเลือกจำนวนแสดง/แก้จำนวนจริง (99 → 2)
+[10/22] [chromium] › e2e/core-47-cart-375-long-title.spec.ts:126:5 › AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90 ตัวอ่านได้ ยอด 7 หลักไม่ถูกตัด, ≥ 1024 ตารางเดิม, preview ไม่เปลี่ยน
+[11/22] [chromium] › e2e/core-48-cart-insufficient-stock.spec.ts:72:7 › AC-143: 1280×800 แก้จำนวนเกิน stock → ข้อความไทยว่าสินค้าไม่พอ, จำนวนคงเดิม แล้วแก้ได้
+[12/22] [chromium] › e2e/core-48-cart-insufficient-stock.spec.ts:72:7 › AC-143: 375×812 แก้จำนวนเกิน stock → ข้อความไทยว่าสินค้าไม่พอ, จำนวนคงเดิม แล้วแก้ได้
+[13/22] [chromium] › e2e/flash-sale-fs15.spec.ts:123:5 › AC-21: PDP เลือกจำนวน 3 ขณะ remaining_units=2 → เตือน + ปุ่ม disabled; เลือก 2 → กดได้
+[14/22] [chromium] › e2e/flash-sale-fs15.spec.ts:150:5 › AC-21: show_remaining=false (remaining_units=null) เลือก 3 → ไม่เตือน
+[15/22] [chromium] › e2e/flash-sale-fs15.spec.ts:166:5 › AC-21: cart มี line ของสินค้า flash qty 3 ขณะ remaining_units=2 → cart-flash-exceeds-remaining
+[16/22] [chromium] › e2e/flash-sale-fs15.spec.ts:196:5 › AC-22: complete ล้ม 409 FLASH_SOLD_OUT ระหว่าง checkout → ข้อความไทยของ code ในขั้น review
+[17/22] [chromium] › e2e/fs-21-customer-limit.spec.ts:123:5 › AC-28 (a): limit 1 ยังไม่เคยซื้อ → PDP เลือกจำนวนได้สูงสุด 1 และเห็น flash-customer-limit
+[18/22] [chromium] › e2e/fs-21-customer-limit.spec.ts:146:5 › AC-28 (b): ซื้อครบสิทธิ์แล้ว → add-product-button disabled + flash-customer-limit-reached
+[19/22] [chromium] › e2e/fs-21-customer-limit.spec.ts:169:5 › AC-28 (c): cart มี line flash qty 2 ขณะ limit 1 → เตือนใน cart และ review ไม่ให้สั่งซื้อจนแก้จำนวน
+[20/22] [chromium] › e2e/pay-18-cart-error-notice-clear.spec.ts:18:5 › AC-31: แก้จำนวนสำเร็จ → cart-error-notice หายและ URL ไม่มี error
+[21/22] [chromium] › e2e/sfui-16-select.spec.ts:62:5 › AC-45: เลือก 2 ใน product-select-button → updateLineItem ถูกส่ง 1 ครั้ง, cart ใน backend จำนวน 2, ชื่อที่เข้าถึงได้ จำนวน
+[22/22] [chromium] › e2e/sfui-16-select.spec.ts:97:7 › AC-49 (ตะกร้า): มือถือ 390×844 แตะ trigger แล้วกล่องรายการอยู่ในจอ › product-select-button-options อยู่ในจอทั้งกล่อง เลือกได้ และหน้าไม่ล้นแนวนอน
+  22 passed (1.3m)
+
+== e2e อื่นที่เปิด /cart (26 ไฟล์, 55 test) ==
+[1/55] [chromium] › e2e/affiliate-last-click.spec.ts:22:5 › AF-3b: click Ann → add to cart → click Bob → checkout ทันที → order เป็นของ Bob (AC-21)
+[2/55] [chromium] › e2e/core-14-buy-login.spec.ts:39:5 › AC-41: /buy ไม่มี session → login พร้อม return URL ไม่สร้าง cart; ล็อกอินแล้ว → checkout ด้วย cart ของลูกค้า
+[3/55] [chromium] › e2e/core-14-buy-login.spec.ts:103:5 › AC-42, AC-56: UCP, cart/resume และหน้า order transfer → 404
+[4/55] [chromium] › e2e/core-14-buy-login.spec.ts:126:5 › AC-43: ไม่มี session แต่มี cookie cart ค้าง → หน้า cart ว่าง ไม่มี 5xx และ cookie ถูกล้าง
+[5/55] [chromium] › e2e/core-14d-cart-after-login.spec.ts:100:7 › ปิด JavaScript (AC-92) › AC-92: ไม่ล็อกอิน เปิด /account?add_variant=<ขายได้>&quantity 2 แล้ว login → /cart แสดง cart ไม่ค้าง skeleton
+[6/55] [chromium] › e2e/core-14d-cart-after-login.spec.ts:139:7 › ปิด JavaScript (AC-92) › AC-92: variant ถูกลบระหว่างทาง → หลัง login เห็น add-variant-error (ไม่กลืน error)
+[7/55] [chromium] › e2e/core-14d-cart-after-login.spec.ts:175:9 › AC-93 (JS เปิด) › AC-93: ล็อกอินแล้วเปิดลิงก์ add_variant → ไม่เพิ่มเอง แสดงปุ่มยืนยัน กดแล้วไป /cart (JS on)
+[8/55] [chromium] › e2e/core-14d-cart-after-login.spec.ts:175:9 › AC-93 (JS ปิด) › AC-93: ล็อกอินแล้วเปิดลิงก์ add_variant → ไม่เพิ่มเอง แสดงปุ่มยืนยัน กดแล้วไป /cart (JS off)
+[9/55] [chromium] › e2e/core-14d-cart-after-login.spec.ts:218:5 › AC-93: ล็อกอินแล้วเปิด /account?add_variant=<ขายไม่ได้> → add-variant-error ไม่มีปุ่มยืนยัน
+[10/55] [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:149:5 › AC-117: dropdown แสดง item_total หลังส่วนลด flash ป้าย 'รวม VAT' และแถว cart-totals รวมได้ยอดสุทธิ
+[11/55] [chromium] › e2e/core-26-cart-dropdown-total.spec.ts:204:5 › AC-117: กดเพิ่มบน PDP แล้ว mouse ค้างใต้ panel → dropdown หายภายใน 6 วินาที กดซ้ำด้วย click() ได้ และชี้ nav-cart-link ยังเปิดค้าง
+[12/55] [chromium] › e2e/core-29-restore-cart.spec.ts:142:5 › AC-122: ลบ JWT → login ใหม่ได้ตะกร้าเดิม; cart ที่ complete แล้วไม่ถูกกู้; key อื่นใน metadata ยังอยู่
+[13/55] [chromium] › e2e/core-29-restore-cart.spec.ts:192:5 › AC-122: active_cart_id ของ A ชี้ cart ของ B → login สำเร็จ ไม่มี cookie cart และ cart ของ B ยังเป็นของ B
+[14/55] [chromium] › e2e/core-29-restore-cart.spec.ts:217:5 › AC-122: browser มี cookie cart D ของ A อยู่แล้วตอน login → cookie ยังเป็น D (ไม่ทับด้วย active_cart_id)
+[15/55] [chromium] › e2e/core-4e-checkout-polish.spec.ts:127:5 › AC-91: ขั้นที่อยู่ของ checkout — placeholder ไทย, test id/aria-label ของ popup, label ไม่ทับค่า
+[16/55] [chromium] › e2e/core-57-cart-totals.spec.ts:62:5 › AC-156: ค่าจัดส่งใน cart-totals = ราคา option ที่เลือก และแถวรวม VAT รวมได้ยอดสุทธิ ที่ /th/cart และขั้น review
+[17/55] [chromium] › e2e/core-60-cart-subtotal-label.spec.ts:44:5 › AC-159: ป้ายแถวแรกของ cart-totals เปลี่ยนเมื่อมีส่วนลด ตัวเลขเท่าเดิม และไม่ล้นที่ 375
+[18/55] [chromium] › e2e/core-60-cart-subtotal-label.spec.ts:161:7 › CORE-62 › AC-161: ส่วนลดค่าส่งอย่างเดียว ป้ายแถวแรกเท่ากับเมื่อไม่มีส่วนลด และแถวรวมได้ยอดสุทธิ
+[19/55] [chromium] › e2e/core-64-promotion-fixed-vat.spec.ts:29:5 › AC-163(b): ส่วนลด fixed ฿100 แบบรวม VAT แสดงในตะกร้าเป็น 100 พอดี และแถวรวมได้ยอดสุทธิ
+[20/55] [chromium] › e2e/core-66-checkout-preview-unit-price.spec.ts:78:5 › AC-165 (a)–(d): preview ของ checkout — qty 1 ไม่มีราคาต่อหน่วย, qty 2 คงต่อหน่วย + รวม ที่ 1280 และ 375; /cart คงเดิม
+[21/55] [chromium] › e2e/core-67-sale-price-strikethrough.spec.ts:110:5 › AC-166b: price list แบบ sale แสดงราคาเดิม (compare_at_unit_price) ขีดฆ่าใน /cart, preview และ order-completed ไม่ซ้อนกับ promotion
+[22/55] [chromium] › e2e/core-77-cart-label-error.spec.ts:43:5 › AC-176: อ่าน cart ของ nav ล้ม (500) → "ตะกร้า" ไม่ค้าง aria-busy; เลิกล้มแล้วเปลี่ยนหน้า → เห็นจำนวนจริง
+[23/55] [chromium] › e2e/core-store.spec.ts:20:5 › AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart
+[24/55] [chromium] › e2e/core-store.spec.ts:60:5 › AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture → shipped email → My orders
+[25/55] [chromium] › e2e/core-store.spec.ts:170:5 › AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที
+[26/55] [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:87:5 › AC-37, AC-3: cart มีแต่ voucher → ไม่มีขั้น delivery, ที่อยู่ใบกำกับภาษีเป็น shipping_address, order สำเร็จ
+[27/55] [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:163:5 › AC-37 (กฎข้อ 24d): cart ผสม voucher + สินค้าจัดส่ง ใช้ flow ปกติที่มีขั้น delivery
+[28/55] [chromium] › e2e/ev-7d-digital-only-totals.spec.ts:18:5 › AC-42: cart digital-only ไม่มีค่าจัดส่งใน cart-totals ที่ /cart และขั้น review
+[29/55] [chromium] › e2e/ev-7d-digital-only-totals.spec.ts:72:5 › AC-42: cart ผสม voucher + สินค้าจัดส่ง ยังมีแถวค่าจัดส่ง
+[30/55] [chromium] › e2e/flash-sale-storefront.spec.ts:183:5 › AC-4, AC-13: PDP แสดง banner, countdown, ราคา flash + ราคาขีดฆ่า, เหลือ N ชิ้น และหายเมื่อเลย ends_at (T−1min / T+1min)
+[31/55] [chromium] › e2e/flash-sale-storefront.spec.ts:212:5 › AC-1, AC-8 (g): cart ได้ส่วนลด flash; ใส่ code แล้วแสดงข้อความว่าใช้ร่วมกันไม่ได้
+[32/55] [chromium] › e2e/flash-sale-storefront.spec.ts:245:5 › AC-13 (e): units_sold ถึง total_cap → PDP แสดง 'สินค้าหมด'
+[33/55] [chromium] › e2e/flash-sale-storefront.spec.ts:285:5 › AC-1: หลัง ends_at cart ใหม่แสดงราคาเต็ม
+[34/55] [chromium] › e2e/pay-12-cart-error-notice.spec.ts:21:5 › AC-25: cart-error-notice ภาษาไทยต่อค่า error และไม่แสดงเมื่อค่าไม่รู้จัก
+[35/55] [chromium] › e2e/pay-12-cart-error-notice.spec.ts:81:5 › AC-25 (D-1, D-2): session หมดอายุ → login โดยไม่มี client_secret แล้วจบ flow
+[36/55] [chromium] › e2e/pay-15-promptpay-go-to-cart.spec.ts:21:7 › PromptPay refunded ที่รู้เหตุ → ไปที่ตะกร้า (AC-28) › placeOrder ได้ 409 FLASH_SOLD_OUT → promptpay-go-to-cart แทน promptpay-retry-button แล้วคลิกไป /th/cart
+[37/55] [chromium] › e2e/payments.spec.ts:49:5 › AC-9: session บัตรจาก checkout → PaymentIntent มี payment_method_types ['card']; PromptPay → ['promptpay']
+[38/55] [chromium] › e2e/payments.spec.ts:91:7 › บัตร (Stripe Elements) › AC-1: บัตร 4242 → order สำเร็จ payment_status=captured
+[39/55] [chromium] › e2e/payments.spec.ts:109:7 › บัตร (Stripe Elements) › AC-2: บัตร 3DS (4000 0027 6000 3184) → 3DS modal → สำเร็จ
+[40/55] [chromium] › e2e/payments.spec.ts:136:7 › บัตร (Stripe Elements) › AC-3: บัตรถูกปฏิเสธ (4000 0000 0000 0002) → แสดง error, ไม่สร้าง order, cart ยังอยู่
+[41/55] [chromium] › e2e/payments.spec.ts:169:7 › PromptPay (QR + polling) › AC-4: แสดง QR → authorize test payment → webhook → order captured
+[42/55] [chromium] › e2e/payments.spec.ts:226:7 › PromptPay (QR + polling) › AC-5: ไม่ชำระภายใน 10 นาที → session ถูกยกเลิก, cart ยังใช้งานได้
+[43/55] [chromium] › e2e/sfui-5c-checkout-heading.spec.ts:15:5 › AC-15: หัวข้อขั้น checkout คงขนาด 24px/32px semibold เท่า develop
+[44/55] [chromium] › e2e/sfui-5c-checkout-heading.spec.ts:49:5 › AC-15: หัวข้อตะกร้าว่างคงขนาด 32px/44px semibold เท่า develop
+[45/55] [chromium] › e2e/sfui-6-parity.spec.ts:28:5 › AC-16 (กฎ 19): thumbnail และ image gallery พื้นขาว padding 16px เท่า develop
+[46/55] [chromium] › e2e/sfui-6-parity.spec.ts:49:5 › AC-16 (กฎ 19): ตารางตะกร้า — เซลล์ตัดบรรทัดได้ (white-space normal) และหัวตารางสูง 48px เท่า develop
+[47/55] [chromium] › e2e/sfui-6-parity.spec.ts:91:5 › AC-16 (กฎ 21): ชื่อบนการ์ดที่อยู่ (address-name) 24px/32px/600 เท่า develop
+[48/55] [chromium] › e2e/sfui-9a-font.spec.ts:74:5 › AC-21: หน้า 404, นโยบาย, skeleton ของ store และ footer คงขนาดตัวอักษร/ระยะบรรทัด/น้ำหนักเดิม
+[49/55] [chromium] › e2e/sfui-9a-font.spec.ts:119:5 › AC-21: cart dropdown, หน้า cart, select ที่อยู่ใบเสร็จ คงขนาดตัวอักษร/ระยะบรรทัด/น้ำหนักเดิม
+[50/55] [chromium] › e2e/sfui-9a-font.spec.ts:175:5 › AC-21: cart dropdown ของลูกค้าที่ยังไม่มีสินค้า: หัวข้อ 16px/24px/600 และป้ายจำนวน 0 เป็น 12px/20px/400
+[51/55] [chromium] › e2e/sfui-9c-font.spec.ts:46:5 › AC-21: checkout (not-found, ที่อยู่, จัดส่ง, ชำระเงิน) และตะกร้าว่าง คงขนาดตัวอักษร/ระยะบรรทัด/น้ำหนักเดิม
+[52/55] [chromium] › e2e/sfui-mobile-390.spec.ts:20:5 › AC-17: หน้าแรก, store, PDP, cart, checkout, account, orders ที่ 390px ไม่ล้นแนวนอน
+[53/55] [chromium] › e2e/thai-ui-cart-order.spec.ts:80:5 › AC-48: หน้า policy ทั้ง 5 เป็นภาษาไทย
+[54/55] [chromium] › e2e/thai-ui-cart-order.spec.ts:96:5 › AC-48, AC-78: cart, order confirmed, order detail และรายการ orders เป็นภาษาไทย ไม่มี hydration mismatch
+[55/55] [chromium] › e2e/thai-ui-checkout.spec.ts:22:5 › AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษาไทย
+  2 failed (payments.spec.ts AC-3, AC-4 — ดูหมายเหตุ) · 53 passed (7.0m)
+หมายเหตุ: 2 failed ข้างบนคือ payments.spec.ts AC-3/AC-4 รอบแรกที่ backend ใช้ STRIPE_WEBHOOK_SECRET ปลอม (ไม่มี stripe listen) —
+รันซ้ำ payments.spec.ts หลังเปิด stripe listen → :9501 และ secret จริง:
+[1/6] [chromium] › e2e/payments.spec.ts:49:5 › AC-9: session บัตรจาก checkout → PaymentIntent มี payment_method_types ['card']; PromptPay → ['promptpay']
+[2/6] [chromium] › e2e/payments.spec.ts:91:7 › บัตร (Stripe Elements) › AC-1: บัตร 4242 → order สำเร็จ payment_status=captured
+[3/6] [chromium] › e2e/payments.spec.ts:109:7 › บัตร (Stripe Elements) › AC-2: บัตร 3DS (4000 0027 6000 3184) → 3DS modal → สำเร็จ
+[4/6] [chromium] › e2e/payments.spec.ts:136:7 › บัตร (Stripe Elements) › AC-3: บัตรถูกปฏิเสธ (4000 0000 0000 0002) → แสดง error, ไม่สร้าง order, cart ยังอยู่
+[5/6] [chromium] › e2e/payments.spec.ts:169:7 › PromptPay (QR + polling) › AC-4: แสดง QR → authorize test payment → webhook → order captured
+[6/6] [chromium] › e2e/payments.spec.ts:226:7 › PromptPay (QR + polling) › AC-5: ไม่ชำระภายใน 10 นาที → session ถูกยกเลิก, cart ยังใช้งานได้
+  6 passed (1.4m)

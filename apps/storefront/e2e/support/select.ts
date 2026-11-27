@@ -19,12 +19,15 @@ async function open(trigger: Locator) {
   }).toPass()
 }
 
-/** เปิดแล้วคลิก item ที่ `data-value` = value จากนั้นรอ `data-value` ของ trigger เปลี่ยน */
-export async function chooseOption(trigger: Locator, value: string) {
+/**
+ * เปิดแล้วคลิก item ที่ `data-value` = value จากนั้นรอ `data-value` ของ trigger เปลี่ยน
+ * `waitValue: false` (SFUI-16c): controlled ที่ server อาจปฏิเสธค่า (จำนวนในตะกร้า — stock ไม่พอ/ต้อง login ใหม่) ค่าคงเดิม — ผู้เรียกรอผลเอง
+ */
+export async function chooseOption(trigger: Locator, value: string, { waitValue = true } = {}) {
   const { options, testId } = await parts(trigger)
   await open(trigger)
   await options.locator(`[data-testid="${testId}-option"][data-value="${value}"]`).click()
-  await expect(trigger).toHaveAttribute("data-value", value)
+  if (waitValue) await expect(trigger).toHaveAttribute("data-value", value)
 }
 
 export async function expectSelected(trigger: Locator, value: string) {

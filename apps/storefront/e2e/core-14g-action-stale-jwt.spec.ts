@@ -11,6 +11,7 @@ import {
   variantOf,
 } from "./support/medusa"
 import { SIGN_IN_AGAIN_MESSAGE } from "../src/lib/util/error-message"
+import { chooseOption } from "./support/select"
 
 // CORE-14g: spec 01 AC-120 (กฎข้อ 84; qa #222 D-1) — JWT หายระหว่างอยู่หน้า /th/cart แต่ cookie `_medusa_cart_id` ยังอยู่
 // server action ต้องได้ cart id เดิม (middleware ไม่ล้าง cookie ใน request ของ action) แล้วคืน `unauthorized`
@@ -137,7 +138,7 @@ test("AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ย�
         page,
         cartId,
         async () => {
-          await row.getByTestId("product-select-button").selectOption("2")
+          await chooseOption(row.getByTestId("product-select-button"), "2", { waitValue: false })
         },
         row.getByTestId("product-error-message")
       )

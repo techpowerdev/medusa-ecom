@@ -15,6 +15,7 @@ import {
   signInAs,
 } from "./support/medusa"
 import { isServerAction } from "./support/server-action"
+import { chooseOption, expectSelected } from "./support/select"
 import { THAI } from "./support/thai-text"
 
 // CORE-48 (spec 01 กฎข้อ 106, AC-143): แก้จำนวนบน /cart เกิน stock → Medusa 2.22.1 ตอบ 400 `insufficient_inventory`
@@ -46,7 +47,7 @@ async function selectQuantity(page: Page, quantity: number) {
       (res) => isServerAction(res.request(), isUpdateBody(quantity)),
       { timeout: 5_000 }
     )
-    await select.selectOption(String(quantity))
+    await chooseOption(select, String(quantity), { waitValue: false })
     expect((await updated).status(), "server action ของ updateLineItem").toBe(200)
   }).toPass()
 }
@@ -100,14 +101,14 @@ for (const viewport of VIEWPORTS) {
       await step(`เลือก 10 (stock ${STOCK}) → product-error-message เป็นข้อความไทยว่าสินค้าไม่พอ และจำนวนคง 1`, async () => {
         await page.goto(`/${CC}/cart`)
         await expect(page.getByTestId("product-row")).toHaveCount(1)
-        await expect(select).toHaveValue("1")
+        await expectSelected(select, "1")
         await selectQuantity(page, 10)
         await expect(error).toBeVisible()
         await expect(error).toHaveText(INSUFFICIENT_INVENTORY_MESSAGE)
         expect(await error.textContent()).toBe(INSUFFICIENT_INVENTORY_MESSAGE)
         expect(await error.textContent()).toMatch(THAI)
-        await expect(select).toHaveValue("1")
-        expect(await select.inputValue()).toBe("1")
+        await expectSelected(select, "1")
+        expect(await select.getAttribute("data-value")).toBe("1")
         expect(await lineQuantity(request, headers, cartId)).toBe(1)
         const placement = await errorPlacement(page)
         expect(placement.insideRow, "error อยู่ใน product-row").toBe(true)
@@ -123,7 +124,7 @@ for (const viewport of VIEWPORTS) {
         await expect
           .poll(() => lineQuantity(request, headers, cartId), { message: "จำนวนของ line ตาม Store API" })
           .toBe(3)
-        await expect(select).toHaveValue("3")
+        await expectSelected(select, "3")
       })
     } finally {
       await deleteAllThenExpectOk(request, admin, [productId && `/admin/products/${productId}`])

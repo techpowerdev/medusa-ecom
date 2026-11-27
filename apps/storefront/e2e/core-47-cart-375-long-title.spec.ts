@@ -15,6 +15,7 @@ import {
   signInAs,
 } from "./support/medusa"
 import { addToCartFromPdp, waitForServerAction } from "./support/server-action"
+import { chooseOption, expectSelected } from "./support/select"
 import { THAI } from "./support/thai-text"
 
 // CORE-47 (spec 01 กฎข้อ 105, AC-142): /cart ที่ < 1024 แต่ละ line เป็นการ์ด — ชื่อสินค้ายาว (~90 ตัว ไทยปนอังกฤษ) ใช้ความกว้าง
@@ -350,9 +351,9 @@ test("AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90
         const updated = waitForServerAction(page, (body) =>
           body.includes(lineIds[1])
         )
-        await row.getByTestId("product-select-button").selectOption("2")
+        await chooseOption(row.getByTestId("product-select-button"), "2")
         expect((await updated).status(), "server action ของ updateLineItem").toBe(200)
-        await expect(row.getByTestId("product-select-button")).toHaveValue("2")
+        await expectSelected(row.getByTestId("product-select-button"), "2")
         await expect
           .poll(async () => (await lines()).find((l) => l.id === lineIds[1])?.quantity)
           .toBe(2)

@@ -1,5 +1,12 @@
 "use client"
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { TableCell, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import { updateLineItem } from "@lib/data/cart"
@@ -10,7 +17,6 @@ import {
   INSUFFICIENT_INVENTORY_MESSAGE,
 } from "@lib/util/insufficient-inventory"
 import { HttpTypes } from "@medusajs/types"
-import CartItemSelect from "@modules/cart/components/cart-item-select"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import CartFlashExceedsRemaining, {
   CartFlashExceedsCustomerLimit,
@@ -132,19 +138,35 @@ const Item = ({
               className="contents!"
               data-testid="product-delete-button"
             />
-            <CartItemSelect
-              value={item.quantity}
-              onChange={(value) => changeQuantity(parseInt(value.target.value))}
-              className="w-14 h-10 p-4"
-              data-testid="product-select-button"
+            {/* SFUI-16c (spec 09 กฎ 40b, 45; ADR-033): Select ของ shadcn ประกอบตามตัวอย่าง docs — ไม่มี label ที่มองเห็น → ไม่มี Field,
+                aria-label ไทย; controlled ด้วย item.quantity (server action ปฏิเสธ → ค่าคงเดิม) และ Radix เรียก onValueChange เฉพาะเมื่อค่าเปลี่ยน
+                CORE-44 (กฎข้อ 102b): 1..10 + จำนวนจริงเมื่อ > 10 — stock ตรวจโดย Medusa ตอนแก้จำนวน */}
+            <Select
+              value={String(item.quantity)}
+              onValueChange={(value) => changeQuantity(parseInt(value))}
             >
-              {/* CORE-44 (กฎข้อ 102b): 1..10 + จำนวนจริงเมื่อ > 10 — stock ตรวจโดย Medusa ตอนแก้จำนวน */}
-              {cartQuantityOptions(item.quantity).map((quantity) => (
-                <option value={quantity} key={quantity}>
-                  {quantity}
-                </option>
-              ))}
-            </CartItemSelect>
+              <SelectTrigger
+                aria-label="จำนวน"
+                data-testid="product-select-button"
+                data-value={String(item.quantity)}
+              >
+                <SelectValue placeholder="เลือก...">
+                  {item.quantity}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent data-testid="product-select-button-options">
+                {cartQuantityOptions(item.quantity).map((quantity) => (
+                  <SelectItem
+                    value={String(quantity)}
+                    key={quantity}
+                    data-testid="product-select-button-option"
+                    data-value={String(quantity)}
+                  >
+                    {quantity}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {updating && <Spinner />}
           </div>
           <ErrorMessage error={error} data-testid="product-error-message" />
