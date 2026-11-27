@@ -36,11 +36,6 @@ type ShippingProps = {
   availableShippingMethods: HttpTypes.StoreCartShippingOption[] | null
 }
 
-// SFUI-18a (spec 09 กฎ 57): ที่อยู่ของจุดรับสินค้าตามลำดับไทย บรรทัดเดียว (ไม่มีจุลภาค/ช่องว่างซ้อน)
-function formatAddress(address: HttpTypes.StoreCartAddress) {
-  return addressLines(address).filter(Boolean).join(" ")
-}
-
 const Shipping: React.FC<ShippingProps> = ({
   cart,
   availableShippingMethods: unfilteredShippingMethods,
@@ -342,10 +337,13 @@ const Shipping: React.FC<ShippingProps> = ({
                                 {option.name}
                               </span>
                               <span className="text-sm leading-6 font-normal text-muted-foreground">
-                                {formatAddress(
+                                {/* SFUI-18a (spec 09 กฎ 57): ที่อยู่ของจุดรับสินค้าตามลำดับไทย บรรทัดเดียว (ไม่มีจุลภาค/ช่องว่างซ้อน) */}
+                                {addressLines(
                                   (option as unknown as { service_zone?: { fulfillment_set?: { location?: { address: HttpTypes.StoreCartAddress } } } }).service_zone?.fulfillment_set?.location
-                                    ?.address as HttpTypes.StoreCartAddress
-                                )}
+                                    ?.address
+                                )
+                                  .filter(Boolean)
+                                  .join(" ")}
                               </span>
                             </span>
                           </span>

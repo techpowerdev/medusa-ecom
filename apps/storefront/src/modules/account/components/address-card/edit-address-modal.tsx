@@ -76,6 +76,8 @@ const EditAddress: React.FC<EditAddressProps> = ({
     setRemoving(false)
   }
 
+  const [line, country] = addressLines(address)
+
   return (
     // SFUI-3a (spec 09 กฎ 4, 11): modal ที่อยู่ → Dialog ของ shadcn (Radix) — ปุ่มแก้ไขเป็น DialogTrigger (focus กลับเมื่อปิด)
     <Dialog open={state} onOpenChange={(next) => (next ? open() : close())}>
@@ -104,8 +106,8 @@ const EditAddress: React.FC<EditAddressProps> = ({
           {/* SFUI-18a (spec 09 กฎ 57): บรรทัดที่อยู่ตามลำดับไทย (address-address) + บรรทัดประเทศ (address-province-country);
               testid เดิม address-postal-city (baseline กฎ 10) อยู่ที่กล่องของสองบรรทัด */}
           <p className="flex flex-col text-left text-sm leading-6 font-normal mt-2" data-testid="address-postal-city">
-            <span data-testid="address-address">{addressLines(address)[0]}</span>
-            <span data-testid="address-province-country">{addressLines(address)[1]}</span>
+            <span data-testid="address-address">{line}</span>
+            <span data-testid="address-province-country">{country}</span>
           </p>
         </div>
         <div className="flex items-center gap-x-4">
