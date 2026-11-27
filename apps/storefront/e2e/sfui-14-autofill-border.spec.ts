@@ -185,7 +185,6 @@ test.describe("Chrome autofill จริง (CDP Autofill.trigger)", () => {
     const filled = await register
       .locator("input:-webkit-autofill")
       .evaluateAll((els) => els.map((e) => e.getAttribute("data-testid") ?? ""))
-    await evidence("register-autofill-chrome")
     expect(filled).toEqual(expect.arrayContaining(["email-input"]))
     for (const id of filled.filter((t) => ids.includes(t))) {
       const control = register.getByTestId(id)

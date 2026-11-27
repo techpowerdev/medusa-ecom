@@ -1,5 +1,33 @@
-SFUI-14 — ขอบช่องกรอกตอน Chrome autofill (spec 09 กฎ 38, AC-38) · base develop 58e2436a · 2026-11-28
+SFUI-14 — กฎ starter ใน globals.css ทับ shadcn: ขอบช่องกรอกตอน Chrome autofill + เมนูเปิดแบบซูม (spec 09 กฎ 38/38b, AC-38/AC-39) · base develop 58e2436a · 2026-11-28
 สภาพแวดล้อม: node 24, prod build (next start :8451, medusa start :9451), DB medusa_sfui14, Redis db 13, Chromium เต็ม (channel chromium)
+
+== รอบ 3 (session หลัก: เมนูเปิดแบบ popup — @keyframes enter ของ starter ชนกับ tw-animate-css) ==
+-- RED บน commit 63ad4fdb --
+     × globals.css ไม่ประกาศ keyframe enter/exit หรือชื่ออื่นที่ tw-animate-css ใช้ 3ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected [ 'ring', 'fade-in-right', …(5) ] to not include 'enter'
+      Tests  1 failed | 1 passed (2)
+  ✘  1 [chromium] › e2e/sfui-14-menu-animation.spec.ts:11:5 › AC-39: เปิดเมนู (Sheet side=left) — ระหว่าง animation เลื่อนเข้าจากซ้าย ไม่ซูม (1.1s)
+    Error: ไม่มีเฟรมที่ scale/rotate: matrix(0.9, 0, 0, 0.9, 0, 0) | matrix(0.9, 0, 0, 0.9, 0, 0) | matrix(0.900249, 0, 0, 0.900249, 0, 0) | matrix(0.901063, 0, 0, 0.901063, 0, 0) | matrix(0.902576, 0, 0, 0.902576, 0, 0) | matrix(0.904984, 0, 0, 0.904984, 0, 0) | matrix(0.90853, 0, 0, 0.90853, 0, 0)
+    Received: 31
+  1 failed
+(ระหว่างเปิด nav-menu-popup ได้ transform matrix(0.9, 0, 0, 0.9, 0, 0) → 1 = ซูมจาก keyframe enter ของ starter แทนการเลื่อน)
+
+-- GREEN หลังลบ --animate-enter/--animate-leave + @keyframes enter/leave --
+src/styles (vitest):       Tests  21 passed (21)
+  ✓  1 [chromium] › e2e/sfui-14-menu-animation.spec.ts:11:5 › AC-39: เปิดเมนู (Sheet side=left) — ระหว่าง animation เลื่อนเข้าจากซ้าย ไม่ซูม (1.3s)
+  ✓  3 [chromium] › e2e/sfui-14-menu-animation.spec.ts:11:5 › AC-39: เปิดเมนู (Sheet side=left) — ระหว่าง animation เลื่อนเข้าจากซ้าย ไม่ซูม (1.3s)
+  ✓  2 [chromium] › e2e/sfui-14-menu-animation.spec.ts:11:5 › AC-39: เปิดเมนู (Sheet side=left) — ระหว่าง animation เลื่อนเข้าจากซ้าย ไม่ซูม (1.3s)
+  3 passed (2.1s)
+
+-- e2e ที่เกี่ยว (sfui-14 ทั้งสอง, sfui-11-form-field, sfui-3b-sheet, sfui-3c-select, core-50-nav-narrow, thai-ui-shell) --
+  ✘  10 [chromium] › e2e/core-50-nav-narrow.spec.ts:171:7 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1280×800: ชื่อร้านกึ่งกลาง nav-account-link แสดง ตำแหน่ง/ขนาดเท่า develop (230ms)
+    test-results/core-50-nav-narrow-AC-145--5c6d7-ดง-ตำแหน่ง-ขนาดเท่า-develop-chromium/test-failed-1.png
+  1 failed
+  18 passed (15.9s)
+(core-50 AC-145 1280: nav-menu-button width ต่าง 1.27px จาก baseline — เป็นอยู่ก่อนแล้วในเครื่อง (ฟอนต์ macOS; qa รอบ 48 ได้ค่าเดียวกัน 1.265625) ไม่เกี่ยวกับการลบ keyframe)
+
+-- vitest ทั้งหมด: Test Files  135 passed (135) Tests  2054 passed (2054) · Playwright project unit 245 passed (รวม evidence-budget) · lint 0 errors · typecheck ผ่าน · storefront build ผ่าน
 
 == รอบ 2 (session หลักตัดสิน: ลบ -webkit-box-shadow ด้วย) ==
 -- RED บน commit 50042876 (ยังมี box-shadow inset) — assertion ใหม่ของเงา/ring โฟกัส --
@@ -105,4 +133,4 @@ exit 0 — backend 0 errors (4 warnings เดิม), storefront 0 errors (27 w
 ✓ Compiled successfully in 1695ms
 
 
-screenshot: docs/evidence/storefront-forms/SFUI-14/{login-autofill-before,register-autofill-before}.png = ก่อนแก้; {login-autofill-simulated,register-autofill-chrome,register-autofill-focus}.png = หลังแก้รอบ 2 (ขอบกลุ่มรหัสผ่านครบ, พื้นไม่ฟ้า, ring โฟกัสเห็น)
+screenshot: docs/evidence/storefront-forms/SFUI-14/ — ก่อนแก้: login-autofill-before, register-autofill-before; หลังแก้: login-autofill-simulated (ขอบกลุ่มรหัสผ่านครบ), register-autofill-focus (autofill จริง พื้นไม่ฟ้า + ring โฟกัส), menu-open (เมนูเปิดหลัง animation เลื่อน)

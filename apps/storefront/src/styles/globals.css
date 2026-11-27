@@ -63,9 +63,9 @@
   --animate-fade-in-right: fade-in-right 0.3s cubic-bezier(0.5, 0, 0.5, 1) forwards;
   --animate-fade-in-top: fade-in-top 0.2s cubic-bezier(0.5, 0, 0.5, 1) forwards;
   --animate-fade-out-top: fade-out-top 0.2s cubic-bezier(0.5, 0, 0.5, 1) forwards;
-  --animate-enter: enter 200ms ease-out;
   --animate-slide-in: slide-in 1.2s cubic-bezier(0.41, 0.73, 0.51, 1.02);
-  --animate-leave: leave 150ms ease-in forwards;
+  /* SFUI-14 (spec 09 กฎ 38b): ลบ animate-enter/animate-leave + @keyframes enter/leave ของ starter (ไม่มีผู้ใช้) —
+     `enter` ชื่อชนกับ keyframe ของ tw-animate-css ที่ animate-in ของ shadcn ใช้ (Sheet/Dialog/Popover เปิดแบบซูมแทนเลื่อน) */
 
   @keyframes ring {
     0% {
@@ -104,26 +104,6 @@
     }
     100% {
       visibility: hidden;
-    }
-  }
-  @keyframes enter {
-    0% {
-      transform: scale(0.9);
-      opacity: 0;
-    }
-    100% {
-      transform: scale(1);
-      opacity: 1;
-    }
-  }
-  @keyframes leave {
-    0% {
-      transform: scale(1);
-      opacity: 1;
-    }
-    100% {
-      transform: scale(0.9);
-      opacity: 0;
     }
   }
   @keyframes slide-in {

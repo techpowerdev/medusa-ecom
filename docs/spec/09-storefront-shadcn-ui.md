@@ -341,7 +341,7 @@ qa เก็บ evidence ทุก task (UI): 9a–9e screenshot ก่อน/�
 
 ## ส่วนฟอร์ม (รอบ 48 — owner 2026-11-27, ก่อน release v0.4.0)
 Status: done — SFUI-11a..13 ☑ (#605–#610, merge 2026-11-27; เอกสาร #604) · AC-26..37 ☑ (qa ไม่พบ defect — `docs/evidence/storefront-forms/SFUI-*/REPORT.md`)
-· SFUI-14 (defect จากทดสอบ manual 2026-11-28 — ขอบช่องกรอกตอน Chrome autofill) กำลังทำ · AC-38
+· SFUI-14 (defect จากทดสอบ manual 2026-11-28 — กฎของ starter ใน `globals.css` ทับ shadcn: ขอบช่องกรอกตอน autofill, เมนูเปิดแบบซูม) กำลังทำ · AC-38, AC-39
 (owner 2026-11-27 — ADR-032 accepted "รับตามข้อเสนอ" D1–D5 = ก, Q3 = ตามข้อเสนอ, Q4 = ไม่ทำรอบนี้, Q5 = stack ได้; เพิ่มกติกาการจัดวาง กฎ 37 + ความสูง 36px ตาม default)
 Goal (owner's words, 2026-11-27): **ทุกฟอร์มของ storefront** ปรับช่องกรอกให้ "คงตาม default ที่ shadcn ให้มาพร้อม component" — label อยู่เหนือช่อง (ไม่ใช่ floating label อีกต่อไป),
 พร้อมข้อความ error, ป้ายบังคับกรอก (*) และ placeholder ตามความเหมาะสม
@@ -470,6 +470,10 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
     `input:-webkit-autofill` specificity 0,1,1 ชนะ utility class 0,1,0 ใน layer เดียวกัน) **ห้ามมี property `border*` และ `box-shadow`/`-webkit-box-shadow`** — เดิม `border: 1px solid #212121` ทับ `border-0` ของ `InputGroupInput`
     (กล่องเหลี่ยมดำซ้อนในช่องรหัสผ่าน) และ `border-input` ของ `Input` (ขอบดำ); `-webkit-box-shadow: 0 0 0 1000px #fff inset` ทับขอบบน/ล่าง/มุมของ `InputGroup` (control สูง 36px เท่ากลุ่ม) และทับ ring โฟกัส/`shadow-xs` ของ `Input`
     → คงเฉพาะ `-webkit-text-fill-color` + `transition: background-color 5000s …` (กันพื้นสีของ autofill — ยืนยันใน Chromium; Safari ยังไม่ได้ยืนยัน) · ข้อยกเว้นของกฎ 36 (`globals.css` ไม่ถูกแก้) เฉพาะ task นี้
+    (b) keyframe ใน `globals.css` ต้องไม่ชื่อชนกับ keyframe ของ `tw-animate-css` (`enter`, `exit`, `accordion-*`, `collapsible-*`, `caret-blink`) — `@keyframes` ชื่อเดียวกันตัวหลังทับทั้งก้อน:
+    เดิม `@keyframes enter` ของ starter (scale 0.9 + opacity) ทับ `enter` ที่ `animate-in` ของ shadcn ใช้ → Sheet/Dialog/Popover/Select เปิดแบบซูม (popup) แทนการเลื่อน/ซูม 95% ตามที่ shadcn กำหนด
+    (owner เห็นที่เมนู `nav-menu-button`); ลบ `--animate-enter`/`--animate-leave` + `@keyframes enter`/`leave` ของ starter (ไม่มีผู้ใช้). keyframe อื่นของ starter (`ring`, `fade-in-right`, `fade-in-top`, `fade-out-top`, `slide-in`)
+    ไม่ชนชื่อ — คงไว้ (ไม่มีผู้ใช้ใน `src/` ยกเว้น unit `theme-css.test.ts` ที่ตรวจ `animate-fade-in-top`)
 
 ### Acceptance criteria (ต่อจาก AC-25)
 - AC-26 (SFUI-11a, กฎ 28, 35, 36) ☑ #605 static `e2e/sfui-11-form-field.unit.spec.ts`: (a) `common/components/{input,native-select,checkbox}/index.tsx` import `Field` และ `FieldLabel` จาก `@/components/ui/field`;
@@ -525,13 +529,15 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
   เมื่อโฟกัส: `box-shadow` ของ control และ ring ของ `InputGroup`/`Input` (spread 3px) เท่าตอนโฟกัสในสถานะปกติ; กฎ autofill ใน CSS ที่โหลดไม่มี property `border*`/`box-shadow` และยังมี `-webkit-text-fill-color` + `transition`;
   (2) Given ฟอร์ม register When Chrome autofill ที่อยู่จริงผ่าน CDP `Autofill.trigger` (ชื่อ/นามสกุล/อีเมล/เบอร์) Then ทุกช่องที่ `:-webkit-autofill` ขอบและ `box-shadow` เท่าสถานะปกติ, พื้น (`background-color`) alpha 0
   เท่าสถานะปกติ (ไม่เป็นสีฟ้าของ autofill) และเมื่อโฟกัส `email-input` ring เท่าตอนโฟกัสในสถานะปกติ
+- AC-39 (SFUI-14, กฎ 38b) (1) unit `src/styles/keyframes.test.ts`: ชื่อ `@keyframes` ใน `globals.css` ไม่ซ้ำกับของ `tw-animate-css/dist/tw-animate.css` (ไม่มี `enter`/`exit`); (2) e2e ใหม่ `e2e/sfui-14-menu-animation.spec.ts`:
+  Given หน้าแรก When คลิก `nav-menu-button` Then ทุกเฟรมระหว่าง animation ของ `nav-menu-popup` (animationName `enter` ของ tw-animate-css) computed transform เป็น `matrix(1, 0, 0, 1, tx, 0)` (เลื่อนอย่างเดียว ไม่ scale) และมีเฟรมที่ `tx < 0` (เข้าจากซ้าย)
 
 ### Test plan
 | ชนิด | AC |
 |---|---|
 | static (`test:e2e:unit`) | AC-26, AC-35 (+ AC-5, AC-19 เดิม) |
 | unit (Vitest + jsdom) | AC-27, AC-30, AC-31 |
-| e2e (Playwright) | AC-28, AC-29 (ที่แก้), AC-32, AC-33, AC-34, AC-37, AC-38 + ชุดเดิม (กฎ 27a) |
+| e2e (Playwright) | AC-28, AC-29 (ที่แก้), AC-32, AC-33, AC-34, AC-37, AC-38, AC-39 + ชุดเดิม (กฎ 27a) |
 | reviewer | AC-29 (รายการไฟล์), AC-36 |
 qa: `*` ห่างข้อความ label ~8px (`FieldLabel` = `flex gap-2` ของ shadcn) และช่องสูง 36px เป็น default — ไม่บันทึกเป็น defect (กฎ 28, 35) · qa เก็บ evidence ทุก task ยกเว้น SFUI-13: screenshot ก่อน/หลังของฟอร์มในขอบเขต ≤ 5 รูป (11a: login + checkout ที่อยู่ 1280/390; 11b: error ใต้ช่อง; 12x: ฟอร์มของกลุ่ม) — `docs/evidence/storefront-forms/<task>/`;
 builder รัน e2e **ทุก** spec ที่อ้างหน้าที่แตะ (grep path/testid ใน `apps/storefront/e2e/`) ก่อน push
@@ -548,7 +554,7 @@ builder รัน e2e **ทุก** spec ที่อ้างหน้าที
 | SFUI-12b | ☑ #608 — checkout (ตาราง inventory 12b): `checkout/components/{shipping-address,billing_address,addresses,discount-code}/index.tsx` (**`discount-code` เลิก import `@/components/ui/input` ตรง → ใช้ `common/components/input` พร้อม `label="โค้ดส่วนลด"`**; `ui/label` ที่ครอบ `add-discount-button` คงไว้ — กฎ 19; คง `id="promotion-input"`, `name="code"`, testid เดิม — AC-35), `checkout/components/error-message/index.tsx` (prop `id` ไม่บังคับ — ใช้ผูก `promotion-error`), การจัดวางกฎ 37; e2e ใหม่ `sfui-12b-checkout-forms.spec.ts` | AC-33, AC-34, AC-36, AC-37 | SFUI-11b (stack) | ∥ | ~250 |
 | SFUI-12c | ☑ #609 — returns + group buy + affiliate (ตาราง inventory 12c): `returns/components/return-request-form/index.tsx`, `group-buy/components/group-page/group-join.tsx` (select สามตัว → `NativeSelect` + label โดยชุด option เท่าเดิม — กฎ 31a; `group-selection-quantity` คงเดิม), `affiliate/components/auth-forms/index.tsx` (ไม่ต้องแก้โค้ด — ใช้ `Input` ของ 11a อยู่แล้ว; ตรวจด้วย e2e); e2e ใหม่ `sfui-12c-feature-forms.spec.ts`; แก้ `sfui-9e-font.spec.ts` + ขั้น group buy ของ `sfui-8-floating-label.spec.ts` (AC-29) | AC-29, AC-33, AC-34, AC-36 | SFUI-11b (stack) | ∥ | ~250 |
 | SFUI-13 | ☑ #610 — guard (กฎ 26, 28, 37): ใหม่ `e2e/sfui-13-form-guard.unit.spec.ts` (allow-list ตามกฎ 26 เป็นค่าคงที่ใน test + static ของ AC-37 ข้อ 3) | AC-35, AC-36, AC-37 (static) | SFUI-12a, 12b, 12c | — | ~120 |
-| SFUI-14 | defect owner 2026-11-28 (กฎ 38): `src/styles/globals.css` ลบ `border` และ `-webkit-box-shadow` ออกจากกฎ `:-webkit-autofill` ของ starter (คง text-fill + transition); e2e ใหม่ `sfui-14-autofill-border.spec.ts` | AC-38 | SFUI-11a | — | ~150 |
+| SFUI-14 | defect owner 2026-11-28 (กฎ 38): `src/styles/globals.css` ลบ `border` และ `-webkit-box-shadow` ออกจากกฎ `:-webkit-autofill` ของ starter (คง text-fill + transition) และลบ `--animate-enter`/`--animate-leave` + `@keyframes enter`/`leave` ของ starter (กฎ 38b); e2e ใหม่ `sfui-14-autofill-border.spec.ts`, `sfui-14-menu-animation.spec.ts`; unit ใหม่ `src/styles/keyframes.test.ts` | AC-38, AC-39 | SFUI-11a | — | ~300 |
 
 ลำดับ: SFUI-11a → SFUI-11b → (12a ∥ 12b ∥ 12c) → SFUI-13 · merge จริงตามลำดับนี้ทีละตัว (sync `origin/develop` + CI เขียวก่อนแต่ละตัว)
 - **stack** (วิธีเดียวกับรอบ 44–45 — owner อนุญาต 2026-11-27, Q5): 11a แตกจาก branch เอกสาร `docs/storefront-form-fields`, 11b จาก 11a, 12a/12b/12c จาก 11b, 13 จาก branch ที่รวม 12a..12c → เปิด PR ทั้งชุดตอนท้าย (base = `develop`)
