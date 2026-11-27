@@ -1,0 +1,44 @@
+SFUI-18b — ที่อยู่ไทย: ช่องตำบล/แขวง + ลำดับ/label/จัดวางใน 5 ฟอร์ม (ยังไม่บังคับกรอก)
+spec: docs/spec/09-storefront-shadcn-ui.md (รอบ 49 — กฎ 52–54; AC-52, AC-54) · ฐาน 0bf1eec6 (SFUI-18a + nit บน SFUI-17 b355522c)
+node v24.12.0 (nvm) · 2026-11-28 · e2e: backend NODE_ENV=production build + medusa start (.medusa/server) :9491, storefront next build + start :8491,
+DB medusa_sfui18b (container medusa-ecom-postgres-1), Redis db 13, Stripe test mode + stripe listen (ชุด events ตาม CI)
+
+== 1) Vitest ==
+ Test Files  136 passed (136)
+      Tests  2058 passed (2058)
+
+== 2) Playwright project unit (sfui-baseline AC-5, sfui-13-form-guard นับช่อง 70 → 72, evidence-budget) ==
+  253 passed (1.8s)
+
+== 3) e2e AC-52 (sfui-18-thai-address ส่วน 18b) + AC-37 ตารางใหม่ (sfui-12a, sfui-12b) ==
+  ✓   1 [chromium] › e2e/sfui-12a-account-forms.spec.ts:160:5 › AC-34: register — label เหนือช่อง, placeholder ของเบอร์โทร, type/autocomplete tel (895ms)
+  ✓   4 [chromium] › e2e/sfui-12a-account-forms.spec.ts:175:5 › AC-34 + AC-37: profile — ชื่อ, เบอร์โทร, ที่อยู่ใบเสร็จ (label ประเทศ, tel, placeholder, คู่ช่องที่ ≥ 768px) (1.2s)
+  ✓   5 [chromium] › e2e/sfui-12a-account-forms.spec.ts:218:5 › AC-34 + AC-37: address book — dialog เพิ่ม/แก้ที่อยู่ (tel, placeholder, label ประเทศ, คู่ช่องที่ ≥ 768px) (4.4s)
+  ✓   2 [chromium] › e2e/sfui-18-thai-address.spec.ts:59:5 › AC-51: ที่อยู่ที่บันทึกไว้มี address_2 → checkout ส่งลง cart, สรุปของ checkout และหน้าคำสั่งซื้อเรียงแบบไทย (7.7s)
+  ✓   3 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:187:5 › AC-34, AC-37: checkout ที่อยู่จัดส่ง + ใบเสร็จ — label เหนือช่อง, placeholder, option เท่าเดิม, แถวละช่อง < 768px / คู่ ≥ 768px (7.7s)
+  ✓   6 [chromium] › e2e/sfui-12a-account-forms.spec.ts:263:5 › AC-34 (กฎ 31a): billing-country-code-select และ country-select มี option เท่า commit ฐาน (1.2s)
+  ✓   8 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:238:5 › AC-34, AC-37: checkout ของ cart digital-only — อีเมลแถวเดียว, ช่องใบเสร็จเป็นคู่ ≥ 768px (2.0s)
+  ✓   7 [chromium] › e2e/sfui-18-thai-address.spec.ts:107:5 › AC-51: ที่อยู่เดิมไม่มี address_2/จังหวัด แสดงได้ ไม่มีจุลภาคหรือช่องว่างซ้อน (2.4s)
+  ✓  10 [chromium] › e2e/sfui-18-thai-address.spec.ts:129:5 › AC-51: group join ด้วยที่อยู่ที่มี address_2 → cart ของกลุ่มมี address_2 (3.3s)
+  ✓   9 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:271:5 › AC-34: โค้ดส่วนลด — label เหนือช่อง และ promotion-error ผูก aria-describedby ขณะช่องเปิด (กฎ 32d) (4.1s)
+  ✓  11 [chromium] › e2e/sfui-18-thai-address.spec.ts:201:5 › AC-52: checkout ที่อยู่จัดส่ง + ใบเสร็จ — ลำดับ/label แบบไทย และตำบลที่กรอกลง cart (4.7s)
+  ✓  12 [chromium] › e2e/sfui-18-thai-address.spec.ts:279:5 › AC-52: บัญชี — เพิ่ม/แก้ที่อยู่ และที่อยู่ใบเสร็จของโปรไฟล์: ลำดับ/label แบบไทย และตำบลที่กรอกถูกบันทึก (3.7s)
+  12 passed (22.7s)
+
+== 4) e2e ทุก spec ที่อ้างฟอร์ม/สรุปที่อยู่ (grep address-*-input, shipping/billing-address-input, address-summary, submit-address-button,
+   account/addresses, account/profile, orders/details, checkoutToPayment ฯลฯ) — 47 ไฟล์ ==
+  140 passed (3.4m)
+
+== 5) pnpm lint && typecheck ==
+apps/backend lint: ✖ 4 problems (0 errors, 4 warnings)
+apps/storefront lint: ✖ 27 problems (0 errors, 27 warnings)
+lint exit 0 (warning เท่าฐาน) · typecheck storefront exit 0
+
+== 6) pnpm --filter storefront build ==
+✓ Compiled successfully in 5.0s
+  Generating static pages using 7 workers (0/8) ...
+
+== 7) AC-54: apps/backend ไม่ถูกแก้; sfui-baseline.json เปลี่ยนเฉพาะ (ข้อความ "ที่อยู่" ยังพบใน src จึงคงไว้) ==
+(apps/backend ว่าง)
++    "shipping-address-2-input",
+-    "อาคาร ห้อง ฯลฯ",

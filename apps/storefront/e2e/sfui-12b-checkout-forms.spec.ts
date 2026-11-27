@@ -22,27 +22,31 @@ test.use({ evidenceTarget: { feature: "storefront-forms", taskId: "SFUI-12b" } }
 type Fields = Record<string, [required: boolean, placeholder: string | null]>
 const PHONE = "เช่น 0812345678"
 const POSTAL = "เช่น 10110"
+// SFUI-18b (spec 09 กฎ 52–54): ช่องตำบล/แขวงใหม่, ลำดับแบบที่อยู่ไทย, placeholder ของบ้านเลขที่…, คู่ใหม่
+const ADDRESS_1 = "เช่น 99/1 หมู่ 2 ซ.สุขุมวิท 3 ถ.สุขุมวิท"
 const SHIPPING: Fields = {
   "shipping-first-name-input": [true, null],
   "shipping-last-name-input": [true, null],
-  "shipping-address-input": [true, null],
   "shipping-company-input": [false, null],
-  "shipping-postal-code-input": [true, POSTAL],
+  "shipping-address-input": [true, ADDRESS_1],
+  "shipping-address-2-input": [false, null],
   "shipping-city-input": [true, null],
-  "shipping-country-select": [true, null],
   "shipping-province-input": [false, null],
+  "shipping-postal-code-input": [true, POSTAL],
+  "shipping-country-select": [true, null],
   "shipping-email-input": [true, null],
   "shipping-phone-input": [false, PHONE],
 }
 const BILLING: Fields = {
   "billing-first-name-input": [true, null],
   "billing-last-name-input": [true, null],
-  "billing-address-input": [true, null],
   "billing-company-input": [false, null],
-  "billing-postal-input": [true, POSTAL],
+  "billing-address-input": [true, ADDRESS_1],
+  "billing-address-2-input": [false, null],
   "billing-city-input": [true, null],
-  "billing-country-select": [true, null],
   "billing-province-input": [false, null],
+  "billing-postal-input": [true, POSTAL],
+  "billing-country-select": [true, null],
   "billing-phone-input": [false, PHONE],
 }
 const DIGITAL_EMAIL: Fields = { "billing-email-input": [true, null] }
@@ -50,23 +54,21 @@ const DISCOUNT: Fields = { "discount-input": [false, null] }
 
 /** ลำดับ DOM ของช่อง (กฎ 37a) และคู่ที่วางแถวเดียวกันที่ ≥ 768px (ตารางกฎ 37b) */
 const SHIPPING_ORDER = [
-  ...Object.keys(SHIPPING).slice(0, 8),
+  ...Object.keys(SHIPPING).slice(0, 9),
   "billing-address-checkbox",
   "shipping-email-input",
   "shipping-phone-input",
 ]
 const SHIPPING_PAIRS: [string, string][] = [
   ["shipping-first-name-input", "shipping-last-name-input"],
-  ["shipping-address-input", "shipping-company-input"],
-  ["shipping-postal-code-input", "shipping-city-input"],
-  ["shipping-country-select", "shipping-province-input"],
+  ["shipping-address-2-input", "shipping-city-input"],
+  ["shipping-province-input", "shipping-postal-code-input"],
   ["shipping-email-input", "shipping-phone-input"],
 ]
 const BILLING_PAIRS: [string, string][] = [
   ["billing-first-name-input", "billing-last-name-input"],
-  ["billing-address-input", "billing-company-input"],
-  ["billing-postal-input", "billing-city-input"],
-  ["billing-country-select", "billing-province-input"],
+  ["billing-address-2-input", "billing-city-input"],
+  ["billing-province-input", "billing-postal-input"],
 ]
 
 /**

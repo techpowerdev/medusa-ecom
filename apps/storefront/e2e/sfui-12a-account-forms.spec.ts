@@ -12,6 +12,8 @@ test.use({ evidenceTarget: { feature: "storefront-forms", taskId: "SFUI-12a" } }
 
 const PHONE = "เช่น 0812345678"
 const POSTAL = "เช่น 10110"
+// SFUI-18b (spec 09 กฎ 53–54): ช่องที่อยู่เรียงแบบไทย, placeholder ของบ้านเลขที่…, คู่ ตำบล/แขวง–เขต/อำเภอ และ จังหวัด–รหัสไปรษณีย์
+const ADDRESS_1 = "เช่น 99/1 หมู่ 2 ซ.สุขุมวิท 3 ถ.สุขุมวิท"
 
 /** testid → [บังคับ, placeholder] ตามลำดับ DOM (ตาราง inventory 12a) */
 type Fields = [string, boolean, string?][]
@@ -31,36 +33,36 @@ const BILLING: Fields = [
   ["billing-first-name-input", true],
   ["billing-last-name-input", true],
   ["billing-company-input", false],
-  ["billing-phone-input", true, PHONE],
-  ["billing-address-1-input", true],
+  ["billing-address-1-input", true, ADDRESS_1],
   ["billing-address-2-input", false],
-  ["billing-postcal-code-input", true, POSTAL],
   ["billing-city-input", true],
   ["billing-province-input", false],
+  ["billing-postcal-code-input", true, POSTAL],
   ["billing-country-code-select", true],
+  ["billing-phone-input", true, PHONE],
 ]
 const ADDRESS: Fields = [
   ["first-name-input", true],
   ["last-name-input", true],
   ["company-input", false],
-  ["address-1-input", true],
+  ["address-1-input", true, ADDRESS_1],
   ["address-2-input", false],
-  ["postal-code-input", true, POSTAL],
   ["city-input", true],
   ["state-input", false],
+  ["postal-code-input", true, POSTAL],
   ["country-select", true],
   ["phone-input", false, PHONE],
 ]
 const NAME_PAIRS = [["first-name-input", "last-name-input"]]
 const BILLING_PAIRS = [
   ["billing-first-name-input", "billing-last-name-input"],
-  ["billing-postcal-code-input", "billing-city-input"],
-  ["billing-province-input", "billing-country-code-select"],
+  ["billing-address-2-input", "billing-city-input"],
+  ["billing-province-input", "billing-postcal-code-input"],
 ]
 const ADDRESS_PAIRS = [
   ["first-name-input", "last-name-input"],
-  ["postal-code-input", "city-input"],
-  ["state-input", "country-select"],
+  ["address-2-input", "city-input"],
+  ["state-input", "postal-code-input"],
 ]
 
 const labelText = (label: Locator) =>

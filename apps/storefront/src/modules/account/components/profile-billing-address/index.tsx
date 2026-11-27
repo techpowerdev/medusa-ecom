@@ -147,36 +147,22 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
             data-testid="billing-company-input"
           />
           <Input
-            label="เบอร์โทรศัพท์"
-            name="phone"
-            type="tel"
-            autoComplete="tel"
-            placeholder="เช่น 0812345678"
-            required
-            defaultValue={billingAddress?.phone ?? customer?.phone ?? ""}
-            data-testid="billing-phone-input"
-          />
-          <Input
-            label="ที่อยู่"
+            label="บ้านเลขที่ หมู่ ซอย ถนน"
             name="address_1"
+            autoComplete="address-line1"
+            placeholder="เช่น 99/1 หมู่ 2 ซ.สุขุมวิท 3 ถ.สุขุมวิท"
             defaultValue={billingAddress?.address_1 || undefined}
             required
             data-testid="billing-address-1-input"
           />
-          <Input
-            label="อาคาร ห้อง ฯลฯ"
-            name="address_2"
-            defaultValue={billingAddress?.address_2 || undefined}
-            data-testid="billing-address-2-input"
-          />
-          <div className="grid grid-cols-1 md:grid-cols-[144px_1fr] gap-2">
+          {/* SFUI-18b (spec 09 กฎ 53–54): ตำบล/แขวง–เขต/อำเภอ และ จังหวัด–รหัสไปรษณีย์ แถวเดียวกันที่ ≥ 768px; ประเทศ/เบอร์โทรศัพท์แถวละช่อง */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <Input
-              label="รหัสไปรษณีย์"
-              name="postal_code"
-              defaultValue={billingAddress?.postal_code || undefined}
-              required
-              placeholder="เช่น 10110"
-              data-testid="billing-postcal-code-input"
+              label="ตำบล/แขวง"
+              name="address_2"
+              autoComplete="address-level3"
+              defaultValue={billingAddress?.address_2 || undefined}
+              data-testid="billing-address-2-input"
             />
             <Input
               label="เขต/อำเภอ"
@@ -186,7 +172,6 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
               data-testid="billing-city-input"
             />
           </div>
-          {/* SFUI-12a (spec 09 กฎ 37b): จังหวัด–ประเทศ แถวเดียวกันที่ ≥ 768px; CORE-4j (กฎข้อ 73c): สูงเท่า Input (h-9 ทั้งคู่) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <Input
               label="จังหวัด"
@@ -194,46 +179,65 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
               defaultValue={billingAddress?.province || undefined}
               data-testid="billing-province-input"
             />
-            <Field {...countryError.fieldProps}>
-              <FieldLabel htmlFor={countryId} data-testid="billing-country-code-select-label">
-                ประเทศ
-                <span aria-hidden="true" className="text-destructive">
-                  *
-                </span>
-              </FieldLabel>
-              <Select
-                name="country_code"
-                required
-                defaultValue={billingAddress?.country_code || undefined}
-                onValueChange={setCountryCode}
-              >
-                <SelectTrigger
-                  id={countryId}
-                  data-testid="billing-country-code-select"
-                  data-value={countryCode}
-                  className="w-full"
-                  {...countryError.controlProps}
-                >
-                  <SelectValue placeholder="เลือก...">
-                    {regionOptions.find((option) => option?.value === countryCode)?.label}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent data-testid="billing-country-code-select-options">
-                  {regionOptions.map((option) => (
-                    <SelectItem
-                      key={option?.value}
-                      value={option!.value!}
-                      data-testid="billing-country-code-select-option"
-                      data-value={option?.value}
-                    >
-                      {option?.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {countryError.messages}
-            </Field>
+            <Input
+              label="รหัสไปรษณีย์"
+              name="postal_code"
+              defaultValue={billingAddress?.postal_code || undefined}
+              required
+              placeholder="เช่น 10110"
+              data-testid="billing-postcal-code-input"
+            />
           </div>
+          {/* CORE-4j (กฎข้อ 73c): สูงเท่า Input (h-9 ทั้งคู่) */}
+          <Field {...countryError.fieldProps}>
+            <FieldLabel htmlFor={countryId} data-testid="billing-country-code-select-label">
+              ประเทศ
+              <span aria-hidden="true" className="text-destructive">
+                *
+              </span>
+            </FieldLabel>
+            <Select
+              name="country_code"
+              required
+              defaultValue={billingAddress?.country_code || undefined}
+              onValueChange={setCountryCode}
+            >
+              <SelectTrigger
+                id={countryId}
+                data-testid="billing-country-code-select"
+                data-value={countryCode}
+                className="w-full"
+                {...countryError.controlProps}
+              >
+                <SelectValue placeholder="เลือก...">
+                  {regionOptions.find((option) => option?.value === countryCode)?.label}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent data-testid="billing-country-code-select-options">
+                {regionOptions.map((option) => (
+                  <SelectItem
+                    key={option?.value}
+                    value={option!.value!}
+                    data-testid="billing-country-code-select-option"
+                    data-value={option?.value}
+                  >
+                    {option?.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {countryError.messages}
+          </Field>
+          <Input
+            label="เบอร์โทรศัพท์"
+            name="phone"
+            type="tel"
+            autoComplete="tel"
+            placeholder="เช่น 0812345678"
+            required
+            defaultValue={billingAddress?.phone ?? customer?.phone ?? ""}
+            data-testid="billing-phone-input"
+          />
         </div>
       </AccountInfo>
     </form>
