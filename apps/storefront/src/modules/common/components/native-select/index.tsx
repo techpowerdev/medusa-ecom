@@ -1,27 +1,40 @@
 import { Field, FieldLabel } from "@/components/ui/field"
 import { cn } from "@/lib/utils"
+import { useFieldError } from "@modules/common/components/input"
 import { ChevronDownIcon } from "lucide-react"
-import { SelectHTMLAttributes, forwardRef, useId } from "react"
+import React, { SelectHTMLAttributes, forwardRef, useId } from "react"
 
 export type NativeSelectProps = {
   /** ข้อความของ option ว่าง disabled; `false` = ไม่ render option ว่าง (กฎ 31a) */
   placeholder?: string | false
   label?: string
+  /** ข้อความ error ของผู้เรียก (SFUI-11b กฎ 32d) */
+  error?: string
+  description?: React.ReactNode
   errors?: Record<string, unknown>
   touched?: Record<string, unknown>
   "data-testid"?: string
 } & Omit<SelectHTMLAttributes<HTMLSelectElement>, "placeholder">
 
-// SFUI-11a (spec 09 กฎ 28, 31a, 35; ADR-032): <select> native (กฎ 4) ด้วย class ตาม registry `native-select` ของ shadcn 4.23.1
+// SFUI-11a (spec 09 กฎ 28, 31a, 35; ADR-032) + SFUI-11b (กฎ 32: error ระดับช่องผ่าน useFieldError): <select> native (กฎ 4) ด้วย class ตาม registry `native-select` ของ shadcn 4.23.1
 // (h-9 สูงเท่า Input) — มี `label` → ห่อด้วย Field + FieldLabel เหนือช่อง; className ของผู้เรียกไปที่ wrapper (layout เท่านั้น)
 const NativeSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
   (
-    { placeholder = "เลือก...", label, id, required, className, children, errors: _errors, touched: _touched, ...props },
+    { placeholder = "เลือก...", label, id, required, className, children, error, description, errors: _errors, touched: _touched, ...props },
     ref
   ) => {
     const autoId = useId()
     const selectId = id ?? autoId
     const testId = props["data-testid"]
+    const { fieldProps, controlProps, messages } = useFieldError(ref, {
+      id: selectId,
+      label: label ?? "",
+      testId,
+      control: "select",
+      error,
+      description,
+      props,
+    })
 
     const select = (
       <div
@@ -29,7 +42,6 @@ const NativeSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
         className={cn("group/native-select relative w-full has-[select:disabled]:opacity-50", !label && className)}
       >
         <select
-          ref={ref}
           id={selectId}
           required={required}
           data-slot="native-select"
@@ -39,6 +51,7 @@ const NativeSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
             "aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40"
           )}
           {...props}
+          {...controlProps}
         >
           {placeholder !== false && (
             <option disabled value="">
@@ -55,11 +68,18 @@ const NativeSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
       </div>
     )
 
-    if (!label) return select
+    if (!label) {
+      return (
+        <>
+          {select}
+          {messages}
+        </>
+      )
+    }
 
     // มี label → className ของผู้เรียก (layout) อยู่ที่ Field; ไม่มี label → อยู่ที่ wrapper ของ select (กฎ 28)
     return (
-      <Field className={className}>
+      <Field className={className} {...fieldProps}>
         <FieldLabel htmlFor={selectId} data-testid={testId && `${testId}-label`}>
           {label}
           {required && (
@@ -69,6 +89,7 @@ const NativeSelect = forwardRef<HTMLSelectElement, NativeSelectProps>(
           )}
         </FieldLabel>
         {select}
+        {messages}
       </Field>
     )
   }
