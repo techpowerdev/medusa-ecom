@@ -1,0 +1,82 @@
+# SFUI-15 — evidence (spec 09 รอบ 49 กฎ 40a, 40b, 42–44, 48, 51; AC-40, AC-41, AC-42, AC-48; ADR-033)
+# ฐาน: origin/develop 6257d781 (stack); Node 24.12.0; storefront prod build (next start :8471), backend medusa start จาก .medusa/server (NODE_ENV=production, :9471), DB medusa_sfui15, Redis db 11; Stripe test key จาก shell (stripe listen --print-secret เท่านั้น)
+
+## กฎ 40a: pnpm dlx shadcn@4.23.1 add <name> --dry-run --diff (ทีละตัว, ใน apps/storefront)
+### select
+- Resolving items.
+┌ shadcn add select (dry run)
+│
+├ src/components/ui/select.tsx (skip)
+│ No changes.
+│
+└ Run without --dry-run to apply.
+### field
+┌ shadcn add field (dry run)
+│
+├ src/components/ui/label.tsx (skip)
+│ No changes.
+│
+├ src/components/ui/separator.tsx (skip)
+│ No changes.
+│
+├ src/components/ui/field.tsx (skip)
+│ No changes.
+│
+└ Run without --dry-run to apply.
+### label
+- Resolving items.
+┌ shadcn add label (dry run)
+│
+├ src/components/ui/label.tsx (skip)
+│ No changes.
+│
+└ Run without --dry-run to apply.
+
+## Red
+- select-field-error.test.tsx ก่อนแก้ useFieldError: 2 failed | 6 passed
+  - AC-41 required ว่าง: event invalid ของ select ซ่อน defaultPrevented = false (ไม่มีใครฟัง — invalid ไม่ bubble)
+  - AC-41 สองช่องผิด: document.activeElement = body (ไม่ focus trigger)
+  - AC-40 (markup ของ ui/ + FormData) และ prop error ผ่านบนฐาน — เป็นพฤติกรรมของ Radix/useFieldError เดิมที่ test ยืนยัน
+  - test "select ผิดก่อน Input" (เพิ่มภายหลัง) ล้มบนโค้ดที่ยังไม่นับ trigger เป็นช่องที่ผิด → focus ไปที่ Input
+- e2e/sfui-15-select.unit.spec.ts ก่อนมี e2e/support/select.ts: 1 failed | 2 passed (ENOENT)
+
+## Green: unit ใหม่ (vitest)
+✓ src/modules/common/components/input/select-field-error.test.tsx > AC-40 select ของ shadcn ประกอบตาม docs ใน <form> > label ก่อน trigger, role=combobox ชื่อ ประเทศ, aria-required, * อยู่ใน aria-hidden 57ms
+✓ src/modules/common/components/input/select-field-error.test.tsx > AC-40 select ของ shadcn ประกอบตาม docs ใน <form> > renderToString มีข้อความของค่าที่เลือก (children ของ SelectValue) 4ms
+✓ src/modules/common/components/input/select-field-error.test.tsx > AC-40 select ของ shadcn ประกอบตาม docs ใน <form> > defaultValue เข้า FormData และ trigger data-value = ค่านั้น 6ms
+✓ src/modules/common/components/input/select-field-error.test.tsx > AC-40 select ของ shadcn ประกอบตาม docs ใน <form> > เลือก item ด้วยคีย์บอร์ด → FormData = ค่า, data-value = ค่า, ข้อความ trigger = ข้อความของ item ใน FormData 38ms
+✓ src/modules/common/components/input/select-field-error.test.tsx > AC-41 useFieldError กับ select (กฎ 43) > required ว่าง → requestSubmit ไม่ส่ง, invalid defaultPrevented, error ไทย, data-invalid, aria-invalid/describedby, focus trigger; เลือกค่าแล้ว error หาย 19ms
+✓ src/modules/common/components/input/select-field-error.test.tsx > AC-41 useFieldError กับ select (กฎ 43) > สองช่องผิด → focus trigger ของช่องแรกตามลำดับ DOM และทั้งสองแสดง error 8ms
+✓ src/modules/common/components/input/select-field-error.test.tsx > AC-41 useFieldError กับ select (กฎ 43) > select ผิดก่อน Input ที่ผิด → focus trigger (ช่องแรกตามลำดับ DOM ข้ามชนิด control) 6ms
+✓ src/modules/common/components/input/select-field-error.test.tsx > AC-41 useFieldError กับ select (กฎ 43) > prop error ของผู้เรียกแสดงแบบเดียวกัน 4ms
+
+## Green: static ใหม่ (playwright project unit)
+✓  1 [unit] › e2e/sfui-15-select.unit.spec.ts:47:7 › SFUI-15 select ของ shadcn (AC-42) › select, field, label อยู่ใน ui/ และ manifest ของ CLI (กฎ 40a) (8ms)
+✓  2 [unit] › e2e/sfui-15-select.unit.spec.ts:54:7 › SFUI-15 select ของ shadcn (AC-42) › ไม่มีไฟล์ใหม่ใน src/components/** และ src/modules/common/components/** นอกจาก test (ไม่มี component กลางของ select) (1ms)
+✓  3 [unit] › e2e/sfui-15-select.unit.spec.ts:61:7 › SFUI-15 select ของ shadcn (AC-42) › e2e/support/select.ts หาด้วย testid เท่านั้น และมี chooseOption/expectSelected/selectOptions (กฎ 48) (1ms)
+
+## Green: vitest ทั้งหมด
+ Test Files  135 passed (135)
+      Tests  2060 passed (2060)
+(input.test.tsx เดิมผ่านโดยไม่แก้ — AC-41)
+## Green: playwright project unit ทั้งหมด (รวม evidence-budget, AC-5, AC-19 sfui-7-ui-pristine)
+248 passed
+## pnpm lint: 0 errors (warning เดิม: backend 4, storefront 27 — เท่า develop) · pnpm typecheck: ผ่าน · pnpm --filter storefront build: ผ่าน
+
+## AC-48: git diff origin/develop --stat -- apps/backend apps/storefront/package.json pnpm-lock.yaml apps/storefront/src/styles/globals.css apps/storefront/src/components/ui
+จำนวนบรรทัด output: 0 (ว่าง)
+
+## e2e ที่อ้างหน้าที่ใช้ Input/useFieldError (prod build, chromium, --workers=2): 12 passed
+✓   2 [chromium] › e2e/sfui-11b-field-errors.spec.ts:36:5 › AC-32: login — ช่องว่างแสดง error ใต้ช่อง ไม่ส่งฟอร์ม, อีเมลผิดรูปแบบใช้ title, กรอกถูกแล้ว error หาย (745ms)
+✓   1 [chromium] › e2e/sfui-11-form-field.spec.ts:92:5 › AC-28: login และ register — label เหนือช่อง, * เฉพาะช่องบังคับ, สูง 36px, 390px ไม่ล้น (1.0s)
+✓   4 [chromium] › e2e/sfui-11-form-field.spec.ts:129:5 › AC-28: checkout step=address — label เหนือช่อง, checkbox แนวนอน, ประเทศสูงเท่าเขต/อำเภอ, 390px ไม่ล้น (3.5s)
+✓   5 [chromium] › e2e/sfui-12a-account-forms.spec.ts:156:5 › AC-34: register — label เหนือช่อง, placeholder ของเบอร์โทร, type/autocomplete tel (340ms)
+✓   6 [chromium] › e2e/sfui-12a-account-forms.spec.ts:171:5 › AC-34 + AC-37: profile — ชื่อ, เบอร์โทร, ที่อยู่ใบเสร็จ (label ประเทศ, tel, placeholder, คู่ช่องที่ ≥ 768px) (1.3s)
+✓   3 [chromium] › e2e/sfui-11b-field-errors.spec.ts:76:5 › AC-32: checkout step=address — ช่องว่างแสดง error, focus ช่องแรก; เลือกที่อยู่ที่บันทึกไว้แล้ว error ของช่องที่เติมหาย (6.6s)
+✓   8 [chromium] › e2e/sfui-11b-field-errors.spec.ts:144:5 › AC-32: affiliate สมัคร — รหัสแนะนำผิด pattern → error = title ของช่อง (231ms)
+✓   7 [chromium] › e2e/sfui-12a-account-forms.spec.ts:214:5 › AC-34 + AC-37: address book — dialog เพิ่ม/แก้ที่อยู่ (tel, placeholder, label ประเทศ, คู่ช่องที่ ≥ 768px) (4.1s)
+✓  10 [chromium] › e2e/sfui-12a-account-forms.spec.ts:262:5 › AC-34 (กฎ 31a): billing-country-code-select และ country-select มี option เท่า commit ฐาน (563ms)
+✓   9 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:187:5 › AC-34, AC-37: checkout ที่อยู่จัดส่ง + ใบเสร็จ — label เหนือช่อง, placeholder, option เท่าเดิม, แถวละช่อง < 768px / คู่ ≥ 768px (4.9s)
+✓  11 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:238:5 › AC-34, AC-37: checkout ของ cart digital-only — อีเมลแถวเดียว, ช่องใบเสร็จเป็นคู่ ≥ 768px (2.2s)
+✓  12 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:271:5 › AC-34: โค้ดส่วนลด — label เหนือช่อง และ promotion-error ผูก aria-describedby ขณะช่องเปิด (กฎ 32d) (4.0s)
+
