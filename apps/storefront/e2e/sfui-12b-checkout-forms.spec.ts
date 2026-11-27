@@ -9,6 +9,7 @@ import {
   publishableKey,
   signInAs,
 } from "./support/medusa"
+import { selectOptions } from "./support/select"
 import { addToCartFromPdp } from "./support/server-action"
 import { expectThai } from "./support/thai-text"
 
@@ -70,10 +71,9 @@ const BILLING_PAIRS: [string, string][] = [
 
 /**
  * option ของ `<select>` ประเทศ ([value, ข้อความ, disabled]) ที่วัดบน commit ฐาน (`9b440e36` — ก่อน SFUI-12b) — กฎ 31a: ชุด option เท่าเดิม
- * (region th ของ seed มีประเทศเดียว)
+ * (region th ของ seed มีประเทศเดียว) · SFUI-16b (spec 09 กฎ 41): select ของ shadcn — placeholder "เลือกประเทศ" ไม่ใช่ item
  */
 const COUNTRY_OPTIONS = [
-  ["", "เลือกประเทศ", true],
   ["th", "Thailand", false],
 ]
 
@@ -111,7 +111,8 @@ async function expectFields(page: Page, fields: Fields) {
     ).toBe(`${id}-label`)
     await expect(control, id).toHaveAccessibleName(await labelText(label))
     if (required) {
-      await expect(control, id).toHaveAttribute("required", "")
+      // SFUI-16b (spec 09 กฎ 44): trigger ของ select (Radix) บังคับด้วย aria-required — required อยู่ที่ select ซ่อน
+      await expect(control, id).toHaveAttribute(...(id.endsWith("-select") ? ["aria-required", "true"] : ["required", ""]) as [string, string])
       await expect(label.locator('[aria-hidden="true"]'), id).toHaveText("*")
     } else {
       await expect(control, id).not.toHaveAttribute("required")
@@ -126,10 +127,7 @@ async function expectFields(page: Page, fields: Fields) {
   await expectThai(page, Object.keys(fields).map((id) => `${id}-label`))
 }
 
-const options = (page: Page, id: string) =>
-  page.getByTestId(id).evaluate((el) =>
-    Array.from((el as HTMLSelectElement).options).map((o) => [o.value, o.text.trim(), o.disabled])
-  )
+const options = async (page: Page, id: string) => (await selectOptions(page.getByTestId(id))).options
 
 /** AC-37 ข้อ 1/3: แถวละช่องตามลำดับ DOM, left เท่ากัน, กว้างเท่ากัน (ยกเว้นแถว checkbox), ไม่ล้นแนวนอน */
 async function expectSingleColumn(page: Page, order: string[]) {

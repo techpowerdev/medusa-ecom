@@ -9,6 +9,7 @@ import {
   signInAs,
 } from "./support/medusa"
 import { THAI } from "./support/thai-text"
+import { chooseOption, expectSelected } from "./support/select"
 
 // CORE-23c: spec 01 กฎข้อ 74, AC-112 (qa/review #154, #150, qa #164 O-2)
 // หา element ด้วย data-testid เท่านั้น
@@ -76,7 +77,7 @@ test.describe("AC-112", () => {
       for (const [testId, value] of Object.entries(ADDRESS)) {
         await modal.getByTestId(testId).fill(value)
       }
-      await modal.getByTestId("country-select").selectOption(CC)
+      await chooseOption(modal.getByTestId("country-select"), CC)
       await failServerAction(page, `/${CC}/account/addresses`, "500")
     })
 
@@ -86,7 +87,7 @@ test.describe("AC-112", () => {
       await expect(error).toBeVisible()
       await expect(error).toHaveText(THAI)
       await expectValues(modal, ADDRESS)
-      await expect(modal.getByTestId("country-select")).toHaveValue(CC)
+      await expectSelected(modal.getByTestId("country-select"), CC)
       await expect(page.getByText(PAGE_CRASH_TEXT)).toHaveCount(0)
       await evidence("01-add-address-failed-keeps-values")
     })
@@ -163,7 +164,7 @@ test.describe("AC-112", () => {
       for (const [testId, value] of Object.entries(values)) {
         await billing.getByTestId(testId).fill(value)
       }
-      await billing.getByTestId("billing-country-code-select").selectOption(CC)
+      await chooseOption(billing.getByTestId("billing-country-code-select"), CC)
       await failServerAction(page, `/${CC}/account/profile`, "network")
     })
 

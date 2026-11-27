@@ -11,6 +11,7 @@ import {
 } from "./support/medusa"
 import { waitForServerAction } from "./support/server-action"
 import { THAI } from "./support/thai-text"
+import { chooseOption } from "./support/select"
 
 // CORE-63: spec 01 กฎข้อ 121b, AC-162 — ฟอร์มที่อยู่หน้าบัญชี ช่องบังคับที่มีแต่ zero-width → error ไทย ไม่เรียก Store API
 // หา element ด้วย data-testid เท่านั้น; อักขระมองไม่เห็นเขียนเป็น escape `\uXXXX` (บทเรียน CORE-58)
@@ -63,7 +64,7 @@ test.describe("AC-162", () => {
           await modal.getByTestId(testId).fill(value)
         }
         await modal.getByTestId("city-input").fill(ZWSP)
-        await modal.getByTestId("country-select").selectOption(CC)
+        await chooseOption(modal.getByTestId("country-select"), CC)
       })
 
       await step("บันทึก → error ไทย modal ยังเปิด และที่อยู่ใน API ไม่เปลี่ยน", async () => {

@@ -1,0 +1,104 @@
+SFUI-16b — ประเทศ: checkout/components/country-select → Field + Select* ของ shadcn + กัน form reset ทับค่า; profile-billing-address ประกอบ Select เอง
+spec: docs/spec/09-storefront-shadcn-ui.md (รอบ 49 — กฎ 40b–c, 41–44, 46, 48–49; AC-44, AC-48, AC-49) · ADR-033
+ฐาน: 53451689 (SFUI-15) · node v24.12.0 (nvm) · 2026-11-28
+สภาพแวดล้อม e2e: backend NODE_ENV=production build + medusa start จาก .medusa/server :9491, storefront next build + start :8491,
+DB medusa_sfui16b (container medusa-ecom-postgres-1), Redis db 13, Stripe test mode + stripe listen (ชุด events ตาม CI)
+
+== 1) Vitest (pnpm --filter storefront test:unit) ==
+ Test Files  135 passed (135)
+      Tests  2060 passed (2060)
+-- ไฟล์ที่แก้ตาม AC-44 (verbose) --
+ ✓ src/checkout-thai-polish.test.ts > server action ของ checkout ไม่ส่งข้อความอังกฤษของ Medusa ตรง (AC-90) > setAddresses: SDK throw → ข้อความไทย 157ms
+ ✓ src/checkout-thai-polish.test.ts > server action ของ checkout ไม่ส่งข้อความอังกฤษของ Medusa ตรง (AC-90) > submitPromotionForm: Store API throw → ข้อความไทย 3ms
+ ✓ src/checkout-thai-polish.test.ts > server action ของ checkout ไม่ส่งข้อความอังกฤษของ Medusa ตรง (AC-90) > renewPromptPaySession: fetch throw → { error: "failed" } ไม่มีข้อความดิบ 0ms
+ ✓ src/checkout-thai-polish.test.ts > server action ของ checkout ไม่ส่งข้อความอังกฤษของ Medusa ตรง (AC-90) > renewPromptPaySession: backend 404 พร้อม message อังกฤษ → { error: "failed" } ไม่มีข้อความดิบ 1ms
+ ✓ src/checkout-thai-polish.test.ts > UI ของ checkout (กฎข้อ 54–55) > StripeWrapper ส่ง locale th ให้ <Elements> 90ms
+ ✓ src/checkout-thai-polish.test.ts > UI ของ checkout (กฎข้อ 54–55) > ชื่อวิธีชำระพร้อมเพย์เป็น "พร้อมเพย์" 2ms
+ ✓ src/checkout-thai-polish.test.ts > UI ของ checkout (กฎข้อ 54–55) > CountrySelect ใช้ placeholder "เลือกประเทศ" 109ms
+ ✓ src/checkout-thai-polish.test.ts > UI ของ checkout (กฎข้อ 54–55) > {STORE_NAME} ที่ตามด้วยอักษรไทยใน JSX มีเว้นวรรค 11ms
+ ✓ src/core-52-address-form-state.test.ts > CountrySelect หลัง form.reset() (กฎข้อ 110d; spec 09 กฎ 42) > คงค่า value ที่ควบคุมอยู่ ไม่กลับไปค่าแรก และไม่เรียก onValueChange จาก reset 210ms
+ ✓ src/core-52-address-form-state.test.ts > ShippingAddress sync จากที่อยู่ใน cart (กฎข้อ 110e, 73b) > ที่อยู่ที่บันทึกเปลี่ยน → ฟอร์มแสดงค่าใหม่ 35ms
+ ✓ src/core-52-address-form-state.test.ts > ShippingAddress sync จากที่อยู่ใน cart (กฎข้อ 110e, 73b) > cart ไม่มีอีเมล → ใช้อีเมลของลูกค้า 9ms
+ ✓ src/core-52-address-form-state.test.ts > ฟอร์มที่อยู่หลัง form.reset() (กฎข้อ 110d, qa #353 D-1) > ไม่ติ๊กใช้ที่อยู่จัดส่ง → reset แล้ว checkbox ยังไม่ติ๊ก และค่าที่พิมพ์ในฟอร์มใบเสร็จไม่หาย 41ms
+ Test Files  2 passed (2)
+      Tests  12 passed (12)
+
+== 2) Playwright project unit (รวม evidence-budget, sfui-13-form-guard, sfui-11-form-field.unit, sfui-15-select.unit) ==
+  248 passed (3.0s)
+
+== 3) e2e chromium บน prod build — spec ตาม AC-44 + AC-49 (e2e/sfui-16-select.spec.ts ส่วน 16b) ==
+  ✓   2 [chromium] › e2e/core-38-mobile-layout.spec.ts:96:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (375px) (539ms)
+  ✓   4 [chromium] › e2e/core-38-mobile-layout.spec.ts:96:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (1280px) (493ms)
+  ✓   1 [chromium] › e2e/core-23c-account-forms.spec.ts:62:7 › AC-112 › เพิ่มที่อยู่ล้ม (500) → ค่าที่พิมพ์ยังอยู่และ error ไทย (1.6s)
+  ✓   6 [chromium] › e2e/core-23c-account-forms.spec.ts:96:7 › AC-112 › แก้ที่อยู่ล้ม (500) → ค่าที่พิมพ์ยังอยู่และ error ไทย (1.0s)
+  ✓   7 [chromium] › e2e/core-23c-account-forms.spec.ts:141:7 › AC-112 › ที่อยู่ใบเสร็จ: action ล้มระดับ network → ยังเห็นฟอร์มพร้อม error ไทย (1.8s)
+  ✓   8 [chromium] › e2e/core-23c-account-forms.spec.ts:184:7 › AC-112 › กดแก้ไขแล้วพิมพ์ทันที → input มีค่าที่พิมพ์ (872ms)
+  ✓   9 [chromium] › e2e/core-23c-account-forms.spec.ts:203:7 › AC-112 › /th/account ไม่มี 404 ใต้ /th/ และลิงก์บริการลูกค้าชี้ /contact (1.3s)
+  ✓   5 [chromium] › e2e/core-38-mobile-layout.spec.ts:126:5 › AC-132: checkout — label ของฟอร์มที่อยู่ไม่ทับค่า, สรุปที่อยู่ 375 เรียงแนวตั้งและอีเมลยาวไม่ล้น, 1280 แถวเดียว (6.5s)
+  ✓   3 [chromium] › e2e/affiliate-last-click.spec.ts:23:5 › AF-3b: click Ann → add to cart → click Bob → checkout ทันที → order เป็นของ Bob (AC-21) (9.1s)
+  ✓  11 [chromium] › e2e/core-38-mobile-layout.spec.ts:204:5 › AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่าง + billing ต่างกัน → ข้อความอยู่ในกล่องของตัวเองที่ 375/640/1280 (7.1s)
+  ✓  12 [chromium] › e2e/core-4g-checkout-polish.spec.ts:73:5 › AC-99: โค้ดหมดอายุแสดง promotion-error ไทย, dropdown ที่อยู่ที่มี field ว่าง, ความสูง CountrySelect (5.7s)
+  ✓  10 [chromium] › e2e/core-4e-checkout-polish.spec.ts:128:5 › AC-91: ขั้นที่อยู่ของ checkout — placeholder ไทย, test id/aria-label ของ popup, label ไม่ทับค่า (8.9s)
+  ✓  14 [chromium] › e2e/core-4j-checkout-discount-address.spec.ts:53:5 › AC-111: โค้ดมีช่องว่างหัวท้ายใช้ได้ และค่าที่พิมพ์ในฟอร์มที่อยู่ไม่หายหลังใส่โค้ด (5.6s)
+  ✓  15 [chromium] › e2e/core-52-checkout-guards.spec.ts:98:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (1280x800) (4.9s)
+  ✓  13 [chromium] › e2e/core-38-mobile-layout.spec.ts:249:5 › AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่างอยู่ในกล่องของตัวเองที่ 375/640/1280 (6.1s)
+  ✓  16 [chromium] › e2e/core-4j-checkout-discount-address.spec.ts:110:5 › AC-111: หลัง document.fonts.ready billing-country-code-select สูงเท่า input ข้างเคียง (±1px) (701ms)
+  ✓  18 [chromium] › e2e/core-63-address-invisible.spec.ts:44:7 › AC-162 › เพิ่มที่อยู่: เขต/อำเภอเป็น U+200B ล้วน → error ไทย ไม่บันทึก; แก้เป็นค่าจริง → บันทึก (2.2s)
+  ✓  19 [chromium] › e2e/core-store.spec.ts:21:5 › AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart (5.9s)
+  ✓  17 [chromium] › e2e/core-52-checkout-guards.spec.ts:120:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (1280x800) (6.8s)
+  ✓  20 [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:88:5 › AC-37, AC-3: cart มีแต่ voucher → ไม่มีขั้น delivery, ที่อยู่ใบกำกับภาษีเป็น shipping_address, order สำเร็จ (6.4s)
+  ✓  22 [chromium] › e2e/core-52-checkout-guards.spec.ts:142:9 › viewport 1280x800 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (1280x800) (2.4s)
+  ✓  24 [chromium] › e2e/core-52-checkout-guards.spec.ts:178:9 › viewport 1280x800 › AC-147 ใบเสร็จแยก: error แล้วแก้ส่งใหม่ → billing เป็นค่าที่กรอก (1280x800) (5.9s)
+  ✓  23 [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:164:5 › AC-37 (กฎข้อ 24d): cart ผสม voucher + สินค้าจัดส่ง ใช้ flow ปกติที่มีขั้น delivery (6.5s)
+  ✓  21 [chromium] › e2e/core-store.spec.ts:61:5 › AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture → shipped email → My orders (12.0s)
+  ✓  25 [chromium] › e2e/core-52-checkout-guards.spec.ts:225:9 › viewport 1280x800 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (1280x800) (4.4s)
+  ✓  27 [chromium] › e2e/core-store.spec.ts:171:5 › AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที (1.4s)
+  ✓  29 [chromium] › e2e/sfui-11-form-field.spec.ts:93:5 › AC-28: login และ register — label เหนือช่อง, * เฉพาะช่องบังคับ, สูง 36px, 390px ไม่ล้น (1.4s)
+  ✓  26 [chromium] › e2e/ev-7d-digital-only-totals.spec.ts:19:5 › AC-42: cart digital-only ไม่มีค่าจัดส่งใน cart-totals ที่ /cart และขั้น review (7.1s)
+  ✓  28 [chromium] › e2e/core-52-checkout-guards.spec.ts:260:9 › viewport 1280x800 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (1280x800) (5.7s)
+  ✓  31 [chromium] › e2e/ev-7d-digital-only-totals.spec.ts:73:5 › AC-42: cart ผสม voucher + สินค้าจัดส่ง ยังมีแถวค่าจัดส่ง (4.2s)
+  ✓  33 [chromium] › e2e/sfui-11b-field-errors.spec.ts:37:5 › AC-32: login — ช่องว่างแสดง error ใต้ช่อง ไม่ส่งฟอร์ม, อีเมลผิดรูปแบบใช้ title, กรอกถูกแล้ว error หาย (725ms)
+  ✓  32 [chromium] › e2e/core-52-checkout-guards.spec.ts:98:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (375x812) (3.5s)
+  ✓  30 [chromium] › e2e/sfui-11-form-field.spec.ts:130:5 › AC-28: checkout step=address — label เหนือช่อง, checkbox แนวนอน, ประเทศสูงเท่าเขต/อำเภอ, 390px ไม่ล้น (7.0s)
+  ✓  36 [chromium] › e2e/sfui-12a-account-forms.spec.ts:158:5 › AC-34: register — label เหนือช่อง, placeholder ของเบอร์โทร, type/autocomplete tel (530ms)
+  ✓  37 [chromium] › e2e/sfui-12a-account-forms.spec.ts:173:5 › AC-34 + AC-37: profile — ชื่อ, เบอร์โทร, ที่อยู่ใบเสร็จ (label ประเทศ, tel, placeholder, คู่ช่องที่ ≥ 768px) (2.8s)
+  ✓  35 [chromium] › e2e/core-52-checkout-guards.spec.ts:120:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (375x812) (5.6s)
+  ✓  34 [chromium] › e2e/sfui-11b-field-errors.spec.ts:77:5 › AC-32: checkout step=address — ช่องว่างแสดง error, focus ช่องแรก; เลือกที่อยู่ที่บันทึกไว้แล้ว error ของช่องที่เติมหาย (6.9s)
+  ✓  40 [chromium] › e2e/sfui-11b-field-errors.spec.ts:158:5 › AC-32: affiliate สมัคร — รหัสแนะนำผิด pattern → error = title ของช่อง (346ms)
+  ✓  39 [chromium] › e2e/core-52-checkout-guards.spec.ts:142:9 › viewport 375x812 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (375x812) (3.9s)
+  ✓  38 [chromium] › e2e/sfui-12a-account-forms.spec.ts:216:5 › AC-34 + AC-37: address book — dialog เพิ่ม/แก้ที่อยู่ (tel, placeholder, label ประเทศ, คู่ช่องที่ ≥ 768px) (5.9s)
+  ✓  43 [chromium] › e2e/sfui-12a-account-forms.spec.ts:261:5 › AC-34 (กฎ 31a): billing-country-code-select และ country-select มี option เท่า commit ฐาน (1.7s)
+  ✓  42 [chromium] › e2e/core-52-checkout-guards.spec.ts:178:9 › viewport 375x812 › AC-147 ใบเสร็จแยก: error แล้วแก้ส่งใหม่ → billing เป็นค่าที่กรอก (375x812) (5.2s)
+  ✓  41 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:185:5 › AC-34, AC-37: checkout ที่อยู่จัดส่ง + ใบเสร็จ — label เหนือช่อง, placeholder, option เท่าเดิม, แถวละช่อง < 768px / คู่ ≥ 768px (9.1s)
+  ✓  44 [chromium] › e2e/sfui-16-select.spec.ts:12:7 › SFUI-16b ประเทศ › AC-49: 390×844 แตะ shipping-country-select → shipping-country-select-options อยู่ในจอ เลือกได้ และไม่ล้นแนวนอน (5.1s)
+  ✓  45 [chromium] › e2e/core-52-checkout-guards.spec.ts:225:9 › viewport 375x812 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (375x812) (2.5s)
+  ✓  47 [chromium] › e2e/sfui-9a-font.spec.ts:74:5 › AC-21: หน้า 404, นโยบาย, skeleton ของ store และ footer คงขนาดตัวอักษร/ระยะบรรทัด/น้ำหนักเดิม (789ms)
+  ✓  46 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:236:5 › AC-34, AC-37: checkout ของ cart digital-only — อีเมลแถวเดียว, ช่องใบเสร็จเป็นคู่ ≥ 768px (2.3s)
+  ✓  49 [chromium] › e2e/sfui-9a-font.spec.ts:119:5 › AC-21: cart dropdown, หน้า cart, select ที่อยู่ใบเสร็จ คงขนาดตัวอักษร/ระยะบรรทัด/น้ำหนักเดิม (1.2s)
+  ✓  51 [chromium] › e2e/sfui-9a-font.spec.ts:175:5 › AC-21: cart dropdown ของลูกค้าที่ยังไม่มีสินค้า: หัวข้อ 16px/24px/600 และป้ายจำนวน 0 เป็น 12px/20px/400 (792ms)
+  ✓  48 [chromium] › e2e/core-52-checkout-guards.spec.ts:260:9 › viewport 375x812 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (375x812) (2.7s)
+  ✓  50 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:269:5 › AC-34: โค้ดส่วนลด — label เหนือช่อง และ promotion-error ผูก aria-describedby ขณะช่องเปิด (กฎ 32d) (3.4s)
+  ✓  53 [chromium] › e2e/core-52-checkout-guards.spec.ts:300:7 › CORE-58 อักขระที่มองไม่เห็น 1280x800 › AC-157 เขต/อำเภอเป็น U+200B ล้วน → error ไทย ไม่บันทึกลง cart (3.1s)
+  ✓  52 [chromium] › e2e/thai-ui-checkout.spec.ts:23:5 › AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษาไทย (5.2s)
+  ✓  54 [chromium] › e2e/core-52-checkout-guards.spec.ts:328:7 › CORE-58 อักขระที่มองไม่เห็น 1280x800 › AC-157 cart digital-only: เขต/อำเภอใบเสร็จเป็น U+200B ล้วน → error ไทย ไม่บันทึกลง cart (2.6s)
+  54 passed (1.3m)
+
+== 4) e2e chromium บน prod build — spec อื่นที่ผ่านฟอร์มที่อยู่ checkout/บัญชี (grep submit-address-button/checkoutToPayment/account/addresses/profile) ==
+  ไฟล์ (17): core-23-profile-order, core-23b-account-progress, core-95-payment-received-notice, core-19f-switch-payment-method, core-22-account-fixes,
+  core-41-checkout-first-step, group-buy-join, pay-17-stripe-error-thai, payments, sfui-3a-dialog, sfui-3d-payment, sfui-9c-font, store-content,
+  thai-ui-account, sfui-3c-select, sfui-9d-font, sfui-6-parity (Stripe test mode จริง)
+  52 passed (1.9m)
+
+== 5) pnpm lint && pnpm typecheck ==
+apps/backend lint: ✖ 4 problems (0 errors, 4 warnings)
+apps/storefront lint: ✖ 27 problems (0 errors, 27 warnings)
+lint exit 0 (warning ทั้งหมดมีอยู่ก่อน — ไม่มีในไฟล์ที่ task นี้แก้ ยกเว้น profile-billing-address:86 setSuccessState เดิม)
+typecheck storefront exit 0 · backend exit 0
+
+== 6) pnpm --filter storefront build ==
+✓ Compiled successfully in 1258ms
+✓ Generating static pages using 7 workers (8/8) in 92ms
+Route (app)
+
+== 7) AC-48: git diff 53451689 --stat -- apps/backend apps/storefront/package.json pnpm-lock.yaml globals.css src/components/ui src/modules/common ==
+(ว่าง)

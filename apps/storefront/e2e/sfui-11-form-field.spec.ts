@@ -68,7 +68,8 @@ async function expectLabelAbove(scope: Locator, fields: Fields) {
     // ชื่อที่เข้าถึงได้ = ข้อความ label ใน DOM โดยไม่รวม * (aria-hidden — กฎ 30)
     await expect(control, id).toHaveAccessibleName(await labelText(label))
     if (required) {
-      await expect(control, id).toHaveAttribute("required", "")
+      // SFUI-16b (spec 09 กฎ 44): trigger ของ select (Radix) บังคับด้วย aria-required — required อยู่ที่ select ซ่อน
+      await expect(control, id).toHaveAttribute(...(id.endsWith("-select") ? ["aria-required", "true"] : ["required", ""]) as [string, string])
       await expect(label.locator('[aria-hidden="true"]'), id).toHaveText("*")
     } else {
       await expect(control, id).not.toHaveAttribute("required")

@@ -66,11 +66,12 @@ test('AC-26 (b): ไม่มีไฟล์ใน src/** ที่มี varian
   expect(offenders).toEqual([])
 })
 
-test("AC-26 (c): CountrySelect และ profile-billing-address ไม่ส่ง h-12 ให้ NativeSelect", () => {
+// SFUI-16b (spec 09 กฎ 40b): profile-billing-address ประกอบ SelectTrigger ของ shadcn แทน NativeSelect
+test("AC-26 (c): CountrySelect และ profile-billing-address ไม่ส่ง h-12 ให้ SelectTrigger", () => {
   const country = parse(COUNTRY_SELECT)
   expect(literals(country).flatMap((t) => t.split(/\s+/)), COUNTRY_SELECT).not.toContain("h-12")
-  const billing = jsxElements(parse(PROFILE_BILLING)).filter((el) => el.tagName.getText() === "NativeSelect")
-  expect(billing.length, "profile-billing-address มี NativeSelect").toBeGreaterThan(0)
+  const billing = jsxElements(parse(PROFILE_BILLING)).filter((el) => el.tagName.getText() === "SelectTrigger")
+  expect(billing.length, "profile-billing-address มี SelectTrigger").toBeGreaterThan(0)
   for (const el of billing) expect(classTokens(el), PROFILE_BILLING).not.toContain("h-12")
 })
 

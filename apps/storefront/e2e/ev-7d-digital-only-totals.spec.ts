@@ -8,6 +8,7 @@ import {
   signInAs,
 } from "./support/medusa"
 import { addToCartFromPdp, waitForServerAction } from "./support/server-action"
+import { chooseOption } from "./support/select"
 
 // EV-7d (spec 02 กฎข้อ 28a, AC-42): cart-totals ของ cart digital-only ไม่มีแถว/คำว่าค่าจัดส่ง ทั้งหน้าตะกร้าและขั้น review;
 // cart ผสมยังมีแถวค่าจัดส่ง
@@ -50,7 +51,7 @@ test("AC-42: cart digital-only ไม่มีค่าจัดส่งใน 
     await page.getByTestId("billing-postal-input").fill("10110")
     // CORE-52 (spec 01 กฎข้อ 110b): เขต/อำเภอเป็นช่องบังคับของที่อยู่ใบกำกับภาษีด้วย
     await page.getByTestId("billing-city-input").fill("วัฒนา")
-    await page.getByTestId("billing-country-select").selectOption(CC)
+    await chooseOption(page.getByTestId("billing-country-select"), CC)
     await page.getByTestId("billing-email-input").fill(customer.email)
     const saved = waitForServerAction(page, (body) => body.includes(customer.email))
     await page.getByTestId("submit-address-button").click()

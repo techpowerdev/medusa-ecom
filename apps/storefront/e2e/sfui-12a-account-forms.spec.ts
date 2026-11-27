@@ -2,6 +2,7 @@ import type { Locator, Page } from "@playwright/test"
 
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { STOREFRONT_COUNTRY as CC, adminHeaders, createCustomer, publishableKey, signInAs } from "./support/medusa"
+import { selectOptions } from "./support/select"
 import { expectThai } from "./support/thai-text"
 
 // SFUI-12a (spec 09 กฎ 28–31, 33b, 37; AC-34, AC-37): ฟอร์มของบัญชี — label เหนือช่อง, placeholder ตามตาราง inventory,
@@ -90,7 +91,8 @@ async function expectFields(page: Page, scope: Locator, fields: Fields) {
     expect(await control.evaluate((el) => (el as HTMLInputElement).labels?.[0]?.getAttribute("data-testid"))).toBe(`${id}-label`)
     await expect(control, id).toHaveAccessibleName(await labelText(label))
     await expect(label.locator('[aria-hidden="true"]'), id).toHaveCount(required ? 1 : 0)
-    if (required) await expect(control, id).toHaveAttribute("required", "")
+    // SFUI-16b (spec 09 กฎ 44): trigger ของ select (Radix) บังคับด้วย aria-required — required อยู่ที่ select ซ่อน
+    if (required) await expect(control, id).toHaveAttribute(...(id.endsWith("-select") ? ["aria-required", "true"] : ["required", ""]) as [string, string])
     else await expect(control, id).not.toHaveAttribute("required")
     if (placeholder) await expect(control, id).toHaveAttribute("placeholder", placeholder)
     else await expect(control, id).not.toHaveAttribute("placeholder")
@@ -254,11 +256,8 @@ test("AC-34 + AC-37: address book — dialog เพิ่ม/แก้ที่�
   }
 })
 
-/** [value, ข้อความ, disabled] ของ option ทุกตัว */
-const optionsOf = (select: Locator) =>
-  select.evaluate((el) => Array.from((el as HTMLSelectElement).options).map((o) => [o.value, o.text.trim(), o.disabled]))
-
 // AC-34 (กฎ 31a): ชุด option ของ <select> เท่า commit ฐาน — test นี้ผ่านทั้งบน 9b440e36 (ก่อน 12a) และหลังแก้
+// SFUI-16b (spec 09 กฎ 41): select ของ shadcn — placeholder ไม่ใช่ item และ option "-" ของ profile-billing-address ตัดออก
 test("AC-34 (กฎ 31a): billing-country-code-select และ country-select มี option เท่า commit ฐาน", async ({
   page,
   context,
@@ -274,11 +273,10 @@ test("AC-34 (กฎ 31a): billing-country-code-select และ country-select �
   await page.goto(`/${CC}/account/profile`)
   const billing = page.getByTestId("account-billing-address-editor")
   await billing.getByTestId("edit-button").click()
-  // NativeSelect ใส่ option ว่าง disabled ("เลือก...") เอง + option "-" ของ profile-billing-address
-  expect(await optionsOf(billing.getByTestId("billing-country-code-select"))).toEqual([["", "เลือก...", true], ["", "-", false], ...all])
+  expect(await selectOptions(billing.getByTestId("billing-country-code-select"))).toEqual({ placeholder: "เลือก...", options: all })
 
   await page.goto(`/${CC}/account/addresses`)
   await page.getByTestId("add-address-button").click()
   const modal = page.getByTestId("add-address-modal")
-  expect(await optionsOf(modal.getByTestId("country-select"))).toEqual([["", "เลือกประเทศ", true], ...own])
+  expect(await selectOptions(modal.getByTestId("country-select"))).toEqual({ placeholder: "เลือกประเทศ", options: own })
 })

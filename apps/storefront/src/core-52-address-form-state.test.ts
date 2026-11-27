@@ -43,12 +43,14 @@ afterEach(() => {
   container.remove()
 })
 
-const select = (testId: string) =>
-  container.querySelector<HTMLSelectElement>(`[data-testid="${testId}"]`)!
+// SFUI-16b (spec 09 กฎ 42, AC-44): testid อยู่บน SelectTrigger ของ Radix — ค่าปัจจุบันที่ `data-value`, ค่าที่ส่งจริงใน FormData (select ซ่อน)
+const trigger = (testId: string) => container.querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`)!
+const selected = (testId: string) => trigger(testId).getAttribute("data-value")
 
-describe("CountrySelect หลัง form.reset() (กฎข้อ 110d)", () => {
-  it("คงค่า value ที่ควบคุมอยู่ ไม่กลับไปตัวเลือกแรก", async () => {
+describe("CountrySelect หลัง form.reset() (กฎข้อ 110d; spec 09 กฎ 42)", () => {
+  it("คงค่า value ที่ควบคุมอยู่ ไม่กลับไปค่าแรก และไม่เรียก onValueChange จาก reset", async () => {
     const { default: CountrySelect } = await import("@modules/checkout/components/country-select")
+    const onValueChange = vi.fn()
     const render = (value: string) =>
       act(async () => {
         root.render(
@@ -59,20 +61,28 @@ describe("CountrySelect หลัง form.reset() (กฎข้อ 110d)", () =>
               name: "shipping_address.country_code",
               region: region as never,
               value,
-              onChange: () => {},
+              onValueChange,
               "data-testid": "shipping-country-select",
-            } as never)
+            })
           )
         )
       })
+    const form = () => container.querySelector("form")!
 
     await render("")
     await render("th")
-    expect(select("shipping-country-select").value).toBe("th")
+    expect(selected("shipping-country-select")).toBe("th")
+    expect(new FormData(form()).get("shipping_address.country_code")).toBe("th")
 
-    act(() => container.querySelector("form")!.reset())
+    await act(async () => {
+      form().reset()
+      await new Promise((r) => setTimeout(r, 0))
+    })
 
-    expect(select("shipping-country-select").value).toBe("th")
+    expect(selected("shipping-country-select")).toBe("th")
+    expect(trigger("shipping-country-select").textContent).toContain("Thailand")
+    expect(new FormData(form()).get("shipping_address.country_code")).toBe("th")
+    expect(onValueChange).not.toHaveBeenCalled()
   })
 })
 
@@ -109,7 +119,7 @@ describe("ShippingAddress sync จากที่อยู่ใน cart (กฎ
 
     await render(cart("บางรัก"))
     expect(value("shipping-city-input")).toBe("บางรัก")
-    expect(select("shipping-country-select").value).toBe("th")
+    expect(selected("shipping-country-select")).toBe("th")
   })
 
   it("cart ไม่มีอีเมล → ใช้อีเมลของลูกค้า", async () => {
