@@ -20,14 +20,14 @@ async function isOnTop(page: Page, target: Locator) {
   )
 }
 
-test("label ลอยของช่องกรอก (common/components/input) มองเห็นได้ทั้งก่อนและหลังกรอก", async ({
+// SFUI-11a (spec 09 กฎ 27c, 28): ป้ายลอยถูกแทนด้วย label เหนือช่องของ `field` — label มองเห็น ไม่ถูกบัง และอยู่เหนือกล่องของช่อง
+test("label ของช่องกรอก (common/components/input) อยู่เหนือช่องและมองเห็นได้ทั้งก่อนและหลังกรอก", async ({
   page,
   step,
   evidence,
 }) => {
   const email = page.getByTestId("email-input")
-  // label ของ Input ไม่มี testid ของตัวเอง — เป็น sibling ถัดจาก input ที่มี testid
-  const label = email.locator("xpath=following-sibling::label[1]")
+  const label = page.getByTestId("email-input-label")
 
   await step("เปิดหน้า login", async () => {
     await page.goto(`/${CC}/account`)
@@ -35,14 +35,16 @@ test("label ลอยของช่องกรอก (common/components/input)
     await expect(label).toBeVisible()
   })
 
-  await step("label ไม่ถูกพื้นของ input บัง (ก่อนกรอก)", async () => {
-    expect(await isOnTop(page, label), "label อยู่หลัง input").toBe(true)
+  await step("label ไม่ถูกบังและอยู่เหนือช่อง (ก่อนกรอก)", async () => {
+    expect(await isOnTop(page, label), "label ถูกบัง").toBe(true)
+    const [l, e] = [(await label.boundingBox())!, (await email.boundingBox())!]
+    expect(l.y + l.height, "label อยู่เหนือช่อง").toBeLessThanOrEqual(e.y + 0.5)
   })
 
-  await step("กรอกอีเมลแล้ว label ลอยขึ้นและยังมองเห็น", async () => {
+  await step("กรอกอีเมลแล้ว label ยังมองเห็น", async () => {
     await email.fill("somchai@example.com")
     await page.getByTestId("password-input").focus()
-    expect(await isOnTop(page, label), "label ลอยอยู่หลัง input").toBe(true)
+    expect(await isOnTop(page, label), "label ถูกบังหลังกรอก").toBe(true)
     await evidence("01-login-floating-label")
   })
 })

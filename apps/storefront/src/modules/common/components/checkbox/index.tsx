@@ -1,6 +1,6 @@
 import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
-import React from "react"
+import { Field, FieldLabel } from "@/components/ui/field"
+import React, { useId } from "react"
 
 type CheckboxProps = {
   checked?: boolean
@@ -21,24 +21,22 @@ const CheckboxWithLabel: React.FC<CheckboxProps> = ({
   name,
   'data-testid': dataTestId
 }) => {
+  // SFUI-11a (spec 09 กฎ 28–29): Field แนวนอน → control → FieldLabel; id จาก useId() (เดิม "checkbox" คงที่ ชนกันเมื่อมีหลายตัว)
+  const id = useId()
   return (
-    <div className="flex items-center space-x-2 ">
-      {/* ห่อให้ input ซ่อนของ Radix ไม่เป็นพี่น้องของ label (โครงเดียวกับ shim เดิม): core-38 ที่วัด label เทียบ input พี่น้อง
-          จึงไม่นับช่องนี้ (label ลอยของ common/components/input ใช้ `peer` ตั้งแต่ SFUI-8 ไม่มี rule `input ~ label` ใน globals.css แล้ว) */}
-      <span className="flex">
-        <Checkbox
-          id="checkbox"
-          checked={checked}
-          defaultChecked={checked}
-          onClick={onChange}
-          name={name}
-          data-testid={dataTestId}
-        />
-      </span>
-      <Label htmlFor="checkbox" className="text-sm leading-[1.4rem]">
+    <Field orientation="horizontal">
+      <Checkbox
+        id={id}
+        checked={checked}
+        defaultChecked={checked}
+        onClick={onChange}
+        name={name}
+        data-testid={dataTestId}
+      />
+      <FieldLabel htmlFor={id} data-testid={dataTestId && `${dataTestId}-label`}>
         {label}
-      </Label>
-    </div>
+      </FieldLabel>
+    </Field>
   )
 }
 

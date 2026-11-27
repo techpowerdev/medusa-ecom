@@ -92,9 +92,8 @@ function labelAndValueBoxes(testIds: string[]) {
     const field = document.querySelector<HTMLInputElement>(
       `[data-testid="${id}"]`
     )!
-    const label = field
-      .parentElement!.querySelector("label")!
-      .getBoundingClientRect()
+    // SFUI-11a: label ของช่องหาด้วย labels[0] (label เหนือช่องของ field ไม่ใช่พี่น้องของ input แล้ว)
+    const label = field.labels![0].getBoundingClientRect()
     const rect = field.getBoundingClientRect()
     const holder = document.createElement("div")
     holder.style.cssText =

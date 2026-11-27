@@ -4,14 +4,13 @@ import NativeSelect, {
   NativeSelectProps,
 } from "@modules/common/components/native-select"
 import { HttpTypes } from "@medusajs/types"
-import { cn } from "@/lib/utils"
 
 const CountrySelect = forwardRef<
   HTMLSelectElement,
   NativeSelectProps & {
     region?: HttpTypes.StoreRegion
   }
->(({ placeholder = "เลือกประเทศ", region, defaultValue, className, ...props }, ref) => {
+>(({ placeholder = "เลือกประเทศ", label = "ประเทศ", region, defaultValue, ...props }, ref) => {
   const innerRef = useRef<HTMLSelectElement>(null)
 
   useImperativeHandle<HTMLSelectElement | null, HTMLSelectElement | null>(
@@ -44,9 +43,9 @@ const CountrySelect = forwardRef<
     <NativeSelect
       ref={innerRef}
       placeholder={placeholder}
+      // SFUI-11a (spec 09 กฎ 28, 35): label เหนือช่อง และสูงตาม NativeSelect (h-9 เท่า Input) — เลิก h-12
+      label={label}
       defaultValue={defaultValue}
-      // CORE-4g (กฎข้อ 63d): สูงเท่า Input (h-12) ในแถวเดียวกัน
-      className={cn("h-12", className)}
       {...props}
     >
       {countryOptions?.map(({ value, label }, index) => (
