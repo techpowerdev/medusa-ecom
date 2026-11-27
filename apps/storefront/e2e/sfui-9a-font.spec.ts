@@ -24,6 +24,7 @@ const font = (locator: Locator): Promise<Font> =>
 
 const SMALL_REGULAR: Font = { size: "12px", lineHeight: "20px", weight: "400" }
 const BASE_REGULAR: Font = { size: "14px", lineHeight: "24px", weight: "400" }
+const SHADCN_SELECT: Font = { size: "14px", lineHeight: "20px", weight: "400" } // SFUI-11a: text-sm ของ native-select (shadcn)
 const LARGE_SEMI: Font = { size: "16px", lineHeight: "24px", weight: "600" }
 const XXL_SEMI: Font = { size: "30px", lineHeight: "48px", weight: "600" }
 
@@ -156,7 +157,9 @@ test("AC-21: cart dropdown, หน้า cart, select ที่อยู่ใ�
     expect.soft(await font(error)).toEqual(SMALL_REGULAR)
   })
 
-  await step("โปรไฟล์: select ประเทศของที่อยู่ใบเสร็จ (NativeSelect) 14px/24px/400 ทั้งกล่องและ <select>", async () => {
+  // SFUI-11a (spec 09 กฎ 27, AC-29): NativeSelect ใช้ class ของ registry native-select ของ shadcn (text-sm) — ค่าที่วัดบน build ใหม่:
+  // <select> 14px/20px/400, กล่องรอบ select ไม่กำหนดฟอนต์เอง (สืบทอดจากฟอร์ม 12px/20px/400)
+  await step("โปรไฟล์: select ประเทศของที่อยู่ใบเสร็จ (NativeSelect) — กล่อง 12px/20px/400, <select> 14px/20px/400", async () => {
     await page.unroute("**/*")
     await page.goto(`/${CC}/account/profile`)
     const billing = page.getByTestId("account-billing-address-editor")
@@ -164,8 +167,8 @@ test("AC-21: cart dropdown, หน้า cart, select ที่อยู่ใ�
     await expect(billing.getByTestId("edit-panel")).toHaveAttribute("data-open", "true")
     const select = billing.getByTestId("billing-country-code-select")
     await expect(select).toBeVisible()
-    expect.soft(await font(select.locator(".."))).toEqual(BASE_REGULAR)
-    expect.soft(await font(select)).toEqual(BASE_REGULAR)
+    expect.soft(await font(select.locator(".."))).toEqual(SMALL_REGULAR)
+    expect.soft(await font(select)).toEqual(SHADCN_SELECT)
   })
 })
 

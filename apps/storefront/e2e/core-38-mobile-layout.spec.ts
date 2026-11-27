@@ -42,13 +42,14 @@ async function labelsOverText(page: Page, scopeTestId: string) {
     await Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined)))
     const root = document.querySelector(`[data-testid="${scope}"]`)!
     const inputs = Array.from(root.querySelectorAll<HTMLInputElement>("input")).filter(
-      (input) => input.type !== "hidden" && input.parentElement?.querySelector("label")
+      (input) => input.type !== "hidden" && input.labels?.[0]
     )
     return {
       count: inputs.length,
       overlaps: inputs
         .map((input) => {
-          const label = input.parentElement!.querySelector("label")!.getBoundingClientRect()
+          // SFUI-11a: label ของช่องหาด้วย labels[0] (label เหนือช่องของ field ไม่ใช่พี่น้องของ input แล้ว)
+          const label = input.labels![0].getBoundingClientRect()
           const limit =
             input.getBoundingClientRect().top + parseFloat(getComputedStyle(input).paddingTop)
           return { name: input.name, labelBottom: label.bottom, limit }
