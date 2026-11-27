@@ -3,7 +3,7 @@ import { Client } from "pg"
 
 import { ADMIN_UI_OPTIONS, fillDatePicker, loginAdmin } from "./support/admin"
 import { createActiveAffiliate } from "./support/affiliate"
-import { call, createVoucher, Json } from "./support/evoucher"
+import { call, createPoolReadyVariant, createVoucher, Json } from "./support/evoucher"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { adminHeaders, Headers } from "./support/medusa"
 
@@ -281,11 +281,8 @@ const CASES: ModalCase[] = [
     rule52a: true,
     setup: async (request, admin) => {
       const tag = uniqueTag()
-      const { product } = await call(request, admin, "/admin/products", {
-        title: `ADM-39 voucher ${tag}`,
-        options: [{ title: "Value", values: ["500"] }],
-        variants: [{ title: "500 THB", options: { Value: "500" }, prices: [{ currency_code: "thb", amount: 500 }] }],
-      })
+      // EV-27 (spec 02 กฎข้อ 43g): variant ที่ผ่านเงื่อนไข — ไม่งั้นกด Create pool ได้รายการเงื่อนไขแทนฟอร์ม
+      const { productId, variantId } = await createPoolReadyVariant(request, admin, `ADM-39 voucher ${tag}`)
       const { partner } = await call(request, admin, PARTNERS, { name: `ADM-39 pool partner ${tag}` })
       const opener = (page: Page) => page.getByRole("button", { name: "Create pool" })
       return {
@@ -293,7 +290,7 @@ const CASES: ModalCase[] = [
         ok: { pool: { id: "evpool_adm39_mock" } },
         opener,
         open: async (page) => {
-          await page.goto(`${BACKEND_URL}/app/products/${product.id}/variants/${product.variants[0].id}`)
+          await page.goto(`${BACKEND_URL}/app/products/${productId}/variants/${variantId}`)
           await opener(page).click()
         },
         fill: async (page, n) => {
@@ -304,7 +301,7 @@ const CASES: ModalCase[] = [
         },
         save: (page) => dialog(page).getByRole("button", { name: "Save" }),
         cleanup: async () => {
-          for (const path of [`/admin/products/${product.id}`, `${PARTNERS}/${partner.id}`]) {
+          for (const path of [`/admin/products/${productId}`, `${PARTNERS}/${partner.id}`]) {
             const res = await request.delete(`${BACKEND_URL}${path}`, { headers: admin })
             expect.soft(res.ok(), `DELETE ${path}`).toBe(true)
           }

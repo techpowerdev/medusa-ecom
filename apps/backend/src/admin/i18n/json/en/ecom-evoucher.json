@@ -142,7 +142,17 @@
     "availableCodes": "Available codes",
     "delivered": "Delivered",
     "created": "Voucher pool created",
-    "createTitle": "Create voucher pool for {{title}}"
+    "createTitle": "Create voucher pool for {{title}}",
+    "prerequisites": {
+      "title": "Before you can create a voucher pool, fix the following on this variant:",
+      "manageInventory": "Turn on \"Manage inventory\" for this variant.",
+      "inventoryItem": "The variant needs exactly one inventory item (quantity 1) that no other variant uses.",
+      "shippingProfile": "Remove the shipping profile from this product (vouchers are not shipped).",
+      "stockLocation": "The inventory item needs exactly one stock location.",
+      "fix": "Fix",
+      "loadError": "Could not check this variant: {{message}}",
+      "variantMissing": "variant not found on the product"
+    }
   },
   "refundBlocked": {
     "message": "Refunds are blocked while this order has an active return, claim, exchange or edit. Confirm or cancel it first.",

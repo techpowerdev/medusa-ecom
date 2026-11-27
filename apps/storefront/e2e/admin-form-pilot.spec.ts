@@ -2,6 +2,7 @@ import { Locator, Page } from "@playwright/test"
 
 import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
+import { createPoolReadyVariant } from "./support/evoucher"
 import { adminHeaders } from "./support/medusa"
 
 // ADM-3 (spec 08 AC-6, กฎ 8): pilot ฟอร์ม Form + KeyboundForm + zod ของ dashboard — drawer "Flash sale options"
@@ -114,16 +115,8 @@ test("AC-6: ฟอร์ม Create pool — Save โดยไม่เลือ�
 }) => {
   test.setTimeout(120_000)
   const admin = await adminHeaders(request)
-  const created = await request.post(`${BACKEND_URL}/admin/products`, {
-    headers: admin,
-    data: {
-      title: `ADM-3 voucher ${Date.now()}`,
-      options: [{ title: "Value", values: ["500"] }],
-      variants: [{ title: "500 THB", options: { Value: "500" }, prices: [{ currency_code: "thb", amount: 500 }] }],
-    },
-  })
-  expect(created.status(), "create product").toBe(200)
-  const { product } = await created.json()
+  // EV-27 (spec 02 กฎข้อ 43g): variant ที่ผ่านเงื่อนไข — ไม่งั้นกด Create pool ได้รายการเงื่อนไขแทนฟอร์ม
+  const { productId, variantId } = await createPoolReadyVariant(request, admin, `ADM-3 voucher ${Date.now()}`)
   const partnerRes = await request.post(`${BACKEND_URL}/admin/evoucher/partners`, {
     headers: admin,
     data: { name: `ADM-3 partner ${Date.now()}` },
@@ -134,7 +127,7 @@ test("AC-6: ฟอร์ม Create pool — Save โดยไม่เลือ�
 
   await step("เปิดฟอร์ม Create pool แล้วกรอกทุกช่องยกเว้น Partner แล้วกด Save", async () => {
     await loginAdmin(page)
-    await page.goto(`${BACKEND_URL}/app/products/${product.id}/variants/${product.variants[0].id}`)
+    await page.goto(`${BACKEND_URL}/app/products/${productId}/variants/${variantId}`)
     await page.getByRole("button", { name: "Create pool" }).click()
     await page.getByLabel("Name *", { exact: true }).fill("ADM-3 pool")
     await page.getByLabel("How to use * (shown in the delivery email)", { exact: true }).fill("Show the code")
@@ -162,7 +155,7 @@ test("AC-6: ฟอร์ม Create pool — Save โดยไม่เลือ�
     expect(res.status()).toBe(200)
     expect(res.request().postDataJSON()).toEqual({
       partner_id: partner.id,
-      variant_id: product.variants[0].id,
+      variant_id: variantId,
       name: "ADM-3 pool",
       how_to_use: "Show the code",
       face_value: null,
@@ -253,16 +246,7 @@ test.describe("AC-16: ช่อง number ที่ไม่ใช่ตัว�
   }) => {
     test.setTimeout(120_000)
     const admin = await adminHeaders(request)
-    const created = await request.post(`${BACKEND_URL}/admin/products`, {
-      headers: admin,
-      data: {
-        title: `ADM-12 voucher ${Date.now()}`,
-        options: [{ title: "Value", values: ["500"] }],
-        variants: [{ title: "500 THB", options: { Value: "500" }, prices: [{ currency_code: "thb", amount: 500 }] }],
-      },
-    })
-    expect(created.status(), "create product").toBe(200)
-    const { product } = await created.json()
+    const { productId, variantId } = await createPoolReadyVariant(request, admin, `ADM-12 voucher ${Date.now()}`)
     const partnerRes = await request.post(`${BACKEND_URL}/admin/evoucher/partners`, {
       headers: admin,
       data: { name: `ADM-12 partner ${Date.now()}` },
@@ -276,7 +260,7 @@ test.describe("AC-16: ช่อง number ที่ไม่ใช่ตัว�
 
     await step("เปิดฟอร์ม Create pool แล้วกรอกช่องบังคับครบ", async () => {
       await loginAdmin(page)
-      await page.goto(`${BACKEND_URL}/app/products/${product.id}/variants/${product.variants[0].id}`)
+      await page.goto(`${BACKEND_URL}/app/products/${productId}/variants/${variantId}`)
       await page.getByRole("button", { name: "Create pool" }).click()
       await page.getByLabel("Partner *", { exact: true }).click()
       await page.getByRole("option", { name: partner.name }).click()

@@ -590,9 +590,9 @@ Status: draft
 ### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 47)
 | ความต้องการ | Medusa มีให้ | วิธีใช้ |
 |---|---|---|
-| ข้อมูล `manage_inventory`, inventory item (`required_quantity`, variant ที่ใช้ร่วม), location level, shipping profile ของ product | `GET /admin/products/:id` + `fields` ผ่าน hook `useProduct` ของ `@medusajs/dashboard/hooks` (หน้า product ของ dashboard เองขอ `*shipping_profile` — `PRODUCT_DETAIL_FIELDS`); path ของ inventory ตรงกับที่ backend ใช้ใน `query.graph` | **ใช้ตามที่มี** — ไม่เพิ่ม API (กฎข้อ 43a); dashboard 2.22.1 ไม่ export hook ราย variant/inventory item (`hooks.d.ts` มีแค่ `useProduct`, `useProductVariants`) |
+| ข้อมูล `manage_inventory`, inventory item (`required_quantity`, variant ที่ใช้ร่วม), location level, shipping profile ของ product | `GET /admin/products/:id` + `fields` ผ่าน hook `useProduct` ของ `@medusajs/dashboard/hooks` (หน้า product ของ dashboard เองขอ `*shipping_profile` — `PRODUCT_DETAIL_FIELDS`); path ของ inventory ตรงกับที่ backend ใช้ใน `query.graph` | **ใช้ตามที่มี** — ไม่เพิ่ม API (กฎข้อ 43a); dashboard 2.22.1 export hook ของ variant ด้วย (`useProductVariants`, `useVariants`/`useInfiniteVariants` — `hooks.d.ts`) แต่ไม่มี hook ราย inventory item; ใช้ `useProduct` เพราะได้ shipping profile ของ product และ inventory ของ variant ใน request เดียว |
 | หน้าแก้แต่ละเงื่อนไข | route ของ dashboard 2.22.1: `/products/:id/variants/:variant_id/edit` (สวิตช์ manage inventory), `/products/:id/variants/:variant_id/manage-items` (inventory item), `/products/:id/shipping-profile`, `/inventory/:inventory_item_id/locations` (`app.js` route table) | **ลิงก์ไปหน้าของ Medusa** (กฎข้อ 43c) — ไม่สร้างฟอร์มแก้เอง |
-| รายการเงื่อนไขใน modal/ลิงก์ | `FocusModal` (ใช้อยู่แล้ว), `Alert`, `Text` ของ `@medusajs/ui`; `Header` ของเรา (`components/common/header`, dashboard ไม่ export); `Link` ของ `react-router-dom` | ใช้ตามที่มี — ไม่สร้าง component ใหม่ |
+| รายการเงื่อนไขใน modal/ลิงก์ | `FocusModal` (ใช้อยู่แล้ว), `Text` ของ `@medusajs/ui`; `Header` ของเรา (`components/common/header`, dashboard ไม่ export); `Link` ของ `react-router-dom` | ใช้ตามที่มี — ไม่สร้าง component ใหม่ |
 | ข้อความไทย/อังกฤษ | i18n ของ Medusa admin + namespace `ecom-evoucher` (ADR-031, spec 10 กฎ 5 parity) | เพิ่ม key ใต้ `variantWidget.prerequisites.*` |
 | ด่านจริงตอนสร้าง/นำเข้า | `validateEvoucherVariantStep`, `resolveEvoucherPoolInventoryStep` (ของเรา) | **คงเดิม** |
 
@@ -638,11 +638,11 @@ Status: draft
   (b) แก้ผ่าน Admin API (manage inventory + inventory item, `shipping_profile_id: null`) **โดยไม่ reload** → กลับหน้า variant (ปิด drawer ของ Medusa / goto ภายใน SPA) แล้วกดปุ่มอีกครั้ง → รายการเหลือ `evoucher-pool-prereq-stockLocation` เท่านั้น ยังไม่มี `evoucher-pool-form`;
       ปิด dialog เพิ่ม location level ผ่าน API แล้วกดใหม่ → ไม่มี `evoucher-pool-prerequisites`, เห็น `evoucher-pool-form` + heading `variantWidget.createTitle` (แทน `{{title}}` ด้วยชื่อ variant — หาด้วย role + ชื่อภายใน dialog); กรอกแล้ว Save → POST 1 ครั้งและ 200
   (c) variant ที่มี pool แล้ว (`createVoucher`) → ไม่มี `evoucher-pool-prerequisites` และไม่มี `evoucher-pool-create` บนหน้า (regression กฎ 43d)
-  (d) `GET /admin/products/:id` ถูก route mock ให้ตอบ 500 → กดปุ่ม → `evoucher-pool-prerequisites-error` แสดงข้อความ `loadError` (`{{message}}` แทนแล้ว) ไม่มี `evoucher-pool-form` และ POST = 0;
+  (d) `GET /admin/products/:id` ถูก route mock ให้ตอบ 500 (mock เฉพาะ pathname `/admin/products/<id>` ตรงตัว — ไม่โดน `/admin/products/<id>/variants/...` ที่หน้า variant ใช้; ติดตั้งหลังหน้า variant โหลดครบ) → กดปุ่ม → `evoucher-pool-prerequisites-error` แสดงข้อความ `loadError` (`{{message}}` แทนแล้ว) ไม่มี `evoucher-pool-form` และ POST = 0;
       ยกเลิก mock ปิด dialog แล้วกดใหม่ → ได้ผลตรวจจริง (ไม่ค้าง error)
 - AC-59 (EV-27, กฎข้อ 43f–g) regression: `git diff --name-only origin/develop...HEAD` ไม่มี path ใต้ `apps/backend/src/workflows/` หรือ `apps/backend/src/api/`;
-  e2e ทุก spec ที่ grep พบ `Create pool`/`variantWidget` (`admin-form-pilot`, `admin-create-double-submit`, `admin-modal-return-focus`, `evoucher-admin-forms`, `admin-i18n-evoucher`, `admin-dialog-title`, `evoucher-admin-pool-delete`) ผ่าน
-  โดย fixture ที่เปิดฟอร์มใช้ `createPoolReadyVariant`; static: `createPoolReadyVariant` ถูก import ใน ≥ 2 ไฟล์ (รวม `createVoucher`); unit parity/guard ของ spec 10 (AC-2, AC-5) ผ่านกับ key ใหม่
+  e2e ที่เปิด Create pool บนหน้า variant — `admin-form-pilot`, `admin-create-double-submit`, `admin-modal-return-focus`, `evoucher-admin-forms` — ผ่านโดย fixture ใช้ `createPoolReadyVariant`;
+  e2e ที่เปิดหน้า variant ที่มี pool แล้ว (`admin-i18n-evoucher`) และ static ของ dialog title (`admin-dialog-title`) ผ่าน; static: `createPoolReadyVariant` ถูก import ใน ≥ 2 ไฟล์ (รวม `createVoucher`); unit parity/guard ของ spec 10 (AC-2, AC-5) ผ่านกับ key ใหม่
 
 ### แผนการทดสอบ (รอบ 47)
 - unit: AC-57 (+ parity/guard ของ spec 10 ใน AC-59) · e2e admin: AC-58, AC-59 · integration: none (backend ไม่เปลี่ยน — test เดิมของ AC-11/กฎข้อ 14/import ต้องผ่านตาม CI)
@@ -655,7 +655,7 @@ Status: draft
 ## คำถามที่ยังเปิดอยู่
 - ~~Q16~~ ตัดสินแล้ว (owner 2026-11-27): **(ก)** ไม่ทำตอนนี้ — คำถามเดิม: (รอบ 47 — ไม่บล็อก EV-27) pool ที่มีอยู่แล้วแต่ variant ไม่ผ่านเงื่อนไขของ import (เช่นลบ location level ทีหลัง หรือสร้าง pool ผ่าน API โดยไม่มี location) — import บนหน้า pool
   (`routes/evouchers/pools/[id]`) ยังได้ toast ข้อความอังกฤษของ backend (`import-evoucher-codes.ts:83`) หลังเลือกไฟล์:
-  (ก) **[ข้อเสนอ]** ไม่ทำตอนนี้ — EV-27 ทำให้ pool ที่สร้างผ่าน UI มี location ครบแล้ว เหลือเฉพาะกรณีแก้ทีหลัง/สร้างผ่าน API ซึ่งเกิดยาก
+  (ก) **[เลือก]** ไม่ทำตอนนี้ — EV-27 ทำให้ pool ที่สร้างผ่าน UI มี location ครบแล้ว เหลือเฉพาะกรณีแก้ทีหลัง/สร้างผ่าน API ซึ่งเกิดยาก
   (ข) task ใหม่ EV-28: ปุ่มนำเข้าโค้ดบนหน้า pool ตรวจเงื่อนไขเดียวกันเมื่อกด (ใช้ `evoucherPoolPrerequisites` ร่วม — ผู้ใช้ที่ 2) แล้วแสดงรายการแทนฟอร์ม import แบบ Q15 = ข (~60 LOC + ~120 LOC test)
 - ~~Q15~~ ตัดสินแล้ว (owner 2026-11-27): **(ข)** ปุ่ม "Create pool" กดได้เสมอ (ยกเว้นระหว่างส่ง/โหลดตามกฎกันกดซ้ำเดิม); กดแล้วเงื่อนไขไม่ครบ → แสดงรายการเงื่อนไขพร้อมลิงก์ไปแก้
   **แทนฟอร์ม** และไม่ยิง request สร้าง pool; หน้า variant ของสินค้าปกติไม่มีกล่องเงื่อนไขค้าง — กฎข้อ 43c, AC-58;
