@@ -6,6 +6,7 @@ import {
 } from "@lib/data/customer"
 import useToggleState from "@lib/hooks/use-toggle-state"
 import { withActionFallback } from "@lib/util/action-fallback"
+import { addressLines } from "@lib/util/address-lines"
 import { submitWithoutReset } from "@lib/util/submit-without-reset"
 import { HttpTypes } from "@medusajs/types"
 import CountrySelect from "@modules/checkout/components/country-select"
@@ -75,6 +76,8 @@ const EditAddress: React.FC<EditAddressProps> = ({
     setRemoving(false)
   }
 
+  const [line, country] = addressLines(address)
+
   return (
     // SFUI-3a (spec 09 กฎ 4, 11): modal ที่อยู่ → Dialog ของ shadcn (Radix) — ปุ่มแก้ไขเป็น DialogTrigger (focus กลับเมื่อปิด)
     <Dialog open={state} onOpenChange={(next) => (next ? open() : close())}>
@@ -100,18 +103,11 @@ const EditAddress: React.FC<EditAddressProps> = ({
               {address.company}
             </p>
           )}
-          <p className="flex flex-col text-left text-sm leading-6 font-normal mt-2">
-            <span data-testid="address-address">
-              {address.address_1}
-              {address.address_2 && <span>, {address.address_2}</span>}
-            </span>
-            <span data-testid="address-postal-city">
-              {address.postal_code}, {address.city}
-            </span>
-            <span data-testid="address-province-country">
-              {address.province && `${address.province}, `}
-              {address.country_code?.toUpperCase()}
-            </span>
+          {/* SFUI-18a (spec 09 กฎ 57): บรรทัดที่อยู่ตามลำดับไทย (address-address) + บรรทัดประเทศ (address-province-country);
+              testid เดิม address-postal-city (baseline กฎ 10) อยู่ที่กล่องของสองบรรทัด */}
+          <p className="flex flex-col text-left text-sm leading-6 font-normal mt-2" data-testid="address-postal-city">
+            <span data-testid="address-address">{line}</span>
+            <span data-testid="address-province-country">{country}</span>
           </p>
         </div>
         <div className="flex items-center gap-x-4">

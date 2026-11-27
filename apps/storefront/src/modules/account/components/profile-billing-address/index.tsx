@@ -10,6 +10,7 @@ import { addCustomerAddress, updateCustomerAddress } from "@lib/data/customer"
 import { HttpTypes } from "@medusajs/types"
 import AccountInfo from "../account-info"
 import { submitWithoutReset } from "@lib/util/submit-without-reset"
+import { addressLines } from "@lib/util/address-lines"
 import { withActionFallback } from "@lib/util/action-fallback"
 
 // CORE-23c (กฎข้อ 74b): action ล้มระดับ network/5xx → error ไทยในฟอร์ม ไม่ใช่หน้า "This page couldn't load"
@@ -102,13 +103,8 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
           {billingAddress.first_name} {billingAddress.last_name}
         </span>
         <span>{billingAddress.company}</span>
-        <span>
-          {billingAddress.address_1}
-          {billingAddress.address_2 ? `, ${billingAddress.address_2}` : ""}
-        </span>
-        <span>
-          {billingAddress.postal_code}, {billingAddress.city}
-        </span>
+        {/* SFUI-18a (spec 09 กฎ 57): บรรทัดที่อยู่ตามลำดับไทย; ประเทศคงชื่อเต็มจาก region (เดิม) */}
+        <span>{addressLines(billingAddress)[0]}</span>
         <span>{country}</span>
       </div>
     )

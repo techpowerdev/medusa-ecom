@@ -1,0 +1,48 @@
+SFUI-18a — ที่อยู่ไทย: ข้อมูล + การแสดงผล (ตำบล/แขวง = address_2)
+spec: docs/spec/09-storefront-shadcn-ui.md (รอบ 49 — กฎ 52, 55–57; AC-50, AC-51, AC-54) · ฐาน b355522c (stack 15→16a→16b→16c→16d→17; rebase แล้ว — เดิมรันบน 7a99ca42)
+node v24.12.0 (nvm) · 2026-11-28 · e2e: backend NODE_ENV=production build + medusa start (.medusa/server) :9491, storefront next build + start :8491,
+DB medusa_sfui18a (container medusa-ecom-postgres-1), Redis db 13, Stripe test mode + stripe listen (ชุด events ตาม CI)
+
+== 1) Vitest (pnpm --filter storefront test:unit) ==
+ Test Files  136 passed (136)
+      Tests  2058 passed (2058)   (บน b355522c — บน 7a99ca42 ได้ 2065: SFUI-17 ลบ test ของ NativeSelect)
+-- AC-50 (verbose: address-lines.test.ts, core-4g compareAddresses, core-63 addressFrom) — ล้มก่อนแก้ (red) 2 test + import ไม่พบโมดูล --
+ ✓ src/lib/util/address-lines.test.ts > addressLines > ครบทุกช่อง → ลำดับไทยคั่นด้วยช่องว่างเดียว และบรรทัดประเทศเป็นรหัสตัวใหญ่ 1ms
+ ✓ src/lib/util/address-lines.test.ts > addressLines > ข้ามช่องว่าง/null/ช่องว่างล้วน — ไม่มีจุลภาคหรือช่องว่างซ้อน 0ms
+ ✓ src/lib/util/address-lines.test.ts > addressLines > ที่อยู่เดิมที่ไม่มี address_2 (ก่อนรอบ 49) แสดงได้ 0ms
+ ✓ src/lib/util/address-lines.test.ts > addressLines > ไม่มีที่อยู่ → บรรทัดว่างทั้งสอง 0ms
+ ✓ src/core-63-address-invisible.test.ts > setAddresses: ช่องไม่บังคับ (กฎข้อ 121a) > address_2 ส่งค่าที่ตัดแล้ว; zero-width ล้วน → "" 0ms
+ ✓ src/core-4g-checkout-polish.test.ts > compareAddresses (AC-99) > ต่างกันแค่ address_2 → false; null กับ "" ยังเท่ากัน 0ms
+ Test Files  3 passed (3)
+      Tests  34 passed (34)
+
+== 2) Playwright project unit (รวม evidence-budget, sfui-baseline AC-5, sfui-13-form-guard) ==
+  253 passed (1.9s)   (บน b355522c)
+
+== 3) e2e ใหม่ e2e/sfui-18-thai-address.spec.ts (AC-51) — รันซ้ำบน b355522c หลัง nit (edit-address-modal destructure, inline formatAddress)
+   พร้อม sfui-3e-shipping, sfui-12a-account-forms, sfui-6-parity (หน้าที่ nit แตะ): 11 passed ==
+  ✓   3 [chromium] › e2e/sfui-18-thai-address.spec.ts:58:5 › AC-51: ที่อยู่ที่บันทึกไว้มี address_2 → checkout ส่งลง cart, สรุปของ checkout และหน้าคำสั่งซื้อเรียงแบบไทย (6.8s)
+  ✓   9 [chromium] › e2e/sfui-18-thai-address.spec.ts:106:5 › AC-51: ที่อยู่เดิมไม่มี address_2/จังหวัด แสดงได้ ไม่มีจุลภาคหรือช่องว่างซ้อน (3.1s)
+  ✓  11 [chromium] › e2e/sfui-18-thai-address.spec.ts:128:5 › AC-51: group join ด้วยที่อยู่ที่มี address_2 → cart ของกลุ่มมี address_2 (3.5s)
+
+== 4) (บน 7a99ca42 ก่อน rebase) e2e ทุก spec ที่อ้างหน้าที่แตะ (grep address-summary/shipping-address-select/-option/group-address-select/address-address/current-info/
+   delivery-option/orders/details/account/addresses/account/profile/submit-address-button) + sfui-12b, sfui-11-form-field, payments, sfui-3d — 44 ไฟล์ 131 test ==
+  4 failed
+  127 passed (3.2m)
+   4 test ที่ล้มในรอบนั้น (thai-ui-account, sfui-9c-font, store-content, thai-ui-cart-order) ล้มด้วย ENOENT ของไฟล์ trace ใน test-results/
+   เพราะรัน project unit พร้อมกัน (outputDir เดียวกันถูกล้าง) — ไม่ใช่ assertion; รันซ้ำ 4 ไฟล์:
+  8 passed (7.9s)
+   รวม 131/131 ผ่าน
+
+== 5) pnpm lint && pnpm typecheck ==
+apps/backend lint: ✖ 4 problems (0 errors, 4 warnings)
+apps/storefront lint: ✖ 27 problems (0 errors, 27 warnings)
+lint exit 0 (จำนวน warning เท่าฐาน — ไม่มี warning ใหม่) · typecheck storefront exit 0 · backend exit 0
+
+== 6) pnpm --filter storefront build ==
+✓ Compiled successfully in 4.9s
+  Generating static pages using 7 workers (0/8) ...
+  Generating static pages using 7 workers (2/8) 
+
+== 7) AC-54: git diff b355522c --stat -- apps/backend apps/storefront/e2e/support/sfui-baseline.json ==
+(ว่าง)

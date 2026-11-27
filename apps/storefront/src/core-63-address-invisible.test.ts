@@ -106,6 +106,19 @@ describe("setAddresses: ช่องไม่บังคับ (กฎข้อ
     expect(shipping_address.province).toBe(`กรุงเทพ${ZW}มหานคร`)
     expect(shipping_address.phone).toBe("0812345678")
   })
+
+  // SFUI-18a (spec 09 กฎ 56, AC-50): ตำบล/แขวง (address_2) อ่านจากฟอร์มและตัด white space/zero-width เหมือนช่องอื่น (เดิมส่ง "" เสมอ)
+  it("address_2 ส่งค่าที่ตัดแล้ว; zero-width ล้วน → \"\"", async () => {
+    const form = checkoutForm()
+    form.set("shipping_address.address_2", ` ${ZW}คลองเตย${ZW}เหนือ\uFEFF `)
+    expect(await submit(form)).toBe("REDIRECT /th/checkout?step=delivery")
+    expect(update.mock.calls[0][1].shipping_address.address_2).toBe(`คลองเตย${ZW}เหนือ`)
+
+    const blank = checkoutForm()
+    blank.set("shipping_address.address_2", `${ZW} \u2060`)
+    expect(await submit(blank)).toBe("REDIRECT /th/checkout?step=delivery")
+    expect(update.mock.calls[1][1].shipping_address.address_2).toBe("")
+  })
 })
 
 const accountForm = () => {

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { setShippingMethod } from "@lib/data/cart"
 import { calculatePriceForShippingOption } from "@lib/data/fulfillment"
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
+import { addressLines } from "@lib/util/address-lines"
 import { convertToLocale } from "@lib/util/money"
 import { selectedShippingOptionId, shippingOptionsForCart } from "@lib/util/shipping-options"
 import { HttpTypes } from "@medusajs/types"
@@ -33,32 +34,6 @@ const OPTION_CLASS =
 type ShippingProps = {
   cart: HttpTypes.StoreCart
   availableShippingMethods: HttpTypes.StoreCartShippingOption[] | null
-}
-
-function formatAddress(address: HttpTypes.StoreCartAddress) {
-  if (!address) {
-    return ""
-  }
-
-  let ret = ""
-
-  if (address.address_1) {
-    ret += ` ${address.address_1}`
-  }
-
-  if (address.address_2) {
-    ret += `, ${address.address_2}`
-  }
-
-  if (address.postal_code) {
-    ret += `, ${address.postal_code} ${address.city}`
-  }
-
-  if (address.country_code) {
-    ret += `, ${address.country_code.toUpperCase()}`
-  }
-
-  return ret
 }
 
 const Shipping: React.FC<ShippingProps> = ({
@@ -362,10 +337,13 @@ const Shipping: React.FC<ShippingProps> = ({
                                 {option.name}
                               </span>
                               <span className="text-sm leading-6 font-normal text-muted-foreground">
-                                {formatAddress(
+                                {/* SFUI-18a (spec 09 กฎ 57): ที่อยู่ของจุดรับสินค้าตามลำดับไทย บรรทัดเดียว (ไม่มีจุลภาค/ช่องว่างซ้อน) */}
+                                {addressLines(
                                   (option as unknown as { service_zone?: { fulfillment_set?: { location?: { address: HttpTypes.StoreCartAddress } } } }).service_zone?.fulfillment_set?.location
-                                    ?.address as HttpTypes.StoreCartAddress
-                                )}
+                                    ?.address
+                                )
+                                  .filter(Boolean)
+                                  .join(" ")}
                               </span>
                             </span>
                           </span>

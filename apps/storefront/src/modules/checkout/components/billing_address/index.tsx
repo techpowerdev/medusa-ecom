@@ -8,6 +8,7 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
     "billing_address.first_name": cart?.billing_address?.first_name || "",
     "billing_address.last_name": cart?.billing_address?.last_name || "",
     "billing_address.address_1": cart?.billing_address?.address_1 || "",
+    "billing_address.address_2": cart?.billing_address?.address_2 || "",
     "billing_address.company": cart?.billing_address?.company || "",
     "billing_address.postal_code": cart?.billing_address?.postal_code || "",
     "billing_address.city": cart?.billing_address?.city || "",
@@ -29,6 +30,8 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
 
   return (
     <>
+      {/* SFUI-18a (spec 09 กฎ 56): ตำบล/แขวง (address_2) ไปกับฟอร์มเพื่อไม่ให้ setAddresses ทับค่าที่มีอยู่ด้วยค่าว่าง — ช่องที่มองเห็นมาใน SFUI-18b */}
+      <input type="hidden" name="billing_address.address_2" value={formData["billing_address.address_2"]} />
       {/* SFUI-12b (spec 09 กฎ 37): < 768px แถวละช่อง, ≥ md คู่ตามตารางกฎ 37b (breakpoint มาตรฐานของ Tailwind) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input

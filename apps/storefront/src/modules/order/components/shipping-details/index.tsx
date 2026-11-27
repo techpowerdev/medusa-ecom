@@ -1,3 +1,4 @@
+import { addressLines } from "@lib/util/address-lines"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 
@@ -33,17 +34,12 @@ const ShippingDetails = ({ order }: ShippingDetailsProps) => {
             {order.shipping_address?.first_name}{" "}
             {order.shipping_address?.last_name}
           </p>
-          <p className="text-sm leading-[1.4rem] text-muted-foreground">
-            {order.shipping_address?.address_1}{" "}
-            {order.shipping_address?.address_2}
-          </p>
-          <p className="text-sm leading-[1.4rem] text-muted-foreground">
-            {order.shipping_address?.postal_code},{" "}
-            {order.shipping_address?.city}
-          </p>
-          <p className="text-sm leading-[1.4rem] text-muted-foreground">
-            {order.shipping_address?.country_code?.toUpperCase()}
-          </p>
+          {/* SFUI-18a (spec 09 กฎ 57): ที่อยู่ตามลำดับไทย + บรรทัดประเทศ */}
+          {addressLines(order.shipping_address).map((line, i) => (
+            <p key={i} className="text-sm leading-[1.4rem] text-muted-foreground">
+              {line}
+            </p>
+          ))}
         </div>
 
         <div

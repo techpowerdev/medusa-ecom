@@ -10,6 +10,7 @@ const SAVED_ADDRESS_FIELDS = [
   "first_name",
   "last_name",
   "address_1",
+  "address_2",
   "company",
   "postal_code",
   "city",
@@ -33,6 +34,7 @@ const ShippingAddress = ({
     "shipping_address.first_name": cart?.shipping_address?.first_name || "",
     "shipping_address.last_name": cart?.shipping_address?.last_name || "",
     "shipping_address.address_1": cart?.shipping_address?.address_1 || "",
+    "shipping_address.address_2": cart?.shipping_address?.address_2 || "",
     "shipping_address.company": cart?.shipping_address?.company || "",
     "shipping_address.postal_code": cart?.shipping_address?.postal_code || "",
     "shipping_address.city": cart?.shipping_address?.city || "",
@@ -66,6 +68,7 @@ const ShippingAddress = ({
         "shipping_address.first_name": address?.first_name || "",
         "shipping_address.last_name": address?.last_name || "",
         "shipping_address.address_1": address?.address_1 || "",
+        "shipping_address.address_2": address?.address_2 || "",
         "shipping_address.company": address?.company || "",
         "shipping_address.postal_code": address?.postal_code || "",
         "shipping_address.city": address?.city || "",
@@ -135,6 +138,8 @@ const ShippingAddress = ({
           />
         </div>
       )}
+      {/* SFUI-18a (spec 09 กฎ 56): ตำบล/แขวง (address_2) ไปกับฟอร์มเพื่อไม่ให้ setAddresses ทับค่าที่มีอยู่ด้วยค่าว่าง — ช่องที่มองเห็นมาใน SFUI-18b */}
+      <input type="hidden" name="shipping_address.address_2" value={formData["shipping_address.address_2"]} />
       {/* SFUI-12b (spec 09 กฎ 37): < 768px แถวละช่อง, ≥ md คู่ตามตารางกฎ 37b (breakpoint มาตรฐานของ Tailwind) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input

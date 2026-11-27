@@ -4,6 +4,7 @@ const FIELDS = [
   "first_name",
   "last_name",
   "address_1",
+  "address_2",
   "company",
   "postal_code",
   "city",

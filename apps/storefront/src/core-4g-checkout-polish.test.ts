@@ -122,4 +122,11 @@ describe("compareAddresses (AC-99)", () => {
   it("ค่าต่างกันจริงยังไม่เท่ากัน", () => {
     expect(compareAddresses({ ...base, company: "A" }, { ...base, company: "" })).toBe(false)
   })
+
+  // SFUI-18a (spec 09 กฎ 56, AC-50): ตำบล/แขวง = address_2 — ต่างกันแค่ตำบลถือว่าเป็นคนละที่อยู่
+  it("ต่างกันแค่ address_2 → false; null กับ \"\" ยังเท่ากัน", () => {
+    expect(compareAddresses({ ...base, address_2: "คลองเตยเหนือ" }, { ...base, address_2: "คลองตันเหนือ" })).toBe(false)
+    expect(compareAddresses({ ...base, address_2: "คลองเตยเหนือ" }, base)).toBe(false)
+    expect(compareAddresses({ ...base, address_2: null }, { ...base, address_2: "" })).toBe(true)
+  })
 })
