@@ -12,6 +12,7 @@ import {
 } from "./support/medusa"
 import { createVoucher } from "./support/evoucher"
 import { addToCartFromPdp } from "./support/server-action"
+import { chooseOption } from "./support/select"
 
 // CORE-38: spec 01 กฎข้อ 96, AC-132 — สรุปที่อยู่ของ checkout เรียงแนวตั้งที่ < 640px (อีเมลยาวตัดบรรทัดในคอลัมน์ของตัวเอง)
 // และ label แบบลอยของ `Input` ไม่ลงไปในพื้นที่ข้อความ (ขอบล่างของ label ≤ input.top + paddingTop) ทุกฟอร์มที่ใช้ `Input`
@@ -151,7 +152,7 @@ test("AC-132: checkout — label ของฟอร์มที่อยู่�
     await page.getByTestId("shipping-company-input").fill("บริษัท ตัวอย่าง จำกัด")
     await page.getByTestId("shipping-postal-code-input").fill("10110")
     await page.getByTestId("shipping-city-input").fill("วัฒนา")
-    await page.getByTestId("shipping-country-select").selectOption(CC)
+    await chooseOption(page.getByTestId("shipping-country-select"), CC)
     await page.getByTestId("shipping-province-input").fill("กรุงเทพมหานคร")
     await page.getByTestId("shipping-phone-input").fill("0812345678")
     await expect(page.getByTestId("shipping-email-input")).toHaveValue(email)
@@ -224,7 +225,7 @@ test("AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมือง�
     await page.getByTestId("shipping-address-input").fill(LONG_ADDRESS)
     await page.getByTestId("shipping-postal-code-input").fill("10110")
     await page.getByTestId("shipping-city-input").fill(LONG_CITY)
-    await page.getByTestId("shipping-country-select").selectOption(CC)
+    await chooseOption(page.getByTestId("shipping-country-select"), CC)
     await page.getByTestId("shipping-phone-input").fill("0812345678")
     await page.getByTestId("billing-address-checkbox").click()
     await page.getByTestId("billing-first-name-input").fill(LONG_NAME)
@@ -232,7 +233,7 @@ test("AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมือง�
     await page.getByTestId("billing-address-input").fill(LONG_ADDRESS)
     await page.getByTestId("billing-postal-input").fill("10110")
     await page.getByTestId("billing-city-input").fill(LONG_CITY)
-    await page.getByTestId("billing-country-select").selectOption(CC)
+    await chooseOption(page.getByTestId("billing-country-select"), CC)
     await page.getByTestId("submit-address-button").click()
     await expect(page).toHaveURL(/step=delivery/, { timeout: 30_000 })
   })
@@ -270,7 +271,7 @@ test("AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/
     await page.getByTestId("billing-address-input").fill(LONG_ADDRESS)
     await page.getByTestId("billing-postal-input").fill("10110")
     await page.getByTestId("billing-city-input").fill(LONG_CITY)
-    await page.getByTestId("billing-country-select").selectOption(CC)
+    await chooseOption(page.getByTestId("billing-country-select"), CC)
     await page.getByTestId("billing-phone-input").fill("0812345678")
     await page.getByTestId("submit-address-button").click()
     await expect(page).toHaveURL(/step=payment/, { timeout: 30_000 })

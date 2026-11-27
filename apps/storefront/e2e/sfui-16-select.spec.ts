@@ -6,8 +6,9 @@ import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { addAddresses, poolGroup } from "./support/group-buy"
 import { STOREFRONT_COUNTRY as CC, adminHeaders, createCustomer, fulfillAndShip, placeOrder, publishableKey, signInAs } from "./support/medusa"
 import { chooseOption, expectSelected, selectOptions } from "./support/select"
+import { addToCartFromPdp } from "./support/server-action"
 
-// SFUI-16 (spec 09 รอบ 49 กฎ 40b–46; ADR-033): select ของ storefront เป็น Select ของ shadcn (Radix) — ส่วน 16a: คืนสินค้า + group buy join (AC-43)
+// SFUI-16 (spec 09 รอบ 49 กฎ 40b–46; ADR-033): select ของ storefront เป็น Select ของ shadcn (Radix) — 16a: คืนสินค้า + group buy join (AC-43), 16b: ประเทศ (AC-44/49)
 // หา element ด้วย data-testid เท่านั้น (trigger `<t>`, `<t>-options`, `<t>-option` + data-value)
 
 const heightOf = (control: Locator) => control.evaluate((el) => getComputedStyle(el).height)
@@ -105,5 +106,55 @@ test.describe("16a: group buy join (AC-43)", () => {
     for (const id of ["group-quantity", "group-address-select", "group-shipping-option"]) {
       expect(await heightOf(page.getByTestId(id)), id).toBe("36px")
     }
+  })
+})
+
+// SFUI-16b — AC-49 (กฎ 46, Q-R49-1 = ก): มือถือใช้ popover ของ Radix — กล่องรายการอยู่ในจอทั้งกล่อง เลือกได้ หน้าไม่ล้นแนวนอน
+test.describe("SFUI-16b ประเทศ", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
+
+  test("AC-49: 390×844 แตะ shipping-country-select → shipping-country-select-options อยู่ในจอ เลือกได้ และไม่ล้นแนวนอน", async ({
+    page,
+    context,
+    request,
+    baseURL,
+    step,
+    evidence,
+  }) => {
+    test.setTimeout(120_000)
+    const pk = await publishableKey(request, await adminHeaders(request))
+    const customer = await createCustomer(request, pk)
+    await signInAs(context, baseURL!, customer)
+    await page.goto(`/${CC}/products/t-shirt`)
+    await addToCartFromPdp(page, { request, pk, customer })
+    await page.goto(`/${CC}/checkout?step=address`)
+
+    const trigger = page.getByTestId("shipping-country-select")
+    const options = page.getByTestId("shipping-country-select-options")
+    await step("แตะ trigger → กล่องรายการมองเห็นและอยู่ในจอทั้งกล่อง", async () => {
+      await trigger.scrollIntoViewIfNeeded()
+      await expect(async () => {
+        if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.tap()
+        await expect(trigger).toHaveAttribute("aria-expanded", "true", { timeout: 1_000 })
+      }).toPass()
+      await expect(options).toBeVisible()
+      const box = (await options.boundingBox())!
+      const viewport = page.viewportSize()!
+      expect(box.x, "ซ้าย").toBeGreaterThanOrEqual(0)
+      expect(box.y, "บน").toBeGreaterThanOrEqual(0)
+      expect(box.x + box.width, "ขวา").toBeLessThanOrEqual(viewport.width)
+      expect(box.y + box.height, "ล่าง").toBeLessThanOrEqual(viewport.height)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+      await evidence("16b-01-country-popover-390")
+      await page.keyboard.press("Escape")
+      await expect(trigger).toHaveAttribute("aria-expanded", "false")
+    })
+
+    await step("เลือก item ได้ และหน้าไม่ล้นแนวนอน", async () => {
+      await chooseOption(trigger, CC)
+      await expectSelected(trigger, CC)
+      await expect(options).toBeHidden()
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    })
   })
 })

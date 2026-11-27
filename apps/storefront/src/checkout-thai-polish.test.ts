@@ -134,8 +134,10 @@ describe("UI ของ checkout (กฎข้อ 54–55)", () => {
     const { default: CountrySelect } = await import(
       "@modules/checkout/components/country-select"
     )
-    const html = renderToStaticMarkup(createElement(CountrySelect, { name: "country" }))
-    expect(html).toContain("เลือกประเทศ")
+    const html = renderToStaticMarkup(createElement(CountrySelect, { name: "country", "data-testid": "country-select" }))
+    // SFUI-16b (spec 09 กฎ 40b, 41): placeholder อยู่ใน SelectValue ของ trigger (Radix) ไม่ใช่ <option> ว่าง
+    expect(html).toMatch(/data-slot="select-value"[^>]*>เลือกประเทศ</)
+    expect(html).toMatch(/role="combobox"[^>]*data-placeholder=""|data-placeholder=""[^>]*role="combobox"/)
   })
 
   it("{STORE_NAME} ที่ตามด้วยอักษรไทยใน JSX มีเว้นวรรค", () => {

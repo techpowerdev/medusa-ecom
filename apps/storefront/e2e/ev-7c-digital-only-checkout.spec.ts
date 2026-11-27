@@ -11,6 +11,7 @@ import {
 } from "./support/medusa"
 import { expectThai } from "./support/thai-text"
 import { addToCartFromPdp, waitForServerAction } from "./support/server-action"
+import { chooseOption } from "./support/select"
 
 // EV-7c (spec 02 กฎข้อ 24, AC-3 ส่วน storefront, AC-37): checkout ของ cart ที่มีแต่ e-voucher
 // ไม่มีขั้น delivery, ขั้นที่อยู่เป็นที่อยู่สำหรับใบเสร็จ/ใบกำกับภาษี (ไม่มีคำว่า "จัดส่ง"), manual payment (CI)
@@ -122,7 +123,7 @@ test("AC-37, AC-3: cart มีแต่ voucher → ไม่มีขั้น 
     await page.getByTestId("billing-postal-input").fill(BILLING.postal_code)
     // CORE-52 (spec 01 กฎข้อ 110b): เขต/อำเภอเป็นช่องบังคับของที่อยู่ใบกำกับภาษีด้วย
     await page.getByTestId("billing-city-input").fill("วัฒนา")
-    await page.getByTestId("billing-country-select").selectOption(BILLING.country_code)
+    await chooseOption(page.getByTestId("billing-country-select"), BILLING.country_code)
     await page.getByTestId("billing-email-input").fill(customer.email)
     // CORE-43 (กฎข้อ 101b): setAddresses ช้าเกิน 5 วินาทีได้ตอนเครื่องโหลดสูง — รอ action ที่ส่งอีเมลนี้ตอบ redirect ไปขั้นชำระเงิน
     const saved = waitForServerAction(page, (body) => body.includes(customer.email))
