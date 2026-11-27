@@ -1,0 +1,283 @@
+import fs from "node:fs"
+import path from "node:path"
+
+import { expect, test } from "@playwright/test"
+import ts from "typescript"
+
+import { STOREFRONT, readSource, sourceFiles } from "./support/sfui-source"
+
+// SFUI-13 (spec 09 รอบ 48 กฎ 26, 28, 37; AC-35, AC-37 (3) static): guard ไม่ให้ช่องกรอกใหม่หลุดจาก `field` ของ shadcn
+// - ทุก <input>/<select>/<textarea> ของ JSX ใน src/modules, src/app อยู่ใน common/components/{input,native-select,checkbox}
+//   หรือตรงคู่ "ไฟล์ + element" ของ allow-list (กฎ 26) — element ละหนึ่งตัวพอดี ไฟล์ใน allow-list ที่มี element อื่น = ล้ม
+// - `@/components/ui/input` import ได้เฉพาะใน src/components/** และ common/components/input
+// - ทุก Input/NativeSelect/CountrySelect/Checkbox ของ common ในไฟล์ของตาราง inventory มี label
+// - container ของช่องในไฟล์ inventory ไม่มี breakpoint ของ starter และ grid-cols-2/[…] ต้องมี md: (ยกเว้นระดับฟอร์มตามค่าคงที่)
+// parse ด้วย TypeScript (ไม่นับ comment)
+
+type Tag = ts.JsxOpeningElement | ts.JsxSelfClosingElement
+
+const parse = (file: string) => ts.createSourceFile(file, readSource(file), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+
+function walk(node: ts.Node, visit: (node: ts.Node) => void) {
+  visit(node)
+  node.forEachChild((child) => walk(child, visit))
+}
+
+const tagsOf = (sf: ts.SourceFile) => {
+  const found: Tag[] = []
+  walk(sf, (n) => {
+    if (ts.isJsxOpeningElement(n) || ts.isJsxSelfClosingElement(n)) found.push(n)
+  })
+  return found
+}
+
+/** ค่าของ attribute: สตริง → ข้อความ, template → ข้อความใน backtick ตามที่เขียน, expression อื่น → `{…}` ตามที่เขียน, ไม่มีค่า → "" */
+function attrs(tag: Tag, sf: ts.SourceFile): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const a of tag.attributes.properties) {
+    if (!ts.isJsxAttribute(a)) continue
+    const name = a.name.getText(sf)
+    const init = a.initializer
+    if (!init) out[name] = ""
+    else if (ts.isStringLiteral(init)) out[name] = init.text
+    else if (ts.isJsxExpression(init) && init.expression) {
+      const e = init.expression
+      out[name] = ts.isStringLiteral(e) || ts.isNoSubstitutionTemplateLiteral(e) ? e.text : ts.isTemplateExpression(e) ? e.getText(sf).slice(1, -1) : `{${e.getText(sf)}}`
+    }
+  }
+  return out
+}
+
+const line = (sf: ts.SourceFile, node: ts.Node) => sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1
+
+const COMMON_CONTROLS = ["input", "native-select", "checkbox"].map((name) => `src/modules/common/components/${name}/`)
+
+type Allowed = { file: string; tag: "input" | "select"; match: Record<string, string>; why: string }
+
+/** allow-list ของกฎ 26 (ไฟล์ + element) — `<input type="hidden">` ยกเว้นทุกไฟล์ใน src/modules, src/app */
+const ALLOW_LIST: Allowed[] = [
+  { file: "store/components/store-search-box/index.tsx", tag: "input", match: { type: "search", "data-testid": "store-search-input" }, why: "ช่องค้นหา" },
+  { file: "search/components/search-form/index.tsx", tag: "input", match: { type: "search", "data-testid": "search-query-input" }, why: "ช่องค้นหา" },
+  { file: "layout/components/search/index.tsx", tag: "input", match: { type: "search", "data-testid": "search-input" }, why: "ช่องค้นหาใน drawer" },
+  { file: "store/components/store-refinements/on-sale-toggle.tsx", tag: "input", match: { type: "checkbox", "data-testid": "on-sale-toggle" }, why: "ตัวกรอง" },
+  {
+    file: "store/components/store-refinements/refinement-group.tsx",
+    tag: "input",
+    match: { type: "checkbox", "data-testid": "refinement-${attribute}" },
+    why: "ตัวกรอง",
+  },
+  // testid `option-button` อยู่บน <label> ไม่ใช่ <input> (sr-only)
+  { file: "products/components/product-actions/option-select.tsx", tag: "input", match: { type: "radio" }, why: "ตัวเลือกสินค้า" },
+  {
+    file: "products/components/product-actions/index.tsx",
+    tag: "select",
+    match: { name: "quantity", "data-testid": "product-quantity-select" },
+    why: "จำนวนบน PDP",
+  },
+  // testid มาจากผู้เรียก (spread props)
+  { file: "cart/components/cart-item-select/index.tsx", tag: "select", match: {}, why: "จำนวนในตะกร้า" },
+  {
+    file: "group-buy/components/group-page/group-join.tsx",
+    tag: "input",
+    match: { type: "number", "data-testid": "group-selection-quantity" },
+    why: "จำนวนต่อแถวในรายการที่เลือก (select สามตัวของไฟล์นี้อยู่ในขอบเขต — ห้ามมี <select>)",
+  },
+].map((a) => ({ ...a, file: `src/modules/${a.file}` }) as Allowed)
+
+/** ไฟล์ของตาราง inventory (spec 09 รอบ 48) — profile-password ไม่ render ในหน้า profile จึงตรวจได้แค่ static */
+const INVENTORY = [
+  "account/components/login/index.tsx",
+  "account/components/register/index.tsx",
+  "account/components/profile-name/index.tsx",
+  "account/components/profile-phone/index.tsx",
+  "account/components/profile-password/index.tsx",
+  "account/components/profile-billing-address/index.tsx",
+  "account/components/address-card/add-address.tsx",
+  "account/components/address-card/edit-address-modal.tsx",
+  "checkout/components/shipping-address/index.tsx",
+  "checkout/components/billing_address/index.tsx",
+  "checkout/components/addresses/index.tsx",
+  "checkout/components/discount-code/index.tsx",
+  "returns/components/return-request-form/index.tsx",
+  "group-buy/components/group-page/group-join.tsx",
+  "affiliate/components/auth-forms/index.tsx",
+].map((f) => `src/modules/${f}`)
+
+/**
+ * container ระดับฟอร์ม/แถวสินค้าที่ยกเว้นกฎ 37 (ตาราง 37b "ไม่มีคู่") — "ไฟล์ + class" ต้องตรงกับที่พบพอดี
+ * (class ที่ยกเว้นแต่ไม่มีแล้วก็ล้ม — ให้ลบออกจากรายการนี้)
+ */
+const FORM_LEVEL_EXCEPTIONS: Record<string, string[]> = {
+  // affiliate วางฟอร์ม login/สมัครข้างกันที่ small: — ระดับฟอร์ม ไม่ใช่ container ของช่อง
+  "src/modules/affiliate/components/auth-forms/index.tsx": ["small:grid-cols-2"],
+  // แถวสินค้าของคืนสินค้า (ชื่อสินค้า | จำนวน | เหตุผล) — layout ของแถวสินค้า ไม่ใช่คู่ช่อง
+  "src/modules/returns/components/return-request-form/index.tsx": ["small:flex-row", "small:items-center"],
+}
+
+const STARTER_BREAKPOINTS = new Set(["2xsmall", "xsmall", "small", "medium", "large", "xlarge", "2xlarge"])
+
+/** variant ของ class (`:` ภายใน `[...]` ไม่นับ) */
+function splitClass(token: string) {
+  const parts: string[] = []
+  let depth = 0
+  let current = ""
+  for (const c of token) {
+    if (c === "[") depth++
+    else if (c === "]") depth--
+    if (c === ":" && depth === 0) {
+      parts.push(current)
+      current = ""
+    } else current += c
+  }
+  return { variants: parts, utility: current.replace(/^!/, "") }
+}
+
+/** class ที่ผิดกฎ 37 ในไฟล์: variant breakpoint ของ starter หรือ grid-cols-2/grid-cols-[…] ที่ไม่มี md: */
+function layoutViolations(file: string): string[] {
+  const sf = parse(file)
+  const found = new Set<string>()
+  walk(sf, (n) => {
+    if (!(ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n) || ts.isTemplateHead(n) || ts.isTemplateMiddle(n) || ts.isTemplateTail(n))) return
+    for (const token of n.text.split(/\s+/).filter(Boolean)) {
+      const { variants, utility } = splitClass(token)
+      if (variants.some((v) => STARTER_BREAKPOINTS.has(v))) found.add(token)
+      else if (/^grid-cols-(?:2|\[.*\])$/.test(utility) && !variants.includes("md")) found.add(token)
+    }
+  })
+  return Array.from(found).sort()
+}
+
+/** path ที่ import ชี้ (alias `@modules/`, `@/`, relative) สัมพัทธ์กับ apps/storefront ไม่มีนามสกุล */
+function resolveImport(from: string, spec: string): string | null {
+  if (spec.startsWith("@modules/")) return `src/modules/${spec.slice("@modules/".length)}`
+  if (spec.startsWith("@/")) return `src/${spec.slice(2)}`
+  if (spec.startsWith(".")) return path.posix.normalize(path.posix.join(path.posix.dirname(from), spec))
+  return null
+}
+
+const asModule = (resolved: string) => resolved.replace(/\.(tsx?)$/, "").replace(/\/index$/, "")
+
+function importsOf(file: string) {
+  const sf = parse(file)
+  return sf.statements.filter(ts.isImportDeclaration).map((d) => ({
+    module: resolveImport(file, (d.moduleSpecifier as ts.StringLiteral).text),
+    defaultName: d.importClause?.name?.text ?? null,
+  }))
+}
+
+const FIELD_COMPONENTS: Record<string, string> = {
+  "src/modules/common/components/input": "Input",
+  "src/modules/common/components/native-select": "NativeSelect",
+  "src/modules/common/components/checkbox": "Checkbox",
+  "src/modules/checkout/components/country-select": "CountrySelect",
+}
+
+/** ค่าเริ่มต้นของ prop `label` ที่ component ตั้งเอง (CountrySelect: `label = "ประเทศ"` — SFUI-11a) */
+function defaultLabel(module: string): string | null {
+  const sf = parse(`${module}/index.tsx`)
+  let found: string | null = null
+  walk(sf, (n) => {
+    if (ts.isBindingElement(n) && n.name.getText(sf) === "label" && n.initializer && ts.isStringLiteral(n.initializer)) {
+      found = n.initializer.text
+    }
+  })
+  return found
+}
+
+const UI_INPUT = "src/components/ui/input"
+
+test("AC-35 (กฎ 26): <input>/<select>/<textarea> ของ JSX อยู่ใน common/components หรือตรงคู่ ไฟล์ + element ของ allow-list (element ละหนึ่งตัวพอดี)", () => {
+  const files = sourceFiles().filter((f) => /^src\/(modules|app)\/.*\.tsx$/.test(f))
+  const outside: string[] = []
+  const hits = new Map<Allowed, string[]>(ALLOW_LIST.map((a) => [a, []]))
+  for (const file of files) {
+    if (COMMON_CONTROLS.some((dir) => file.startsWith(dir))) continue
+    const sf = parse(file)
+    for (const tag of tagsOf(sf)) {
+      const name = tag.tagName.getText(sf)
+      if (!["input", "select", "textarea"].includes(name)) continue
+      const a = attrs(tag, sf)
+      if (name === "input" && a.type === "hidden") continue
+      const where = `${file}:${line(sf, tag)} <${name} ${JSON.stringify(a)}>`
+      const allowed = ALLOW_LIST.find(
+        (entry) => entry.file === file && entry.tag === name && Object.entries(entry.match).every(([k, v]) => a[k] === v)
+      )
+      if (allowed) hits.get(allowed)!.push(where)
+      else outside.push(where)
+    }
+  }
+  expect(outside, "ช่องกรอกนอก common/components และนอก allow-list ของกฎ 26").toEqual([])
+  for (const [entry, found] of hits) {
+    expect(found, `${entry.file} <${entry.tag} ${JSON.stringify(entry.match)}> (${entry.why}) — ต้องพบหนึ่งตัวพอดี`).toHaveLength(1)
+  }
+})
+
+test("AC-35 (กฎ 28): @/components/ui/input import ได้เฉพาะใน src/components/** และ common/components/input", () => {
+  const all = (dir: string): string[] =>
+    fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+      const full = path.join(dir, e.name)
+      return e.isDirectory() ? all(full) : /\.tsx?$/.test(e.name) ? [path.relative(STOREFRONT, full).split(path.sep).join("/")] : []
+    })
+  // รวมไฟล์ test ด้วย — test ที่ render ui/input ตรงก็ข้าม component ร่วมเช่นกัน
+  const offenders = all(path.join(STOREFRONT, "src")).filter(
+    (file) =>
+      importsOf(file).some((i) => i.module && asModule(i.module) === UI_INPUT) &&
+      !file.startsWith("src/components/") &&
+      !file.startsWith("src/modules/common/components/input/")
+  )
+  expect(offenders).toEqual([])
+})
+
+test("AC-35 (กฎ 28–30): ทุก Input/NativeSelect/CountrySelect/Checkbox ของ common ในไฟล์ของตาราง inventory มี label", () => {
+  const missing: string[] = []
+  let counted = 0
+  for (const file of INVENTORY) {
+    expect(fs.existsSync(path.join(STOREFRONT, file)), file).toBe(true)
+    const locals = new Map<string, string>()
+    for (const i of importsOf(file)) {
+      if (i.module && i.defaultName && FIELD_COMPONENTS[asModule(i.module)]) locals.set(i.defaultName, asModule(i.module))
+    }
+    const sf = parse(file)
+    for (const tag of tagsOf(sf)) {
+      const component = locals.get(tag.tagName.getText(sf))
+      if (!component) continue
+      counted++
+      const a = attrs(tag, sf)
+      const label = a.label ?? defaultLabel(component)
+      if (!label || label === "{undefined}") missing.push(`${file}:${line(sf, tag)} <${tag.tagName.getText(sf)} data-testid=${a["data-testid"]}>`)
+    }
+  }
+  expect(missing).toEqual([])
+  // จำนวนช่องในตาราง inventory: 12a 43 + 12b 22 + 12c 11 = 76 (กันตัวนับหลุดเพราะ import เปลี่ยนรูป — เพิ่ม/ลดช่องต้องแก้ spec ก่อน)
+  expect(counted).toBe(76)
+})
+
+test("AC-37 (3): container ของช่องในไฟล์ inventory ไม่มี breakpoint ของ starter และ grid-cols-2/[…] มี md: — ยกเว้นระดับฟอร์มตามค่าคงที่ ไฟล์ + class", () => {
+  for (const file of INVENTORY) {
+    expect(layoutViolations(file), file).toEqual([...(FORM_LEVEL_EXCEPTIONS[file] ?? [])].sort())
+  }
+  for (const file of Object.keys(FORM_LEVEL_EXCEPTIONS)) expect(INVENTORY, file).toContain(file)
+})
+
+test("AC-37 (b) static: profile-password — รหัสผ่านเดิม–ใหม่คู่กันที่ md:, ยืนยันแถวถัดไป, ทุกช่องมี label/required/type password (ไม่ render ในหน้า profile จึงตรวจ e2e ไม่ได้)", () => {
+  const file = "src/modules/account/components/profile-password/index.tsx"
+  const sf = parse(file)
+  const grids = tagsOf(sf).filter((t) => {
+    const cls = (attrs(t, sf).className ?? "").split(/\s+/)
+    return cls.includes("grid-cols-1") && cls.includes("md:grid-cols-2")
+  })
+  expect(grids, "container grid-cols-1 md:grid-cols-2 หนึ่งตัว").toHaveLength(1)
+  const grid = grids[0].parent as ts.JsxElement
+  const children = grid.children.filter((c): c is ts.JsxSelfClosingElement => ts.isJsxSelfClosingElement(c))
+  expect(children.map((c) => c.tagName.getText(sf))).toEqual(["Input", "Input", "Input"])
+  expect(grid.children.filter((c) => !ts.isJsxText(c) || c.text.trim() !== "")).toHaveLength(3)
+  const fields = children.map((c) => attrs(c, sf))
+  expect(fields.map((a) => a["data-testid"])).toEqual(["old-password-input", "new-password-input", "confirm-password-input"])
+  for (const a of fields) {
+    expect(a.label, a["data-testid"]).toMatch(/[฀-๿]/)
+    expect(a.label, a["data-testid"]).not.toContain("*")
+    expect(a.required, a["data-testid"]).toBe("")
+    expect(a.type, a["data-testid"]).toBe("password")
+    expect(a.placeholder, a["data-testid"]).toBeUndefined()
+  }
+})

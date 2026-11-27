@@ -1,0 +1,31 @@
+# SFUI-13 — evidence (spec 09 รอบ 48 กฎ 26, 28, 37; AC-35, AC-36, AC-37 (3) static)
+# ฐาน: feat/SFUI-12c-misc-forms 835ee84a (stack 11a → 11b → 12a → 12b → 12c); Node 24.12.0; static/unit เท่านั้น (ไม่มีหน้าเปลี่ยน — ไม่รัน e2e chromium)
+
+## Red: ไฟล์ src/modules ที่ 12a/12b/12c แก้ (14 ไฟล์ ไม่รวม common/components) คืนเป็นของ 9b440e36 ชั่วคราว แล้วรัน e2e/sfui-13-form-guard.unit.spec.ts → 5 failed (คืนไฟล์ด้วย git checkout แล้ว)
+- กฎ 26: <select> ดิบ 3 ตัวใน group-join.tsx (บรรทัด 150, 219, 253) อยู่นอก allow-list
+- กฎ 28: discount-code/index.tsx import @/components/ui/input
+- label: <NativeSelect> ไม่มี label — billing-country-code-select, return-item-quantity, return-item-reason (+ <Input> ของ discount-code ไม่ได้มาจาก common จึงนับไม่ครบ 76)
+- กฎ 37 (3): grid-cols-2 ไม่มี md: ในฟอร์มที่อยู่/ชื่อ
+- profile-password: ไม่มี container grid-cols-1 md:grid-cols-2
+
+## Green: e2e/sfui-13-form-guard.unit.spec.ts บน 835ee84a
+✓   62 [unit] › e2e/sfui-13-form-guard.unit.spec.ts:189:5 › AC-35 (กฎ 26): <input>/<select>/<textarea> ของ JSX อยู่ใน common/components หรือตรงคู่ ไฟล์ + element ของ allow-list (element ละหนึ่งตัวพอดี) (128ms)
+✓   70 [unit] › e2e/sfui-13-form-guard.unit.spec.ts:215:5 › AC-35 (กฎ 28): @/components/ui/input import ได้เฉพาะใน src/components/** และ common/components/input (162ms)
+✓   96 [unit] › e2e/sfui-13-form-guard.unit.spec.ts:231:5 › AC-35 (กฎ 28–30): ทุก Input/NativeSelect/CountrySelect/Checkbox ของ common ในไฟล์ของตาราง inventory มี label (11ms)
+✓   98 [unit] › e2e/sfui-13-form-guard.unit.spec.ts:255:5 › AC-37 (3): container ของช่องในไฟล์ inventory ไม่มี breakpoint ของ starter และ grid-cols-2/[…] มี md: — ยกเว้นระดับฟอร์มตามค่าคงที่ ไฟล์ + class (8ms)
+✓   99 [unit] › e2e/sfui-13-form-guard.unit.spec.ts:262:5 › AC-37 (b) static: profile-password — รหัสผ่านเดิม–ใหม่คู่กันที่ md:, ยืนยันแถวถัดไป, ทุกช่องมี label/required/type password (ไม่ render ในหน้า profile จึงตรวจ e2e ไม่ได้) (2ms)
+
+## Playwright project unit ทั้งหมด (รวม evidence-budget, AC-5, AC-19, AC-26)
+245 passed (1.6s)
+## vitest ทั้งหมด
+ Test Files  134 passed (134)
+      Tests  2052 passed (2052)
+## pnpm lint: 0 errors (warning เดิม: backend 4, storefront 27) · pnpm typecheck: ผ่าน · pnpm --filter storefront build: ผ่าน (env ของ build ไม่ใช่ค่าจริง — ไม่มี backend)
+
+## AC-36: git diff origin/develop --stat -- apps/backend apps/storefront/package.json pnpm-lock.yaml apps/storefront/src/styles/globals.css
+จำนวนบรรทัด output: 0 (ว่าง) · SFUI-13 ไม่แก้ไฟล์ใน apps/storefront/src: 0 บรรทัด
+
+## ค่าคงที่ใน test
+- allow-list กฎ 26: 9 คู่ ไฟล์ + element (แต่ละคู่ต้องพบหนึ่งตัวพอดี) + <input type="hidden"> ทุกไฟล์
+- ไฟล์ inventory 15 ไฟล์ · ช่องของ common ในไฟล์ inventory = 76 (12a 43 + 12b 22 + 12c 11)
+- ข้อยกเว้นระดับฟอร์ม (ไฟล์ + class): affiliate auth-forms small:grid-cols-2; return-request-form small:flex-row, small:items-center
