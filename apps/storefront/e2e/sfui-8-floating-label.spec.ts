@@ -86,5 +86,11 @@ test("AC-23 (2)(3): PDP และหน้า group buy — option-button แล
     const team = await teamGroup(request, 3)
     await page.goto(`/${CC}/g/${team.token}`)
     await expectOptionButtons(page.getByTestId("group-options").locator("fieldset"))
+    // SFUI-12c (spec 09 กฎ 28, AC-29): label ของ group-quantity เป็น FieldLabel เหนือช่อง (เดิม <label> ครอบ select) — ไม่เลื่อน ไม่ทับช่อง
+    const quantityLabel = page.getByTestId("group-quantity-label")
+    expect((await style(quantityLabel)).translate, "label ของ group-quantity ไม่เลื่อน").toBe("none")
+    const labelBox = (await quantityLabel.boundingBox())!
+    const selectBox = (await page.getByTestId("group-quantity").boundingBox())!
+    expect(labelBox.y + labelBox.height, "label ของ group-quantity อยู่เหนือช่อง").toBeLessThanOrEqual(selectBox.y + 0.5)
   })
 })
