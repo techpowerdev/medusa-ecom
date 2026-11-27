@@ -40,7 +40,7 @@ const ProfilePassword: React.FC<MyInformationProps> = ({ customer: _customer }) 
         clearState={clearState}
         data-testid="account-password-editor"
       >
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
             label="รหัสผ่านเดิม"
             name="old_password"
