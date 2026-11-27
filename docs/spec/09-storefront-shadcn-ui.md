@@ -2,7 +2,8 @@
 Status: accepted (owner 2026-11-26: ADR-030 accepted, Q1 = ยอมรับ, Q2 = งด release ระหว่าง SFUI-2..6) — **ทำงานแบบ stack ได้** (owner อนุญาต 2026-11-26 เป็นข้อยกเว้นของกติกา
 "ห้ามแตก branch จาก PR ที่ยังไม่ merge" เฉพาะชุด SFUI): SFUI-1a แตกจาก branch เอกสาร `docs/SFUI-shadcn-adr-spec`, task ถัดไปแตกต่อจาก branch ของ task ที่อยู่ใน Depends
 (task ขนานแตกจาก SFUI-2 ตัวเดียวกัน; SFUI-6 แตกจาก branch ที่รวม 3a..5e แล้ว) โดยไม่ต้องรอ PR merge → เปิด PR ทั้งชุดพร้อมกันตอนท้าย (base = `develop`) แล้ว merge ตามลำดับในตาราง Tasks
-· SFUI-1a..7 ☑ (#565–#581); รอบ 45 เก็บกวาด (SFUI-8, 9a–9e, 10) ดูหัวข้อ "ส่วนเก็บกวาดหลัง SFUI-7" (owner 2026-11-26 "เก็บต่อเลย")
+· SFUI-1a..7 ☑ (#565–#581); รอบ 45 เก็บกวาด (SFUI-8, 9a–9e, 10) ดูหัวข้อ "ส่วนเก็บกวาดหลัง SFUI-7" (owner 2026-11-26 "เก็บต่อเลย");
+รอบ 48 ฟอร์ม (SFUI-11a..13, ADR-032 accepted 2026-11-27) ดูหัวข้อ "ส่วนฟอร์ม (รอบ 48)" — stack ได้ (owner 2026-11-27)
 Goal (owner's words, 2026-11-26): เปลี่ยน storefront (`apps/storefront`) จาก UI ของ Medusa เป็น shadcn/ui (Radix) — แทนทั้ง 4 ชั้น (shim `common/components/ui`,
 `@medusajs/ui-preset` + `thai-ui-preset.js` + class `txt-*`/`h*-webs`, `@medusajs/icons` → `lucide-react`, `@headlessui/react` → Radix ผ่าน shadcn) และถอด `tailwindcss-radix`;
 อัป Tailwind v3 → v4 ก่อนแล้วใช้ shadcn CLI รุ่นล่าสุด; ยอมให้หน้าตาเปลี่ยนเป็นสไตล์ shadcn แต่ยังใช้สี brand ตาม ADR-008
@@ -338,6 +339,211 @@ qa เก็บ evidence ทุก task (UI): 9a–9e screenshot ก่อน/�
   = commit ที่ branch ของ task แตกออกมา (ก่อนแก้)
 - ไม่งด release ระหว่างรอบ 45 (แต่ละ task merge แล้ว develop ยังสมบูรณ์: 9x ไม่เปลี่ยนค่าที่ render, SFUI-8 เป็นการแก้บั๊ก, SFUI-10 ลบของที่ไม่มีผู้ใช้)
 
+## ส่วนฟอร์ม (รอบ 48 — owner 2026-11-27, ก่อน release v0.4.0)
+Status: accepted (owner 2026-11-27 — ADR-032 accepted "รับตามข้อเสนอ" D1–D5 = ก, Q3 = ตามข้อเสนอ, Q4 = ไม่ทำรอบนี้, Q5 = stack ได้; เพิ่มกติกาการจัดวาง กฎ 37 + ความสูง 36px ตาม default) — เริ่ม SFUI-11a ได้
+Goal (owner's words, 2026-11-27): **ทุกฟอร์มของ storefront** ปรับช่องกรอกให้ "คงตาม default ที่ shadcn ให้มาพร้อม component" — label อยู่เหนือช่อง (ไม่ใช่ floating label อีกต่อไป),
+พร้อมข้อความ error, ป้ายบังคับกรอก (*) และ placeholder ตามความเหมาะสม
+Out of scope: เปลี่ยนกฎ validation/ข้อความ error ของ server action/`name`/ค่าใน `FormData`/flow · ช่องที่ไม่ใช่ฟอร์มกรอกข้อมูล (allow-list ของกฎ 26 — Q3) · Stripe Elements (สไตล์ภายใน iframe) ·
+error ราย field จาก server (Q4) · `apps/backend/**` · หน้าอื่นนอกจากฟอร์มในตาราง inventory
+ที่ตั้ง: เป็นส่วนของ spec 09 (ไม่แยก spec ใหม่) เพราะเป็นชั้นแสดงผล storefront บน shadcn ตาม ADR-030 และต้องอ้าง/ยกเว้นกฎ 3, 4, 13, 19, 22 ของ spec นี้โดยตรง; ทางเลือกอยู่ใน ADR-032
+
+### What Medusa already gives us
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ช่องกรอก + label + error ของ storefront | Starter: `common/components/input` (floating label) — ไม่มี error/describedby | **แทน** ด้วย shadcn `field` (CLI) ประกอบใน component ร่วมเดิม (ADR-032 D1) |
+| `<select>` ของฟอร์ม | Starter: `common/components/native-select` (ไม่มี label) | **ขยาย** ให้รับ label/error ผ่าน `field`; คง `<select>` native (กฎ 4) |
+| ปุ่มในช่อง (แสดงรหัสผ่าน) | ไม่มี | shadcn `input-group` (CLI — ADR-032 D5) |
+| validation + ข้อความ error | ไม่มี (Medusa คืน error ของ API; storefront ใช้ attribute native) | **custom เล็ก**: แปลผล `ValidityState` เป็นข้อความไทย (`src/lib/util/field-validation.ts`) — shadcn ไม่มี (คู่มือ useActionState ยัง "Coming Soon") |
+| plugin จาก medusajs.com/integrations | ไม่มีสำหรับ UI ของ storefront | — |
+
+Data model / Workflows / API routes: none · Admin UI: none · Storefront pages: ไม่มีหน้าใหม่ — ฟอร์มในตาราง inventory หน้าตาเปลี่ยน
+
+### ตาราง inventory (ณ `2fc21531`) — ช่องในขอบเขต, ป้ายบังคับ, placeholder (ADR-032 D2), task เจ้าของ
+`*` = `required` เดิม (ไม่เปลี่ยนว่าช่องไหนบังคับ) · placeholder ว่าง = ไม่มี · label = ข้อความเดิม (ช่องที่ยังไม่มี label ระบุข้อความใหม่)
+
+| Task | ฟอร์ม (ไฟล์ใน `src/modules/`) | ช่อง (testid ของ control) — `*` บังคับ | placeholder | หมายเหตุ |
+|---|---|---|---|---|
+| 12a | login `account/components/login` | `email-input`*, `password-input`* | — | รหัสผ่านใช้ `InputGroup` (11a) |
+| 12a | register `account/components/register` | `first-name-input`*, `last-name-input`*, `email-input`*, `phone-input`, `password-input`* | `phone-input`: `เช่น 0812345678` | |
+| 12a | `account/components/profile-name` | `first-name-input`*, `last-name-input`* | — | ใน `edit-panel` ของ `account-info` |
+| 12a | `account/components/profile-phone` | `phone-input` | `เช่น 0812345678` | `type="phone"`/`autoComplete="phone"` → `tel` (กฎ 33b) |
+| 12a | `account/components/profile-password` | `old-password-input`*, `new-password-input`*, `confirm-password-input`* | — | ยังไม่ทำงาน (TODO ของ starter) — เปลี่ยนแค่หน้าตา |
+| 12a | `account/components/profile-billing-address` | `billing-first-name-input`*, `billing-last-name-input`*, `billing-company-input`, `billing-phone-input`*, `billing-address-1-input`*, `billing-address-2-input`, `billing-postcal-code-input`*, `billing-city-input`*, `billing-province-input`, `billing-country-code-select`* (label ใหม่ "ประเทศ") | phone, postal | `type`/`autoComplete` ของ phone → `tel` |
+| 12a | `account/components/address-card/{add-address,edit-address-modal}` | `first-name-input`*, `last-name-input`*, `company-input`, `address-1-input`*, `address-2-input`, `postal-code-input`*, `city-input`*, `state-input`, `country-select`*, `phone-input` | phone, postal | ใน `Dialog`; `autoComplete="phone"` → `tel` |
+| 12b | `checkout/components/shipping-address` | `shipping-first-name-input`*, `shipping-last-name-input`*, `shipping-address-input`*, `shipping-company-input`, `shipping-postal-code-input`*, `shipping-city-input`*, `shipping-country-select`*, `shipping-province-input`, `billing-address-checkbox` (horizontal), `shipping-email-input`*, `shipping-phone-input` | phone, postal | |
+| 12b | `checkout/components/billing_address` | `billing-first-name-input`*, `billing-last-name-input`*, `billing-address-input`*, `billing-company-input`, `billing-postal-input`*, `billing-city-input`*, `billing-country-select`*, `billing-province-input`, `billing-phone-input` | phone, postal | |
+| 12b | `checkout/components/addresses` (cart digital-only) | `billing-email-input`* | — | |
+| 12b | `checkout/components/discount-code` | `discount-input` (label ใหม่ "โค้ดส่วนลด") | — | `promotion-error` คงเป็นระดับฟอร์ม (CORE-28) แต่ผูก `aria-describedby` เมื่อช่องเปิด (กฎ 32d) |
+| 12c | `returns/components/return-request-form` | ต่อแถว: `return-item-quantity` ("จำนวนที่คืน"), `return-item-reason` ("เหตุผล") | — (option ว่างเดิม) | id ไม่ซ้ำต่อแถว |
+| 12c | `group-buy/components/group-page/group-join` | `group-quantity` ("จำนวน"), `group-address-select` ("ที่อยู่จัดส่ง"), `group-shipping-option` ("วิธีจัดส่ง") | — | ไม่ใช่ `<form>` แต่เป็นชุดช่องกรอก → ใช้ `NativeSelect` + `field` |
+| 12c | `affiliate/components/auth-forms` | login: `affiliate-login-email`*, `affiliate-login-password`*; register: `affiliate-register-name`*, `affiliate-register-code`*, `affiliate-register-email`*, `affiliate-register-password`* | — | label ของรหัสแนะนำคงข้อความเดิม (baseline กฎ 10) |
+
+### Business rules (ต่อจากกฎ 25)
+26. ขอบเขต = ทุกช่องในตาราง inventory. **allow-list (ไม่ใช่ฟอร์มกรอกข้อมูล — คงเดิม, Q3)** = คู่ "ไฟล์ + element" ตามตารางนี้เท่านั้น (AC-35 ใช้ตารางเดียวกันเป็นค่าคงที่ใน test;
+    path ใต้ `src/modules/` ยกเว้นที่ระบุ):
+
+    | ไฟล์ | element ที่ยกเว้น (testid ของ control หรือเงื่อนไข) | เหตุผล |
+    |---|---|---|
+    | `store/components/store-search-box/index.tsx` | `<input type="search">` `store-search-input` | ช่องค้นหา |
+    | `search/components/search-form/index.tsx` | `<input type="search">` `search-query-input` | ช่องค้นหา |
+    | `layout/components/search/index.tsx` | `<input type="search">` `search-input` | ช่องค้นหาใน drawer |
+    | `store/components/store-refinements/on-sale-toggle.tsx` | `<input type="checkbox">` `on-sale-toggle` | ตัวกรอง |
+    | `store/components/store-refinements/refinement-group.tsx` | `<input type="checkbox">` ใน `refinement-<attribute>` | ตัวกรอง |
+    | `products/components/product-actions/option-select.tsx` | `<input type="radio">` (sr-only — testid `option-button` อยู่บน label) | ตัวเลือกสินค้า |
+    | `products/components/product-actions/index.tsx` | `<select name="quantity">` `product-quantity-select` | จำนวนบน PDP |
+    | `cart/components/cart-item-select/index.tsx` | `<select>` (testid จากผู้เรียก) | จำนวนในตะกร้า |
+    | `group-buy/components/group-page/group-join.tsx` | `<input type="number">` `group-selection-quantity` **เท่านั้น** (select สามตัวของไฟล์นี้อยู่ในขอบเขต — 12c) | จำนวนต่อแถวในรายการที่เลือก |
+    | ทุกไฟล์ใน `src/modules/**`, `src/app/**` | `<input type="hidden">` | ไม่ใช่ช่องที่ผู้ใช้กรอก |
+
+    ไม่ต้องอยู่ใน allow-list เพราะไม่ใช่ `<input>`/`<select>`/`<textarea>` ของ JSX: `checkout/components/address-select` (`Select` ของ Radix), `common/components/filter-radio-group` และตัวเลือกจัดส่ง/ชำระเงิน (`RadioGroup`)
+27. **ยกเว้นกฎ "คง computed style" (กฎ 19, 22 และบทเรียน CLAUDE.md เรื่องงานย้าย class)** — รอบนี้**ตั้งใจเปลี่ยนหน้าตา**เฉพาะ: control ในตาราง inventory, label/ป้าย `*`/คำอธิบาย/ข้อความ error ของช่องนั้น,
+    ระยะระหว่างช่องที่ `Field` กำหนด และ **grid ของช่อง** (container ที่จัดช่องเป็นแถว/คู่ตามกฎ 37); ส่วนอื่นของหน้า (ปุ่ม, หัวข้อ, ข้อความระดับฟอร์ม, layout ของหน้ารอบฟอร์ม) **ยังอยู่ใต้กฎ 19**
+    (a) e2e/static ที่ยึดหน้าตาช่องกรอกเดิมแก้ได้**เฉพาะรายการใน AC-29** (+ ไฟล์ที่ task ระบุในตาราง Tasks) พร้อมเหตุผลใน PR; e2e อื่นผ่านโดยไม่แก้
+    (b) ค่าที่ test ใหม่ assert = ค่าจาก component ของ shadcn ที่ render จริง (วัดด้วย `getComputedStyle` บน build ของ branch) ไม่ใช่ค่าที่อ่านจากชื่อ class
+    (c) **ประกาศการแทนถ้อยคำ (ไม่แก้ไฟล์ spec 01 ในรอบนี้ — ข้อนี้มีผลเหนือถ้อยคำเดิม)**: ตั้งแต่ SFUI-11a merge ถ้อยคำต่อไปนี้ถูกแทนด้วยกฎ 28 (label เหนือช่อง ไม่ทับค่าโดยโครงสร้าง) และกฎ 35/37:
+        - spec 01 **กฎข้อ 56** — เฉพาะท่อน "floating label ของ input ที่อยู่ไม่ซ้อนกับค่าที่เติมจากการเลือก" (ส่วน `data-testid`/`aria-label` ของ popup และ nudge ยังมีผล)
+        - spec 01 **กฎข้อ 63d** — เฉพาะความสูง `h-12` ของ `CountrySelect`/`Input` (เจตนา "ช่องในแถวเดียวกันสูงเท่ากัน" ยังมีผล — กฎ 35)
+        - spec 01 **กฎข้อ 96** — เฉพาะส่วน label ลอยของ `Input` ไม่ทับค่า (ส่วนสรุปที่อยู่ของ checkout ยังมีผล)
+        - spec 01 **AC-91** — เฉพาะขั้น "label ไม่ทับค่าที่เติมจากที่อยู่ที่บันทึกไว้" (placeholder ไทย/testid/aria-label ยังมีผล); **AC-132** — เฉพาะขั้น label ของฟอร์ม register/login/ที่อยู่ไม่ทับค่า
+        - spec 09 **กฎ 23b** และ **AC-23 (1)** (ทั้งข้อ)
+        e2e ของข้อเหล่านั้นแก้ตาม AC-29; กฎ 23a/23c, AC-22, AC-23 (2)(3) (label อื่นไม่ถูก rule ลอยจับ) ยังมีผล
+28. (11a) โครงของช่อง = ตัวอย่างของ shadcn: `Field` (vertical) → `FieldLabel htmlFor={id}` → control (`id`) → `FieldDescription` (ถ้ามี) → `FieldError` (ถ้ามี); checkbox = `Field orientation="horizontal"`
+    → control → `FieldLabel`; **ห้ามส่ง className ที่เปลี่ยนสไตล์ default** ของ `Field`/`FieldLabel`/`FieldDescription`/`FieldError`/`Input`/`InputGroup*` (ยอมเฉพาะ layout ภายนอก เช่น `w-full`, ตำแหน่งใน grid ที่ผู้เรียกส่งให้ `Field` ผ่าน prop `className`);
+    ไม่มี variant ของ floating label เดิม (`peer-focus:`, `peer-not-placeholder-shown:`) ในโค้ดของเรา, `placeholder=" "` หรือ label แบบ `absolute` — class `peer/field-label`, `peer-disabled:` ฯลฯ
+    ที่มากับไฟล์ของ CLI ใน `ui/` ไม่นับ (ตรงกับ AC-26 (b)); label อยู่เหนือ control (`label.bottom <= control.top`) และชิดซ้ายเดียวกัน — "control" ของช่องรหัสผ่าน = กล่อง `InputGroup` (`[data-slot="input-group"]`)
+    ไม่ใช่ `<input>` ภายใน (ซึ่งเป็น `flex-1` ข้าง addon)
+    (หมายเหตุสำหรับ qa/reviewer: `*` ห่างข้อความ label ~8px เพราะ `FieldLabel` ของ shadcn เป็น `flex gap-2` — default ของ shadcn **ไม่ใช่ defect**)
+29. (11a) id/การผูก: `id` = prop `id` ของผู้เรียก หรือ `useId()` (ไม่ใช้ `name` — ฟอร์มที่อยู่ใน `Dialog` หลายตัว/ checkout มีชื่อซ้ำได้); `input.labels[0]` = `FieldLabel` ของช่อง;
+    testid ใหม่ (เมื่อ control มี `data-testid="<t>"`): `<t>-label` บน `FieldLabel`, `<t>-description` บน `FieldDescription`, `<t>-error` บน `FieldError` — ต้องไม่ชนกับ testid ใน baseline (`e2e/support/sfui-baseline.json`)
+30. (11a — ADR-032 D3) ป้ายบังคับ: control มี `required` ⇔ `FieldLabel` มี `<span aria-hidden="true">*</span>` (สี `text-destructive`) ต่อท้าย; ชื่อที่เข้าถึงได้ของ control = ข้อความ label ไม่มี `*`;
+    ห้ามเขียน `*` ในข้อความ label ของผู้เรียก; ช่องไม่บังคับ**ไม่มีป้ายใดๆ** (ไม่ใส่ "(ไม่บังคับ)" — owner 2026-11-27)
+31. (11a, 12x — ADR-032 D2) placeholder: `Input` รับ prop `placeholder` (เลิก `Omit`); ค่าตามตาราง inventory เท่านั้น (`เช่น 0812345678` ช่องเบอร์โทรศัพท์, `เช่น 10110` ช่องรหัสไปรษณีย์);
+    `NativeSelect`/`CountrySelect` คง option ว่าง disabled เดิม (`เลือกประเทศ` — AC-91); placeholder ไม่แทน label
+    (a) **ชุด option ของ `<select>` ทุกตัวต้องเท่าเดิม** (ไม่เพิ่ม ไม่ซ้ำ ไม่หาย): `NativeSelect` ปัจจุบันใส่ `<option disabled value="">` เองเสมอ → 11a เพิ่ม prop `placeholder={false}` (ไม่ render option ว่าง; ค่าเริ่มต้นคงพฤติกรรมเดิม)
+        และ 12c ใช้กับ `group-quantity` (เดิมไม่มี option ว่าง — มีแค่ `PDP_QUANTITY_OPTIONS`), `group-address-select` (เดิมไม่มี option ว่าง) และ `group-shipping-option` (เดิมมี option ว่าง disabled "เลือกวิธีจัดส่ง" ของตัวเอง →
+        ส่งเป็น `placeholder="เลือกวิธีจัดส่ง"` แทน option ที่เขียนเอง ให้เหลือตัวเดียว); `return-item-quantity`/`return-item-reason`/`billing-country-code-select` คง option เดิม (รวม `<option value="">-</option>` ของ billing)
+        — AC-34 ตรวจด้วยรายการ `value`+ข้อความของ option เทียบกับ commit ฐาน
+32. (11b — ADR-032 D4) error:
+    (a) ระดับช่องจาก validation native ที่มีอยู่ (`required`, `type="email"`, `pattern`) เท่านั้น — **ไม่เพิ่ม/ลดกฎ** (ช่องว่างล้วนยังผ่าน client แล้ว server ตอบ error ตามเดิม — CORE-52/AC-147)
+    (b) event `invalid` → `preventDefault()` + แสดง `fieldErrorMessage(validity, { label, title, control })` ใน `FieldError`: `valueMissing` → `กรุณากรอก<label>` (input) / `กรุณาเลือก<label>` (select);
+        `typeMismatch` → `title` ของช่อง ถ้าไม่มี `กรุณากรอก<label>ให้ถูกต้อง`; `patternMismatch` → `title` ถ้าไม่มี `รูปแบบ<label>ไม่ถูกต้อง`; อื่นๆ → `<label>ไม่ถูกต้อง`; valid → ไม่มีข้อความ
+        (`<label>` = prop `label` ไม่มี `*`); `Field` มี `data-invalid`, control มี `aria-invalid="true"`, `aria-describedby` มี id ของ `FieldError`
+    (c) focus ช่องแรกที่ผิดตามลำดับ DOM (ช่องที่ event มาถึงก่อนและ `document.activeElement` ยังไม่ใช่ช่องที่ผิดในฟอร์มเดียวกัน); ไม่มีการส่ง server action
+    (d) ข้อความหาย และ `aria-invalid`/การอ้าง id หายเมื่อค่าเปลี่ยน (พิมพ์ เลือก หรือ `value` จากโค้ด เช่น เลือกที่อยู่ที่บันทึกไว้) แล้ว `validity.valid`;
+        prop `error` ของผู้เรียก (ถ้ามี) แสดงแบบเดียวกัน; `aria-describedby` อ้างเฉพาะ id ที่มี element อยู่จริง (description และ/หรือ error)
+    (e) ระดับฟอร์ม: ข้อความจาก server action คงตำแหน่ง/testid/ข้อความเดิม (`login-error-message`, `register-error`, `register-email-exists`, `address-error-message`, `address-error`,
+        `promotion-error`, `return-error`, `return-contact-store`, `affiliate-login-error`, `affiliate-register-error`, `error-message` ของ `account-info`) — ข้อยกเว้นเดียว: 12b ผูก `promotion-error` (กฎ 32d)
+    (f) ไม่มี JS → bubble native ของ browser ตามเดิม (ฟอร์มยังส่งได้แบบเดิม)
+33. (12x) ความถูกต้องของช่อง: (a) `name`/ค่าใน `FormData`/`required`/`type="email"`/`pattern`/`title`/`autoComplete` เดิมคงไว้ (กฎ 13); `Checkbox` คงพฤติกรรมของกฎ 20 (`onClick`, `defaultChecked`, ค่า `on`);
+    (b) แก้ค่า HTML ที่ผิดมาแต่เดิม: `type="phone"` → `type="tel"`, `autoComplete="phone"` → `autoComplete="tel"` (ไม่มีผลกับ `FormData`)
+34. (11a — ADR-032 D5) ช่องรหัสผ่าน: `InputGroup` + `InputGroupInput` (testid เดิมอยู่บน `<input>`) + `InputGroupAddon align="inline-end"` + `InputGroupButton` `type="button"` มีชื่อที่เข้าถึงได้ไทย
+    `แสดงรหัสผ่าน`/`ซ่อนรหัสผ่าน` ตามสถานะ + `aria-pressed`; testid ใหม่ `<t>-toggle`
+35. (11a) ขนาด: `Input`/`InputGroup` ตาม default ของ shadcn (`h-9` = 36px — owner 2026-11-27: ไม่ override); `NativeSelect` ใช้ class ตาม registry `native-select` ของ shadcn 4.23.1 (ไม่ใช้ component — กฎ 4) และสูงเท่า `Input` —
+    ผู้เรียกเลิกส่ง `h-12` (`CountrySelect`, `profile-billing-address`); ช่องในแถวเดียวกันสูงเท่ากัน (spec 01 กฎ 63d เจตนาเดิม — e2e core-4g/core-4j ผ่านโดยไม่แก้)
+36. (ทุก task รอบ 48) component ใหม่ใน `ui/` มาจาก `pnpm dlx shadcn@4.23.1 add field input-group` เท่านั้น (ได้ `field`, `separator`, `input-group`, `textarea`; `button`/`input`/`label` ที่มีแล้วต้อง "No changes.")
+    + hash ใน `e2e/support/shadcn-ui.json` (AC-19); `package.json`/lockfile/`globals.css`/`apps/backend/**` ไม่ถูกแก้ (AC-25); ข้อความใหม่ทุกข้อความเป็นไทย (ESLint CORE-4 ผ่าน, กฎ 10)
+37. (12a, 12b — owner 2026-11-27, ADR-032 ข้อ 6: "เรื่อง breakpoint ใช้ตาม class มาตรฐานของ tailwind") การจัดวาง — ใช้ breakpoint มาตรฐานของ Tailwind (`sm` 640, `md` 768, `lg` 1024;
+    มีอยู่แล้วคู่กับ breakpoint ของ starter ใน `globals.css`) **ห้ามใช้ breakpoint ของ starter** (`2xsmall:`/`xsmall:`/`small:`/`medium:`/`large:`/`xlarge:`/`2xlarge:`) กับ container ของช่องกรอกในขอบเขต:
+    (a) viewport < 768px: **ทุกช่องแถวละช่อง** เต็มความกว้างของฟอร์ม ตามลำดับ DOM เดิม (เดิมฟอร์มที่อยู่ของ checkout และคู่ชื่อในบัญชีเป็น `grid-cols-2` ทุกขนาดจอ → เปลี่ยน)
+    (b) ≥ 768px (แท็บเล็ตขึ้นไป): คู่ในตารางนี้วางแถวเดียวกัน (ช่องแรกซ้าย) ด้วย `grid-cols-1 md:grid-cols-2`; คู่ที่เดิมใช้ `grid-cols-[144px_1fr]` (รหัสไปรษณีย์–เขต/อำเภอ) → `grid-cols-1 md:grid-cols-[144px_1fr]`;
+        ช่องที่ไม่อยู่ในตารางวางแถวละช่อง (คงตามฟอร์มเดิม)
+
+    | ฟอร์ม | คู่ที่วางแถวเดียวกันที่ ≥ 768px | ที่มา |
+    |---|---|---|
+    | checkout `shipping-address` | ชื่อ–นามสกุล, ที่อยู่–บริษัท, รหัสไปรษณีย์–เขต/อำเภอ, ประเทศ–จังหวัด, อีเมล–เบอร์โทรศัพท์ | คงคู่เดิม (`grid-cols-2`) |
+    | checkout `billing_address` | ชื่อ–นามสกุล, ที่อยู่–บริษัท, รหัสไปรษณีย์–เขต/อำเภอ, ประเทศ–จังหวัด; เบอร์โทรศัพท์แถวถัดไป | คงคู่เดิม (`grid-cols-2` 9 ช่อง) |
+    | checkout `addresses` (digital-only) | อีเมลแถวเดียว (ไม่มีคู่ — เดิมอยู่ใน `grid-cols-2` เพียงช่องเดียว) | คงเดิม |
+    | `profile-name` | ชื่อ–นามสกุล | คงคู่เดิม |
+    | `profile-password` | รหัสผ่านเดิม–รหัสผ่านใหม่; ยืนยันรหัสผ่านแถวถัดไป | คงคู่เดิม (grid 2 คอลัมน์ 3 ช่อง) |
+    | `profile-billing-address`, `add-address`, `edit-address-modal` | ชื่อ–นามสกุล, รหัสไปรษณีย์–เขต/อำเภอ (`md:grid-cols-[144px_1fr]`), **จังหวัด–ประเทศ** | คงคู่เดิม + **planner เสนอ** จังหวัด–ประเทศ (สอดคล้องคู่ประเทศ–จังหวัดของ checkout) |
+    | login, register, affiliate login/สมัคร, `profile-phone`, คืนสินค้า, group buy | ไม่มีคู่ — แถวละช่องทุกขนาดจอ (login/register กว้าง `max-w-sm` แคบเกินสำหรับสองช่อง; affiliate วางสองฟอร์มข้างกันที่ `small:` อยู่แล้ว — ระดับฟอร์มไม่ใช่ container ของช่อง จึงคงไว้; คืนสินค้าคง `small:flex-row` ของแถวสินค้าเดิม — เป็น layout ของแถวสินค้า ไม่ใช่คู่ช่อง) | คงเดิม |
+
+    (c) ช่องในแถวเดียวกันสูงเท่ากันและ label อยู่ระดับเดียวกัน (label บรรทัดเดียวที่ ≥ 768px); `Dialog` ที่อยู่คง `sm:max-w-xl` เดิม (ไม่ใช่ช่องกรอก — กฎ 19)
+    (d) **ข้อควรรู้ — layout ของหน้าเปลี่ยนที่ `small:` (1024) ของ starter คนละจุดกับ grid ของช่อง (`md:` 768)** และไม่แก้ในรอบนี้ (กฎ 19): checkout `page.tsx` `grid-cols-1 small:grid-cols-[1fr_416px]`,
+        account `account-layout.tsx` `small:grid-cols-[240px_1fr]` → ที่ 768–1023px ฟอร์มกว้างเต็มหน้า (สรุปคำสั่งซื้อ/เมนูบัญชีอยู่ล่าง/บน) และเป็นคู่ช่อง; ที่ ≥ 1024px คอลัมน์ฟอร์มแคบลงเพราะมีคอลัมน์ข้าง
+        แต่ยังเป็นคู่ช่อง (เท่ากับ `grid-cols-2` เดิม) — ไม่ขัดกัน; ถ้าคู่ใดที่ 1024–1279px label ตัดสองบรรทัดจนผิดข้อ (c) ให้ builder รายงาน planner (ไม่เปลี่ยน breakpoint เอง)
+
+### Acceptance criteria (ต่อจาก AC-25)
+- AC-26 (SFUI-11a, กฎ 28, 35, 36) static `e2e/sfui-11-form-field.unit.spec.ts`: (a) `common/components/{input,native-select,checkbox}/index.tsx` import `Field` และ `FieldLabel` จาก `@/components/ui/field`;
+  (b) ไม่มีไฟล์ใน `src/**` (ไม่ใช่ test) ที่มี class `peer-focus:`/`peer-not-placeholder-shown:` หรือ `placeholder=" "`; (c) `CountrySelect`/`profile-billing-address` ไม่ส่ง `h-12` ให้ `NativeSelect`;
+  (d) `src/components/ui/{field,separator,input-group,textarea}.tsx` อยู่ใน `e2e/support/shadcn-ui.json` (AC-19 ผ่าน); (e) className ที่ส่งเข้า `FieldLabel`/`FieldError`/`FieldDescription`/`ShadcnInput`/`InputGroupInput` ในสามไฟล์ข้อ (a) ไม่มี utility ของ font-size/line-height/font-weight/padding/height/สี
+- AC-27 (SFUI-11a, กฎ 28–30, 34) unit (jsdom) `src/modules/common/components/input/input.test.tsx` (render component จริง ไม่ mock primitive — บทเรียน PAY-16):
+  `<Input label="อีเมล" name="email" required data-testid="email-input" />` → `FieldLabel` อยู่ก่อน `<input>` ใน DOM (`compareDocumentPosition`), `input.labels[0]` = label ที่มี testid `email-input-label`,
+  `id` ไม่ว่างและต่างกันเมื่อ render สองตัวชื่อเดียวกัน, label มี `*` ใน element `aria-hidden="true"`, ชื่อที่เข้าถึงได้ (`getByRole("textbox", { name })`) = `อีเมล`; ไม่มี `required` → ไม่มี `*`;
+  `placeholder` ส่งถึง `<input>`; `type="password"` + `data-testid="password-input"` → ปุ่ม `password-input-toggle` มีชื่อไทย, กดแล้ว `type` เป็น `text` และ `aria-pressed="true"`; `NativeSelect` + `label` และ `Checkbox` (horizontal: control ก่อน label) ตรวจแบบเดียวกัน
+- AC-28 (SFUI-11a, กฎ 28–30, 35) e2e ใหม่ `e2e/sfui-11-form-field.spec.ts`: Given `/<cc>/account` (ยังไม่ login) — ฟอร์ม login และ register (`login-to-register-button`); Given `/<cc>/checkout?step=address` (ลูกค้าที่ login + cart)
+  When อ่านทุกช่องของสามฟอร์มนี้ในตาราง inventory Then `<t>-label` มองเห็น, `label.bottom <= box.top + 0.5`, `|label.left - box.left| <= 1` (`box` = กล่องของ control; ช่องรหัสผ่านใช้กล่อง
+  `[data-slot="input-group"]` ที่ครอบ `<t>` แทน `<input>` — กฎ 28; checkbox ใช้เกณฑ์ horizontal ด้านล่างแทน), `control.labels[0]` = `<t>-label` (ประเมินใน browser),
+  ข้อความ label ผ่าน `expectThai`; ช่อง `*` ในตารางมี `required` และ `[aria-hidden="true"]` ภายใน label มีข้อความ `*`; ช่องไม่บังคับไม่มี; `billing-address-checkbox`: `label.left >= checkbox.right`;
+  `getComputedStyle(control).height` ของ `email-input` = ค่าที่วัดบน build (คาด `36px`) และ `shipping-country-select` สูงเท่า `shipping-city-input` (±1px); ไม่มี label ที่ `translate` ≠ `none`; หน้า 390px ไม่ล้นแนวนอน (AC-17)
+- AC-29 (SFUI-11a, กฎ 27a) e2e เดิมที่ยึด floating label แก้ได้เฉพาะ: `sfui-8-floating-label.spec.ts` (ลบ AC-23 (1); (2)(3) คงไว้), `sfui-8-floating-label.unit.spec.ts` (test ที่ 3 → ไม่มี `peer` ใน `common/components/input`),
+  `sfui-5a-common.spec.ts` (test "label ลอย" → label เหนือช่องและมองเห็น), `core-38-mobile-layout.spec.ts` + `core-4e-checkout-polish.spec.ts` (หา label ด้วย `input.labels[0]` แทน `parentElement.querySelector("label")`;
+  เกณฑ์ "label ไม่ทับค่า" คงไว้), `sfui-9a-font.spec.ts` (ขั้น NativeSelect ของที่อยู่ใบเสร็จ → ค่าที่วัดบน build ใหม่); 12c แก้ `sfui-9e-font.spec.ts` (label ของ `group-quantity`) และขั้น group buy ของ `sfui-8-floating-label.spec.ts` —
+  reviewer: `git diff origin/develop --stat -- apps/storefront/e2e` ของ task มีเฉพาะไฟล์ใหม่ของ task + ไฟล์ในรายการนี้ที่เป็นของ task
+- AC-30 (SFUI-11b, กฎ 32b) unit `src/lib/util/field-validation.test.ts`: `fieldErrorMessage` คืนค่าตามกฎ 32b ทุกกิ่ง (valueMissing input/select, typeMismatch มี/ไม่มี `title`, patternMismatch มี/ไม่มี `title`, กิ่งอื่น, valid → `null`)
+  และทุกค่าที่ไม่ใช่ `null` มีอักษรไทย `/[฀-๿]/` และไม่มี `*`
+- AC-31 (SFUI-11b, กฎ 32b–d) unit `input.test.tsx` (เพิ่ม): prop `error="…"` → `<t>-error` มี `role="alert"`, control `aria-invalid="true"`, `aria-describedby` มี id ของ error; prop `description` → `aria-describedby` มี id ของ `<t>-description`;
+  ไม่มี error → ไม่มี `aria-invalid` และทุก id ใน `aria-describedby` มี element อยู่จริง; dispatch `invalid` บนช่อง `required` ที่ว่าง → `defaultPrevented === true` และแสดง `กรุณากรอก<label>`; เปลี่ยนค่าแล้ว valid → error หาย
+- AC-32 (SFUI-11b, กฎ 32) e2e ใหม่ `e2e/sfui-11b-field-errors.spec.ts`: Given ฟอร์ม login When กด `sign-in-button` โดยช่องว่าง Then `email-input-error` และ `password-input-error` มองเห็นและเป็นไทย, ข้อความเท่ากับ
+  `fieldErrorMessage` ที่คำนวณจาก label จริงใน DOM (ไม่ hard-code), `email-input` focus และมี `aria-invalid="true"` + `aria-describedby` ที่อ้าง id ของ `email-input-error`, URL ไม่เปลี่ยนและ `login-error-message` = 0;
+  When กรอก `abc` ในอีเมลแล้วส่ง Then `email-input-error` = ค่า attribute `title` ของ `email-input`; When กรอกอีเมลถูก Then `email-input-error` = 0 และไม่มี `aria-invalid`;
+  Given checkout `step=address` ช่องว่าง When กด `submit-address-button` Then `shipping-first-name-input-error` และ `shipping-country-select-error` (`กรุณาเลือกประเทศ`) มองเห็น และ focus อยู่ที่ช่องแรกที่ผิด;
+  When เลือกที่อยู่ที่บันทึกไว้ (`shipping-address-select`) Then error ของช่องที่ถูกเติมหาย (กฎ 32d); `affiliate-register-code` ที่ผิด `pattern` → error = `title` ของช่อง
+- AC-33 (SFUI-11b, 12x, กฎ 32e–f, 33a) e2e เดิมของ error ระดับฟอร์มและการคงค่าหลัง error ผ่านโดยไม่แก้: `core-4f-auth-errors`, `core-4h-auth-reason`, `core-20d-return-window`, `core-23c-account-forms`, `core-52-checkout-guards`,
+  `core-73-register-existing-email`, `core-79-login-link-mobile`, `core-40-discount-action-race`, `affiliate-portal*.spec.ts` และทุก spec ที่ grep พบ testid ในกฎ 32e
+- AC-34 (SFUI-12a/12b/12c, กฎ 28–31, 33b) e2e ใหม่ `e2e/sfui-12<x>-*-forms.spec.ts` (12a `account`, 12b `checkout`, 12c `feature`): Given ทุกฟอร์มของ task ในตาราง inventory (เปิด `edit-panel`/`Dialog`/view ที่ซ่อนอยู่ก่อนวัด)
+  Then ทุกช่องผ่านเกณฑ์เดียวกับ AC-28 และ placeholder = ค่าในตาราง (`toHaveAttribute`) หรือไม่มี attribute; 12a: ช่องเบอร์โทรของ `profile-phone`/`add-address`/`edit-address-modal`/`profile-billing-address` มี `type="tel"` และ `autocomplete="tel"`;
+  12b: เมื่อกด `add-discount-button` → `discount-input-label` อยู่เหนือ `discount-input` และเมื่อ `promotion-error` แสดงขณะช่องเปิด `discount-input` มี `aria-describedby` ที่อ้าง id ของ `promotion-error`;
+  12c: `return-item-quantity`/`return-item-reason` ทุกแถวมี label ของตัวเองที่ `labels[0]` ชี้ถูกแถว (id ไม่ซ้ำ), `group-quantity`/`group-address-select`/`group-shipping-option` มี label เหนือช่อง;
+  ทุก `<select>` ของ task (12a `billing-country-code-select`, `country-select`; 12b `shipping-country-select`, `billing-country-select`; 12c ทุกตัวข้างต้น) มีรายการ `[value, ข้อความ, disabled]` ของ option
+  เท่ากับที่วัดบน commit ฐาน (spec ผ่านบน commit ฐานด้วย — กฎ 31a; `group-shipping-option` มี option ว่าง disabled ตัวเดียว, `group-quantity`/`group-address-select` ไม่มี)
+- AC-35 (SFUI-13, กฎ 26, 28) static `e2e/sfui-13-form-guard.unit.spec.ts`: ทุก JSX `<input` (ยกเว้น `type="hidden"`), `<select`, `<textarea`, `<Input` ของ `@/components/ui/input` ใน `src/modules/**`, `src/app/**` (ไม่ใช่ test)
+  อยู่ใน `common/components/{input,native-select,checkbox}` หรือตรงคู่ "ไฟล์ + element" ในตาราง allow-list ของกฎ 26 (test เก็บตารางเดียวกันเป็นค่าคงที่ — ระบุ testid/`type`/`name` ต่อไฟล์;
+  ไฟล์ใน allow-list ที่มี element อื่นนอกจากที่ระบุ = ล้ม เช่น `<select>` ใน `group-join.tsx`); ไม่มีไฟล์ใดนอก `src/components/**` และ `common/components/input` import `@/components/ui/input`
+  (`checkout/components/discount-code` ย้ายไป `common/components/input` ใน 12b); ทุก `<Input`/`<NativeSelect`/`<CountrySelect`/`<Checkbox` ของ `common/components` ในไฟล์ของตาราง inventory มี prop `label`
+- AC-36 (ทุก task รอบ 48, กฎ 36, 27) reviewer: `git diff origin/develop --stat -- apps/backend apps/storefront/package.json pnpm-lock.yaml apps/storefront/src/styles/globals.css` ว่าง, ไฟล์ใน `src/components/ui/` เป็นไฟล์ใหม่ของ CLI เท่านั้น
+  (`--dry-run --diff` ได้ "No changes." — บันทึกใน PR), AC-5 (baseline testid/ข้อความไทย), AC-17 (390px), AC-19 ผ่าน; e2e storefront ทั้งชุดผ่านใน CI
+- AC-37 (SFUI-12a, 12b, กฎ 37) e2e — ใน `sfui-12a-account-forms.spec.ts` และ `sfui-12b-checkout-forms.spec.ts` (ทุกฟอร์มในตารางกฎ 37b ของ task; หาด้วย testid ของ control, เปิด `edit-panel`/`Dialog` ก่อนวัด):
+  (1) Given viewport `375×812` When อ่าน `boundingBox` ของ **`[data-slot="field"]` ที่ครอบ control แต่ละตัว** (`page.getByTestId(t).locator("xpath=ancestor::*[@data-slot='field'][1]")` — ไม่ใช่ `<input>` เพราะ
+      `InputGroupInput` เป็น `flex-1` ข้าง addon และ checkbox กว้าง 16px) Then เรียงตามลำดับ DOM แถวละช่อง: `Field` ถัดไป `top >=` `bottom` ของ `Field` ก่อนหน้า, ทุก `Field` `left` เท่ากัน (±1px)
+      และกว้างเท่ากัน (±1px) — **ยกเว้นแถว checkbox** (`billing-address-checkbox`: ตรวจแค่ `left` และลำดับ ไม่ตรวจความกว้าง), `scrollWidth <= innerWidth`;
+  (2) Given viewport `768×1024` และ `1280×800` Then ทุกคู่ในตารางกฎ 37b (`a`, `b` = กล่อง `[data-slot="field"]` แบบข้อ 1; ความสูงเทียบที่กล่อง control — `<select>`/`<input>`/`InputGroup`): `|a.top - b.top| <= 1`, `b.left >= a.right`, ความสูง control เท่ากัน (±1px) และ `<t>-label` ของทั้งคู่ `top` เท่ากัน (±1px); ช่องที่ไม่อยู่ในคู่ไม่มี control อื่นที่ `top` เท่ากัน;
+  (3) Given viewport `767×1024` Then เหมือนข้อ (1) (ขอบ breakpoint `md`); static (ใน `sfui-13-form-guard.unit.spec.ts`): container ของช่องกรอกในไฟล์ของตาราง inventory ไม่มี variant breakpoint ของ starter
+  (`2xsmall:`/`xsmall:`/`small:`/`medium:`/`large:`/`xlarge:`/`2xlarge:`) และไม่มี `grid-cols-2`/`grid-cols-[…]` ที่ไม่มี prefix `md:` (ยกเว้น container ระดับฟอร์มที่ระบุใน "ไม่มีคู่" ของตาราง)
+
+### Test plan
+| ชนิด | AC |
+|---|---|
+| static (`test:e2e:unit`) | AC-26, AC-35 (+ AC-5, AC-19 เดิม) |
+| unit (Vitest + jsdom) | AC-27, AC-30, AC-31 |
+| e2e (Playwright) | AC-28, AC-29 (ที่แก้), AC-32, AC-33, AC-34, AC-37 + ชุดเดิม (กฎ 27a) |
+| reviewer | AC-29 (รายการไฟล์), AC-36 |
+qa: `*` ห่างข้อความ label ~8px (`FieldLabel` = `flex gap-2` ของ shadcn) และช่องสูง 36px เป็น default — ไม่บันทึกเป็น defect (กฎ 28, 35) · qa เก็บ evidence ทุก task ยกเว้น SFUI-13: screenshot ก่อน/หลังของฟอร์มในขอบเขต ≤ 5 รูป (11a: login + checkout ที่อยู่ 1280/390; 11b: error ใต้ช่อง; 12x: ฟอร์มของกลุ่ม) — `docs/evidence/storefront-forms/<task>/`;
+builder รัน e2e **ทุก** spec ที่อ้างหน้าที่แตะ (grep path/testid ใน `apps/storefront/e2e/`) ก่อน push
+
+### Tasks (รอบ 48)
+เจ้าของไฟล์: task เดียวต่อไฟล์ ยกเว้นไฟล์ที่แก้**ตามลำดับ stack**: `common/components/input/index.tsx` + `input.test.tsx` + `native-select/index.tsx` (11a → 11b), `profile-billing-address` (11a แค่ `h-12` → 12a),
+`sfui-8-floating-label.spec.ts` (11a → 12c) · ไฟล์ในกลุ่มขนาน (12a ∥ 12b ∥ 12c) ไม่ซ้ำกัน · LOC ไม่นับไฟล์ที่ CLI สร้างและ `shadcn-ui.json`
+
+| Task | งาน — ไฟล์ที่เป็นเจ้าของ | AC | Depends | ∥ | LOC |
+|---|---|---|---|---|---|
+| SFUI-11a | component กลาง (กฎ 28–31, 34–36): `shadcn add field input-group` (`src/components/ui/{field,separator,input-group,textarea}.tsx`), `e2e/support/shadcn-ui.json`; เขียนใหม่ `common/components/input/index.tsx` (Field, `useId`, `*`, placeholder, `InputGroup` รหัสผ่าน), `common/components/native-select/index.tsx` (prop `label`/`id` + `placeholder={false}` ไม่ render option ว่าง — กฎ 31a + class ตาม shadcn + `h-9`), `common/components/checkbox/index.tsx` (horizontal, `useId`), `checkout/components/country-select/index.tsx` (label `ประเทศ`, เลิก `h-12`), `account/components/profile-billing-address/index.tsx` (เฉพาะเลิก `h-12`); unit ใหม่ `common/components/input/input.test.tsx`; e2e ใหม่ `sfui-11-form-field.{spec,unit.spec}.ts`; แก้ e2e ตาม AC-29 (ส่วนของ 11a) | AC-26–AC-29, AC-36 | PR เอกสารรอบ 48 (stack) | — | ~450 (e2e เดิมต้องแก้ใน PR เดียวกันให้เขียว; เกิน ~500 หยุดแจ้ง planner) |
+| SFUI-11b | error ระดับช่อง (กฎ 32): ใหม่ `src/lib/util/field-validation.{ts,test.ts}`; `input/index.tsx` + `native-select/index.tsx` (prop `error`/`description`, `onInvalid`, `aria-invalid`/`aria-describedby`, focus ช่องแรก, ล้างเมื่อ valid); เพิ่มใน `input.test.tsx`; e2e ใหม่ `sfui-11b-field-errors.spec.ts` | AC-30–AC-33, AC-36 | SFUI-11a (stack) | — | ~300 |
+| SFUI-12a | account (ตาราง inventory 12a): `account/components/{login,register,profile-name,profile-phone,profile-password,profile-billing-address}/index.tsx`, `account/components/address-card/{add-address,edit-address-modal}.tsx` (placeholder, label ประเทศของที่อยู่ใบเสร็จ, `tel`, การจัดวางกฎ 37); e2e ใหม่ `sfui-12a-account-forms.spec.ts` | AC-33, AC-34, AC-36, AC-37 | SFUI-11b (stack) | ∥ 12b, 12c | ~300 |
+| SFUI-12b | checkout (ตาราง inventory 12b): `checkout/components/{shipping-address,billing_address,addresses,discount-code}/index.tsx` (**`discount-code` เลิก import `@/components/ui/input`/`ui/label` ตรง → ใช้ `common/components/input` พร้อม `label="โค้ดส่วนลด"`** คง `id="promotion-input"`, `name="code"`, testid เดิม — AC-35), `checkout/components/error-message/index.tsx` (prop `id` ไม่บังคับ — ใช้ผูก `promotion-error`), การจัดวางกฎ 37; e2e ใหม่ `sfui-12b-checkout-forms.spec.ts` | AC-33, AC-34, AC-36, AC-37 | SFUI-11b (stack) | ∥ | ~250 |
+| SFUI-12c | returns + group buy + affiliate (ตาราง inventory 12c): `returns/components/return-request-form/index.tsx`, `group-buy/components/group-page/group-join.tsx` (select สามตัว → `NativeSelect` + label โดยชุด option เท่าเดิม — กฎ 31a; `group-selection-quantity` คงเดิม), `affiliate/components/auth-forms/index.tsx`; e2e ใหม่ `sfui-12c-feature-forms.spec.ts`; แก้ `sfui-9e-font.spec.ts` + ขั้น group buy ของ `sfui-8-floating-label.spec.ts` (AC-29) | AC-29, AC-33, AC-34, AC-36 | SFUI-11b (stack) | ∥ | ~250 |
+| SFUI-13 | guard (กฎ 26, 28, 37): ใหม่ `e2e/sfui-13-form-guard.unit.spec.ts` (allow-list ตามกฎ 26 เป็นค่าคงที่ใน test + static ของ AC-37 ข้อ 3) | AC-35, AC-36, AC-37 (static) | SFUI-12a, 12b, 12c | — | ~120 |
+
+ลำดับ: SFUI-11a → SFUI-11b → (12a ∥ 12b ∥ 12c) → SFUI-13 · merge จริงตามลำดับนี้ทีละตัว (sync `origin/develop` + CI เขียวก่อนแต่ละตัว)
+- **stack** (วิธีเดียวกับรอบ 44–45 — owner อนุญาต 2026-11-27, Q5): 11a แตกจาก branch เอกสาร `docs/storefront-form-fields`, 11b จาก 11a, 12a/12b/12c จาก 11b, 13 จาก branch ที่รวม 12a..12c → เปิด PR ทั้งชุดตอนท้าย (base = `develop`)
+- **release v0.4.0 (#603) พักจนรอบ 48 merge ครบ** (owner 2026-11-27) — ระหว่าง 11a merge ถึง 12c merge หน้าตาฟอร์มผสม (label เหนือช่องแล้วแต่ select บางตัวยังไม่มี label) จึงไม่ release กลางรอบ
+- ถ้า `shadcn@4.23.1 add field`/`input-group` ต้องการ dependency ใหม่ หรือ registry ต่างจากที่ ADR-032 บันทึก (`label`+`separator`, `button`+`input`+`textarea`) → หยุดแจ้ง planner
+
 ## Open questions
+- ~~ADR-032 D1–D5~~ ตัดสินแล้ว (owner 2026-11-27): **รับตามข้อเสนอ** — D1 = ก, D2 = ก (placeholder เฉพาะเบอร์โทร/รหัสไปรษณีย์), D3 = ก (`*` อย่างเดียว ไม่ใส่ "(ไม่บังคับ)"),
+  D4 = ก, D5 = ก; ความสูงช่อง 36px ตาม default ของ shadcn; เพิ่มกติกาการจัดวาง (กฎ 37, AC-37) — breakpoint ตาม class มาตรฐานของ Tailwind: คู่ช่องตั้งแต่ `md:` (owner 2026-11-27)
+- ~~Q3~~ ตัดสินแล้ว (owner 2026-11-27): ตามข้อเสนอ — ช่องค้นหา/ตัวกรอง/ตัวเลือกและจำนวนบน PDP/จำนวนในตะกร้า/ช่องจำนวนต่อแถวของ group buy ไม่อยู่ในขอบเขต (allow-list กฎ 26)
+- ~~Q4~~ ตัดสินแล้ว (owner 2026-11-27): error จาก server ราย field **ไม่ทำรอบนี้** — backlog หลัง v0.4.0 (server action คืน `fieldErrors`)
+- ~~Q5~~ ตัดสินแล้ว (owner 2026-11-27): ทำแบบ stack แบบรอบ 44–45 ได้
 - ~~Q1~~ ตัดสินแล้ว (owner 2026-11-26): **ยอมรับ** browser ขั้นต่ำของ Tailwind v4 (Safari 16.4+, Chrome 111+, Firefox 128+)
 - ~~Q2~~ ตัดสินแล้ว (owner 2026-11-26): **งด release `develop → main`** ระหว่าง SFUI-2 merge จนถึง SFUI-6 merge (ยกเว้น hotfix); ทำงานแบบ stack ได้ (ดูหัวข้อ Tasks)
