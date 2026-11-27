@@ -187,3 +187,113 @@ describe("className ของผู้เรียกอยู่ที่ Field
     expect(select.closest('[data-slot="native-select-wrapper"]')?.classList.contains("min-w-[12rem]")).toBe(true)
   })
 })
+
+// SFUI-11b (spec 09 กฎ 32b–d, AC-31): error ระดับช่อง + aria-describedby
+const describedIds = (el: HTMLElement) => (el.getAttribute("aria-describedby") ?? "").split(/\s+/).filter(Boolean)
+
+describe("error ระดับช่อง (กฎ 32)", () => {
+  it("prop error → <t>-error role=alert, aria-invalid=true, aria-describedby อ้าง id ของ error", () => {
+    render(<Input label="อีเมล" name="email" error="อีเมลนี้ใช้ไม่ได้" data-testid="email-input" />)
+    const input = byTestId("email-input")
+    const error = byTestId("email-input-error")
+    expect(error.getAttribute("role")).toBe("alert")
+    expect(error.textContent).toBe("อีเมลนี้ใช้ไม่ได้")
+    expect(input.getAttribute("aria-invalid")).toBe("true")
+    expect(describedIds(input)).toContain(error.id)
+    expect(error.closest('[data-slot="field"]')?.getAttribute("data-invalid")).toBe("true")
+  })
+
+  it("prop description → aria-describedby อ้าง id ของ <t>-description; ไม่มี error → ไม่มี aria-invalid และทุก id มี element จริง", () => {
+    render(<Input label="เบอร์โทรศัพท์" name="phone" description="ใช้ติดต่อเรื่องการจัดส่ง" data-testid="phone-input" />)
+    const input = byTestId("phone-input")
+    expect(describedIds(input)).toEqual([byTestId("phone-input-description").id])
+    expect(input.hasAttribute("aria-invalid")).toBe(false)
+    expect(container.querySelector('[data-testid="phone-input-error"]')).toBeNull()
+    for (const id of describedIds(input)) expect(document.getElementById(id), id).not.toBeNull()
+  })
+
+  it("ไม่มี description/error → ไม่มี aria-describedby", () => {
+    render(<Input label="ชื่อ" name="first_name" data-testid="first-name-input" />)
+    expect(byTestId("first-name-input").hasAttribute("aria-describedby")).toBe(false)
+  })
+
+  it("NativeSelect ไม่มี label + required: invalid ไม่ถูก preventDefault (ใช้ bubble ของ browser ตามเดิม) และไม่มี <t>-error (review 11b)", () => {
+    render(
+      <NativeSelect name="country_code" required defaultValue="" placeholder={false} data-testid="nolabel">
+        <option value="">-</option>
+        <option value="th">ไทย</option>
+      </NativeSelect>
+    )
+    const select = byTestId<HTMLSelectElement>("nolabel")
+    const event = new Event("invalid", { cancelable: true })
+    act(() => {
+      select.dispatchEvent(event)
+    })
+    expect(event.defaultPrevented).toBe(false)
+    expect(document.querySelector('[data-testid="nolabel-error"]')).toBeNull()
+    expect(select.hasAttribute("aria-invalid")).toBe(false)
+  })
+
+  it("invalid บนช่อง required ที่ว่าง → defaultPrevented และแสดง กรุณากรอก<label>; กรอกจน valid → error หาย", () => {
+    render(<Input label="อีเมล" name="email" required data-testid="email-input" />)
+    const input = byTestId<HTMLInputElement>("email-input")
+    const event = new Event("invalid", { cancelable: true })
+    act(() => {
+      input.dispatchEvent(event)
+    })
+    expect(event.defaultPrevented).toBe(true)
+    const error = byTestId("email-input-error")
+    expect(error.textContent).toBe("กรุณากรอกอีเมล")
+    expect(input.getAttribute("aria-invalid")).toBe("true")
+    expect(describedIds(input)).toContain(error.id)
+    expect(document.activeElement).toBe(input)
+
+    act(() => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!
+      setter.call(input, "somchai@example.com")
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+    expect(container.querySelector('[data-testid="email-input-error"]')).toBeNull()
+    expect(input.hasAttribute("aria-invalid")).toBe(false)
+    expect(input.hasAttribute("aria-describedby")).toBe(false)
+  })
+
+  it("form.requestSubmit ที่มีหลายช่องผิด → focus ช่องแรกตามลำดับ DOM และไม่ส่งฟอร์ม", () => {
+    let submitted = false
+    act(() =>
+      root.render(
+        <form onSubmit={(e) => { e.preventDefault(); submitted = true }}>
+          <Input label="ชื่อ" name="first_name" required data-testid="a" />
+          <NativeSelect label="ประเทศ" name="country_code" required defaultValue="" data-testid="b">
+            <option value="th">ไทย</option>
+          </NativeSelect>
+          <button type="submit">ส่ง</button>
+        </form>
+      )
+    )
+    act(() => container.querySelector("form")!.requestSubmit())
+    expect(submitted).toBe(false)
+    expect(document.activeElement).toBe(byTestId("a"))
+    expect(byTestId("a-error").textContent).toBe("กรุณากรอกชื่อ")
+    expect(byTestId("b-error").textContent).toBe("กรุณาเลือกประเทศ")
+    expect(byTestId("b").getAttribute("aria-invalid")).toBe("true")
+  })
+
+  it("select: value จากโค้ด (controlled) ที่ทำให้ valid → error หาย (กฎ 32d)", () => {
+    const Harness = ({ value }: { value: string }) => (
+      <form>
+        <NativeSelect label="ประเทศ" name="country_code" required value={value} onChange={() => {}} data-testid="b">
+          <option value="th">ไทย</option>
+        </NativeSelect>
+      </form>
+    )
+    act(() => root.render(<Harness value="" />))
+    act(() => {
+      byTestId("b").dispatchEvent(new Event("invalid", { cancelable: true }))
+    })
+    expect(byTestId("b-error").textContent).toBe("กรุณาเลือกประเทศ")
+    act(() => root.render(<Harness value="th" />))
+    expect(container.querySelector('[data-testid="b-error"]')).toBeNull()
+    expect(byTestId("b").hasAttribute("aria-invalid")).toBe(false)
+  })
+})
