@@ -46,7 +46,7 @@ const Register = ({ setCurrentView }: Props) => {
       )}
       <form className="w-full flex flex-col" action={formAction} onSubmit={onSubmit}>
         <PendingAddToCartFields />
-        <div className="flex flex-col w-full gap-y-2">
+        <div className="flex flex-col w-full gap-4">
           <Input
             label="ชื่อ"
             name="first_name"

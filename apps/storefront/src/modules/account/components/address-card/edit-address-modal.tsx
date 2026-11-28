@@ -128,12 +128,11 @@ const EditAddress: React.FC<EditAddressProps> = ({
       >
         <div className="flex items-center justify-between">
           <DialogTitle className="text-2xl font-semibold">แก้ไขที่อยู่</DialogTitle>
-          <DialogClose
-            className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-            aria-label="ปิด"
-            data-testid="close-modal-button"
-          >
-            <X className="size-5" />
+          {/* SFUI-21a (spec 09 กฎ 76): ปุ่มปิด = Close asChild → Button ghost icon ขนาด default ของ shadcn (icon X size-4) */}
+          <DialogClose asChild>
+            <Button variant="ghost" size="icon" aria-label="ปิด" data-testid="close-modal-button">
+              <X />
+            </Button>
           </DialogClose>
         </div>
         <DialogDescription className="sr-only">
@@ -141,8 +140,8 @@ const EditAddress: React.FC<EditAddressProps> = ({
         </DialogDescription>
         <form onSubmit={onSubmit}>
           <input type="hidden" name="addressId" value={address.id} />
-          <div className="grid grid-cols-1 gap-y-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
                 label="ชื่อ"
                 name="first_name"
@@ -177,7 +176,7 @@ const EditAddress: React.FC<EditAddressProps> = ({
               data-testid="address-1-input"
             />
             {/* SFUI-18b (spec 09 กฎ 53–54): ตำบล/แขวง–เขต/อำเภอ และ จังหวัด–รหัสไปรษณีย์ แถวเดียวกันที่ ≥ 768px */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
                 label="ตำบล/แขวง"
                 name="address_2"
@@ -195,7 +194,7 @@ const EditAddress: React.FC<EditAddressProps> = ({
                 data-testid="city-input"
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
                 label="จังหวัด"
                 name="province"

@@ -190,12 +190,11 @@ const MobileActions: React.FC<MobileActionsProps> = ({
       >
         <div className="w-full flex items-center justify-between px-6 pt-6">
           <SheetTitle>ตัวเลือกสินค้า</SheetTitle>
-          <SheetClose
-            className="w-12 h-12 rounded-full text-foreground flex justify-center items-center hover:bg-accent"
-            data-testid="close-modal-button"
-            aria-label="ปิด"
-          >
-            <X />
+          {/* SFUI-21a (spec 09 กฎ 76): ปุ่มปิด = Close asChild → Button ghost icon ขนาด default ของ shadcn (icon X size-4) */}
+          <SheetClose asChild>
+            <Button variant="ghost" size="icon" aria-label="ปิด" data-testid="close-modal-button">
+              <X />
+            </Button>
           </SheetClose>
         </div>
         <SheetDescription className="sr-only">

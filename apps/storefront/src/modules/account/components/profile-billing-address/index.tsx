@@ -88,8 +88,8 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({ customer }) => {
         isPending={isPending}
         data-testid="account-billing-address-editor"
       >
-        <div className="grid grid-cols-1 gap-y-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="ชื่อ"
               name="first_name"
@@ -121,7 +121,7 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({ customer }) => {
             data-testid="billing-address-1-input"
           />
           {/* SFUI-18b (spec 09 กฎ 53–54): ตำบล/แขวง–เขต/อำเภอ และ จังหวัด–รหัสไปรษณีย์ แถวเดียวกันที่ ≥ 768px; ประเทศ/เบอร์โทรศัพท์แถวละช่อง */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="ตำบล/แขวง"
               name="address_2"
@@ -138,7 +138,7 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({ customer }) => {
               data-testid="billing-city-input"
             />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="จังหวัด"
               name="province"

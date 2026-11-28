@@ -153,7 +153,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
           {isOpen && (
             // SFUI-12b (spec 09 กฎ 28, 32d): ช่องของ common/components/input (label "โค้ดส่วนลด" เหนือช่อง) — items-end ให้ปุ่มชิดแนวล่างเดียวกับช่อง
             // promotion-error คงเป็นระดับฟอร์ม (CORE-28) แต่ช่องอ้างด้วย aria-describedby เมื่อมีข้อความ
-            <div className="flex w-full items-end gap-x-2">
+            <div className="flex w-full items-end gap-4">
               {/* SFUI-5c: คง div ห่อเดิมของ Input ใน shim (ความกว้างช่อง/ปุ่มเท่าเดิม) */}
               <div className="flex flex-col gap-1">
                 <Input

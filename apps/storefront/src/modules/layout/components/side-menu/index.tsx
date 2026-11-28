@@ -14,6 +14,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import CountrySelect from "../country-select"
 
@@ -61,12 +62,11 @@ const SideMenu = ({ regions, storeName }: SideMenuProps) => {
             >
               <div className="flex items-center justify-between">
                 <SheetTitle className="text-base">เมนู</SheetTitle>
-                <SheetClose
-                  data-testid="close-menu-button"
-                  aria-label="ปิดเมนู"
-                  className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-hidden focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                >
-                  <X className="size-5" />
+                {/* SFUI-21a (spec 09 กฎ 76): ปุ่มปิด = Close asChild → Button ghost icon ขนาด default ของ shadcn (icon X size-4) */}
+                <SheetClose asChild>
+                  <Button variant="ghost" size="icon" aria-label="ปิดเมนู" data-testid="close-menu-button">
+                    <X />
+                  </Button>
                 </SheetClose>
               </div>
               <SheetDescription className="sr-only">
