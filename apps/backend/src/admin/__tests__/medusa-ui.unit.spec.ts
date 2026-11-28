@@ -546,8 +546,9 @@ describe("ปุ่มต่อแถวของ affiliate อยู่ใน A
 
   it("payouts-table: Mark paid และ Cancel ของแถวเดียวกันกันกัน (disabled ระหว่างอีก action ทำงาน — nit #176)", () => {
     const src = read("components/affiliate/payouts-table.tsx")
+    // spec 10 (AI18N-4): label เป็น t(...) — หา action จาก expression ของ label
     const action = (label: string) => {
-      const i = src.indexOf(`label: "${label}"`)
+      const i = src.indexOf(`label: ${label}`)
       expect(i).toBeGreaterThan(-1)
       return src.slice(i, src.indexOf("}", src.indexOf("onClick", i)))
     }
@@ -555,8 +556,8 @@ describe("ปุ่มต่อแถวของ affiliate อยู่ใน A
     expect(src).toMatch(/const busy = useIsMutating\(\{ mutationKey \}\) > 0/)
     expect(src).toMatch(/const mutationKey = affiliateKeys\.payoutAction\(payout\.id\)/)
     expect(src).toMatch(/useMutation\(\{\s*mutationKey,/)
-    expect(action("Mark paid")).toMatch(/disabled:\s*busy\b/)
-    expect(action("Cancel")).toMatch(/disabled:\s*busy\b/)
+    expect(action('t("payouts.markPaid")')).toMatch(/disabled:\s*busy\b/)
+    expect(action('t("actions.cancel", { ns: "translation" })')).toMatch(/disabled:\s*busy\b/)
     expect(read("components/affiliate/mark-paid-prompt.tsx")).toMatch(
       /useMutation\(\{[^}]*mutationKey:\s*affiliateKeys\.payoutAction\(payout\.id\)/
     )
@@ -643,9 +644,10 @@ describe("หน้ารายการแคมเปญใช้หัวต�
     const src = read(LIST_PAGE)
     const wrapper = src.slice(src.indexOf('data-testid="gb-campaigns-table"'))
     expect(wrapper).toMatch(/<DataTable\b/)
-    expect(wrapper).toMatch(/heading="Group-buy campaigns"/)
+    // spec 10 AC-7 (AI18N-2): ข้อความเป็น key ของ ecom-group-buy (ค่า en เดิม — i18n-group-buy.unit.spec.ts)
+    expect(wrapper).toMatch(/heading=\{t\("list\.heading"\)\}/)
     expect(wrapper).toMatch(/subHeading=/)
-    expect(wrapper).toMatch(/action=\{\{\s*label: "Create campaign",\s*onClick:/)
+    expect(wrapper).toMatch(/action=\{\{\s*label: t\("list\.create"\),\s*onClick:/)
     expect(src).toMatch(/<CreateCampaign\s+open=\{\w+\}\s+onOpenChange=\{\w+\}/)
   })
 
@@ -673,21 +675,33 @@ describe("ปุ่มสร้างของ Partners/Programs/Payouts อย�
   const PARTNERS = "components/evoucher/partners-section.tsx"
   const PROGRAMS = "components/affiliate/programs-table.tsx"
   const PAYOUTS = "components/affiliate/payouts-table.tsx"
-  const CASES: [string, string, string, string][] = [
-    [PARTNERS, "evoucher-partners-table", "Partners", "Create partner"],
-    [PROGRAMS, "affiliate-programs-table", "Programs", "Create program"],
-    [PAYOUTS, "affiliate-payouts-table", "Payouts", "Create payout"],
+  // spec 10 (AI18N-4): heading/label ของตาราง affiliate เป็น key ของ `ecom-affiliate` (เจตนาเดิม: อยู่ที่ตารางภายใน wrapper)
+  const AFFILIATE_CASES: [string, string, string, string][] = [
+    [PROGRAMS, "affiliate-programs-table", "programs.heading", "programs.create"],
+    [PAYOUTS, "affiliate-payouts-table", "payouts.heading", "payouts.create"],
   ]
 
-  it.each(CASES)("%s ไม่ใช้ Header แยก — heading/action อยู่ที่ตารางภายใน wrapper %s", (file, wrapper, heading, label) => {
+  // spec 10 AC-7 (AI18N-3): partners แปลแล้ว — heading/label ของ action เป็น key ของ ecom-evoucher (เจตนาเดิม: อยู่ที่ตารางใน wrapper)
+  it(`${PARTNERS} ไม่ใช้ Header แยก — heading/action อยู่ที่ตารางภายใน wrapper evoucher-partners-table`, () => {
+    const src = read(PARTNERS)
+    expect(src).not.toMatch(/common\/header/)
+    expect(src).not.toMatch(/<Header\b/)
+    const inside = src.slice(src.indexOf('data-testid="evoucher-partners-table"'))
+    expect(src).toContain('data-testid="evoucher-partners-table"')
+    expect(inside).toMatch(/<DataTable\b/)
+    expect(inside).toContain('heading={t("partners.heading")}')
+    expect(inside).toMatch(/action=\{\{\s*label: t\("partners\.create"\),\s*onClick:/)
+  })
+
+  it.each(AFFILIATE_CASES)("%s ไม่ใช้ Header แยก — heading/action (key) อยู่ที่ตารางภายใน wrapper %s", (file, wrapper, heading, label) => {
     const src = read(file)
     expect(src).not.toMatch(/common\/header/)
     expect(src).not.toMatch(/<Header\b/)
     const inside = src.slice(src.indexOf(`data-testid="${wrapper}"`))
     expect(src).toContain(`data-testid="${wrapper}"`)
-    expect(inside).toMatch(/<(DataTable|AffiliateListTable)\b/)
-    expect(inside).toContain(`heading="${heading}"`)
-    expect(inside).toMatch(new RegExp(`action=\\{\\{\\s*label: "${label}",\\s*onClick:`))
+    expect(inside).toMatch(/<AffiliateListTable\b/)
+    expect(inside).toContain(`heading={t("${heading}")}`)
+    expect(inside).toMatch(new RegExp(`action=\\{\\{\\s*label: t\\("${label}"\\),\\s*onClick:`))
   })
 
   it.each([
@@ -774,7 +788,7 @@ describe("partners: clamp ไม่กระพริบ + PartnerActions แบ
     const src = read(PARTNERS)
     expect(src).toMatch(/<ActionMenu\s+key=\{menuKey\}/)
     expect(src).toMatch(/const \{ menuKey, remountMenu, trigger \} = useRemountMenu\(\)/)
-    expect(src).toMatch(/label: "Edit",[^}]*disabled: removing,[^}]*onClick: \(\) => \{\s*remountMenu\(\)\s*onEdit\(partner\)/)
+    expect(src).toMatch(/label: t\("actions\.edit", \{ ns: "translation" \}\),[^}]*disabled: removing,[^}]*onClick: \(\) => \{\s*remountMenu\(\)\s*onEdit\(partner\)/)
   })
 })
 
@@ -782,9 +796,10 @@ describe("partners: clamp ไม่กระพริบ + PartnerActions แบ
 // (คงหัวตาราง/ปุ่มใน action) แทนข้อความ empty เดิม; 401 → throw ให้ ErrorBoundary ของ dashboard พาไป /login (กฎ 24b)
 describe("ตาราง e-voucher: สถานะ error แทน empty (spec 08 AC-25, กฎ 25, ADM-21a)", () => {
   const ERROR_TABLES: [string, string, string][] = [
-    ["components/evoucher/pools-table.tsx", "evoucher-pools-error", "Could not load voucher pools"],
-    ["components/evoucher/codes-table.tsx", "evoucher-codes-error", "Could not load codes"],
-    ["components/evoucher/partners-section.tsx", "evoucher-partners-error", "Could not load partners"],
+    // spec 10 AC-7 (AI18N-3): heading error เป็น key ของ ecom-evoucher (ค่า en = ข้อความเดิม)
+    ["components/evoucher/pools-table.tsx", "evoucher-pools-error", "pools.loadError"],
+    ["components/evoucher/codes-table.tsx", "evoucher-codes-error", "codes.loadError"],
+    ["components/evoucher/partners-section.tsx", "evoucher-partners-error", "partners.loadError"],
   ]
 
   it.each(ERROR_TABLES)("%s: isError && !data → %s และ heading error อยู่ใน emptyState ของ DataTable", (file, testId, heading) => {
@@ -792,13 +807,13 @@ describe("ตาราง e-voucher: สถานะ error แทน empty (spec
     expect(src).toMatch(/const loadFailed = isError && !data\b/)
     // prop emptyState ของ <DataTable ... /> (ตั้งแต่ emptyState= จนปิด tag)
     const emptyState = src.match(/<DataTable\b[\s\S]*?emptyState=([\s\S]*?)\/>/)?.[1] ?? ""
-    expect(emptyState).toMatch(new RegExp(`loadFailed\\s*\\?\\s*\\{ heading: "${heading}", description: error\\?\\.message \\}`))
+    expect(emptyState).toMatch(new RegExp(`loadFailed\\s*\\?\\s*\\{ heading: t\\("${heading}"\\), description: error\\?\\.message \\}`))
     expect(src).toContain(`data-testid={loadFailed ? "${testId}" : undefined}`)
   })
 
   it("codes-table.tsx: มี filter ใน URL (emptyState.filtered) ล้มแล้วแสดง error ด้วย", () => {
     const src = read("components/evoucher/codes-table.tsx")
-    expect(src).toMatch(/filtered: loadFailed\s*\?\s*\{ heading: "Could not load codes", description: error\?\.message \}/)
+    expect(src).toMatch(/filtered: loadFailed\s*\?\s*\{ heading: t\("codes\.loadError"\), description: error\?\.message \}/)
   })
 
   it.each(ERROR_TABLES)("%s: 401 → throw error ผ่าน isUnauthorized ของ lib/fetch-error", (file) => {
@@ -813,10 +828,11 @@ describe("ตาราง e-voucher: สถานะ error แทน empty (spec
 describe("ตาราง affiliate / group buy: สถานะ error แทน empty (spec 08 AC-26, กฎ 25, ADM-21b)", () => {
   // [ไฟล์, testid error, heading error (regex), tag ที่รับ emptyState]
   const ERROR_TABLES: [string, string, string, string][] = [
-    // ADM-25 (กฎ 29b): ชื่อใน heading มาจาก LOAD_ERROR_NOUN (แท็บ Ledger = "ledger entries")
-    ["components/affiliate/list-table.tsx", "affiliate-list-error", "`Could not load \\$\\{LOAD_ERROR_NOUN\\[resource\\]\\}`", "DataTable"],
-    ["components/group-buy/groups-section.tsx", "gb-groups-error", '"Could not load groups"', "DataTable.Table"],
-    ["components/group-buy/group-members.tsx", "gb-memberships-error", '"Could not load members"', "DataTable.Table"],
+    // ADM-25 (กฎ 29b): heading ต่อ resource จาก key `list.loadError.<resource>` (spec 10 AI18N-4; แท็บ Ledger = "ledger entries")
+    ["components/affiliate/list-table.tsx", "affiliate-list-error", "t\\(`list\\.loadError\\.\\$\\{resource\\}`\\)", "DataTable"],
+    // spec 10 AC-7 (AI18N-2): heading เป็น key ของ ecom-group-buy (ค่า en "Could not load groups/members")
+    ["components/group-buy/groups-section.tsx", "gb-groups-error", 't\\("groups\\.loadError"\\)', "DataTable.Table"],
+    ["components/group-buy/group-members.tsx", "gb-memberships-error", 't\\("members\\.loadError"\\)', "DataTable.Table"],
   ]
   const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
@@ -864,15 +880,20 @@ describe("ตาราง admin: ซ่อนแถบแบ่งหน้า�
 
   it.each(UI_TABLES)("%s: render DataTable.Pagination เฉพาะเมื่อไม่ error", (file) => {
     const src = read(file)
-    expect(src).toMatch(/\{!loadFailed && <DataTable\.Pagination \/>\}/)
+    // AI18N-N2: ส่ง translations (ข้อความแถบแบ่งหน้าตามภาษา) — ยัง render เฉพาะเมื่อไม่ error
+    expect(src).toMatch(/\{!loadFailed && <DataTable\.Pagination translations=\{paginationTranslations\} \/>\}/)
     expect(src.match(/<DataTable\.Pagination\b/g)).toHaveLength(1)
   })
 
   it("list-table.tsx: heading error ของแท็บ Ledger (resource entries) = \"Could not load ledger entries\" แท็บอื่นคงชื่อ resource", () => {
-    const src = read("components/affiliate/list-table.tsx")
-    expect(src).toMatch(
-      /const LOAD_ERROR_NOUN: Record<Resource, string> = \{\s*programs: "programs",\s*affiliates: "affiliates",\s*entries: "ledger entries",\s*payouts: "payouts",?\s*\}/
-    )
+    // spec 10 (AI18N-4): ข้อความอยู่ใน key `list.loadError.<resource>` ของ ecom-affiliate — ค่า en เท่าข้อความเดิม
+    expect(read("components/affiliate/list-table.tsx")).toContain("t(`list.loadError.${resource}`)")
+    expect(JSON.parse(read("i18n/json/en/ecom-affiliate.json")).list.loadError).toEqual({
+      programs: "Could not load programs",
+      affiliates: "Could not load affiliates",
+      entries: "Could not load ledger entries",
+      payouts: "Could not load payouts",
+    })
   })
 
   it("pools-table.tsx: comment กฎ 25 อยู่ติด div ที่ใส่ testid error (กฎ 29d)", () => {
@@ -932,8 +953,9 @@ describe("ฟอร์มใน FocusModal/Drawer แบบ state ถามก�
   it("hook ใช้ usePrompt ของ @medusajs/ui + ถ้อยคำของ dashboard, กันระหว่างบันทึกและ prompt ซ้อน", () => {
     const src = read("components/common/use-confirm-discard.ts")
     expect(src).toMatch(/import \{ usePrompt \} from "@medusajs\/ui"/)
-    expect(src).toContain('"Are you sure you want to leave this form?"')
-    expect(src).toContain('"You have unsaved changes that will be lost if you exit this form."')
+    // spec 10 AC-7 (AI18N-1): ถ้อยคำของ dashboard อ้างผ่าน key ของ Medusa (ค่า en เท่าเดิม — ตรวจใน i18n.unit.spec.ts)
+    expect(src).toContain('t("general.unsavedChangesTitle", { ns: "translation" })')
+    expect(src).toContain('t("general.unsavedChangesDescription", { ns: "translation" })')
     // qa #389 D-1 (กฎ 31c): ช่วงหลังกด Save ก่อน isPending render ถือว่ากำลังบันทึก (isSubmitting ของ react-hook-form)
     // และตัดสินใจหลัง event เดิมจบด้วยค่าล่าสุด (ref) ไม่ใช่ค่าใน closure ตอนกด
     expect(src).toContain("form.formState.isSubmitting")
@@ -947,7 +969,9 @@ describe("ฟอร์มใน FocusModal/Drawer แบบ state ถามก�
 
   it("ไม่มีสำเนาข้อความ prompt ในไฟล์อื่นของ src/admin (hook กลางตัวเดียว)", () => {
     const copies = adminFiles.filter(
-      (file) => !file.includes("__tests__") && read(file).includes("Are you sure you want to leave this form?")
+      (file) =>
+        !file.includes("__tests__") &&
+        (read(file).includes("Are you sure you want to leave this form?") || read(file).includes("general.unsavedChangesTitle"))
     )
     expect(copies).toEqual(["components/common/use-confirm-discard.ts"])
   })

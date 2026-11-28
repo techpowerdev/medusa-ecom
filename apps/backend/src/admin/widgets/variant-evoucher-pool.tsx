@@ -1,11 +1,14 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { Form, KeyboundForm, SectionRow } from "@medusajs/dashboard/components"
+import { useProduct } from "@medusajs/dashboard/hooks"
 import { DetailWidgetProps, HttpTypes } from "@medusajs/framework/types"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Badge, Button, FocusModal, Heading, Input, Select, Text, Textarea, toast } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
+import { Link } from "react-router-dom"
 import { Container } from "../components/common/container"
 import { Header } from "../components/common/header"
 import { NumberInput } from "../components/common/number-input"
@@ -18,6 +21,7 @@ import {
   type PoolFormBody,
   poolFormSchema,
 } from "../lib/evoucher-pool-form"
+import { EVOUCHER_POOL_PREREQUISITE_FIELDS, prerequisiteCheck } from "../lib/evoucher-pool-prerequisites"
 import { useSingleFlight } from "../lib/single-flight"
 
 // ตัวเลือก partner ของฟอร์ม Create pool คงเพดานเดิม (ทำเป็น Combobox ค้นหาได้นอกขอบเขต ADM-5)
@@ -25,6 +29,7 @@ const PARTNER_SELECT_QUERY = { limit: 100, offset: 0 }
 
 // EV-6: "Voucher pool" บนหน้า variant — พาร์ทเนอร์, face value, สต็อกจาก pool; ยังไม่มี pool → สร้างได้ที่นี่
 const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpTypes.AdminProductVariant>) => {
+  const { t } = useTranslation("ecom-evoucher")
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   // ADM-3 (spec 08 กฎ 8): Form + KeyboundForm ของ dashboard + zod — error แสดงใต้ช่อง, ⌘/Ctrl+Enter ส่งได้
@@ -51,13 +56,23 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
     enabled: open,
   })
 
+  // EV-27 (spec 02 กฎข้อ 43a): เงื่อนไขของ variant โหลดใหม่ทุกครั้งที่เปิด modal (staleTime: 0 + enabled)
+  // ระหว่าง refetch (`isFetching`) แสดง loading แทนข้อมูลเก่าใน cache — prerequisiteCheck
+  const product = useProduct(
+    variant.product_id ?? "",
+    { fields: EVOUCHER_POOL_PREREQUISITE_FIELDS },
+    // refetch เฉพาะตอนเปิด modal — ปิด refetch ตอน reconnect/focus ไม่ให้ฟอร์มสลับเป็น loading (unmount) ระหว่างกรอก (review #602)
+    { enabled: open && !!variant.product_id, staleTime: 0, refetchOnReconnect: false, refetchOnWindowFocus: false }
+  )
+  const check = prerequisiteCheck(variant.product_id, variant.id, product)
+
   const create = useMutation({
     mutationFn: (body: PoolFormBody) =>
       evoucherApi.createPool({ ...body, variant_id: variant.id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: evoucherKeys.poolByVariant(variant.id) })
       queryClient.invalidateQueries({ queryKey: evoucherKeys.pools })
-      toast.success("Voucher pool created")
+      toast.success(t("variantWidget.created"))
       setOpen(false)
       form.reset(POOL_FORM_DEFAULTS)
     },
@@ -83,6 +98,13 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
     },
   })
 
+  // heading เดียวกันทุกสถานะของ modal (กฎ admin-dialog-title)
+  const title = (
+    <FocusModal.Title asChild>
+      <Heading>{t("variantWidget.createTitle", { title: variant.title ?? "" })}</Heading>
+    </FocusModal.Title>
+  )
+
   // ช่องตัวเลขผ่าน NumberInput ของกลาง (ADM-12, spec 08 กฎ 15) — "e" ไม่ถูกถือเป็นค่าว่าง/ค่า default
   const field = (name: "name" | "face_value" | "validity_note" | "low_stock_threshold", label: string, numeric = false) => (
     <Form.Field
@@ -103,13 +125,13 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
   return (
     <Container>
       <Header
-        title="Voucher pool"
+        title={t("variantWidget.title")}
         actions={
           pool
             ? [
                 {
                   type: "button",
-                  props: { variant: "secondary", children: "Manage codes" },
+                  props: { variant: "secondary", children: t("variantWidget.manageCodes") },
                   link: { to: `/evouchers/pools/${pool.id}` },
                 },
               ]
@@ -123,7 +145,8 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
                         submitOnce.release()
                         setOpen(true)
                       },
-                      children: "Create pool",
+                      children: t("variantWidget.createPool"),
+                      "data-testid": "evoucher-pool-create",
                     },
                   },
                 ]
@@ -132,98 +155,147 @@ const VariantEvoucherPoolWidget = ({ data: variant }: DetailWidgetProps<HttpType
       />
       {isLoading ? (
         <Text size="small" leading="compact" className="text-ui-fg-subtle px-6 py-4">
-          Loading…
+          {t("general.loading")}
         </Text>
       ) : isError ? (
         <Text size="small" leading="compact" className="text-ui-fg-error px-6 py-4">
-          Could not load voucher pool: {error.message}
+          {t("variantWidget.loadError", { message: error.message })}
         </Text>
       ) : !pool ? (
         <Text size="small" leading="compact" className="text-ui-fg-subtle px-6 py-4">
-          This variant is not an e-voucher.
+          {t("variantWidget.notEvoucher")}
         </Text>
       ) : (
         <>
-          <SectionRow title="Partner" value={pool.partner.name} />
-          <SectionRow title="Face value" value={pool.face_value?.toString() ?? "-"} />
+          <SectionRow title={t("fields.partner")} value={pool.partner.name} />
+          <SectionRow title={t("fields.faceValue")} value={pool.face_value?.toString() ?? "-"} />
           <SectionRow
-            title="Available codes"
+            title={t("variantWidget.availableCodes")}
             value={
               <span className="flex items-center gap-x-2">
                 {pool.code_counts.available}
                 {pool.low_stock && (
                   <Badge size="2xsmall" color="red">
-                    Low stock
+                    {t("stock.lowShort")}
                   </Badge>
                 )}
               </span>
             }
           />
-          <SectionRow title="Delivered" value={pool.code_counts.delivered.toString()} />
+          <SectionRow title={t("variantWidget.delivered")} value={pool.code_counts.delivered.toString()} />
         </>
       )}
 
       <FocusModal open={open} onOpenChange={confirmClose}>
         <FocusModal.Content {...restoreFocus}>
-          <Form {...form}>
-            <KeyboundForm noValidate onSubmit={submit} className="flex h-full flex-col overflow-hidden">
-              <FocusModal.Header>
-                <div className="flex items-center justify-end gap-x-2">
-                  <Button size="small" type="submit" disabled={submitLocked} isLoading={create.isPending}>
-                    Save
-                  </Button>
-                </div>
-              </FocusModal.Header>
+          {check.state === "issues" && check.issues.length === 0 ? (
+              <Form {...form}>
+                <KeyboundForm
+                  noValidate
+                  onSubmit={submit}
+                  data-testid="evoucher-pool-form" className="flex h-full flex-col overflow-hidden">
+                  <FocusModal.Header>
+                    <div className="flex items-center justify-end gap-x-2">
+                      <Button size="small" type="submit" disabled={submitLocked} isLoading={create.isPending}>
+                        {t("actions.save", { ns: "translation" })}
+                      </Button>
+                    </div>
+                  </FocusModal.Header>
+                  <FocusModal.Body className="flex flex-1 justify-center overflow-auto py-16">
+                    <div className="flex w-full max-w-lg flex-col gap-y-4">
+                      {title}
+                      <Form.Field
+                        control={form.control}
+                        name="partner_id"
+                        render={({ field: { value, onChange, ref, name, disabled } }) => (
+                          <Form.Item>
+                            <Form.Label>{t("fields.partnerRequired")}</Form.Label>
+                            <Select size="small" name={name} value={value} onValueChange={onChange} disabled={disabled}>
+                              <Form.Control>
+                                <Select.Trigger ref={ref}>
+                                  <Select.Value placeholder={t("fields.selectPartner")} />
+                                </Select.Trigger>
+                              </Form.Control>
+                              <Select.Content>
+                                {partners?.partners.map((p) => (
+                                  <Select.Item key={p.id} value={p.id}>
+                                    {p.name}
+                                  </Select.Item>
+                                ))}
+                              </Select.Content>
+                            </Select>
+                            <Form.ErrorMessage data-testid="evoucher-pool-partner_id-error" />
+                          </Form.Item>
+                        )}
+                      />
+                      {field("name", t("fields.nameRequired"))}
+                      <Form.Field
+                        control={form.control}
+                        name="how_to_use"
+                        render={({ field }) => (
+                          <Form.Item>
+                            <Form.Label>{t("fields.howToUseRequired")}</Form.Label>
+                            <Form.Control>
+                              <Textarea {...field} />
+                            </Form.Control>
+                            <Form.ErrorMessage data-testid="evoucher-pool-how_to_use-error" />
+                          </Form.Item>
+                        )}
+                      />
+                      {field("face_value", t("fields.faceValue"), true)}
+                      {field("validity_note", t("fields.validityNote"))}
+                      {field("low_stock_threshold", t("fields.lowStockThreshold"), true)}
+                    </div>
+                  </FocusModal.Body>
+                </KeyboundForm>
+              </Form>
+          ) : (
+            // กฎข้อ 43c กรณี 1–3: ไม่มีฟอร์ม/ปุ่ม Save → ไม่มีทางยิง POST (⌘/Ctrl+Enter ก็ไม่ส่ง)
+            <div className="flex h-full flex-col overflow-hidden">
+              <FocusModal.Header />
               <FocusModal.Body className="flex flex-1 justify-center overflow-auto py-16">
                 <div className="flex w-full max-w-lg flex-col gap-y-4">
-                  <FocusModal.Title asChild>
-                    <Heading>Create voucher pool for {variant.title}</Heading>
-                  </FocusModal.Title>
-                  <Form.Field
-                    control={form.control}
-                    name="partner_id"
-                    render={({ field: { value, onChange, ref, name, disabled } }) => (
-                      <Form.Item>
-                        <Form.Label>Partner *</Form.Label>
-                        <Select size="small" name={name} value={value} onValueChange={onChange} disabled={disabled}>
-                          <Form.Control>
-                            <Select.Trigger ref={ref}>
-                              <Select.Value placeholder="Select partner" />
-                            </Select.Trigger>
-                          </Form.Control>
-                          <Select.Content>
-                            {partners?.partners.map((p) => (
-                              <Select.Item key={p.id} value={p.id}>
-                                {p.name}
-                              </Select.Item>
-                            ))}
-                          </Select.Content>
-                        </Select>
-                        <Form.ErrorMessage data-testid="evoucher-pool-partner_id-error" />
-                      </Form.Item>
-                    )}
-                  />
-                  {field("name", "Name *")}
-                  <Form.Field
-                    control={form.control}
-                    name="how_to_use"
-                    render={({ field }) => (
-                      <Form.Item>
-                        <Form.Label>How to use * (shown in the delivery email)</Form.Label>
-                        <Form.Control>
-                          <Textarea {...field} />
-                        </Form.Control>
-                        <Form.ErrorMessage data-testid="evoucher-pool-how_to_use-error" />
-                      </Form.Item>
-                    )}
-                  />
-                  {field("face_value", "Face value", true)}
-                  {field("validity_note", "Validity note")}
-                  {field("low_stock_threshold", "Low-stock threshold", true)}
+                  {title}
+                  {check.state === "loading" ? (
+                    <Text size="small" className="text-ui-fg-subtle" data-testid="evoucher-pool-prerequisites-loading">
+                      {t("general.loading")}
+                    </Text>
+                  ) : check.state === "error" ? (
+                    <Text size="small" className="text-ui-fg-error" data-testid="evoucher-pool-prerequisites-error">
+                      {t("variantWidget.prerequisites.loadError", {
+                        message: check.message ?? t("variantWidget.prerequisites.variantMissing"),
+                      })}
+                    </Text>
+                  ) : (
+                    <div className="flex flex-col gap-y-3" data-testid="evoucher-pool-prerequisites">
+                      <Text size="small" weight="plus">
+                        {t("variantWidget.prerequisites.title")}
+                      </Text>
+                      {check.issues.map((issue) => (
+                        <div
+                          key={issue.code}
+                          className="flex items-start justify-between gap-x-4"
+                          data-testid={`evoucher-pool-prereq-${issue.code}`}
+                        >
+                          <Text size="small" className="text-ui-fg-subtle">
+                            {t(`variantWidget.prerequisites.${issue.code}`)}
+                          </Text>
+                          <Link
+                            to={issue.to}
+                            onClick={() => setOpen(false)}
+                            className="txt-compact-small-plus text-ui-fg-interactive hover:text-ui-fg-interactive-hover shrink-0"
+                            data-testid={`evoucher-pool-prereq-${issue.code}-link`}
+                          >
+                            {t("variantWidget.prerequisites.fix")}
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </FocusModal.Body>
-            </KeyboundForm>
-          </Form>
+            </div>
+          )}
         </FocusModal.Content>
       </FocusModal>
     </Container>

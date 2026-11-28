@@ -5,6 +5,7 @@ import { joinGroupBuy, prepareGroupCart, type GroupCart } from "@lib/data/group-
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { syncAffiliateBefore } from "@lib/util/checkout-affiliate"
 import { groupJoinActionMessage } from "@lib/util/group-join-error"
+import { addressLines } from "@lib/util/address-lines"
 import { loginPathForReturn } from "@lib/util/login-return"
 import {
   addToSelection,
@@ -18,11 +19,15 @@ import { PDP_QUANTITY_OPTIONS } from "@lib/util/pending-add-to-cart"
 import { findVariantByOptions } from "@lib/util/product-variant-options"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { Button } from "@modules/common/components/ui"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
 import { useParams, useRouter } from "next/navigation"
-import { useRef, useState } from "react"
+import { useId, useRef, useState } from "react"
 import GroupSelectionInfo from "./group-selection-info"
+
+import { Button } from "@/components/button"
+import { Field, FieldError, FieldLabel } from "@/components/ui/field"
+import ErrorMessage from "@modules/checkout/components/error-message"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 type Props = {
   token: string
@@ -38,13 +43,15 @@ const PREPARE_FAILED = "เตรียมรายการไม่สำเ�
 const NO_SHIPPING = "ไม่มีวิธีจัดส่งสำหรับที่อยู่นี้ กรุณาเลือกที่อยู่อื่น"
 const JOIN_FAILED = "เข้าร่วมไม่สำเร็จ กรุณาลองใหม่"
 
+// SFUI-18a (spec 09 กฎ 57): ชื่อ + บรรทัดที่อยู่ตามลำดับไทย
 const addressLabel = (a: HttpTypes.StoreCustomerAddress) =>
-  [a.first_name, a.last_name, a.address_1, a.city, a.postal_code].filter(Boolean).join(" ")
+  [a.first_name, a.last_name, addressLines(a)[0]].filter(Boolean).join(" ")
 
 // GB-7a2 (spec 04 กฎข้อ 29c–f, 31): เลือกหลาย variant + ที่อยู่ → cart ใหม่ (c1) → วิธีส่ง → sync aff → join (c2)
 // cart ปัจจุบัน (`_medusa_cart_id`) ไม่ถูกอ่าน/แก้ (กฎข้อ 14c); action ที่สร้างข้อมูลกันกดซ้ำด้วย ref (in-flight) + disabled
 export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson, joinable }: Props) {
   const router = useRouter()
+  const id = useId()
   const countryCode = useParams().countryCode as string
   const inFlight = useRef(false)
   const [options, setOptions] = useState<Record<string, string | undefined>>({})
@@ -62,6 +69,10 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
   const overLimit = !!maxUnitsPerPerson && units > maxUnitsPerPerson
   const variantTitle = (id: string) => product.variants?.find((v) => v.id === id)?.title ?? id
   const noShipping = !!prepared && prepared.shipping_options.length === 0
+  const shippingLabel = (o: GroupCart["shipping_options"][number]) =>
+    `${o.name} — ${convertToLocale({ amount: o.amount, currency_code: prepared!.currency_code })}`
+  const selectedAddress = addresses?.find((a) => a.id === addressId)
+  const selectedShipping = prepared?.shipping_options.find((o) => o.id === shippingId)
 
   // รายการหรือที่อยู่เปลี่ยน → cart ที่เตรียมไว้ใช้ไม่ได้แล้ว เริ่ม (c1) ใหม่ด้วย cart ใหม่ (ไม่แก้ cart เดิมซ้ำ)
   const updateSelection = (next: GroupSelectionItem[]) => {
@@ -120,16 +131,13 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
 
   // หน้า render ใหม่หลัง server action (เช่น setShippingMethod) ตอนกลุ่มหมดเวลา → ซ่อนฟอร์มแต่ยังแสดงผลของ join ที่ล้ม
   if (!joinable) {
-    return error ? (
-      <p className="text-small-regular text-rose-500" role="alert" data-testid="group-join-error">
-        {error}
-      </p>
-    ) : null
+    // SFUI-21d (spec 09 กฎ 74 (a)): error ของการกระทำ join = Alert ผ่าน ErrorMessage
+    return <ErrorMessage error={error} data-testid="group-join-error" />
   }
 
   return (
-    <section className="flex flex-col gap-y-4 rounded-rounded border border-ui-border-base p-4" data-testid="group-join">
-      <h2 className="text-large-semi">เลือกสินค้าที่ต้องการ</h2>
+    <section className="flex flex-col gap-y-4 rounded-rounded border border-border p-4" data-testid="group-join">
+      <h2 className="text-base leading-6 font-semibold">เลือกสินค้าที่ต้องการ</h2>
       <div className="flex flex-col gap-y-4" data-testid="group-options">
         {(product.options ?? []).map((option) => (
           <OptionSelect
@@ -144,23 +152,27 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
         ))}
       </div>
       <div className="flex items-end gap-x-3">
-        <label className="flex flex-col gap-y-1 text-small-regular">
-          จำนวน
-          <select
-            value={quantity}
-            onChange={(e) => setQuantity(Number(e.target.value))}
-            className="rounded-md border border-ui-border-base bg-ui-bg-subtle px-3 py-1.5"
-            data-testid="group-quantity"
-          >
-            {PDP_QUANTITY_OPTIONS.map((q) => (
-              <option key={q} value={q}>
-                {q}
-              </option>
-            ))}
-          </select>
-        </label>
+        {/* SFUI-16a (spec 09 กฎ 40b–41; ADR-033): select ของ shadcn ประกอบตามตัวอย่าง docs (controlled) — มีค่าเสมอ ไม่มี placeholder
+            w-auto = กว้างตามเนื้อหาข้างปุ่มเพิ่มในรายการ (Field เป็น w-full) */}
+        <Field className="w-auto">
+          <FieldLabel htmlFor={`${id}-quantity`} data-testid="group-quantity-label">
+            จำนวน
+          </FieldLabel>
+          <Select value={String(quantity)} onValueChange={(v) => setQuantity(Number(v))}>
+            <SelectTrigger id={`${id}-quantity`} data-testid="group-quantity" data-value={String(quantity)}>
+              <SelectValue>{quantity}</SelectValue>
+            </SelectTrigger>
+            <SelectContent data-testid="group-quantity-options">
+              {PDP_QUANTITY_OPTIONS.map((q) => (
+                <SelectItem key={q} value={String(q)} data-testid="group-quantity-option" data-value={String(q)}>
+                  {q}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
         <Button
-          variant="secondary"
+          variant="outline"
           disabled={!variant || busy}
           onClick={() => variant && updateSelection(addToSelection(selection, variant.id, quantity))}
           data-testid="group-add-variant"
@@ -180,13 +192,12 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
                 value={item.quantity}
                 aria-label={`จำนวน ${variantTitle(item.variant_id)}`}
                 onChange={(e) => updateSelection(setSelectionQuantity(selection, item.variant_id, e.target.value))}
-                className="w-20 rounded-md border border-ui-border-base px-2 py-1"
+                className="w-20 rounded-md border border-border px-2 py-1"
                 disabled={busy}
                 data-testid="group-selection-quantity"
               />
               <Button
-                variant="transparent"
-                size="small"
+                variant="ghost"
                 disabled={busy}
                 onClick={() => updateSelection(removeFromSelection(selection, item.variant_id))}
                 data-testid="group-selection-remove"
@@ -198,13 +209,14 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
         </ul>
       )}
       {overLimit && (
-        <p className="text-small-regular text-rose-500" data-testid="group-units-limit">
+        // SFUI-21d (spec 09 กฎ 74 (b)): ข้อความใต้รายการที่เลือก = FieldError (inline)
+        <FieldError data-testid="group-units-limit">
           เลือกได้สูงสุด {maxUnitsPerPerson} ชิ้นต่อคน (เลือกแล้ว {units} ชิ้น)
-        </p>
+        </FieldError>
       )}
 
       {addresses && addresses.length === 0 && (
-        <p className="text-small-regular">
+        <p className="text-xs leading-5 font-normal">
           ยังไม่มีที่อยู่สำหรับจัดส่ง{" "}
           <LocalizedClientLink href="/account/addresses" className="underline" data-testid="group-add-address-link">
             เพิ่มที่อยู่
@@ -213,28 +225,33 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
       )}
       {addresses && addresses.length > 0 && (
         <div className="flex flex-col gap-y-2">
-          <label className="flex flex-col gap-y-1 text-small-regular">
-            ที่อยู่จัดส่ง
-            <select
+          <Field>
+            <FieldLabel htmlFor={`${id}-address`} data-testid="group-address-select-label">
+              ที่อยู่จัดส่ง
+            </FieldLabel>
+            <Select
               value={addressId}
-              onChange={(e) => {
-                setAddressId(e.target.value)
+              onValueChange={(v) => {
+                setAddressId(v)
                 updateSelection(selection)
               }}
               disabled={busy}
-              className="rounded-md border border-ui-border-base px-3 py-1.5"
-              data-testid="group-address-select"
             >
-              {addresses.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {addressLabel(a)}
-                </option>
-              ))}
-            </select>
-          </label>
+              <SelectTrigger id={`${id}-address`} data-testid="group-address-select" data-value={addressId} className="w-full">
+                <SelectValue>{selectedAddress && addressLabel(selectedAddress)}</SelectValue>
+              </SelectTrigger>
+              <SelectContent data-testid="group-address-select-options">
+                {addresses.map((a) => (
+                  <SelectItem key={a.id} value={a.id} data-testid="group-address-select-option" data-value={a.id}>
+                    {addressLabel(a)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
           {!prepared && (
             <Button
-              variant="secondary"
+              variant="outline"
               className="self-start"
               disabled={!selection.length || overLimit || busy}
               onClick={prepare}
@@ -247,32 +264,27 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
       )}
 
       {prepared && !noShipping && (
-        <label className="flex flex-col gap-y-1 text-small-regular">
-          วิธีจัดส่ง
-          <select
-            value={shippingId}
-            onChange={(e) => setShippingId(e.target.value)}
-            disabled={busy}
-            className="rounded-md border border-ui-border-base px-3 py-1.5"
-            data-testid="group-shipping-option"
-          >
-            <option value="" disabled>
-              เลือกวิธีจัดส่ง
-            </option>
-            {prepared.shipping_options.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name} — {convertToLocale({ amount: o.amount, currency_code: prepared.currency_code })}
-              </option>
-            ))}
-          </select>
-        </label>
+        // ค่า "" = ยังไม่เลือก แสดง placeholder (กฎ 41) — ลูกค้าต้องเลือกเอง (qa #238 D1)
+        <Field>
+          <FieldLabel htmlFor={`${id}-shipping`} data-testid="group-shipping-option-label">
+            วิธีจัดส่ง
+          </FieldLabel>
+          <Select value={shippingId} onValueChange={setShippingId} disabled={busy}>
+            <SelectTrigger id={`${id}-shipping`} data-testid="group-shipping-option" data-value={shippingId} className="w-full">
+              <SelectValue placeholder="เลือกวิธีจัดส่ง">{selectedShipping && shippingLabel(selectedShipping)}</SelectValue>
+            </SelectTrigger>
+            <SelectContent data-testid="group-shipping-option-options">
+              {prepared.shipping_options.map((o) => (
+                <SelectItem key={o.id} value={o.id} data-testid="group-shipping-option-option" data-value={o.id}>
+                  {shippingLabel(o)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
       )}
 
-      {(error || noShipping) && (
-        <p className="text-small-regular text-rose-500" role="alert" data-testid="group-join-error">
-          {error ?? NO_SHIPPING}
-        </p>
-      )}
+      <ErrorMessage error={error || noShipping ? (error ?? NO_SHIPPING) : null} data-testid="group-join-error" />
 
       {!noShipping && (
         <Button

@@ -20,7 +20,7 @@ export default function HomeCampaigns({ flashSales, groupCampaigns, products, co
 
   return (
     <section className="content-container py-12" data-testid="home-campaigns">
-      <h2 className="txt-xlarge mb-6">แคมเปญที่กำลังจัด</h2>
+      <h2 className="text-lg leading-[1.8rem] mb-6">แคมเปญที่กำลังจัด</h2>
       <ul className="grid grid-cols-1 gap-4 small:grid-cols-2 medium:grid-cols-3">
         {flashSales.map((sale) => (
           <FlashCampaignCard key={sale.id} sale={sale} now={now} />

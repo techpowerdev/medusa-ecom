@@ -1,10 +1,12 @@
 "use client"
 
 import { requestReturn, ReturnRequestState } from "@lib/data/returns"
+import ErrorMessage from "@modules/checkout/components/error-message"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import NativeSelect from "@modules/common/components/native-select"
-import { Button, Heading, Text } from "@modules/common/components/ui"
-import { useActionState } from "react"
+import { Button } from "@/components/button"
+import { Field, FieldLabel } from "@/components/ui/field"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useActionState, useId, useState } from "react"
 
 export type ReturnableLine = {
   id: string
@@ -22,6 +24,70 @@ type Props = {
 
 const INITIAL: ReturnRequestState = { success: false, error: null }
 
+/**
+ * SFUI-16a (spec 09 กฎ 40b–41; ADR-033): ช่องจำนวน/เหตุผลของหนึ่งแถว — select ของ shadcn ประกอบตามตัวอย่าง docs; แยกเป็น component ของแถวเพราะต้องใช้ hook ต่อแถว
+ * (`useId` สำหรับ id ของ trigger และ state ของค่าปัจจุบัน) — แบบ uncontrolled (`defaultValue` + `name`) ที่เก็บค่าจาก `onValueChange` เพื่อแสดงข้อความ/`data-value`
+ * ให้ตรงค่าใน FormData; form reset ของ React 19 → Radix ตั้งค่ากลับเป็น defaultValue และเรียก onValueChange (state ตาม) ส่วน remount ด้วย key → state เริ่มใหม่จาก values
+ */
+function ReturnItemFields({
+  line,
+  reasons,
+  values,
+}: {
+  line: ReturnableLine
+  reasons: Props["reasons"]
+  values: Record<string, string>
+}) {
+  const id = useId()
+  const quantityName = `quantity:${line.id}`
+  const reasonName = `reason:${line.id}`
+  const [quantity, setQuantity] = useState(values[quantityName] ?? "0")
+  const [reason, setReason] = useState(values[reasonName] ?? "")
+
+  return (
+    <>
+      {/* label เหนือช่อง (กฎ 28–29); w-auto = กว้างตามเนื้อหาในแถว small:flex-row (Field เป็น w-full) */}
+      <Field className="w-auto">
+        <FieldLabel htmlFor={`${id}-quantity`} data-testid="return-item-quantity-label">
+          จำนวนที่คืน
+        </FieldLabel>
+        <Select name={quantityName} defaultValue={values[quantityName] ?? "0"} onValueChange={setQuantity}>
+          <SelectTrigger id={`${id}-quantity`} data-testid="return-item-quantity" data-value={quantity}>
+            {/* ค่าเริ่ม "0" จึงไม่แสดง placeholder จริง — คงข้อความเดิมไว้ตามกฎ 41 */}
+            <SelectValue placeholder="จำนวน">{quantity}</SelectValue>
+          </SelectTrigger>
+          <SelectContent data-testid="return-item-quantity-options">
+            {Array.from({ length: line.maxQuantity + 1 }, (_, n) => (
+              <SelectItem key={n} value={String(n)} data-testid="return-item-quantity-option" data-value={String(n)}>
+                {n}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+      {reasons.length > 0 && (
+        <Field className="w-auto min-w-[12rem]">
+          <FieldLabel htmlFor={`${id}-reason`} data-testid="return-item-reason-label">
+            เหตุผล
+          </FieldLabel>
+          <Select name={reasonName} defaultValue={values[reasonName] ?? ""} onValueChange={setReason}>
+            <SelectTrigger id={`${id}-reason`} data-testid="return-item-reason" data-value={reason} className="w-full">
+              <SelectValue placeholder="เลือกเหตุผล">{reasons.find((r) => r.id === reason)?.label}</SelectValue>
+            </SelectTrigger>
+            <SelectContent data-testid="return-item-reason-options">
+              {reasons.map((r) => (
+                <SelectItem key={r.id} value={r.id} data-testid="return-item-reason-option" data-value={r.id}>
+                  {r.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+      )}
+    </>
+  )
+}
+
 // spec 01 CORE-20 (AC-65): เลือก item/จำนวน/เหตุผล → POST /store/returns (server action) ปุ่มถูก disable ระหว่างส่ง
 const ReturnRequestForm = ({ orderId, displayId, lines, reasons }: Props) => {
   const [state, formAction, isPending] = useActionState(requestReturn, INITIAL)
@@ -32,24 +98,24 @@ const ReturnRequestForm = ({ orderId, displayId, lines, reasons }: Props) => {
 
   return (
     <div className="flex flex-col gap-y-6" data-testid="return-request-container">
-      <Heading className="text-2xl-semi" data-testid="return-request-heading">
+      <h2 className="text-2xl font-semibold" data-testid="return-request-heading">
         ขอคืนสินค้า คำสั่งซื้อ #{displayId}
-      </Heading>
+      </h2>
 
       {state.success ? (
         <div className="flex flex-col gap-y-4">
-          <Text className="txt-medium text-ui-fg-base" data-testid="order-return-success">
+          <p className="text-sm leading-[1.4rem] text-foreground" data-testid="order-return-success">
             ส่งคำขอคืนสินค้าเรียบร้อยแล้ว ร้านจะตรวจสอบคำขอและติดต่อกลับ
-          </Text>
+          </p>
           <LocalizedClientLink href={backHref} className="underline" data-testid="back-to-order-button">
             กลับไปหน้ารายละเอียดคำสั่งซื้อ
           </LocalizedClientLink>
         </div>
       ) : !lines.length ? (
         <div className="flex flex-col gap-y-4">
-          <Text className="txt-medium text-ui-fg-subtle" data-testid="return-not-available">
+          <p className="text-sm leading-[1.4rem] text-muted-foreground" data-testid="return-not-available">
             คำสั่งซื้อนี้ไม่มีสินค้าที่ขอคืนได้ในขณะนี้
-          </Text>
+          </p>
           <LocalizedClientLink href={backHref} className="underline" data-testid="back-to-order-button">
             กลับไปหน้ารายละเอียดคำสั่งซื้อ
           </LocalizedClientLink>
@@ -57,81 +123,51 @@ const ReturnRequestForm = ({ orderId, displayId, lines, reasons }: Props) => {
       ) : (
         <form key={JSON.stringify(values)} action={formAction} className="flex flex-col gap-y-4">
           <input type="hidden" name="order_id" value={orderId} />
-          <Text className="txt-medium text-ui-fg-subtle" data-testid="return-request-hint">
+          <p className="text-sm leading-[1.4rem] text-muted-foreground" data-testid="return-request-hint">
             เลือกจำนวนสินค้าที่ต้องการคืนและเหตุผล
-          </Text>
+          </p>
           <ul className="flex flex-col gap-y-4">
             {lines.map((line) => (
               <li
                 key={line.id}
-                className="flex flex-col small:flex-row small:items-center gap-4 border-b border-ui-border-base pb-4"
+                className="flex flex-col small:flex-row small:items-center gap-4 border-b border-border pb-4"
                 data-testid="return-item"
                 data-line-id={line.id}
               >
                 <div className="flex-1">
-                  <Text className="txt-medium-plus" data-testid="return-item-title">
+                  <p className="text-sm leading-[1.4rem] font-medium" data-testid="return-item-title">
                     {line.title}
-                  </Text>
+                  </p>
                   {line.variantTitle && (
-                    <Text className="txt-small text-ui-fg-subtle">{line.variantTitle}</Text>
+                    <p className="text-sm leading-[1.4rem] text-muted-foreground">{line.variantTitle}</p>
                   )}
                 </div>
-                <label className="flex flex-col gap-y-1 txt-small">
-                  <span>จำนวนที่คืน</span>
-                  <NativeSelect
-                    name={`quantity:${line.id}`}
-                    defaultValue={values[`quantity:${line.id}`] ?? "0"}
-                    placeholder="จำนวน"
-                    data-testid="return-item-quantity"
-                  >
-                    {Array.from({ length: line.maxQuantity + 1 }, (_, n) => (
-                      <option key={n} value={String(n)}>
-                        {n}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                </label>
-                {reasons.length > 0 && (
-                  <label className="flex flex-col gap-y-1 txt-small">
-                    <span>เหตุผล</span>
-                    <NativeSelect
-                      name={`reason:${line.id}`}
-                      defaultValue={values[`reason:${line.id}`] ?? ""}
-                      placeholder="เลือกเหตุผล"
-                      className="min-w-[12rem]"
-                      data-testid="return-item-reason"
-                    >
-                      {reasons.map((reason) => (
-                        <option key={reason.id} value={reason.id}>
-                          {reason.label}
-                        </option>
-                      ))}
-                    </NativeSelect>
-                  </label>
-                )}
+                <ReturnItemFields line={line} reasons={reasons} values={values} />
               </li>
             ))}
           </ul>
+          {/* SFUI-21d (spec 09 กฎ 74 (a)): error ของฟอร์มขอคืน = Alert ผ่าน ErrorMessage */}
           {state.contactStore ? (
-            // CORE-71 (กฎข้อ 129): location ไม่มีของ — ลองใหม่ไม่ช่วย ให้ติดต่อร้าน
-            <Text className="txt-medium text-rose-500" data-testid="return-contact-store">
-              {state.error}{" "}
-              <LocalizedClientLink href="/contact" className="underline" data-testid="return-contact-store-link">
-                ไปหน้าติดต่อร้าน
-              </LocalizedClientLink>
-            </Text>
+            // CORE-71 (กฎข้อ 129): location ไม่มีของ — ลองใหม่ไม่ช่วย ให้ติดต่อร้าน (ลิงก์อยู่ใน AlertDescription)
+            <ErrorMessage
+              data-testid="return-contact-store"
+              error={
+                <span>
+                  {state.error}{" "}
+                  <LocalizedClientLink href="/contact" className="underline" data-testid="return-contact-store-link">
+                    ไปหน้าติดต่อร้าน
+                  </LocalizedClientLink>
+                </span>
+              }
+            />
           ) : (
-            state.error && (
-              <Text className="txt-medium text-rose-500" data-testid="return-error">
-                {state.error}
-              </Text>
-            )
+            <ErrorMessage error={state.error} data-testid="return-error" />
           )}
           <div className="flex gap-x-4 items-center">
             <Button type="submit" disabled={isPending} isLoading={isPending} data-testid="return-submit-button">
               ยืนยันขอคืนสินค้า
             </Button>
-            <LocalizedClientLink href={backHref} className="text-ui-fg-subtle" data-testid="back-to-order-button">
+            <LocalizedClientLink href={backHref} className="text-muted-foreground" data-testid="back-to-order-button">
               ยกเลิก
             </LocalizedClientLink>
           </div>

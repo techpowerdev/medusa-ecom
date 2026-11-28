@@ -74,7 +74,8 @@ test.describe("evidence-rules", () => {
   test("evidenceDir รับ task id ที่มี suffix ตัวเล็ก (AC-20)", () => {
     // GB-6b1: task ที่ spec แยกย่อย (suffix ตัวเล็ก + ตัวเลขหนึ่งหลัก); GB-N1: งานเล็กรวม nit (N นำหน้าตัวเลข)
     // GB-7a2a (spec 04 รอบ 15): แยกย่อยอีกชั้น = ตามด้วยตัวเล็กได้อีกหนึ่งตัวหลังตัวเลข
-    for (const taskId of ["CORE-4a", "CORE-5b", "CORE-5", "GB-12", "GB-6b1", "GB-6b2", "GB-7a2a", "GB-6b1a", "GB-N1", "GB-N12"]) {
+    // AI18N-1 (spec 10): prefix มีตัวเลขหลังตัวอักษรตัวแรกได้
+    for (const taskId of ["CORE-4a", "CORE-5b", "CORE-5", "GB-12", "GB-6b1", "GB-6b2", "GB-7a2a", "GB-6b1a", "GB-N1", "GB-N12", "AI18N-1", "AI18N-12"]) {
       expect(evidenceDir("/repo", { feature: "core", taskId })).toBe(
         path.join("/repo", "docs", "evidence", "core", taskId)
       )
@@ -97,9 +98,28 @@ test.describe("evidence-rules", () => {
       "GB-NN1",
       "GB-N1a",
       "GB-1N",
+      // prefix ต้องขึ้นต้นด้วยตัวอักษรใหญ่
+      "18N-1",
+      "1AI-1",
+      "Ai18N-1",
     ]) {
       expect(() => evidenceDir("/repo", { feature: "core", taskId })).toThrow()
     }
+  })
+
+  // AI18N-N1 (nit review รอบ 46): ข้อความ error อธิบายรูปแบบตาม regex จริง — prefix มีตัวเลขได้, รูป XX-Nn และตัวอย่างทุกตัวผ่าน
+  test("evidenceDir: ข้อความ error ระบุรูปแบบครบและตัวอย่างใช้ได้จริง", () => {
+    let message = ""
+    try {
+      evidenceDir("/repo", { feature: "core", taskId: "core-4a" })
+    } catch (e) {
+      message = (e as Error).message
+    }
+    expect(message).toContain("XX-Nn")
+    expect(message).toMatch(/ตัวเลข/)
+    const examples = message.match(/เช่น (.+):/)?.[1].split(", ") ?? []
+    for (const taskId of ["CORE-4a", "GB-6b1", "GB-7a2a", "GB-N1", "AI18N-1"]) expect(examples).toContain(taskId)
+    for (const taskId of examples) expect(() => evidenceDir("/repo", { feature: "core", taskId })).not.toThrow()
   })
 
   // CORE-5b AC-21: ตรวจงบกับชุดไฟล์หลังเขียน ก่อนเขียนจริง

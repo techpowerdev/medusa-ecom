@@ -1,8 +1,15 @@
 "use client"
 
-import { MagnifyingGlass, XMarkMini } from "@medusajs/icons"
+import { Search, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useSearchBox } from "react-instantsearch"
+
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group"
 
 const DEBOUNCE_MS = 250
 
@@ -39,10 +46,10 @@ const StoreSearchBox = () => {
     refine("")
   }
 
+  // SFUI-19c (spec 09 กฎ 65b): `input-group` ของ shadcn — icon ค้นหาใน addon ต้นช่อง, ปุ่มล้างเป็น `InputGroupButton` ใน addon ท้ายช่อง
   return (
-    <div className="mb-6 flex items-center gap-x-3 border-b border-ui-border-base">
-      <MagnifyingGlass className="shrink-0 text-ui-fg-muted" />
-      <input
+    <InputGroup className="mb-6">
+      <InputGroupInput
         type="search"
         value={inputValue}
         onChange={(event) => {
@@ -51,21 +58,25 @@ const StoreSearchBox = () => {
         }}
         placeholder="ค้นหาสินค้า"
         aria-label="ค้นหาสินค้า"
-        className="txt-medium w-full bg-transparent py-3 text-ui-fg-base outline-none placeholder:text-ui-fg-muted [&::-webkit-search-cancel-button]:hidden"
+        className="[&::-webkit-search-cancel-button]:hidden"
         data-testid="store-search-input"
       />
+      <InputGroupAddon>
+        <Search aria-hidden="true" />
+      </InputGroupAddon>
       {inputValue && (
-        <button
-          type="button"
-          onClick={clear}
-          aria-label="ล้างคำค้นหา"
-          className="shrink-0 text-ui-fg-muted hover:text-ui-fg-base"
-          data-testid="store-search-clear"
-        >
-          <XMarkMini />
-        </button>
+        <InputGroupAddon align="inline-end">
+          <InputGroupButton
+            size="icon-xs"
+            onClick={clear}
+            aria-label="ล้างคำค้นหา"
+            data-testid="store-search-clear"
+          >
+            <X aria-hidden="true" />
+          </InputGroupButton>
+        </InputGroupAddon>
       )}
-    </div>
+    </InputGroup>
   )
 }
 

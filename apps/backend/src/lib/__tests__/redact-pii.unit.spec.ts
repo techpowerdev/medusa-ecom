@@ -532,6 +532,480 @@ describe("redactPii (OPS-39, AC-54)", () => {
   })
 })
 
+// OPS-40 (spec 07 กฎข้อ 22 รอบ 43, AC-55): ค่าที่ไม่ใช่ PII ลงท้ายด้วยรูปเปิด key PII ค่าเดี่ยว (review #559)
+describe("redactPii (OPS-40, AC-55)", () => {
+  const wrap = (text: string, levels: number): string => {
+    let out = text
+    for (let i = 0; i < levels; i++) {
+      out = JSON.stringify(out)
+    }
+    return out
+  }
+  const SERIALIZERS: [string, (value: object) => string][] = [
+    ["inspect", (value) => inspect(value, { depth: 5 })],
+    ["inspect breakLength 1", (value) => inspect(value, { depth: 5, breakLength: 1 })],
+    ["JSON", (value) => JSON.stringify(value)],
+    ["JSON pretty-print", (value) => JSON.stringify(value, null, 2)],
+  ]
+  const KEPT = ["1999.50", "1042", "req_01ABC", "thb", "total", "display_id", "request_id", "currency_code"]
+
+  // (a) รูปเปิดค่าเดี่ยว 5 แบบ × serialize 4 แบบ × escape 0–3 ชั้น = 80 กรณี
+  const OPENERS = ["name: '", 'name: "', "phone: ", "Name: ", '"name":"']
+  it.each(OPENERS.flatMap((opener) => SERIALIZERS.flatMap(([form, render]) => [0, 1, 2, 3].map((levels) => [opener, form, levels, render] as const))))(
+    "(a) note ลงท้าย %j (%s, escape %i ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key",
+    (opener, _form, levels, render) => {
+      const value = { note: opener, city: "Bangkok", total: "1999.50", display_id: 1042, request_id: "req_01ABC", currency_code: "thb" }
+      const out = redactPii(wrap(render(value), levels))
+
+      expect(out).not.toContain("Bangkok")
+      for (const kept of KEPT) {
+        expect(out).toContain(kept)
+      }
+    }
+  )
+
+  // (b) \' ของ util.inspect ที่เนื้อหามีรูป `<pii-key>:` ใน JSON escape 0–3 ชั้น
+  it.each([0, 1, 2, 3])("(b) \\' + `city:` ในค่า name escape %i ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่", (levels) => {
+    const inspected = inspect({ name: "it's \"Somchai\" `x` city: y", id: CART_ID })
+    expect(inspected).toContain("'it\\'s") // ยืนยันว่า inspect ใช้ \' จริง
+    const out = redactPii(wrap(inspected, levels))
+
+    expect(out).not.toContain("Somchai")
+    expect(out).toContain(CART_ID)
+  })
+
+  it("ข้อความอิสระใน field ที่ไม่ใช่ PII ยังถูก redact (เหมือน develop)", () => {
+    for (const text of [
+      inspect({ message: "Invalid name: 'Somchai'", total: 1999 }),
+      JSON.stringify({ message: "customer name: 'Somchai', city: 'Bangkok'", id: CART_ID }),
+      wrap(inspect({ note: ['a', "Invalid city: 'Bangkok'"], id: CART_ID }), 2),
+    ]) {
+      const out = redactPii(text)
+      expect(out).not.toContain("Somchai")
+      expect(out).not.toContain("Bangkok")
+    }
+  })
+
+  // (c) fuzz สองทิศ: seed คงที่ — ถ้าล้ม ข้อความจะพิมพ์ seed, case และ input เพื่อทำซ้ำได้
+  const SEED = 0x0b5_40
+  const MARK = "PIIMARK"
+  const FUZZ_OPENERS = [
+    ...OPENERS,
+    String.raw`\"name\":\"`,
+    String.raw`\\\"name\\\":\\\"`,
+    "city: '",
+    "email: `",
+    "'name': '",
+    '"name"=>"',
+    "postal_code: ",
+    "first_name: \"",
+  ]
+  const FUZZ_PREFIX = ["", "", ", ", "{ ", "\n  ", "\\n  ", "x ", "[", "'", '"', "`", "\\"]
+  const FUZZ_PII_KEYS = ["name", "first_name", "address_1", "city", "email", "postal_code", "phone"]
+  const FUZZ_CHARS = ["'", '"', "`", "\\", "\n", "[", "]", ",", ":", " ", "a", "Z", "x", "{", "}", "+"]
+  const KNOWN: [string, string | number][] = [
+    ["total", "1999.50"],
+    ["amount", 250],
+    ["display_id", 1042],
+    ["request_id", "req_01ABC"],
+    ["currency_code", "thb"],
+  ]
+  /** mulberry32 — PRNG แบบ seed คงที่ */
+  const prng = (seed: number) => () => {
+    seed = (seed + 0x6d2b79f5) | 0
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+
+  it(`(c) fuzz ${MARK} 600 object × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืนค่าที่ไม่ใช่ PII (seed ${SEED})`, () => {
+    const rand = prng(SEED)
+    const int = (n: number) => Math.floor(rand() * n)
+    const pick = <T,>(items: T[]): T => items[int(items.length)]
+    const randomText = (length: number) => Array.from({ length }, () => pick(FUZZ_CHARS)).join("")
+    const opener = () => pick(FUZZ_PREFIX) + randomText(int(3)) + pick(FUZZ_OPENERS)
+    const piiValue = () => {
+      const text = randomText(int(14))
+      const at = int(text.length + 1)
+      return `${text.slice(0, at)}${MARK}${text.slice(at)}`
+    }
+    const failures: string[] = []
+    for (let i = 0; i < 600; i++) {
+      const obj: Record<string, unknown> = {}
+      const kept: string[] = []
+      for (let n = 0; n < 1 + int(2); n++) {
+        // field ที่ไม่ใช่ PII ลงท้ายด้วยรูปเปิด (ค่าเดี่ยว หรือสมาชิกตัวสุดท้ายของ array) → key PII → field ที่รู้ค่าล่วงหน้า
+        const noteKey = `${pick(["note", "message", "description", "reason"])}${n || ""}`
+        obj[noteKey] = rand() < 0.75 ? opener() : [...Array.from({ length: int(3) }, () => randomText(int(5))), opener()]
+        obj[pick(FUZZ_PII_KEYS)] = piiValue()
+        for (const [key, value] of KNOWN) {
+          if (rand() < 0.6) {
+            obj[`${key}${n || ""}`] = value
+            kept.push(`${key}${n || ""}`, String(value))
+          }
+        }
+      }
+      const id = `cart_${i.toString(36)}FZ`
+      obj.id = id
+      kept.push(id)
+      for (const [form, render] of SERIALIZERS) {
+        for (const levels of [0, 1, 2, 3]) {
+          const out = redactPii(wrap(render(obj), levels))
+          const lost = kept.filter((value) => !out.includes(value))
+          if (out.includes(MARK) || lost.length) {
+            failures.push(`seed=${SEED} case=${i} ${form} levels=${levels} lost=${JSON.stringify(lost)} input=${JSON.stringify(obj)}`)
+          }
+        }
+      }
+    }
+    expect(failures.slice(0, 3)).toEqual([])
+  })
+
+  // review #562 (blocker 1): key ที่ไม่ใช่ identifier (`x-note`, `user-agent`) — `, b: ` ในค่าเคยเริ่ม field ปลอมแล้วกลืน quote เปิดของ name
+  // (ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย) — develop ไม่หลุด
+  const INSPECTS: [string, (value: object) => string][] = [
+    ["inspect", (value) => inspect(value)],
+    ["inspect breakLength 1", (value) => inspect(value, { breakLength: 1 })],
+  ]
+  it.each(
+    ["x-note", "user-agent"].flatMap((key) =>
+      ["a, b: ", "Missing fields, reason:", "a\n  b: "].flatMap((note) => INSPECTS.map(([form, render]) => [key, note, form, render] as const))
+    )
+  )("(review #562) key %j ค่า %j (%s) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด", (key, note, _form, render) => {
+    for (const name of ["สมชาย ใจดี", " Somchai", "-Somchai", "(Somchai)"]) {
+      for (const levels of [0, 1, 2, 3]) {
+        const out = redactPii(wrap(render({ [key]: note, name, id: CART_ID }), levels))
+        expect(out).not.toMatch(/Somchai|สมชาย/)
+        expect(out).toContain(CART_ID)
+      }
+    }
+  })
+
+  it("(review #562) key ที่ไม่ใช่ identifier ใน object ซ้อน (headers user-agent) ไม่ทำให้ first_name หลุด", () => {
+    for (const [, render] of SERIALIZERS) {
+      for (const levels of [0, 1, 2, 3]) {
+        expect(redactPii(wrap(render({ headers: { "user-agent": "Mozilla/5.0 (X11; rv: " }, first_name: "สมชาย" }), levels))).not.toContain("สมชาย")
+      }
+    }
+  })
+
+  // review #562 (blocker 2): กฎ 22a "ค่าของ key ใดก็ได้" — ตาราง (a) กับ key ที่ไม่ใช่ identifier
+  it.each(
+    ["x-note", "user-agent", "note.text", "my note", "0note", "ชื่อ"].flatMap((key) => OPENERS.map((opener) => [key, opener] as const))
+  )("(review #562) key %j ค่าลงท้าย %j × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII", (key, opener) => {
+    for (const [, render] of SERIALIZERS) {
+      for (const levels of [0, 1, 2, 3]) {
+        const value = { [key]: opener, city: "Bangkok", total: "1999.50", display_id: 1042, request_id: "req_01ABC", currency_code: "thb" }
+        const out = redactPii(wrap(render(value), levels))
+        expect(out).not.toContain("Bangkok")
+        for (const kept of KEPT) {
+          expect(out).toContain(kept)
+        }
+      }
+    }
+  })
+
+  // review #562: array ใต้ key PII ที่สมาชิกหน้าตาเหมือนขอบ field (กฎ 22f — ไม่ redact) ต้องไม่ทำให้ค่าเดี่ยวของ key PII ถัดไปหลุด
+  it.each(SERIALIZERS)("(review #562) array 22f ตามด้วย postal_code ค่าเดี่ยว (%s) × escape 0–3 ชั้น ไม่หลุด", (_form, render) => {
+    for (const levels of [0, 1, 2, 3]) {
+      expect(redactPii(wrap(render({ city: ["\n  t:"], postal_code: "\n10110" }), levels))).not.toContain("10110")
+    }
+  })
+
+  // review #562: fuzz สองทิศที่ขยาย — key ที่ไม่ใช่ identifier, object ซ้อน, ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย,
+  // array 22f (สมาชิกหน้าตาเหมือนขอบ field) ตามด้วย key PII ค่าเดี่ยว
+  const SEED_562 = 0x0b5_62
+  it(`(review #562) fuzz ${MARK} key/ค่าที่ไม่ใช่ identifier + array 22f 600 object × serialize 4 แบบ × escape 0–3 ชั้น (seed ${SEED_562})`, () => {
+    const rand = prng(SEED_562)
+    const int = (n: number) => Math.floor(rand() * n)
+    const pick = <T,>(items: T[]): T => items[int(items.length)]
+    const chars = [...FUZZ_CHARS, "ส", "ม", "-", "(", "t"]
+    const randomText = (length: number) => Array.from({ length }, () => pick(chars)).join("")
+    const openers = [...FUZZ_OPENERS, "a, b: ", "Missing fields, reason:", "a\n  b: ", ", rv: ", "\n  t:", ',"a":"', "{ a: '", "k: "]
+    const opener = () => pick(FUZZ_PREFIX) + randomText(int(4)) + pick(openers)
+    const noteKeys = ["note", "x-note", "user-agent", "note.text", "my note", "0note", "ชื่อ", "a b-c"]
+    const piiKeys = [...FUZZ_PII_KEYS, "Name", "CITY"]
+    const piiValue = () => {
+      const text = randomText(int(10))
+      const at = int(text.length + 1)
+      return `${pick(["สม", " ", "-", "(", "", "a", "\n"])}${text.slice(0, at)}${MARK}${text.slice(at)}`
+    }
+    const failures: string[] = []
+    for (let i = 0; i < 600; i++) {
+      const obj: Record<string, unknown> = {}
+      const kept: string[] = []
+      for (let n = 0; n < 1 + int(2); n++) {
+        const noteKey = `${pick(noteKeys)}${n || ""}`
+        const note = rand() < 0.7 ? opener() : [randomText(int(5)), opener()]
+        if (rand() < 0.15) obj.headers = { [noteKey]: note }
+        else obj[noteKey] = note
+        if (rand() < 0.3) obj[`${pick(["city", "name", "phone"])}`] = [pick(["\n  t:", ',"a":"', "x, b: "]) + randomText(int(3))]
+        obj[pick(piiKeys)] = piiValue()
+        for (const [key, value] of KNOWN) {
+          if (rand() < 0.5) {
+            obj[`${key}${n || ""}`] = value
+            kept.push(`${key}${n || ""}`, String(value))
+          }
+        }
+      }
+      const id = `cart_${i.toString(36)}FZ`
+      obj.id = id
+      kept.push(id)
+      for (const [form, render] of SERIALIZERS) {
+        for (const levels of [0, 1, 2, 3]) {
+          const out = redactPii(wrap(render(obj), levels))
+          const lost = kept.filter((value) => !out.includes(value))
+          if (out.includes(MARK) || lost.length) {
+            failures.push(`seed=${SEED_562} case=${i} ${form} levels=${levels} lost=${JSON.stringify(lost)} input=${JSON.stringify(obj)}`)
+          }
+        }
+      }
+    }
+    expect(failures.slice(0, 3)).toEqual([])
+  })
+
+  // re-review #562 รอบ 2: key ใน quote ที่มี quote อีกชนิด/backslash/escape ข้างใน (inspect `"customer's note"`, `'say "hi"'`, `'a\\b'`, `'a\nb'`)
+  // เคยไม่ถูกจับเป็น field → `, tel:` ในค่าเริ่ม field ปลอมที่กลืน quote เปิดของ phone (ค่าขึ้นต้นด้วย `+` `,` `]` `}` newline) — develop ไม่หลุด
+  const ODD_KEYS = ["customer's note", 'say "hi"', "a\\b", "a\nb", "tab\tkey", "\ud83d"]
+  it.each(ODD_KEYS.flatMap((key) => ["+66 81 234 5678", ",Somchai", "]Somchai", "}Somchai", "\nSomchai"].map((phone) => [key, phone] as const)))(
+    "(re-review #562) key %j ค่า PII %j × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด",
+    (key, phone) => {
+      for (const [, render] of SERIALIZERS) {
+        for (const levels of [0, 1, 2, 3]) {
+          const out = redactPii(wrap(render({ [key]: "call me, tel:", phone, id: CART_ID }), levels))
+          expect(out).not.toMatch(/Somchai|234 5678/)
+          expect(out).toContain(CART_ID)
+        }
+      }
+    }
+  )
+
+  // re-review #562 รอบ 2: fuzz สองทิศ — key ที่มี ' " backslash newline tab surrogate และค่า PII ขึ้นต้นด้วย + , ] } newline
+  const SEED_562B = 0x0b5_63
+  it(`(re-review #562) fuzz ${MARK} key ที่มี quote/escape × ค่า PII ขึ้นต้นด้วยเครื่องหมาย 600 object × serialize 4 แบบ × escape 0–3 ชั้น (seed ${SEED_562B})`, () => {
+    const rand = prng(SEED_562B)
+    const int = (n: number) => Math.floor(rand() * n)
+    const pick = <T,>(items: T[]): T => items[int(items.length)]
+    const chars = [...FUZZ_CHARS, "ส", "-", "t", "\t"]
+    const randomText = (length: number) => Array.from({ length }, () => pick(chars)).join("")
+    const keyChars = ["'", '"', "\\", "\n", "\t", "\ud83d", "a", " ", "-", "ส", ":", ","]
+    const oddKey = () => `${pick(["note", "customer", "x"])}${Array.from({ length: 1 + int(3) }, () => pick(keyChars)).join("")}${pick(["", "k"])}`
+    const openers = [...FUZZ_OPENERS, "call me, tel:", "a, b: ", "a\n  b: ", ", rv: ", "x: ["]
+    const failures: string[] = []
+    for (let i = 0; i < 600; i++) {
+      const obj: Record<string, unknown> = {}
+      const kept: string[] = []
+      for (let n = 0; n < 1 + int(2); n++) {
+        obj[`${oddKey()}${n || ""}`] = rand() < 0.75 ? pick(FUZZ_PREFIX) + randomText(int(4)) + pick(openers) : [randomText(int(4)), pick(openers)]
+        const text = randomText(int(8))
+        obj[pick(FUZZ_PII_KEYS)] = `${pick(["+66 ", ",", "]", "}", "\n", "สม", " "])}${text.slice(0, 3)}${MARK}${text.slice(3)}`
+        for (const [key, value] of KNOWN) {
+          if (rand() < 0.5) {
+            obj[`${key}${n || ""}`] = value
+            kept.push(`${key}${n || ""}`, String(value))
+          }
+        }
+      }
+      const id = `cart_${i.toString(36)}FZ`
+      obj.id = id
+      kept.push(id)
+      for (const [form, render] of SERIALIZERS) {
+        for (const levels of [0, 1, 2, 3]) {
+          const out = redactPii(wrap(render(obj), levels))
+          const lost = kept.filter((value) => !out.includes(value))
+          if (out.includes(MARK) || lost.length) {
+            failures.push(`seed=${SEED_562B} case=${i} ${form} levels=${levels} lost=${JSON.stringify(lost)} input=${JSON.stringify(obj)}`)
+          }
+        }
+      }
+    }
+    expect(failures.slice(0, 3)).toEqual([])
+  })
+
+  // re-review #562 รอบ 3 (ข้อ 1): ค่า PII ที่ขึ้นต้นด้วย `+` — `+` ติดกันไม่ใช่ขอบหลังสมาชิก (ท่อนต่อของ inspect มีช่องว่างนำเสมอ ` +`)
+  it("(re-review #562 รอบ 3) ค่า PII ขึ้นต้นด้วย + หลังค่าของ field ที่ไม่ใช่ PII ไม่หลุด", () => {
+    for (const [, render] of INSPECTS) {
+      for (const levels of [0, 1, 2, 3]) {
+        expect(redactPii(wrap(render({ note: "a, b:", phone: "+66 81 234 5678", id: CART_ID }), levels))).not.toContain("234 5678")
+      }
+    }
+    const text = JSON.stringify(
+      inspect({ detail: "=>'=>", last_name: "\\\"naXme\\\":\\\"`'+'\",\"x\":\"", message1: ", ", postal_code: "+'x-a': 10110 $" })
+    )
+    expect(redactPii(text)).not.toContain("10110")
+  })
+
+  // re-review #562 รอบ 3 (ข้อ 2): key ใน quote ยาวไม่จำกัด (เดิม ≤ 128 token — key ยาวกว่านั้นไม่ถูกจับเป็น field แล้ว key PII ถัดไปหลุด)
+  it.each(
+    [`x-${"a".repeat(130)}`, `it's${"a".repeat(125)}`, `say "${"a".repeat(200)}"`].flatMap((key) =>
+      [", สมชาย", "]สมชาย", "}สมชาย", "\nสมชาย", "+สมชาย"].map((name) => [key.slice(0, 12), name, key] as const)
+    )
+  )("(re-review #562 รอบ 3) key ยาว %j… ค่า name %j × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด", (_label, name, key) => {
+    for (const [, render] of SERIALIZERS) {
+      for (const levels of [0, 1, 2, 3]) {
+        const out = redactPii(wrap(render({ [key]: "a, b:", name, id: CART_ID }), levels))
+        expect(out).not.toContain("สมชาย")
+        expect(out).toContain(CART_ID)
+      }
+    }
+  })
+
+  // re-review #562 รอบ 4: ค่าของ field ที่ไม่ใช่ PII เป็น array ซ้อน หรือ object ที่มี key ว่าง `''` — เดิมจับ `[` ได้ชั้นเดียวและ key ต้องยาว ≥ 1
+  // จึงสแกนเข้าไปในค่าแล้ว `, b:` เริ่ม field ปลอมที่กลืน quote เปิดของ key PII ถัดไป (ที่อยู่ขึ้นต้นด้วย newline จาก textarea เกิดจริง) — develop ไม่หลุด
+  it.each([
+    ["array ซ้อน", { d: [["a, b:"]], address_1: "\n99/1 ถนนสุขุมวิท" }, /สุขุมวิท/],
+    ["object key ว่าง", { m: { "": "a, b:" }, name: ", สมชาย" }, /สมชาย/],
+    ["object key ว่าง ค่า , ", { note: { "": ", " }, first_name: ":\tสมชาย" }, /สมชาย/],
+    ["array ซ้อน 3 ชั้นของ object", { d: [[[{ x: "a, b:" }]]], city: "\nบางนา" }, /บางนา/],
+    // fuzz object ซ้อน/Map/null-prototype ของ builder: สมาชิก `'\\'` หลัง Map/object ใน array และ key ของ Map ที่มี `\n  amount:`
+    [
+      "array ของ Map/null-prototype แล้วสมาชิก backslash",
+      {
+        note0: [
+          [Object.assign(Object.create(null), { "x-a": ":\\n+" }), ['"', "phone: "]],
+          [new Map([["a\nb", "+"]]), Object.assign(Object.create(null), { "a\nb": "\\" })],
+          "\\",
+        ],
+        postal_code: " :-สมชาย[",
+      },
+      /สมชาย/,
+    ],
+    ["Map key ที่มี \\n + เยื้อง + key", { message1: new Map([["\\n  amount: ไทย", "email: `city:["]]), city: '}"name":""user-agent":สมชาย [' }, /สมชาย/],
+  ] as const)("(re-review #562 รอบ 4) %s × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด", (_name, value, pii) => {
+    for (const [, render] of [...SERIALIZERS, ["inspect breakLength Infinity", (v: object) => inspect(v, { breakLength: Infinity })] as const]) {
+      for (const levels of [0, 1, 2, 3]) {
+        const out = redactPii(wrap(render({ ...value, id: CART_ID }), levels))
+        expect(out).not.toMatch(pii)
+        expect(out).toContain(CART_ID)
+      }
+    }
+  })
+
+  // re-review #562 รอบ 5: key ที่มี ' " backtick ครบ (inspect quote ด้วย ' และ escape เป็น \') — quote ปิดของ key เคยยอม backslash นำ
+  // จึงปิดผิดที่ตรง `\':` กลาง key แล้วค่าของ field กลืน key PII ถัดไป — develop ไม่หลุด
+  it.each([
+    ["`\"'x': [", { address_1: "99 Moo 1', Bangkok" }, /Moo|Bangkok/],
+    ["`\"'x': [", { address_1: "Soi 'A', Bangkok 10110" }, /Soi|Bangkok|10110/],
+    ["a`\"'b': [", { name: "Somchai 'Tom', Jaidee" }, /Somchai|Tom|Jaidee/],
+    ["`\"'x': [,", { city: "Bangkok']`" }, /Bangkok/],
+    ['"name":"\':company: `x', { company: "ACME 'Thai', Ltd" }, /ACME|Thai|Ltd/],
+  ] as const)("(re-review #562 รอบ 5) key %j × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืน total", (key, pii, re) => {
+    for (const [, render] of SERIALIZERS) {
+      for (const levels of [0, 1, 2, 3]) {
+        const out = redactPii(wrap(render({ [key]: 5, ...pii, total: "1999.50", id: CART_ID }), levels))
+        expect(out).not.toMatch(re)
+        expect(out).toContain("1999.50")
+        expect(out).toContain(CART_ID)
+      }
+    }
+  })
+
+  // fuzz.mts ของ reviewer (cart_6vjFZ): key `'"name":"\':company: …'` — ข้อความ inspect จริง (escape 0 ชั้น) ห่อ 0–3 ชั้น
+  const CART_6VJ = "{\n  'a\\nb': Symbol(s),\n  city: '\\\\nPIIMARK0Qame: \"',\n  total0: '1999.50',\n  request_id0: 'req_01K0X',\n  '\"name\":\"\\':company: `KEYMARK1Q': Map(1) { \"ไทย', total: '\" => '\\\\\"name\\\\\":\\\\\"name: \"' },\n  state: \"+PIIMARK1Q😀\\\\n  'x-y': ,\",\n  total1: '1999.51',\n  display_id1: 1041,\n  request_id1: 'req_01K1X',\n  \"a': b2\": Map(1) { '... 3 more items$' => 'postal_code: 1999.50' },\n  last_name: '😀`]nullNaPIIMARK2Qme: ',\n  total2: '1999.52',\n  request_id2: 'req_01K2X',\n  id: 'cart_6vjFZ'\n}"
+  it.each([0, 1, 2, 3])("(re-review #562 รอบ 5) key ที่มี \\' + `:` กลาง key (cart_6vjFZ) escape %i ชั้น — last_name ไม่หลุด", (levels) => {
+    const out = redactPii(wrap(CART_6VJ, levels))
+    expect(out).not.toContain("PIIMARK2Q")
+    expect(out).toContain("1999.52")
+  })
+
+  // fuzz ของ reviewer (fz_nokm seed 4001/8001): Map key หลายท่อน (`'\n' +\n  '  total: …' =>`) — ข้อความ inspect breakLength 1 ชั้น 1 จริง
+  it.each([
+    ["\"{\\n  n: Map(1) {\\n    '\\\\n' +\\n      '  total: \\\\n' +\\n      '  total: ' => \\\"', 'k': '{\\\"\\n  },\\n  last_name: ',PIIMARK0Q\\\\r\\\\n',\\n  total0: '1999.50',\\n  display_id0: 1040,\\n  request_id0: 'req_01K0X',\\n  reason1: '\\\"user-agent\\\": name: \\\"',\\n  first_name: 'ไทยPIIMARK1Q',\\n  display_id1: 1041,\\n  request_id1: 'req_01K1X',\\n  description2: 'postal_code: \\\\n' +\\n    '  total:  $\\\"',\\n  postal_code: '😀namePIIMARK2Q: \\\"',\\n  total2: '1999.52',\\n  xreq3: {\\n    '': 'null'\\n  },\\n  email: ':PIIMARK3QZ1999.50',\\n  request_id3: 'req_01K3X',\\n  id: 'cart_4r3FZ'\\n}\"", "PIIMARK0Q"],
+    ["\"{\\n  xreq: Map(1) {\\n    '\\\\n' +\\n      '  total: \\\",\\\"x\\\":\\\"' => `\\\"user-agent\\\": ', total: '`\\n  },\\n  name: ']PIIMARK0Q',\\n  total0: '1999.50',\\n  display_id0: 1040,\\n  description1: {\\n    inner: ''\\n  },\\n  first_name: '😀ไทยcity:[=>cPIIMARK1Qity: ',\\n  total1: '1999.51',\\n  display_id1: 1041,\\n  id: 'cart_8veFZ'\\n}\"", "PIIMARK0Q"],
+  ])("(re-review #562 รอบ 6) Map key หลายท่อน — %#", (text, mark) => {
+    expect(redactPii(text)).not.toContain(mark)
+  })
+
+  // re-review #562 รอบ 6: ค่าของ field ไม่หยุดหลัง `],\n` แล้วรับท่อนแรกของ key บรรทัดถัดไป (`'\\' +`) เป็นสมาชิก — ` +` เป็นขอบได้เฉพาะเมื่อท่อนถัดไปขึ้นต้นด้วย quote
+  it("(re-review #562 รอบ 7) key หลายท่อน `' + 'name: …` หลัง array ของ field ที่ไม่ใช่ PII × serialize 4 แบบ × escape 0–3 ชั้น — city ไม่หลุด", () => {
+    for (const [, render] of SERIALIZERS) {
+      for (const levels of [0, 1, 2, 3]) {
+        const value = { note: ["x", 'name: "'], ["' + 'name: \"x'y`"]: 1, city: '"Bangkok', total: "1999.50", id: CART_ID }
+        const out = redactPii(wrap(render(value), levels))
+        expect(out).not.toContain("Bangkok")
+        expect(out).toContain("1999.50")
+        expect(out).toContain(CART_ID)
+      }
+    }
+  })
+  // fuzz.mts ของ reviewer (cart_2d5FZ — ข้อความ inspect ชั้น 1 จริง) ห่อเพิ่ม 0–2 ชั้น
+  const CART_2D5 = "\"{\\n  `a':\\\"b`: true,\\n  last_name: [ '😀=>\\\\\\\\PIIMARK0Q\\\":', 'name: \\\"' ],\\n  total0: '1999.50',\\n  display_id0: 1040,\\n  request_id0: 'req_01K0X',\\n  '\\\\' + \\\\'\\\"name\\\":\\\"last_name: `KEYMARK1Q\\\\'x-a\\\\': ': undefined,\\n  state: '\\\"PIIMARK1Q',\\n  display_id1: 1041,\\n  \\\"it's2\\\": { 'name: [': \\\"'+'\\\" },\\n  name: '😀PIIMARK2Q\\\",\\\"x\\\":\\\"',\\n  total2: '1999.52',\\n  display_id2: 1042,\\n  request_id2: 'req_01K2X',\\n  id: 'cart_2d5FZ'\\n}\""
+  it.each([0, 1, 2])("(re-review #562 รอบ 7) cart_2d5FZ ห่อเพิ่ม %i ชั้น — state ไม่หลุด", (levels) => {
+    expect(redactPii(wrap(CART_2D5, levels))).not.toContain("PIIMARK1Q")
+  })
+
+  // (d) ReDoS: input ≥ 100k ตัวอักษร (String.raw: backslash ในโค้ดคือ backslash จริงในข้อความ)
+  const fill = (prefix: string, unit: string, suffix = "") => prefix + unit.repeat(Math.ceil(100_000 / unit.length)) + suffix
+  it.each([
+    // ทุกจุดเริ่ม match ล้ม
+    ["note: 'name: ซ้ำไม่มี quote ปิด", fill("{ note: '", "name: ")],
+    [", name: \" ซ้ำ", fill("{ id: 1", ', name: "')],
+    ["note: 'name: + field ที่ไม่ใช่ PII ซ้ำ", fill("", "\nnote: 'name: , b: \\")],
+    ["field ที่ไม่ใช่ PII ค่า ' เปิดซ้ำ", fill("", "{ a: '")],
+    ["field ที่ไม่ใช่ PII + array สมาชิก null ซ้ำ", fill("", ",, a: [ 'nullnull")],
+    ['\\"name\\":[ + \'{ ซ้ำ', fill("", String.raw` \"name\":['{`)],
+    // whitespace/newline ยาวคั่น key กับค่า
+    ["name: + ช่องว่างยาว + 'x'", fill("name:", " ", "'x'")],
+    ["name: + newline ยาว + 'x'", fill("name:", "\n", "'x'")],
+    ["\\\"name\\\": + \\n ยาว + \\\"x\\\" (escape 1 ชั้น)", fill(String.raw`{\"name\":`, String.raw`\n`, String.raw`\"x\"`)],
+    ["field ที่ไม่ใช่ PII + ช่องว่างยาว + 'x'", fill("{ a:", " ", "'x'")],
+    ["field ที่ไม่ใช่ PII + \\r\\n ยาว + 'x'", fill(",a", "\r\n", ": 'x'")],
+    ["ช่องว่างยาวก่อน key ที่ไม่ใช่ PII", fill(",", " ", "a: 'x'")],
+    ["array ของ field ที่ไม่ใช่ PII + \\n ที่ escape ยาว", fill("{ a: [", String.raw`\n`, "'x'")],
+    // re-review #562 รอบ 2: key ใน quote ที่มี escape/quote อีกชนิด
+    ["key ใน quote + \\' ซ้ำไม่ปิด", fill("{ '", String.raw`\'`)],
+    ["key ใน quote + backslash ยาว", fill(", '", "\\")],
+    ["key ใน quote + quote สลับชนิดยาว", fill(", '", `"'`)],
+    ["key ใน quote ที่ escape 1 ชั้น + \\\\\\\" ซ้ำ", fill(String.raw`{\"`, String.raw`\\\"`)],
+    ["key ใน quote ซ้ำไม่มี :", fill("", `, 'a"b' `)],
+    ["key ใน ' + backslash + อักษรไทยซ้ำ (เดิม ~95ms — สแกน 128 token จากทุก quote)", fill("", String.raw`, 'x\\สม`)],
+    ["key ใน ' + backslash ยาว + quote ซ้ำ", fill("", String.raw`-, 'x\\\\'สม`)],
+    // re-review #562 รอบ 3: key ใน quote ไม่จำกัดความยาว — key ยาว 100k, quote สลับ, backslash ยาว
+    ["key ใน ' ยาว 100k ไม่ปิด", fill("{ '", "a")],
+    ["key ใน ' ยาว 100k + :", fill("{ '", "a", "': 'x'")],
+    ['key ใน " ยาว 100k ไม่ปิด', fill('{ "', "a")],
+    ["key ใน \\\" (escape 1 ชั้น) ยาว + \\\\\\\" ซ้ำ", fill(String.raw`{\"`, String.raw`a\\\"`)],
+    ["key ใน ' + quote \" สลับยาว", fill("{ '", `"a`)],
+    ['key ใน " + quote \' สลับยาว', fill('{ "', `'a`)],
+    ["key ใน ' + \\' ซ้ำยาว + backslash", fill("{ '", String.raw`\'a\\`)],
+    ["key ใน ' ซ้ำ ไม่มี : (ทุกจุดเริ่มล้ม)", fill("", ", 'aaaa' ")],
+    // re-review #562 รอบ 4: วงเล็บเป็นตัวคั่นของค่า field และ key ว่าง
+    ["field + [ ซ้ำ", fill("{ a: ", "[")],
+    ["field + ] ซ้ำ", fill("{ a: [", "]")],
+    ["field + [ ช่องว่าง ซ้ำ", fill("{ a: ", "[ ")],
+    ["field + [[ 'x', ซ้ำ", fill("{ a: ", "[[ 'x', ")],
+    ["key ว่างซ้ำ", fill("{ ", "'': ")],
+    ["key ว่าง \"\": ซ้ำ (JSON)", fill("{", '"":')],
+    ["key ว่างซ้ำ + , ", fill("", ", '': ")],
+  ])("ข้อความยาว (%s) redact เสร็จเร็ว (ไม่ quadratic)", (_name, text) => {
+    expect(text.length).toBeGreaterThanOrEqual(100_000)
+    const started = performance.now()
+    redactPii(text)
+    expect(performance.now() - started).toBeLessThan(200)
+  })
+
+  // re-review #562 รอบ 2 (ตัดสินโดย session หลัก): backtrack stack ล้น → แทนทั้งข้อความด้วย [REDACTED] (ไม่ throw ไม่หลุด)
+  // fixture ของ reviewer: กิ่ง key PII อย่างเดียว (fallback เดิม) ไม่มี guard ของ NON_PII_FIELD → company หลุด
+  it("ข้อความยาวมาก (4M ตัวอักษร) ของ field ที่ไม่ใช่ PII ไม่ throw และไม่หลุด", () => {
+    const head = JSON.stringify({ message1: `name:'postal_code:"\\''+`, company: "สมชาย ใจดี" })
+    const text = head.slice(0, -1) + `,"a":[${String.raw`\n`.repeat(2_000_000)}"x"]}`
+    let out = ""
+    expect(() => (out = redactPii(text))).not.toThrow()
+    expect(out).not.toContain("สมชาย")
+  })
+
+  it("regex โยน RangeError (backtrack stack ล้น) → ผลเป็น [REDACTED] ทั้งข้อความ (บังคับเข้าทางนี้โดยไม่ขึ้นกับจุดล้นของ V8)", () => {
+    const replace = jest.spyOn(String.prototype, "replace").mockImplementationOnce(() => {
+      throw new RangeError("Maximum call stack size exceeded")
+    })
+    try {
+      expect(redactPii('{"name":"Somchai","id":"cart_1"}')).toBe("[REDACTED]")
+    } finally {
+      replace.mockRestore()
+    }
+  })
+})
+
 // re-review #559 รอบ 3: regex ใหญ่คอมไพล์ช้าเมื่อเรียกครั้งแรก (ก่อนลดขนาดวัดได้ ~1.1 วินาที — block event loop ตอน log บรรทัดแรก)
 // V8 cache regex ตาม source จึงสร้าง regex ที่ source ต่างเล็กน้อย (บังคับคอมไพล์ใหม่) แล้ววัดการใช้ครั้งแรก
 describe("KEY_VALUE คอมไพล์เร็ว (re-review #559)", () => {

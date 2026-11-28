@@ -1,5 +1,6 @@
 "use client"
 
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef } from "react"
 
@@ -21,13 +22,10 @@ export default function CartErrorNotice({ message, itemsKey }: { message: string
     router.replace(`${url.pathname}${url.search}${url.hash}`, { scroll: false })
   }, [itemsKey, router])
 
+  // SFUI-21e (spec 09 กฎ 74 (a)): Alert variant default (โทนกลาง ไม่ใช่ destructive — PAY-12) ระยะห่างภายนอก mb-6 คงเดิม
   return (
-    <p
-      role="alert"
-      className="txt-medium mb-6 rounded-rounded bg-ui-bg-subtle p-3 text-ui-fg-base"
-      data-testid="cart-error-notice"
-    >
-      {message}
-    </p>
+    <Alert className="mb-6" data-testid="cart-error-notice">
+      <AlertDescription>{message}</AlertDescription>
+    </Alert>
   )
 }

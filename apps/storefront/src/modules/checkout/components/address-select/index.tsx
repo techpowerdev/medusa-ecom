@@ -1,11 +1,16 @@
-import { Listbox, Transition } from "@headlessui/react"
-import { ChevronUpDown } from "@medusajs/icons"
-import { clx } from "@modules/common/components/ui"
-import { Fragment, useMemo } from "react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { cn } from "@/lib/utils"
+import { useMemo } from "react"
 
+import { addressLines } from "@lib/util/address-lines"
 import compareAddresses from "@lib/util/compare-addresses"
 import { HttpTypes } from "@medusajs/types"
-import Radio from "@modules/common/components/radio"
 
 type AddressSelectProps = {
   addresses: HttpTypes.StoreCustomerAddress[]
@@ -16,6 +21,7 @@ type AddressSelectProps = {
   ) => void
 }
 
+// SFUI-3c (spec 09 กฎ 4, 9, 12): Listbox ของ headless → Select ของ shadcn (Radix) — testid เดิมอยู่ที่ SelectTrigger/SelectContent/SelectItem
 const AddressSelect = ({
   addresses,
   addressInput,
@@ -33,83 +39,66 @@ const AddressSelect = ({
   }, [addresses, addressInput])
 
   return (
-    <Listbox onChange={handleSelect} value={selectedAddress?.id}>
-      <div className="relative">
-        <Listbox.Button
-          className="relative w-full flex justify-between items-center px-4 py-[10px] text-left bg-white cursor-default focus:outline-none border rounded-rounded focus-visible:ring-2 focus-visible:ring-opacity-75 focus-visible:ring-white focus-visible:ring-offset-gray-300 focus-visible:ring-offset-2 focus-visible:border-gray-300 text-base-regular"
-          data-testid="shipping-address-select"
-        >
-          {({ open }) => (
-            <>
-              <span className="block truncate">
-                {selectedAddress
-                  ? selectedAddress.address_1
-                  : "เลือกที่อยู่"}
-              </span>
-              <ChevronUpDown
-                className={clx("transition-rotate duration-200", {
-                  "transform rotate-180": open,
-                })}
-              />
-            </>
-          )}
-        </Listbox.Button>
-        <Transition
-          as={Fragment}
-          leave="transition ease-in duration-100"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <Listbox.Options
-            className="absolute z-20 w-full overflow-auto text-small-regular bg-white border border-top-0 max-h-60 focus:outline-none sm:text-sm"
-            data-testid="shipping-address-options"
-          >
-            {addresses.map((address) => {
-              return (
-                <Listbox.Option
-                  key={address.id}
-                  value={address.id}
-                  className="cursor-default select-none relative pl-6 pr-10 hover:bg-gray-50 py-4"
-                  data-testid="shipping-address-option"
+    // value "" = ยังไม่เลือก (แสดง placeholder) — คง controlled ตลอดแม้ที่อยู่ในฟอร์มไม่ตรงกับที่บันทึกไว้
+    <Select onValueChange={handleSelect} value={selectedAddress?.id ?? ""}>
+      {/* SFUI-20b (spec 09 กฎ 75 — inventory 34 ย้ายจาก 21a): SelectTrigger ขนาด default ของ shadcn (ไม่มี className ขนาด) */}
+      <SelectTrigger className="w-full" data-testid="shipping-address-select">
+        {/* ปุ่มแสดงเฉพาะบรรทัดที่อยู่ (ไม่ใช่เนื้อหาทั้งรายการ) ตามเดิม */}
+        <SelectValue placeholder="เลือกที่อยู่">
+          {selectedAddress?.address_1}
+        </SelectValue>
+      </SelectTrigger>
+      {/* SFUI-20b (AC-49 มือถือ): popper ของ Radix กว้างตามเนื้อหาจนล้นจอ 390px (ที่อยู่ยาวไม่ตัดบรรทัด) → ให้กล่องกว้างเท่า trigger
+          ด้วยตัวแปร `--radix-select-trigger-width` ที่ Radix ตั้งให้ (แบบเดียวกับ Viewport ของ ui/select) ข้อความในรายการจึงตัดบรรทัดภายในจอ */}
+      <SelectContent
+        position="popper"
+        className="max-h-60 w-(--radix-select-trigger-width) text-xs leading-5 font-normal"
+        data-testid="shipping-address-options"
+      >
+        {addresses.map((address) => {
+          const checked = selectedAddress?.id === address.id
+          return (
+            <SelectItem
+              key={address.id}
+              value={address.id}
+              className="items-start pl-6 pr-10 py-4"
+              data-testid="shipping-address-option"
+            >
+              <div className="flex gap-x-4 items-start">
+                {/* วงกลมบอกสถานะ (ตกแต่ง) — ไม่ใช่ปุ่ม role="radio" ซ้อนใน option */}
+                <span
+                  aria-hidden
+                  data-state={checked ? "checked" : "unchecked"}
+                  className={cn(
+                    "mt-0.5 flex size-[14px] shrink-0 items-center justify-center rounded-full border border-input",
+                    checked && "border-primary bg-primary"
+                  )}
+                  data-testid="shipping-address-radio"
                 >
-                  <div className="flex gap-x-4 items-start">
-                    <Radio
-                      checked={selectedAddress?.id === address.id}
-                      data-testid="shipping-address-radio"
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-left text-base-semi">
-                        {address.first_name} {address.last_name}
-                      </span>
-                      {address.company && (
-                        <span className="text-small-regular text-ui-fg-base">
-                          {address.company}
-                        </span>
-                      )}
-                      <div className="flex flex-col text-left text-base-regular mt-2">
-                        <span>
-                          {address.address_1}
-                          {address.address_2 && (
-                            <span>, {address.address_2}</span>
-                          )}
-                        </span>
-                        <span>
-                          {address.postal_code}, {address.city}
-                        </span>
-                        <span>
-                          {address.province && `${address.province}, `}
-                          {address.country_code?.toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
+                  {checked && <span className="size-1.5 rounded-full bg-primary-foreground" />}
+                </span>
+                <div className="flex flex-col">
+                  <span className="text-left text-sm leading-6 font-semibold">
+                    {address.first_name} {address.last_name}
+                  </span>
+                  {address.company && (
+                    <span className="text-xs leading-5 font-normal text-foreground">
+                      {address.company}
+                    </span>
+                  )}
+                  <div className="flex flex-col text-left text-sm leading-6 font-normal mt-2">
+                    {/* SFUI-18a (spec 09 กฎ 57): ที่อยู่ตามลำดับไทย; SFUI-20c (กฎ 71): ไม่มีบรรทัดประเทศ */}
+                    {addressLines(address).map((line, i) => (
+                      <span key={i}>{line}</span>
+                    ))}
                   </div>
-                </Listbox.Option>
-              )
-            })}
-          </Listbox.Options>
-        </Transition>
-      </div>
-    </Listbox>
+                </div>
+              </div>
+            </SelectItem>
+          )
+        })}
+      </SelectContent>
+    </Select>
   )
 }
 

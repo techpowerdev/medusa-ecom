@@ -42,13 +42,14 @@ async function labelsOverText(page: Page, scopeTestId: string) {
     await Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined)))
     const root = document.querySelector(`[data-testid="${scope}"]`)!
     const inputs = Array.from(root.querySelectorAll<HTMLInputElement>("input")).filter(
-      (input) => input.type !== "hidden" && input.parentElement?.querySelector("label")
+      (input) => input.type !== "hidden" && input.labels?.[0]
     )
     return {
       count: inputs.length,
       overlaps: inputs
         .map((input) => {
-          const label = input.parentElement!.querySelector("label")!.getBoundingClientRect()
+          // SFUI-11a: label ของช่องหาด้วย labels[0] (label เหนือช่องของ field ไม่ใช่พี่น้องของ input แล้ว)
+          const label = input.labels![0].getBoundingClientRect()
           const limit =
             input.getBoundingClientRect().top + parseFloat(getComputedStyle(input).paddingTop)
           return { name: input.name, labelBottom: label.bottom, limit }
@@ -147,10 +148,10 @@ test("AC-132: checkout — label ของฟอร์มที่อยู่�
     await page.getByTestId("shipping-first-name-input").fill("สมชาย")
     await page.getByTestId("shipping-last-name-input").fill("ใจดี")
     await page.getByTestId("shipping-address-input").fill("99 ถนนสุขุมวิท")
+    await page.getByTestId("shipping-address-2-input").fill("คลองเตยเหนือ")
     await page.getByTestId("shipping-company-input").fill("บริษัท ตัวอย่าง จำกัด")
     await page.getByTestId("shipping-postal-code-input").fill("10110")
     await page.getByTestId("shipping-city-input").fill("วัฒนา")
-    await page.getByTestId("shipping-country-select").selectOption(CC)
     await page.getByTestId("shipping-province-input").fill("กรุงเทพมหานคร")
     await page.getByTestId("shipping-phone-input").fill("0812345678")
     await expect(page.getByTestId("shipping-email-input")).toHaveValue(email)
@@ -221,17 +222,19 @@ test("AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมือง�
     await page.getByTestId("shipping-first-name-input").fill(LONG_NAME)
     await page.getByTestId("shipping-last-name-input").fill(LONG_NAME)
     await page.getByTestId("shipping-address-input").fill(LONG_ADDRESS)
+    await page.getByTestId("shipping-address-2-input").fill("คลองเตยเหนือ")
     await page.getByTestId("shipping-postal-code-input").fill("10110")
     await page.getByTestId("shipping-city-input").fill(LONG_CITY)
-    await page.getByTestId("shipping-country-select").selectOption(CC)
+    await page.getByTestId("shipping-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
     await page.getByTestId("shipping-phone-input").fill("0812345678")
     await page.getByTestId("billing-address-checkbox").click()
     await page.getByTestId("billing-first-name-input").fill(LONG_NAME)
     await page.getByTestId("billing-last-name-input").fill(LONG_NAME)
     await page.getByTestId("billing-address-input").fill(LONG_ADDRESS)
+    await page.getByTestId("billing-address-2-input").fill("คลองเตยเหนือ")
     await page.getByTestId("billing-postal-input").fill("10110")
     await page.getByTestId("billing-city-input").fill(LONG_CITY)
-    await page.getByTestId("billing-country-select").selectOption(CC)
+    await page.getByTestId("billing-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
     await page.getByTestId("submit-address-button").click()
     await expect(page).toHaveURL(/step=delivery/, { timeout: 30_000 })
   })
@@ -267,9 +270,10 @@ test("AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/
     await page.getByTestId("billing-first-name-input").fill(LONG_NAME)
     await page.getByTestId("billing-last-name-input").fill(LONG_NAME)
     await page.getByTestId("billing-address-input").fill(LONG_ADDRESS)
+    await page.getByTestId("billing-address-2-input").fill("คลองเตยเหนือ")
     await page.getByTestId("billing-postal-input").fill("10110")
     await page.getByTestId("billing-city-input").fill(LONG_CITY)
-    await page.getByTestId("billing-country-select").selectOption(CC)
+    await page.getByTestId("billing-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
     await page.getByTestId("billing-phone-input").fill("0812345678")
     await page.getByTestId("submit-address-button").click()
     await expect(page).toHaveURL(/step=payment/, { timeout: 30_000 })

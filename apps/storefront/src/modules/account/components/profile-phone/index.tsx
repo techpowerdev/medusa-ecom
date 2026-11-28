@@ -57,12 +57,13 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
         isPending={isPending}
         data-testid="account-phone-editor"
       >
-        <div className="grid grid-cols-1 gap-y-2">
+        <div className="grid grid-cols-1 gap-4">
           <Input
             label="เบอร์โทรศัพท์"
             name="phone"
-            type="phone"
-            autoComplete="phone"
+            type="tel"
+            autoComplete="tel"
+            placeholder="เช่น 0812345678"
             defaultValue={customer.phone ?? ""}
             data-testid="phone-input"
           />

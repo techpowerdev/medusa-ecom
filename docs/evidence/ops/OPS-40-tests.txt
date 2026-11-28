@@ -1,0 +1,666 @@
+# OPS-40 — redact-pii ค่าเดี่ยว (spec 07 กฎข้อ 22 รอบ 43, AC-55)
+# คำสั่ง: cd apps/backend && TEST_TYPE=unit NODE_OPTIONS=--experimental-vm-modules jest src/lib/__tests__/redact-pii.unit.spec.ts
+
+## RED (test ใหม่บนโค้ด develop d5b7c0d7 — redact-pii.ts เท่ากับ 9749d6d1) — 45 ล้ม
+# (a) 40/80 ตรงกับที่ reviewer #560 วัด: `name: '` 8 (inspect, inspect breakLength 1 × 0–3), `phone: ` 16, `Name: ` 16
+#     guard ที่ผ่านทั้งก่อนและหลัง 40 กรณี: `name: "` 16 และ JSON `"name":"` 16 (ทุก serializer), `name: '` × JSON/pretty 8
+# (b) ชั้น 1–3 = 3 ล้ม; ชั้น 0 ผ่านทั้งก่อนและหลัง
+# (c) fuzz 1 ล้ม
+# test ข้อความยาว 4M ตัวอักษร (fallback เมื่อ backtrack stack ล้น) ล้มบน develop เพราะ fixture ยืนยันว่า KEY_VALUE ล้นจริง (develop ไม่มีกิ่ง field ที่ไม่ใช่ PII)
+# ผ่านทั้งก่อนและหลัง (guard): "ข้อความอิสระใน field ที่ไม่ใช่ PII ยังถูก redact", ReDoS ใหม่ 13 กรณี
+    ✕ (a) note ลงท้าย "name: '" (inspect, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "name: '" (inspect, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "name: '" (inspect, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "name: '" (inspect, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "name: '" (inspect breakLength 1, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "name: '" (inspect breakLength 1, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "name: '" (inspect breakLength 1, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "name: '" (inspect breakLength 1, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "phone: " (inspect, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "phone: " (inspect, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "phone: " (inspect, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "phone: " (inspect, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "phone: " (inspect breakLength 1, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "phone: " (inspect breakLength 1, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "phone: " (inspect breakLength 1, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "phone: " (inspect breakLength 1, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "phone: " (JSON, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "phone: " (JSON, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "phone: " (JSON, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "phone: " (JSON, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "phone: " (JSON pretty-print, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "phone: " (JSON pretty-print, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "phone: " (JSON pretty-print, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "phone: " (JSON pretty-print, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "Name: " (inspect, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "Name: " (inspect, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "Name: " (inspect, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "Name: " (inspect, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "Name: " (inspect breakLength 1, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "Name: " (inspect breakLength 1, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "Name: " (inspect breakLength 1, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "Name: " (inspect breakLength 1, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "Name: " (JSON, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "Name: " (JSON, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "Name: " (JSON, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "Name: " (JSON, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "Name: " (JSON pretty-print, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "Name: " (JSON pretty-print, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "Name: " (JSON pretty-print, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (a) note ลงท้าย "Name: " (JSON pretty-print, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✕ (b) \' + `city:` ในค่า name escape 1 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✕ (b) \' + `city:` ในค่า name escape 2 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✕ (b) \' + `city:` ในค่า name escape 3 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✕ (c) fuzz PIIMARK 600 object × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืนค่าที่ไม่ใช่ PII (seed 46400)
+    ✕ ข้อความยาวมาก (4M ตัวอักษร) ที่ backtrack stack ของ regex ไม่พอสำหรับ field ที่ไม่ใช่ PII ไม่ throw และยัง redact key PII
+Tests:       45 failed, 330 passed, 375 total
+
+## GREEN (หลังแก้)
+  redactPii (OPS-40, AC-55)
+    ✓ (a) note ลงท้าย "name: '" (inspect, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: '" (inspect, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: '" (inspect, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: '" (inspect, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: '" (inspect breakLength 1, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: '" (inspect breakLength 1, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: '" (inspect breakLength 1, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: '" (inspect breakLength 1, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: '" (JSON, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: '" (JSON, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: '" (JSON, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: '" (JSON, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: '" (JSON pretty-print, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: '" (JSON pretty-print, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: '" (JSON pretty-print, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: '" (JSON pretty-print, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: \"" (inspect, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: \"" (inspect, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: \"" (inspect, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: \"" (inspect, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: \"" (inspect breakLength 1, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: \"" (inspect breakLength 1, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: \"" (inspect breakLength 1, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: \"" (inspect breakLength 1, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: \"" (JSON, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: \"" (JSON, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: \"" (JSON, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: \"" (JSON, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: \"" (JSON pretty-print, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: \"" (JSON pretty-print, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: \"" (JSON pretty-print, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "name: \"" (JSON pretty-print, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "phone: " (inspect, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "phone: " (inspect, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "phone: " (inspect, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "phone: " (inspect, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "phone: " (inspect breakLength 1, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "phone: " (inspect breakLength 1, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "phone: " (inspect breakLength 1, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "phone: " (inspect breakLength 1, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "phone: " (JSON, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "phone: " (JSON, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "phone: " (JSON, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "phone: " (JSON, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "phone: " (JSON pretty-print, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "phone: " (JSON pretty-print, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "phone: " (JSON pretty-print, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "phone: " (JSON pretty-print, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "Name: " (inspect, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "Name: " (inspect, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "Name: " (inspect, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "Name: " (inspect, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "Name: " (inspect breakLength 1, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "Name: " (inspect breakLength 1, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "Name: " (inspect breakLength 1, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "Name: " (inspect breakLength 1, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "Name: " (JSON, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "Name: " (JSON, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "Name: " (JSON, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "Name: " (JSON, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "Name: " (JSON pretty-print, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "Name: " (JSON pretty-print, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "Name: " (JSON pretty-print, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "Name: " (JSON pretty-print, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "\"name\":\"" (inspect, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "\"name\":\"" (inspect, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "\"name\":\"" (inspect, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "\"name\":\"" (inspect, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "\"name\":\"" (inspect breakLength 1, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "\"name\":\"" (inspect breakLength 1, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "\"name\":\"" (inspect breakLength 1, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "\"name\":\"" (inspect breakLength 1, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "\"name\":\"" (JSON, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "\"name\":\"" (JSON, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "\"name\":\"" (JSON, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "\"name\":\"" (JSON, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "\"name\":\"" (JSON pretty-print, escape 0 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "\"name\":\"" (JSON pretty-print, escape 1 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "\"name\":\"" (JSON pretty-print, escape 2 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (a) note ลงท้าย "\"name\":\"" (JSON pretty-print, escape 3 ชั้น) ไม่ทำให้ city หลุด และไม่กลืนจำนวนเงิน/id/ชื่อ key
+    ✓ (b) \' + `city:` ในค่า name escape 0 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✓ (b) \' + `city:` ในค่า name escape 1 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✓ (b) \' + `city:` ในค่า name escape 2 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✓ (b) \' + `city:` ในค่า name escape 3 ชั้น redact ทั้งค่า และ id ถัดไปยังอยู่
+    ✓ ข้อความอิสระใน field ที่ไม่ใช่ PII ยังถูก redact (เหมือน develop)
+    ✓ (c) fuzz PIIMARK 600 object × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืนค่าที่ไม่ใช่ PII (seed 46400)
+    ✓ ข้อความยาว (note: 'name: ซ้ำไม่มี quote ปิด) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (, name: " ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (note: 'name: + field ที่ไม่ใช่ PII ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (field ที่ไม่ใช่ PII ค่า ' เปิดซ้ำ) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (field ที่ไม่ใช่ PII + array สมาชิก null ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (\"name\":[ + '{ ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (name: + ช่องว่างยาว + 'x') redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (name: + newline ยาว + 'x') redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (\"name\": + \n ยาว + \"x\" (escape 1 ชั้น)) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (field ที่ไม่ใช่ PII + ช่องว่างยาว + 'x') redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (field ที่ไม่ใช่ PII + \r\n ยาว + 'x') redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (ช่องว่างยาวก่อน key ที่ไม่ใช่ PII) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (array ของ field ที่ไม่ใช่ PII + \n ที่ escape ยาว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาวมาก (4M ตัวอักษร) ที่ backtrack stack ของ regex ไม่พอสำหรับ field ที่ไม่ใช่ PII ไม่ throw และยัง redact key PII
+  KEY_VALUE คอมไพล์เร็ว (re-review #559)
+    ✓ การใช้ครั้งแรกของ regex ที่คอมไพล์ใหม่ ≤ 200ms
+Tests:       375 passed, 375 total
+
+## ชุดอื่น (ผลหลังแก้รอบ review #562 อยู่ในหัวข้อด้านล่าง)
+backend test:unit: Test Suites: 133 passed, 133 total; Tests:       2219 passed, 2219 total
+storefront test:e2e:unit: 165 passed
+backend typecheck: ผ่าน; backend lint: 0 error (warning 4 รายการเดิมของ OPS-38 ไม่ได้แตะ); backend build: ผ่าน
+
+## ตรวจเพิ่มนอก test (สคริปต์ใน scratchpad ไม่ commit) — เทียบ redactPii ของ develop d5b7c0d7 (= 9749d6d1)
+fuzz สองทิศ (generator ของ AC-55c แบบกว้าง: field ที่ไม่ใช่ PII 1–2 ตัว ค่าเดี่ยว/array ที่สมาชิกตัวสุดท้ายลงท้ายด้วยรูปเปิด 17 แบบ
+(5 แบบของ (a) + escape 1–2 ชั้น + `city: '` `email: `` ` `'name': '` `"name"=>"` `postal_code: ` `name:'` `first_name: "` `CITY: ` `name => '` `name:`)
+นำด้วย prefix สุ่ม (`, ` `{ ` newline ดิบ/ที่ escape, quote, backslash ฯลฯ) → key PII ค่ามี PIIMARK (15% เป็น array) → total/amount/display_id/request_id/currency_code
+× inspect / inspect breakLength 1 / JSON / pretty × escape 0–3 ชั้น):
+  seed 1–400 (3,200,000 กรณี): PII หลุดใน PR แต่ develop ไม่หลุด = 0; ค่า/ชื่อ key ที่ไม่ใช่ PII หายใน PR แต่ develop ไม่หาย = 0
+    PR หลุด 10 / develop หลุด 1,780,637; PR ทำค่าหาย 0 / develop 224,536 — 10 ที่หลุดใน PR คือ PII ที่เป็น array จริงที่สมาชิกหน้าตาเหมือนขอบ field (กฎ 22f นอกขอบเขต; develop หลุดเหมือนกัน)
+  โหมดหนัก (รูปเปิด 1–3 ชุดต่อ note, prefix สุ่ม ≤ 6 อักขระ) seed 1–200 (1,600,000 กรณี): PR หลุด 0 / develop 798,195; หายเพิ่ม 0
+fuzz stress ของ OPS-39 (240,000 กรณี อักขระโครงสร้างหนาแน่น): PR 81 = develop 81, หลุดเพิ่ม 0, หายเพิ่ม 0
+สคริปต์ของ reviewer #560 (rv560-check-OPS40.js): develop (a) red 40/80, (b) ชั้น 1–3 หลุด → PR (a) red 0/80, (b) ไม่หลุดทุกชั้น
+
+ReDoS
+  ค้นหา "ทุกจุดเริ่ม match ล้ม" ไล่ครบ: key 22 รูป (key PII 9 + field ที่ไม่ใช่ PII 9 + รูปเปิดในค่า 4) × token 25 ชนิด ≤ 2 token × prefix 26 + สุ่ม 60,000 หน่วย (432,372 หน่วย)
+    ถูก flag 2 หน่วย วัดซ้ำ best-of-3 เชิงเส้น (develop ใกล้เคียงกัน):
+      PR  "\\name: 'a\\\""                         25k=0.8 100k=2.4 400k=9.6
+      PR  "+\\\"name\\\":\\\"1\\\\\\\""            25k=0.6 100k=1.7 400k=7.2
+      dev "\\name: 'a\\\""                         25k=0.8 100k=2.0 400k=8.6
+      dev "+\\\"name\\\":\\\"1\\\\\\\""            25k=0.4 100k=1.3 400k=5.2
+    (ระหว่างทางก่อนลดขนาด regex ถูก flag 21 หน่วย ทั้งหมดเชิงเส้น ช้าสุด 16ms@100k)
+  whitespace/newline ยาวคั่น: รูป 11 แบบ (key PII/ไม่ใช่ PII, ก่อน/หลัง `:`, ก่อน key, ใน array, ไม่มีค่า, escape 1 ชั้น) × ตัวคั่น 7 แบบ
+    (space, tab, \n ดิบ, \r\n, \n ที่ escape 1–2 ชั้น, ผสม) ที่ 100k/400k/1.6M = 77 รูป: เชิงเส้นทุกตัว ช้าสุด (ms ที่ 100k/400k/1.6M):
+      note: 'name:W sp 3.9 15.8 62.3
+      note: 'name:W esc2-nl 3.8 15.4 61.3
+      note: 'name:W tab 3.8 15.2 60.6
+  compile + เรียกครั้งแรก: 15ms (source 17,435 ตัวอักษร; develop 16,906) — test เดิม (regex ใหม่จาก KEY_VALUE.source) 20ms
+  ขนาด source: ฉบับแรกที่ 26,944 ตัวอักษร (> 20KB ที่ V8 ปิด optimization ของ regex ใหญ่) ช้ากว่า develop ~10 เท่า และ `name: [` + ช่องว่าง
+    ทำ backtrack stack ล้นที่ ~1.2M ตัวอักษร (develop ~2.0M) → ลดขนาดเหลือ 17,435 แล้วจุดล้นของกิ่ง key PII กลับมาเท่า develop
+    (`name: [` + ช่องว่าง ~2.0M, `name: [ 'x', ` ~3.1M, `name: [ 1,` ~1.7M)
+  backtrack stack: KEY_VALUE ล้นกับ field ที่ไม่ใช่ PII ยาวมากบางรูป (`a: [` + `\n` ที่ escape ~2.8M, `a: [ 1,` ~1.6M ตัวอักษร) →
+    redactPii จับ RangeError แล้วใช้ PII_ONLY (กิ่ง key PII เท่านั้น) — จุด throw ของ redactPii ไม่ต่ำกว่า develop ทุกรูปที่วัด
+
+## RED รอบ 2 (review #562 REQUEST CHANGES) บนหัว PR e0a4e8ce — 33 ล้ม
+# blocker 1: key ที่ไม่ใช่ identifier × ค่า `a, b: ` / `Missing fields, reason:` / `a\n  b: ` × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/`-`/`(` × inspect 2 แบบ × 0–3 ชั้น = 12 test (192 กรณี; develop ไม่หลุด)
+# blocker 2: ตาราง (a) × key `x-note` `user-agent` `note.text` `my note` `0note` `ชื่อ` = 18 test (ล้มเฉพาะรูป `name: '`/`phone: `/`Name: ` — 240/480 กรณีเท่า develop)
+# array 22f ตามด้วย postal_code ค่าเดี่ยว: 2 test (inspect 2 แบบ; JSON ผ่าน) · fuzz ที่ขยาย (seed 0x0b562): 1
+# headers.user-agent + first_name ผ่านทั้งก่อนและหลัง (guard) · test fallback 4M แก้ตาม nit: assert แค่ไม่ throw + ไม่หลุด (ไม่ขึ้นกับจุดล้นของ V8)
+    ✕ (review #562) key "x-note" ค่า "a, b: " (inspect) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✕ (review #562) key "x-note" ค่า "a, b: " (inspect breakLength 1) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✕ (review #562) key "x-note" ค่า "Missing fields, reason:" (inspect) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✕ (review #562) key "x-note" ค่า "Missing fields, reason:" (inspect breakLength 1) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✕ (review #562) key "x-note" ค่า "a\n  b: " (inspect) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✕ (review #562) key "x-note" ค่า "a\n  b: " (inspect breakLength 1) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✕ (review #562) key "user-agent" ค่า "a, b: " (inspect) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✕ (review #562) key "user-agent" ค่า "a, b: " (inspect breakLength 1) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✕ (review #562) key "user-agent" ค่า "Missing fields, reason:" (inspect) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✕ (review #562) key "user-agent" ค่า "Missing fields, reason:" (inspect breakLength 1) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✕ (review #562) key "user-agent" ค่า "a\n  b: " (inspect) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✕ (review #562) key "user-agent" ค่า "a\n  b: " (inspect breakLength 1) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✕ (review #562) key "x-note" ค่าลงท้าย "name: '" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✕ (review #562) key "x-note" ค่าลงท้าย "phone: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✕ (review #562) key "x-note" ค่าลงท้าย "Name: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✕ (review #562) key "user-agent" ค่าลงท้าย "name: '" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✕ (review #562) key "user-agent" ค่าลงท้าย "phone: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✕ (review #562) key "user-agent" ค่าลงท้าย "Name: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✕ (review #562) key "note.text" ค่าลงท้าย "name: '" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✕ (review #562) key "note.text" ค่าลงท้าย "phone: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✕ (review #562) key "note.text" ค่าลงท้าย "Name: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✕ (review #562) key "my note" ค่าลงท้าย "name: '" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✕ (review #562) key "my note" ค่าลงท้าย "phone: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✕ (review #562) key "my note" ค่าลงท้าย "Name: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✕ (review #562) key "0note" ค่าลงท้าย "name: '" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✕ (review #562) key "0note" ค่าลงท้าย "phone: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✕ (review #562) key "0note" ค่าลงท้าย "Name: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✕ (review #562) key "ชื่อ" ค่าลงท้าย "name: '" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✕ (review #562) key "ชื่อ" ค่าลงท้าย "phone: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✕ (review #562) key "ชื่อ" ค่าลงท้าย "Name: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✕ (review #562) array 22f ตามด้วย postal_code ค่าเดี่ยว (inspect) × escape 0–3 ชั้น ไม่หลุด
+    ✕ (review #562) array 22f ตามด้วย postal_code ค่าเดี่ยว (inspect breakLength 1) × escape 0–3 ชั้น ไม่หลุด
+    ✕ (review #562) fuzz PIIMARK key/ค่าที่ไม่ใช่ identifier + array 22f 600 object × serialize 4 แบบ × escape 0–3 ชั้น (seed 46434)
+Tests:       33 failed, 390 passed, 423 total
+
+## GREEN รอบ 2 (หลังแก้)
+# key ในรูป quote (escape 0–3 ชั้น) เข้า NON_PII_FIELD ได้, สมาชิก/ท่อนของค่า field ต้องตามด้วยขอบค่า (`,` `]` `}` `+` newline/`\n` ที่ escape/ท้ายข้อความ),
+# array ใต้ key PII ที่ไม่ผ่านกิ่ง array (22f) ถูกจับเป็น field (ภายในยัง redact ด้วย PII_ONLY)
+    ✓ (review #562) key "x-note" ค่า "a, b: " (inspect) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✓ (review #562) key "x-note" ค่า "a, b: " (inspect breakLength 1) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✓ (review #562) key "x-note" ค่า "Missing fields, reason:" (inspect) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✓ (review #562) key "x-note" ค่า "Missing fields, reason:" (inspect breakLength 1) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✓ (review #562) key "x-note" ค่า "a\n  b: " (inspect) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✓ (review #562) key "x-note" ค่า "a\n  b: " (inspect breakLength 1) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✓ (review #562) key "user-agent" ค่า "a, b: " (inspect) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✓ (review #562) key "user-agent" ค่า "a, b: " (inspect breakLength 1) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✓ (review #562) key "user-agent" ค่า "Missing fields, reason:" (inspect) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✓ (review #562) key "user-agent" ค่า "Missing fields, reason:" (inspect breakLength 1) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✓ (review #562) key "user-agent" ค่า "a\n  b: " (inspect) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✓ (review #562) key "user-agent" ค่า "a\n  b: " (inspect breakLength 1) × ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/เครื่องหมาย × escape 0–3 ชั้น ไม่หลุด
+    ✓ (review #562) key ที่ไม่ใช่ identifier ใน object ซ้อน (headers user-agent) ไม่ทำให้ first_name หลุด
+    ✓ (review #562) key "x-note" ค่าลงท้าย "name: '" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "x-note" ค่าลงท้าย "name: \"" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "x-note" ค่าลงท้าย "phone: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "x-note" ค่าลงท้าย "Name: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "x-note" ค่าลงท้าย "\"name\":\"" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "user-agent" ค่าลงท้าย "name: '" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "user-agent" ค่าลงท้าย "name: \"" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "user-agent" ค่าลงท้าย "phone: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "user-agent" ค่าลงท้าย "Name: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "user-agent" ค่าลงท้าย "\"name\":\"" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "note.text" ค่าลงท้าย "name: '" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "note.text" ค่าลงท้าย "name: \"" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "note.text" ค่าลงท้าย "phone: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "note.text" ค่าลงท้าย "Name: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "note.text" ค่าลงท้าย "\"name\":\"" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "my note" ค่าลงท้าย "name: '" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "my note" ค่าลงท้าย "name: \"" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "my note" ค่าลงท้าย "phone: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "my note" ค่าลงท้าย "Name: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "my note" ค่าลงท้าย "\"name\":\"" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "0note" ค่าลงท้าย "name: '" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "0note" ค่าลงท้าย "name: \"" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "0note" ค่าลงท้าย "phone: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "0note" ค่าลงท้าย "Name: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "0note" ค่าลงท้าย "\"name\":\"" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "ชื่อ" ค่าลงท้าย "name: '" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "ชื่อ" ค่าลงท้าย "name: \"" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "ชื่อ" ค่าลงท้าย "phone: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "ชื่อ" ค่าลงท้าย "Name: " × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) key "ชื่อ" ค่าลงท้าย "\"name\":\"" × serialize 4 แบบ × escape 0–3 ชั้น ไม่ทำให้ city หลุด และไม่กลืนค่าที่ไม่ใช่ PII
+    ✓ (review #562) array 22f ตามด้วย postal_code ค่าเดี่ยว (inspect) × escape 0–3 ชั้น ไม่หลุด
+    ✓ (review #562) array 22f ตามด้วย postal_code ค่าเดี่ยว (inspect breakLength 1) × escape 0–3 ชั้น ไม่หลุด
+    ✓ (review #562) array 22f ตามด้วย postal_code ค่าเดี่ยว (JSON) × escape 0–3 ชั้น ไม่หลุด
+    ✓ (review #562) array 22f ตามด้วย postal_code ค่าเดี่ยว (JSON pretty-print) × escape 0–3 ชั้น ไม่หลุด
+    ✓ (review #562) fuzz PIIMARK key/ค่าที่ไม่ใช่ identifier + array 22f 600 object × serialize 4 แบบ × escape 0–3 ชั้น (seed 46434)
+Tests:       423 passed, 423 total
+backend test:unit: Test Suites: 133 passed, 133 total; Tests:       2267 passed, 2267 total
+storefront test:e2e:unit: 165 passed; backend typecheck/build: ผ่าน; lint: 0 error (warning 4 รายการเดิมของ OPS-38)
+
+## ตรวจเพิ่มนอก test รอบ 2 — เทียบ develop d5b7c0d7
+ตาราง reviewer #562: blocker 1 — e0a4e8ce หลุด 192/192 → 0/192 (develop 0); ตาราง (a) × key ที่ไม่ใช่ identifier 6 แบบ — 240/480 (= develop) → 0/480; postal_code หลัง array 22f — 8/16 → 0/16 (develop 0)
+fuzz สองทิศที่ขยาย (key ที่ไม่ใช่ identifier 12 แบบ รวม `x-note` `user-agent` `note.text` `my note` `0note` `ชื่อ`, object ซ้อน headers 15%,
+  ค่า PII ขึ้นต้นด้วยอักษรไทย/ช่องว่าง/`-`/`(`/newline, รูปเปิด 21 แบบรวม `a, b: ` `Missing fields, reason:` `, rv: ` `\n  t:`,
+  array 22f ใต้ key PII ตามด้วย key PII ค่าเดี่ยว, field ที่รู้ค่าล่วงหน้า × 4 serializer × 0–3 ชั้น):
+  e0a4e8ce seed 1–20: หลุดเพิ่ม 11,360 / หายเพิ่ม 22 (ยืนยันว่า generator จับ blocker ได้)
+  หลังแก้ seed 1–400 (3,200,000 กรณี): PR หลุด 0 (develop 717,490), PII หลุดเพิ่ม 0, ค่า/ชื่อ key หายเพิ่ม 0 (PR หาย 0 / develop 197,968)
+generator เดิม seed 1–400 (3.2M): หลุดเพิ่ม 0 / หายเพิ่ม 0 (PR หลุด 10 = PII array 22f เท่าเดิม); โหมดหนัก 1.6M: PR หลุด 0, หลุด/หายเพิ่ม 0; stress OPS-39 240k: 81 = 81
+ReDoS: ไล่ค้น key 28 รูป (เพิ่ม key ใน quote ที่ไม่ใช่ identifier/อักษรไทย และ key PII + `[`) × token 28 ≤ 2 + prefix + สุ่ม 60k = 720,156 หน่วย:
+  flag 35 วัดซ้ำ best-of-3 เชิงเส้นทุกตัว ช้าสุด `สม{\"a\":\", b: "` 6.0/24.1/99.1ms ที่ 25k/100k/400k (develop 0.2/0.9/3.5 — ช้ากว่าแต่เชิงเส้นและต่ำกว่าเกณฑ์ 200ms@100k)
+  whitespace ยาว 77 รูป เชิงเส้น ช้าสุด 15.7ms@100k; compile + เรียกครั้งแรก 8ms (source 17,601 ตัวอักษร < 20KB)
+  จุดล้น backtrack stack ของ redactPii เท่า develop ทุกรูปที่วัด (fallback PII_ONLY)
+
+## RED รอบ 3 (re-review #562 รอบ 2) บนหัว PR 92ee895f — 33 ล้ม
+# blocker 1: key ใน quote ที่มี quote อีกชนิด/backslash/\n/tab/surrogate × ค่า PII ขึ้นต้นด้วย + , ] } newline = 30 test (ล้มเฉพาะ inspect 240/480 กรณี; develop 0)
+# blocker 2: fixture ของ reviewer (company หลุดทาง fallback PII_ONLY) 1 + บังคับ RangeError ด้วย spy ของ String.prototype.replace (ไม่ขึ้นกับจุดล้นของ V8) 1
+# fuzz สองทิศ key ที่มี quote/escape (seed 0x0b563) 1 · ReDoS key ใน quote ใหม่ 7 กรณีผ่านทั้งก่อนและหลัง
+    ✕ (re-review #562) key "customer's note" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "customer's note" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "customer's note" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "customer's note" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "customer's note" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "say \"hi\"" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "say \"hi\"" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "say \"hi\"" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "say \"hi\"" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "say \"hi\"" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\\b" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\\b" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\\b" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\\b" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\\b" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\nb" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\nb" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\nb" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\nb" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "a\nb" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "tab\tkey" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "tab\tkey" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "tab\tkey" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "tab\tkey" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "tab\tkey" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "\ud83d" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "\ud83d" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "\ud83d" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "\ud83d" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) key "\ud83d" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562) fuzz PIIMARK key ที่มี quote/escape × ค่า PII ขึ้นต้นด้วยเครื่องหมาย 600 object × serialize 4 แบบ × escape 0–3 ชั้น (seed 46435)
+    ✕ ข้อความยาวมาก (4M ตัวอักษร) ของ field ที่ไม่ใช่ PII ไม่ throw และไม่หลุด
+    ✕ regex โยน RangeError (backtrack stack ล้น) → ผลเป็น [REDACTED] ทั้งข้อความ (บังคับเข้าทางนี้โดยไม่ขึ้นกับจุดล้นของ V8)
+Tests:       33 failed, 427 passed, 460 total
+
+## GREEN รอบ 3
+# key ใน quote `"`: quote ปิด = ช่วง backslash m·(2B+2)+B + `"` ตามชั้น escape (แบบ escapedQuoteRun); key ใน ' หรือ backtick (inspect):
+# ปิดที่ quote แรกที่ตามด้วย `:` (ช่วง backslash ใดก็ได้นำหน้า) และเนื้อหาข้าม quote ที่ไม่มี backslash นำไม่ได้; เนื้อหา ≤ 128 token
+# RangeError (backtrack stack ล้น) → redactPii คืน [REDACTED] ทั้งข้อความ (ตัดสินโดย session หลัก) — ตัด fallback PII_ONLY
+    ✓ (re-review #562) key "customer's note" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "customer's note" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "customer's note" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "customer's note" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "customer's note" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "say \"hi\"" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "say \"hi\"" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "say \"hi\"" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "say \"hi\"" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "say \"hi\"" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\\b" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\\b" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\\b" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\\b" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\\b" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\nb" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\nb" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\nb" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\nb" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "a\nb" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "tab\tkey" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "tab\tkey" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "tab\tkey" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "tab\tkey" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "tab\tkey" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "\ud83d" ค่า PII "+66 81 234 5678" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "\ud83d" ค่า PII ",Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "\ud83d" ค่า PII "]Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "\ud83d" ค่า PII "}Somchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) key "\ud83d" ค่า PII "\nSomchai" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562) fuzz PIIMARK key ที่มี quote/escape × ค่า PII ขึ้นต้นด้วยเครื่องหมาย 600 object × serialize 4 แบบ × escape 0–3 ชั้น (seed 46435)
+    ✓ ข้อความยาว (key ใน quote + \' ซ้ำไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน quote + backslash ยาว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน quote + quote สลับชนิดยาว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน quote ที่ escape 1 ชั้น + \\\" ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน quote ซ้ำไม่มี :) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน ' + backslash + อักษรไทยซ้ำ (เดิม ~95ms — สแกน 128 token จากทุก quote)) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน ' + backslash ยาว + quote ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาวมาก (4M ตัวอักษร) ของ field ที่ไม่ใช่ PII ไม่ throw และไม่หลุด
+    ✓ regex โยน RangeError (backtrack stack ล้น) → ผลเป็น [REDACTED] ทั้งข้อความ (บังคับเข้าทางนี้โดยไม่ขึ้นกับจุดล้นของ V8)
+Tests:       462 passed, 462 total
+backend test:unit: Test Suites: 133 passed, 133 total; Tests:       2306 passed, 2306 total
+storefront test:e2e:unit: 165 passed; backend typecheck/build: ผ่าน; lint: 0 error (warning 4 รายการเดิมของ OPS-38)
+
+## ตรวจเพิ่มนอก test รอบ 3 — เทียบ develop d5b7c0d7
+ตาราง re-review #562 รอบ 2 (key 6 แบบ × ค่าขึ้นต้น 5 แบบ × serialize 4 × 0–3 ชั้น = 480): develop 0, 92ee895f 240 (inspect ทั้งหมด), หลังแก้ 0
+fixture blocker 2: develop ไม่หลุด (ไม่ throw), 92ee895f หลุด, หลังแก้ = "[REDACTED]" ทั้งข้อความ
+ตารางรอบก่อน: blocker 1 รอบ 1 0/192, (a) × key ที่ไม่ใช่ identifier 0/480, postal_code 0/16; ตาราง AC-55(a) ของ reviewer #560 red 0/80
+fuzz สองทิศ (PII หลุดเพิ่ม / ค่าหายเพิ่ม เทียบ develop):
+  generator รอบ 3 (key มี ' " backslash \n \t surrogate backtick ลงท้าย backslash, ค่า PII ขึ้นต้นด้วย + , ] } newline) seed 1–400 = 3.2M: PR หลุด 0 (develop 691,339) — 0/0
+    (บน 92ee895f seed 1–10: หลุดเพิ่ม 2,293 / หายเพิ่ม 8 — generator จับ blocker ได้)
+  generator รอบ 2 3.2M: PR หลุด 0 (develop 717,490) 0/0 · generator เดิม 3.2M: 0/0 (PR หลุด 10 = PII array 22f เท่าเดิม) · โหมดหนัก 1.6M: 0/0 · stress 240k: 81 = 81
+ReDoS: ไล่ค้น key 36 รูป (เพิ่ม key ใน quote ที่มี \' \" backslash \n backtick) × token 32 ≤ 2 + prefix + สุ่ม 60k = 1,315,716 หน่วย → flag 75 วัดซ้ำเชิงเส้นทุกตัว
+  (อัตรา 400k÷100k ≤ 4.9) ช้าสุด 23ms@100k (`\n  a: [ \\\\\\\"1สม` ซ้ำ)
+  ระหว่างทาง: ฉบับที่ key ใน ' สแกนได้ 128 token ข้าม quote ใช้ ~95ms@100k กับ `, 'x\\สม` ซ้ำ (เชิงเส้นแต่ใกล้เกณฑ์) → ห้ามข้าม quote ที่ไม่มี backslash นำ เหลือ ≤ 23ms; เพิ่มเป็น ReDoS unit
+  whitespace ยาว 77 รูป ช้าสุด 15.6ms@100k; compile + เรียกครั้งแรก 8ms (source 17,885); redactPii ไม่ throw ทั้ง 5 รูป array ยาวที่เคยล้น (วัดถึง 64M ตัวอักษร) (RangeError → [REDACTED])
+
+## RED รอบ 4 (re-review #562 รอบ 3) บนหัว PR e8ce6765 — 16 ล้ม (หัวข้อก่อนหน้าเป็นประวัติของแต่ละรอบ)
+# ข้อ 1: ค่า PII ขึ้นต้นด้วย `+` ถูกกลืน (`+` อยู่ในชุดขอบหลังสมาชิก) — 2 เคสของ reviewer รวมใน 1 test
+# ข้อ 2: key ใน quote ยาวเกิน 128 token ไม่ถูกจับเป็น field แล้ว key PII ถัดไปหลุด — key `x-`+130, `it's`+125, `say "`+200 × ค่า , ] } \n + = 15 test
+#   (แก้ข้อความรอบ 3 ที่ว่า "key > 128 ทำงานเหมือน develop" — ไม่จริง: develop ไม่หลุดในกรณีเหล่านี้)
+# ReDoS key ใน quote ไม่จำกัดความยาว 8 กรณีใหม่ผ่านทั้งก่อนและหลัง
+    ✕ (re-review #562 รอบ 3) ค่า PII ขึ้นต้นด้วย + หลังค่าของ field ที่ไม่ใช่ PII ไม่หลุด
+    ✕ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name "x-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × s
+    ✕ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name "x-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × s
+    ✕ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name "x-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × s
+    ✕ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name "x-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × s
+    ✕ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name "x-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × s
+    ✕ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name "it'saaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × seri
+    ✕ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name "it'saaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × seri
+    ✕ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name "it'saaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × seri
+    ✕ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name "it'saaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × seri
+    ✕ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name "it'saaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" × seri
+    ✕ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name "say \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    ✕ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name "say \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    ✕ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name "say \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    ✕ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name "say \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    ✕ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name "say \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+Tests:       16 failed, 470 passed, 486 total
+
+## GREEN รอบ 4
+# ขอบหลังสมาชิก: `,` `]` `}` newline/`\n` ที่ escape/ท้ายข้อความ หรือ ` +` ที่มีช่องว่างนำ (ตามที่ reviewer เสนอ)
+# key ใน quote ไม่จำกัดความยาว: `"` — เนื้อหาข้าม `"` ที่ไม่มี backslash นำไม่ได้และหยุดที่ quote ปิดของชั้นตัวเอง; ' / backtick — หยุดที่ quote ถัดไปที่ไม่มี backslash นำ
+# key ใน quote/identifier ที่ค่าไม่ใช่สตริง/array (object, ตัวเลข) ถูกจับเฉพาะ key (fuzz ของ reviewer: key `"it's: name: '1": {…}` เคยเริ่ม match ใน key แล้วข้ามขอบ)
+# ข้อความใน key ถูก redact ด้วย PII_ONLY แยกจากค่า (เท่ากับที่ develop redact ข้อความใน key)
+    ✓ ค่าของ key ในรูป JS object (util.inspect) และ Ruby hash
+    ✓ (re-review #562 รอบ 3) ค่า PII ขึ้นต้นด้วย + หลังค่าของ field ที่ไม่ใช่ PII ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name ", สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name "]สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name "}สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name "\nสมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "x-aaaaaaaaaa"… ค่า name "+สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name ", สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name "]สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name "}สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name "\nสมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "it'saaaaaaaa"… ค่า name "+สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name ", สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name "]สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name "}สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name "\nสมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 3) key ยาว "say \"aaaaaaa"… ค่า name "+สมชาย" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ ข้อความยาว (key ใน quote + \' ซ้ำไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน quote + backslash ยาว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน quote + quote สลับชนิดยาว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน quote ที่ escape 1 ชั้น + \\\" ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน quote ซ้ำไม่มี :) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน ' + backslash + อักษรไทยซ้ำ (เดิม ~95ms — สแกน 128 token จากทุก quote)) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน ' + backslash ยาว + quote ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน ' ยาว 100k ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน ' ยาว 100k + :) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน " ยาว 100k ไม่ปิด) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน \" (escape 1 ชั้น) ยาว + \\\" ซ้ำ) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน ' + quote " สลับยาว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน " + quote ' สลับยาว) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน ' + \' ซ้ำยาว + backslash) redact เสร็จเร็ว (ไม่ quadratic)
+    ✓ ข้อความยาว (key ใน ' ซ้ำ ไม่มี : (ทุกจุดเริ่มล้ม)) redact เสร็จเร็ว (ไม่ quadratic)
+Tests:       486 passed, 486 total
+backend test:unit: Test Suites: 133 passed, 133 total; Tests:       2330 passed, 2330 total
+storefront test:e2e:unit: 165 passed; backend typecheck/build: ผ่าน; lint: 0 error (warning 4 รายการเดิมของ OPS-38)
+
+## ตรวจเพิ่มนอก test รอบ 4 — เทียบ develop d5b7c0d7
+fuzz ของ reviewer (fz562-keep/fuzz.mts — สำเนา ไม่แก้ของเดิม; 6 serializer × 0–3 ชั้น; "genLeak" = หลุดใน PR โดยที่ develop redact field นั้นได้):
+  e8ce6765 seed 1–2000: id 12 / ext 12 / q 54 / long 1,410 / all 235 หลุดเพิ่มจริง, long หายเพิ่ม 60
+  หลังแก้: id, ext, q, long × seed 1–4000 (96,000 กรณีต่อชุด) และ all × seed 1–20000 (480,000 กรณี) → หลุดเพิ่มจริง 0, ค่าหายเพิ่ม 0 ทุกชุด
+    (PR หลุดรวม 55,777 vs develop 132,504 ใน all — ที่เหลือคือที่ develop หลุดด้วย)
+  ระหว่างทาง: หลังแก้ 2 ข้อแรก ยังหลุดเพิ่ม q 26 / all(4001) 8 จาก key `"it's: name: '1"` ที่ค่าเป็น object → จับ key อย่างเดียว → 0
+fuzz ของผม: generator รอบ 3/รอบ 2/เดิม 3.2M ต่อชุด, โหมดหนัก 1.6M, stress 240k — หลุด/หายเพิ่ม 0/0 ทุกชุด; ตาราง reviewer ทุกรอบ 0
+ReDoS: redos.mts ของ reviewer (26 รูป × 100k/400k/1.6M) เชิงเส้นทุกตัว ช้าสุด 37ms@100k (`สม{\"a\":\", b: "` ซ้ำ, รวม warm-up)
+  ไล่ค้นของผม 1,315,716 หน่วย flag 96 เชิงเส้น (อัตรา ≤ 5.4) ช้าสุด 26.6ms@100k; whitespace ยาว 77 รูป ไม่ถูก flag; compile + เรียกครั้งแรก 15ms (source 17,884)
+
+## รอบ 5–6 (re-review #562 รอบ 4–5; owner ตัดสิน 2026-11-25 สองครั้ง — เกณฑ์สองทิศมีข้อยกเว้น (d1)/(d2) ของกฎข้อ 22d)
+# แก้: ค่าของ field รับ array ซ้อน (`[` `]` เป็นตัวคั่น) และ key ว่าง; สมาชิก array ที่ไม่มี key (สตริงหลัง Map/object ใน array) จับเป็น field ที่ตำแหน่งสมาชิก;
+# key ใน ' ปิดตามชั้นที่อ่านได้ (newline ดิบ = ชั้น 0: backslash 2m ตัว; newline ที่ escape N ตัว: backslash 4N·m ตัว; บรรทัดเดียวกัน: ไม่มี backslash นำ),
+# key หลายท่อน (Map key ที่มี newline) และตำแหน่งของ key/สมาชิกต้องตามจุดจบของค่าก่อนหน้า; สมาชิกของ field ห้ามมี newline ดิบ
+
+## RED บนหัว PR 4942a265 — 10 ล้ม (test ใหม่รอบ 4–6)
+    ✕ (re-review #562 รอบ 4) array ซ้อน × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562 รอบ 4) object key ว่าง × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562 รอบ 4) object key ว่าง ค่า ,  × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562 รอบ 4) array ของ Map/null-prototype แล้วสมาชิก backslash × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✕ (re-review #562 รอบ 5) key "`\"'x': [" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืน total
+    ✕ (re-review #562 รอบ 5) key "`\"'x': [," × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืน total
+    ✕ (re-review #562 รอบ 5) key ที่มี \' + `:` กลาง key (cart_6vjFZ) escape 0 ชั้น — last_name ไม่หลุด
+    ✕ (re-review #562 รอบ 5) key ที่มี \' + `:` กลาง key (cart_6vjFZ) escape 1 ชั้น — last_name ไม่หลุด
+    ✕ (re-review #562 รอบ 5) key ที่มี \' + `:` กลาง key (cart_6vjFZ) escape 2 ชั้น — last_name ไม่หลุด
+    ✕ (re-review #562 รอบ 5) key ที่มี \' + `:` กลาง key (cart_6vjFZ) escape 3 ชั้น — last_name ไม่หลุด
+Tests:       10 failed, 500 passed, 510 total
+# บน WIP รอบ 5 (ที่รายงานไว้ ไม่ได้ push) — 6 ล้ม (key ที่มี ' " backtick ครบ 2 + cart_6vjFZ 4); test Map key หลายท่อน 2 ข้อ red บนฉบับระหว่างทางที่มี guard newline ดิบ
+Tests:       6 failed, 504 passed, 510 total
+
+## GREEN
+    ✓ (re-review #562 รอบ 4) array ซ้อน × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 4) object key ว่าง × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 4) object key ว่าง ค่า ,  × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 4) array ซ้อน 3 ชั้นของ object × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 4) array ของ Map/null-prototype แล้วสมาชิก backslash × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 4) Map key ที่มี \n + เยื้อง + key × serialize 5 แบบ × escape 0–3 ชั้น ไม่หลุด
+    ✓ (re-review #562 รอบ 5) key "`\"'x': [" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืน total
+    ✓ (re-review #562 รอบ 5) key "`\"'x': [" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืน total
+    ✓ (re-review #562 รอบ 5) key "a`\"'b': [" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืน total
+    ✓ (re-review #562 รอบ 5) key "`\"'x': [," × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืน total
+    ✓ (re-review #562 รอบ 5) key "\"name\":\"':company: `x" × serialize 4 แบบ × escape 0–3 ชั้น ไม่หลุดและไม่กลืน total
+    ✓ (re-review #562 รอบ 5) key ที่มี \' + `:` กลาง key (cart_6vjFZ) escape 0 ชั้น — last_name ไม่หลุด
+    ✓ (re-review #562 รอบ 5) key ที่มี \' + `:` กลาง key (cart_6vjFZ) escape 1 ชั้น — last_name ไม่หลุด
+    ✓ (re-review #562 รอบ 5) key ที่มี \' + `:` กลาง key (cart_6vjFZ) escape 2 ชั้น — last_name ไม่หลุด
+    ✓ (re-review #562 รอบ 5) key ที่มี \' + `:` กลาง key (cart_6vjFZ) escape 3 ชั้น — last_name ไม่หลุด
+    ✓ (re-review #562 รอบ 6) Map key หลายท่อน — 0
+    ✓ (re-review #562 รอบ 6) Map key หลายท่อน — 1
+Tests:       510 passed, 510 total
+backend test:unit: Test Suites: 133 passed, 133 total; Tests:       2354 passed, 2354 total
+storefront test:e2e:unit: 165 passed; backend typecheck/build: ผ่าน; lint: 0 error (warning 4 รายการเดิมของ OPS-38)
+
+## จำแนกทุกกรณีที่ PR แย่กว่า develop d5b7c0d7 (PII หลุดเพิ่ม / id-จำนวนเงิน-key หายเพิ่ม)
+# สคริปต์: สำเนา cls-OPS40.mts ของ reviewer → cls2-OPS40.mts (scratchpad fz-OPS40c — ไม่ commit) แก้ group ของค่า 15 → 18 และเพิ่ม
+#   หมวด EXEMPT4_inline_bs_key = (d2): counterfactual แทน \ ' " ` ในชื่อ key ที่ quote ด้วย ' บนบรรทัดเดียวกัน (หลัง `{ `/`, `/`=>`) ด้วย a แล้ว PR ไม่แย่กว่า develop ที่ X
+#   (แยกจากหมวดเดิม EXEMPT_* = (d1)), โหมด K = generator ของ keyq-OPS40.mts, โหมด F = generator fuzz รอบ 3 ของ builder
+| ชุด | render | PR แย่กว่า: หลุด / หาย | (d1) | (d2) | ไม่เข้าข้อยกเว้น |
+|---|---|---|---|---|---|
+| fz_nokm id 1–20000 | 480,000 | 64 / 0 | 24 | 40 | **0** |
+| fz_nokm ext 1–20000 | 480,000 | 64 / 0 | 24 | 40 | **0** |
+| fz_nokm q 1–20000 | 480,000 | 88 / 0 | 12 | 76 | **0** |
+| fuzz.mts all 1–32000 | 768,000 | 107 / 116 | 32 | 191 | **0** |
+| fz_nokm long 1–20000 | 480,000 | 64 / 0 | 24 | 40 | **0** |
+| fz_nokm all 1–20000 | 480,000 | 80 / 24 | 24 | 80 | **0** |
+| keyq 1–20000 | 240,000 | 67 / 0 | 0 | 67 | **0** |
+| object ซ้อน (B) 1–200 | 2,000,000 | 0 / 0 | 0 | 0 | **0** |
+| fuzz รอบ 3 ของ builder 1–400 | 3,200,000 | 277 / 0 | 0 | 277 | **0** |
+fuzz อื่นของ builder (นับดิบ, ไม่มีกรณี PR แย่กว่า): generator รอบ 2 3.2M 0/0 · เดิม 3.2M 0/0 · โหมดหนัก 1.6M 0/0 · stress 240k 81 = 81 · object ซ้อน 2M 0/0
+ตาราง reviewer ทุกรอบ 0 (blocker 1 0/192, (a) × key ที่ไม่ใช่ identifier 0/480, postal_code 0/16, รอบ 2 0/480, AC-55(a) 0/80)
+
+## ReDoS (เวลา ms ที่ 100k / 400k / 1.6M — เส้นตรงทุกตัว)
+  "":                  1.6 / 6.3 / 24.7
+  "\"k\":" rep lv1             4.9 / 20.8 / 90.0  dev100k 0.9
+  ', "name" ws [               2.2 / 8.5 / 33.8  dev100k 1.2
+  ', '<127 a>' : rep           3.6 / 14.9 / 55.2  dev100k 0.8
+  ', '<127 a>' no colon        3.1 / 10.3 / 41.3  dev100k 0.8
+  ', '<200 a>' unclosed rep    3.8 / 15.0 / 61.4  dev100k 0.8
+  ', '\'\'\'...                1.9 / 7.5 / 29.7  dev100k 1.2
+  ', 'k' rep no colon          2.2 / 8.7 / 34.1  dev100k 0.9
+  ', 'name' : [ rep            2.8 / 11.0 / 45.9  dev100k 1.9
+  ', 'x\' rep                  10.2 / 8.5 / 33.9  dev100k 8.1
+  ', 'x\\'                     9.7 / 11.1 / 45.7  dev100k 0.9
+  ', 'x\\สม rep                10.3 / 7.7 / 30.9  dev100k 8.4
+  ', `x rep                    11.9 / 51.4 / 191.0  dev100k 0.8
+  ', `x`: rep                  2.0 / 8.1 / 32.5  dev100k 0.9
+  , '':                2.1 / 8.5 / 33.6
+  [ ws then name       1.6 / 6.8 / 24.8
+  \" key with \\ rep           6.5 / 26.3 / 104.4  dev100k 2.9
+  \" unclosed key              2.5 / 11.5 / 43.9  dev100k 0.6
+  \n + indent ws       1.6 / 6.1 / 24.0
+  backtick in backtick         4.0 / 18.4 / 78.7  dev100k 0.9
+  builder slowest              35.5 / 117.7 / 488.0  dev100k 0.9
+  emoji keys                   1.6 / 6.4 / 25.4  dev100k 0.6
+  empty key            1.6 / 6.5 / 26.3
+  fake pii in value            5.4 / 12.2 / 60.9  dev100k 9.8
+  field + [            8.3 / 3.8 / 15.4
+  field + [ sp         0.9 / 3.7 / 13.9
+  field + [[ 'x',      1.8 / 7.4 / 29.0
+  field + ]            0.9 / 3.9 / 15.2
+  field array unclosed         2.4 / 9.1 / 37.5  dev100k 1.0
+  import+first call 12.2 ms
+  key \' : rep         2.0 / 7.9 / 31.4
+  key `"\' rep         1.6 / 6.7 / 26.3
+  key quote + ws + :           1.7 / 6.7 / 25.1  dev100k 0.8
+  key quote then ws no colon   1.7 / 6.9 / 27.0  dev100k 0.8
+  lv3 key rep                  3.4 / 14.5 / 65.4  dev100k 1.8
+  many short fields + pii      5.4 / 19.3 / 88.8  dev100k 1.9
+  surrogate                    13.6 / 59.6 / 247.1  dev100k 0.8
+  thai field rep               3.0 / 12.3 / 59.1  dev100k 0.7
+ไล่ค้นของ builder 1,315,716 หน่วย: flag 89 วัดซ้ำเชิงเส้น (อัตรา 400k÷100k ≤ 4.8) ช้าสุด 54.9ms@100k; whitespace ยาว 77 รูป ไม่ถูก flag ช้าสุด 15.7ms@100k
+compile + เรียกครั้งแรก 15ms (source 18,831 ตัวอักษร < 20KB)
+
+## รอบ 7 (re-review #562 รอบ 6 — https://github.com/techpowerdev/medusa-ecom/pull/562#issuecomment-7167354644)
+# หมายเหตุ: ตารางจำแนกของรอบ 5–6 ด้านบนใช้ตัวจำแนกที่หลวม (cls-OPS40 ต้นฉบับนับหมวด `dk_none`/`nospan` เป็น (d1)) — ตัวเลขที่ถูกต้องคือตารางรอบ 7 ด้านล่าง (ตัวจำแนกแบบเข้ม)
+# แก้: ` +` เป็นขอบสมาชิกของค่า field เฉพาะเมื่อท่อนถัดไปขึ้นต้นด้วย quote (ข้อเสนอของ reviewer) — เดิมค่าของ field ไม่หยุดหลัง `],\n`
+#   แล้วรับท่อนแรกของ key หลายท่อนบรรทัดถัดไป (`'\\' +`) เป็นสมาชิก จน city หลุด (เกิดใหม่ใน dbf9a8a3; ไม่เข้า (d1)/(d2))
+
+## RED บนหัว PR dbf9a8a3 — 4 ล้ม
+    ✕ (re-review #562 รอบ 7) key หลายท่อน `' + 'name: …` หลัง array ของ field ที่ไม่ใช่ PII × serialize 4 แบบ × escape 0–3 ชั้น — city ไม่หลุด
+    ✕ (re-review #562 รอบ 7) cart_2d5FZ ห่อเพิ่ม 0 ชั้น — state ไม่หลุด
+    ✕ (re-review #562 รอบ 7) cart_2d5FZ ห่อเพิ่ม 1 ชั้น — state ไม่หลุด
+    ✕ (re-review #562 รอบ 7) cart_2d5FZ ห่อเพิ่ม 2 ชั้น — state ไม่หลุด
+Tests:       4 failed, 510 passed, 514 total
+
+## GREEN
+    ✓ (re-review #562 รอบ 7) key หลายท่อน `' + 'name: …` หลัง array ของ field ที่ไม่ใช่ PII × serialize 4 แบบ × escape 0–3 ชั้น — city ไม่หลุด
+    ✓ (re-review #562 รอบ 7) cart_2d5FZ ห่อเพิ่ม 0 ชั้น — state ไม่หลุด
+    ✓ (re-review #562 รอบ 7) cart_2d5FZ ห่อเพิ่ม 1 ชั้น — state ไม่หลุด
+    ✓ (re-review #562 รอบ 7) cart_2d5FZ ห่อเพิ่ม 2 ชั้น — state ไม่หลุด
+Tests:       514 passed, 514 total
+backend test:unit: Test Suites: 133 passed, 133 total; Tests:       2358 passed, 2358 total
+storefront test:e2e:unit: 165 passed; backend typecheck/build: ผ่าน; lint: 0 error (warning 4 รายการเดิมของ OPS-38)
+
+## จำแนกด้วยตัวจำแนกแบบเข้มของ reviewer (cls4-OPS40.mts — สำเนาใน scratchpad fz-OPS40d ไม่แก้) เทียบ develop d5b7c0d7
+# (d1) = หมวด EXEMPT_other_field / EXEMPT_self_or_combo · (d2) = หมวด EXEMPT_d2_strict · render = serializer × ชั้น 0–3
+| ชุด | render | PR แย่กว่า: หลุด / หาย | (d1) | (d2) | ไม่เข้าข้อยกเว้น |
+|---|---|---|---|---|---|
+| fz_nokm id 1–30000 | 720,000 | 96 / 0 | 36 | 60 | **0** |
+| fz_nokm ext 1–30000 | 720,000 | 96 / 0 | 36 | 60 | **0** |
+| fz_nokm q 1–30000 | 720,000 | 116 / 0 | 12 | 104 | **0** |
+| fz_nokm long 1–30000 | 720,000 | 84 / 0 | 24 | 60 | **0** |
+| fz_nokm all 1–30000 | 720,000 | 116 / 64 | 24 | 156 | **0** |
+| fuzz.mts all 1–44000 | 1,056,000 | 113 / 116 | 15 | 214 | **0** |
+| keyq 1–30000 | 360,000 | 123 / 0 | 0 | 123 | **0** |
+| M (reviewer) 1–10000 | 240,000 | 0 / 0 | 0 | 0 | **0** |
+| object ซ้อน (B) 1–600 | 6,000,000 | 0 / 0 | 0 | 0 | **0** |
+| fuzz รอบ 3 (F) 1–500 | 4,000,000 | 340 / 0 | 0 | 340 | **0** |
+
+## ReDoS (ms ที่ 100k / 400k / 1.6M — เส้นตรงทุกตัว ≤ 200ms@100k)
+redos.mts ของ reviewer (3 ตัวที่ช้าสุด):
+  builder slowest              35.8 / 115.4 / 467.0  dev100k 0.9
+  surrogate                    13.8 / 56.9 / 248.4  dev100k 0.8
+  ', `x rep                    13.2 / 59.9 / 191.6  dev100k 0.9
+redos2-OPS40.mts (ช้าสุด):
+  field + [            8.3 / 3.8 / 15.4
+  , '':                2.1 / 8.3 / 33.1
+redos3-OPS40.mts (รูปใหม่ของ reviewer, ช้าสุด):
+  long bs run then ', '        22.3 / 27.8 / 109.0
+  rep bs1000 ', '              6.5 / 26.3 / 104.0
+  rep ,\\\n  'a\\\\'           3.8 / 14.7 / 56.9
+ไล่ค้นของ builder 1,315,716 หน่วย: flag 95 วัดซ้ำเชิงเส้น (อัตรา 400k÷100k ≤ 5.1) ช้าสุด 48.7ms@100k; whitespace ยาว 77 รูป ไม่ถูก flag ช้าสุด 15.6ms@100k
+compile + เรียกครั้งแรก 15ms (source 18,860 ตัวอักษร < 20KB)
+
+## การตรวจของ reviewer รอบ 7 บนหัว 7a457480 (ตัวจำแนก cls5-OPS40.mts ของ reviewer — scratchpad fz-OPS40-r7/, ผลดิบ out5/)
+# owner ตัดสิน 2026-11-26: (1) เพิ่มข้อยกเว้น (d3) แล้ว merge head 7a457480 ได้โดยไม่แก้ src อีก ส่วนที่เหลือยกไป OPS-41 (parser)
+#                         (2) fixture cart_13rjFZ (9 render) ที่ไม่เข้า d1/d2/d3 บันทึกเป็นกรณีที่รู้แล้วใน OPS-41 แล้ว merge
+# commit นี้แก้เฉพาะเอกสาร (spec กฎ 22d/AC-55(c)/แถว OPS-41 และ evidence) — src และ test ไม่เปลี่ยน
+
+นิยาม (d3) — ตามที่ reviewer เขียน (ใส่ในกฎข้อ 22d รอบ 43):
+(d3) การสแกนเลื่อนเพราะ key/สตริงของ field ที่ไม่ใช่ PII ที่ regex อ่านโครงสร้างไม่ได้ — กรณีที่ PR แย่กว่า develop ที่จุด X ได้รับยกเว้นเมื่อมี field ระดับบนสุด F
+ตัวเดียวที่ key ไม่ใช่ key PII และอยู่ก่อน field ของ X ซึ่งเข้าครบสามข้อ:
+  ① key ของ F หรือสตริงใดภายในค่าของ F (รวม key/ค่าของ object ซ้อน, key ของ Map, สมาชิก array, สตริงหลายท่อน) มีอักขระโครงสร้างอย่างน้อยหนึ่งตัว:
+     newline (\n \r), { } [ ] : , ' " ` \ +
+  ② ต้นเหตุอยู่ใน F: ในข้อความเต็ม ไม่มี match ระดับนอกของ KEY_VALUE ของ PR ที่คร่อมจุดเริ่มของ F (การสแกนเข้า F ตรงที่) และมี match ระดับนอกที่เริ่มภายในช่วงของ F
+     แต่จบเลยจุดจบของ F (การสแกนออกจาก F แบบเลื่อน) — ช่วงของ F หาได้จากการ render {F} เดี่ยวด้วย serializer เดียวกันแล้วหาในข้อความชั้น 0 ก่อน map ขึ้นชั้น escape
+  ③ counterfactual: แทนอักขระโครงสร้างตาม ① ทุกตัวใน key และสตริงทั้งหมดของ F ด้วย a (คงความยาว ไม่แตะ field PII และ marker) ใน object เต็ม
+     แล้ว PR ต้องไม่แย่กว่า develop ที่ X อีก
+  ตรวจหลัง (d1)/(d2) และนับเป็นหมวดแยก
+
+ผลจำแนก (cls5):
+| ชุด | หลุด/หาย | d1 | d2 | d3 | ไม่เข้า |
+|---|---|---|---|---|---|
+| S 1–20000 | 83/58 | 9 | 34 | 98 | 0 |
+| fuzz.mts all 44001–48000 | 20/16 | 0 | 36 | 0 | 0 |
+| fuzz.mts all 48001–52000 | 36/0 | 24 | 3 | 0 | 9 (cart_13rjFZ) |
+| fuzz.mts all 52001–56000 | 24/0 | 12 | 12 | 0 | 0 |
+
+sanity check ของ (d3):
+- object ปกติ N1 (480k render): PR แย่กว่า develop 0
+- N2 (ค่า PII มีอักขระโครงสร้าง): 33 render เข้า d1 ทั้งหมด ไม่มีเข้า d3
+- cart_2d5FZ บน dbf9a8a3 (blocker รอบ 6): ไม่เข้า d3 — ยืนยันว่า (d3) ไม่ครอบ bug ที่แก้ได้ใน src
+
+กรณีที่รู้แล้ว (ยกไป OPS-41): cart_13rjFZ (fuzz.mts all 48001–52000, 9 render; ข้อความเต็ม scratchpad fz-OPS40-r7/c13rj.txt)
+- กลไก: ค่า total0: '1999.50' กินข้าม `,\n` เข้า key ที่มี quote ปน 'email: `\' แล้ว address_1: " ในชื่อ key กลืนไปถึง first_name
+- OPS-41 (parser ที่นับความลึกวงเล็บ/ชั้น escape) ต้องมี fixture นี้และ generator S ของ reviewer เป็น test case

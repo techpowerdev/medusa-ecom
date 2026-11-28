@@ -5,6 +5,7 @@ import { Page } from "@playwright/test"
 import { deleteAllThenExpectOk } from "./support/cleanup"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { isServerAction } from "./support/server-action"
+import { chooseOption, expectSelected } from "./support/select"
 import {
   STOREFRONT_COUNTRY as CC,
   Customer,
@@ -126,29 +127,24 @@ test("AC-138: /cart ที่ 1024/1280 คอลัมน์สรุปไม�
       { variant: first, quantity: 99 },
     ])
     await step(
-      "product-select-button แสดง 99 และ selectOption(2) → cart ใน backend มีจำนวน 2",
+      "product-select-button แสดง 99 และเลือก 2 → cart ใน backend มีจำนวน 2",
       async () => {
         await page.setViewportSize(VIEWPORTS[0])
         await page.goto(`/${CC}/cart`)
         const select = page.getByTestId("product-select-button")
-        await expect(select).toHaveValue("99")
-        expect(await select.inputValue()).toBe("99")
-        // review #287: ก่อน hydrate เสร็จ selectOption เปลี่ยนแค่ DOM (onChange ยังไม่ผูก → ไม่มี action) — เลือกซ้ำจนกว่า
-        // server action ของ updateLineItem({ quantity: 2 }) ตอบจริง (เลือก 2 ซ้ำ = idempotent) แล้วจึงตรวจ Store API
-        await expect(async () => {
-          const updated = page.waitForResponse(
-            (res) => isServerAction(res.request(), isUpdateToTwoBody),
-            { timeout: 5_000 }
-          )
-          await select.selectOption("2")
-          expect((await updated).status(), "server action ของ updateLineItem").toBe(200)
-        }).toPass()
+        await expectSelected(select, "99")
+        expect(await select.getAttribute("data-value")).toBe("99")
+        // SFUI-17 (spec 09 กฎ 48): chooseOption เปิด trigger ซ้ำจน hydrate แล้วคลิก item ครั้งเดียว — ไม่ต้องเลือกซ้ำ
+        // รอ server action ของ updateLineItem({ quantity: 2 }) ตอบจริงแล้วจึงตรวจ Store API (ค่าบน trigger ตรวจหลัง refresh ด้านล่าง)
+        const updated = page.waitForResponse((res) => isServerAction(res.request(), isUpdateToTwoBody))
+        await chooseOption(select, "2", { waitValue: false })
+        expect((await updated).status(), "server action ของ updateLineItem").toBe(200)
         await expect
           .poll(() => lineQuantity(customer, cartId), {
             message: "จำนวนของ line ตาม Store API",
           })
           .toBe(2)
-        await expect(select).toHaveValue("2")
+        await expectSelected(select, "2")
       }
     )
   } finally {

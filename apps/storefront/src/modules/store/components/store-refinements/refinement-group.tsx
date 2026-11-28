@@ -1,7 +1,10 @@
 "use client"
 
-import clsx from "clsx"
+import { useId } from "react"
 import { useRefinementList } from "react-instantsearch"
+
+import { Checkbox } from "@/components/ui/checkbox"
+import { Field, FieldLabel } from "@/components/ui/field"
 
 type RefinementGroupProps = {
   attribute: string
@@ -14,6 +17,7 @@ const RefinementGroup = ({ attribute, title }: RefinementGroupProps) => {
     limit: 20,
     sortBy: ["count:desc", "name:asc"],
   })
+  const id = useId()
 
   if (!items.length) {
     return null
@@ -22,34 +26,27 @@ const RefinementGroup = ({ attribute, title }: RefinementGroupProps) => {
   return (
     <div className="flex flex-col gap-y-3">
       <span
-        className="txt-compact-small-plus text-ui-fg-subtle"
+        className="text-sm font-medium leading-5 text-muted-foreground"
         data-testid={`refinement-title-${attribute}`}
       >
         {title}
       </span>
       <ul className="flex flex-col gap-y-2 pr-6">
-        {items.map((item) => (
+        {/* SFUI-19d (spec 09 กฎ 67b): ตัวอย่าง docs ของ checkbox — `Field orientation="horizontal"` → `Checkbox` → `FieldLabel` */}
+        {items.map((item, index) => (
           <li key={item.value}>
-            <label className="flex cursor-pointer items-start gap-x-2">
-              <input
-                type="checkbox"
+            <Field orientation="horizontal">
+              <Checkbox
+                id={`${id}-${index}`}
                 checked={item.isRefined}
-                onChange={() => refine(item.value)}
-                className="mt-1 shrink-0 accent-ui-fg-interactive"
+                onCheckedChange={() => refine(item.value)}
                 data-testid={`refinement-${attribute}`}
               />
-              <span
-                className={clsx("text-small-regular min-w-0 break-words", {
-                  "text-ui-fg-base": item.isRefined,
-                  "text-ui-fg-subtle": !item.isRefined,
-                })}
-              >
+              <FieldLabel htmlFor={`${id}-${index}`} className="min-w-0 break-words">
                 {item.label}
-              </span>
-              <span className="text-small-regular shrink-0 text-ui-fg-muted">
-                ({item.count})
-              </span>
-            </label>
+                <span className="shrink-0 text-muted-foreground">({item.count})</span>
+              </FieldLabel>
+            </Field>
           </li>
         ))}
       </ul>

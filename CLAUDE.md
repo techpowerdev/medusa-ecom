@@ -9,7 +9,7 @@
   ที่ไม่มีคำไทยที่ใช้กันทั่วไป (ใส่ทับศัพท์ได้ เช่น workflow, middleware)
 - ข้อความ UI ของ storefront เป็น**ภาษาไทยเขียนตรงในโค้ด** (ADR-014; ยังไม่มี i18n) label อังกฤษในเครื่องหมายคำพูดใน spec
   เป็นเพียงชื่อเรียก element; test/screenshot หา element ด้วย `data-testid` เสมอ (ยกเว้น 4 ข้อใน admin — ADR-018: menuitem ของ `ActionMenu`, ปุ่มใน `action` และ searchbox ของ `DataTable` (`getByTestId("<wrapper>").getByRole("searchbox")`) ที่หาด้วย role ภายใน wrapper ที่มี testid และ element ในหน้าของ `@medusajs/dashboard` ที่ extension ใส่ testid ไม่ได้ ที่หาด้วย role + ชื่อภายใน container ที่แคบที่สุด) ไม่ match ด้วยข้อความ และตรวจความเป็นไทยด้วย
-  regex อักษรไทย admin (`src/admin/`) คงภาษาอังกฤษ
+  regex อักษรไทย admin (`src/admin/`) ข้อความ UI ผ่าน i18n ของ Medusa admin (`useTranslation` + `src/admin/i18n/json/{en,th}`) — `en` = ข้อความเดิม, `th` = คำแปล; e2e admin ล็อก `lng=en` ชื่ออังกฤษในข้อยกเว้น 4 ข้อมาจาก `en` (ADR-031)
 
 ## โปรเจกต์นี้คืออะไร
 ร้านค้า e-commerce ระดับ production ที่สร้าง **บน Medusa v2** (backend + admin) ร่วมกับ
@@ -87,7 +87,12 @@ GitHub ใช้งานผ่าน `gh` CLI ไม่ใช่ MCP server
 - Medusa v2 (pin เวอร์ชัน `@medusajs/*` แบบระบุแน่ชัดใน `package.json` ที่ root; bump ผ่าน ADR เท่านั้น)
 - PostgreSQL 16, Redis 7 (event bus, workflow engine, cache, locking)
 - Stripe (บัตรเครดิต + PromptPay ผ่าน `@medusajs/medusa/payment-stripe`)
-- Next.js (Medusa starter), Tailwind, Playwright
+- Next.js (Medusa starter — ชั้น commerce/data คงเดิม), Playwright
+- storefront UI (ADR-030): Tailwind CSS v4 แบบ CSS-first (ไม่มี `tailwind.config.*`; theme/brand อยู่ใน `@theme` ของ `src/styles/globals.css`)
+  + shadcn/ui (Radix ผ่าน package `radix-ui`; component อยู่ที่ `src/components/ui/*` เพิ่มด้วย `pnpm dlx shadcn@4.23.1 add` เท่านั้น) + icon `lucide-react`;
+  ไม่ใช้ `@medusajs/ui-preset`/`@medusajs/icons`/`@headlessui/react`/`clsx` ใน storefront (admin ยังใช้ `@medusajs/ui` ตาม ADR-018)
+  - Radix เข้าผ่าน `src/components/**` เท่านั้น ห้าม import `radix-ui`/`@radix-ui/*` ใน `src/modules`/`src/app` (ADR-030 ข้อ 4)
+  - ห้ามแก้ไฟล์ใน `src/components/ui/` (ผลของ shadcn CLI ตรงตัว) — ปรับด้วย wrapper ใน `src/components/` หรือส่ง className/props (spec 09 กฎ 2–3)
 - Docker Compose สำหรับ local; ดู `docs/spec/07-scaling-ops.md` สำหรับ prod
 
 ## Commands
@@ -188,8 +193,8 @@ pnpm --filter storefront build && pnpm --filter storefront start
 - ก่อน push งานที่แก้หน้าใดของ storefront/admin ต้องรัน e2e **ทุก** spec ที่อ้างหน้านั้น (grep path/testid ใน `apps/storefront/e2e/`)
   ไม่ใช่แค่ spec ของ task (CORE-85: AC-48 ของ `thai-ui-cart-order` ล้มใน CI)
 - e2e ที่ assert ข้อความ error ต้องสร้างค่าที่คาดจาก code จริง และ assert ว่าไม่เท่ากับข้อความ fallback (CORE-83 D1)
-- unit ที่ mock component UI ทั้งก้อน (เช่น `RadioGroup` ของ headless UI) พลาด bug จริงได้ (`disabled={false}` ทับค่าของกลุ่ม — PAY-16 #541)
-  ให้ render headless component ของจริงแล้วตรวจ `aria-*`
+- unit ที่ mock component UI ทั้งก้อน (เช่น `RadioGroup` — เดิม headless UI, ตอนนี้ Radix ผ่าน shadcn) พลาด bug จริงได้ (`disabled={false}` ทับค่าของกลุ่ม — PAY-16 #541)
+  ให้ render component ของจริงแล้วตรวจ `aria-*`
 - Next 16 ส่ง server action ทีละตัวตามคิว — e2e ที่จำลอง race ระหว่าง action สองตัว (เช่น poll กับ placeOrder) ต้องจำลองลำดับคิวที่เกิดได้จริง
   (PAY-17 #540) และ route mock ที่ส่ง server action ต่อไป backend ยังมีผลข้างเคียงจริง (เช่น `authorizePaymentSession` เปลี่ยน session เป็น
   canceled ก่อน throw — PAY-16 #541) ถ้าไม่ต้องการให้ตอบจาก browser แทน
@@ -200,6 +205,17 @@ pnpm --filter storefront build && pnpm --filter storefront start
 - คืนเงิน PromptPay ของ Stripe เป็น async (`requires_action` — Stripe อีเมลลูกค้าขอเลขบัญชี) และ Medusa นับ refunded ทันที; บัญชี Stripe test
   ส่งอีเมลได้เฉพาะอีเมลบัญชี → e2e ที่คืนเงินพร้อมเพย์จริงใช้อีเมลลูกค้าจาก secret `E2E_PROMPTPAY_REFUND_EMAIL` (repo public — ห้ามอีเมลนี้
   ลงโค้ด/log/evidence, ปิด trace ของ spec นั้น และเปิดดู PNG ก่อน commit)
+- งานย้าย/เปลี่ยน class ของ UI (เช่น SFUI): ค่าที่ต้องคงคือ **computed style ที่ browser render จริงบน develop** (font-size, line-height,
+  font-weight, padding, สีพื้น, radius, ความสูงปุ่ม ฯลฯ) ไม่ใช่ค่าที่อ่านจากชื่อ class — ชื่อหลอกได้เพราะลำดับใน CSS/`@layer`, `clsx` ที่ไม่ merge
+  และ `cn`/tailwind-merge ที่ตัด class (เคยพลาด: Heading `text-3xl-regular` จริง 24px ไม่ใช่ 32px, `Container` พื้นขาวทับ `bg-gray-50`, ปุ่ม `large`
+  48px → 40px ทำคลิกตก iframe Stripe) → วัดด้วย `getComputedStyle` บน build ของ develop/commit ฐาน (หรือ compile CSS ของ develop) แล้ว assert ใน e2e
+  (ตั้งแต่ ADR-034 รอบ 50: ปุ่มทุกตัวรวมปุ่มจ่ายเงินใช้ size default ของ shadcn 36px โดยตั้งใจ — ไม่คงความสูงเดิม แต่ต้องพิสูจน์ใน e2e ด้วย `elementFromPoint` ว่าจุดคลิกอยู่บนปุ่ม ไม่ใช่ iframe ของ Stripe)
+- e2e ที่ใช้ Stripe รันในเครื่องได้: owner ตั้ง `STRIPE_TEST_API_KEY`/`STRIPE_TEST_PUBLISHABLE_KEY` ใน `~/.zshrc` → shell ของ agent ไม่เห็น
+  ให้ `source ~/.zshrc` (ห้าม `cat`/พิมพ์ค่า) ส่งต่อด้วยชื่อแบบ CI (`STRIPE_API_KEY`, `NEXT_PUBLIC_STRIPE_KEY` — ดู `.github/workflows/ci.yml`)
+  ก่อน start backend `export STRIPE_WEBHOOK_SECRET=$(stripe listen --print-secret)` (`medusa-config.ts` ใช้ตรวจลายเซ็น) แล้ว `stripe listen --events <ชุดเดียวกับ CI
+  — `docs/ops/production.md` หัวข้อ "Stripe webhooks"> --forward-to :<backend>/hooks/payment/stripe_stripe` (ดู `ci.yml`); ไม่มี key → ระบุ spec ที่รอ CI
+- pnpm 12 (ที่ pin) มีค่าเริ่มต้น `minimumReleaseAge` 1 วัน (repo ไม่ได้ตั้งเอง): dependency เวอร์ชันที่ออกไม่ถึง 24 ชม. อาจติดตั้งในเครื่องผ่าน (มี cache) แต่ CI `--frozen-lockfile`
+  ล้ม → ดูเวลา publish (`npm view <pkg>@<ver> time`) แล้วรอก่อน push; ห้าม commit `minimumReleaseAgeExclude`
 
 ## Agents (`.claude/agents/`)
 - `planner` — แปลงเป้าหมายเป็น/อัปเดต spec + task list + ADR ไม่เขียนโค้ด

@@ -4,6 +4,7 @@ import { Button, Input, Prompt, toast } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { affiliateKeys, markPayoutPaid, Payout } from "../../lib/affiliate"
 import { markPaidBody } from "../../lib/affiliate-payout"
 import { createSingleFlight } from "../../lib/single-flight"
@@ -16,6 +17,7 @@ import { useRestoreOpenerFocus } from "../common/use-restore-opener-focus"
  * ADM-9 (spec 08 กฎ 8): Form + KeyboundForm — ⌘/Ctrl+Enter ยืนยันได้; `reference` ไม่บังคับจึงไม่มี schema
  */
 export const MarkPaidPrompt = ({ payout, onClose }: { payout: Payout; onClose: () => void }) => {
+  const { t } = useTranslation("ecom-affiliate")
   const queryClient = useQueryClient()
   const form = useForm({ defaultValues: { reference: "" } })
   const [submitOnce] = useState(createSingleFlight)
@@ -35,7 +37,7 @@ export const MarkPaidPrompt = ({ payout, onClose }: { payout: Payout; onClose: (
     mutationKey: affiliateKeys.payoutAction(payout.id),
     mutationFn: (reference: string) => markPayoutPaid(payout.id, markPaidBody(reference)),
     onSuccess: () => {
-      toast.success("Payout marked as paid")
+      toast.success(t("markPaid.done"))
       onClose()
       return refetch()
     },
@@ -56,10 +58,9 @@ export const MarkPaidPrompt = ({ payout, onClose }: { payout: Payout; onClose: (
         <Form {...form}>
           <KeyboundForm noValidate onSubmit={confirm}>
             <Prompt.Header>
-              <Prompt.Title>Mark payout as paid?</Prompt.Title>
+              <Prompt.Title>{t("markPaid.title")}</Prompt.Title>
               <Prompt.Description>
-                Confirm the bank transfer of {getLocaleAmount(castNumber(payout.amount), payout.currency)} was made. Its entries become
-                paid. This cannot be undone.
+                {t("markPaid.description", { amount: getLocaleAmount(castNumber(payout.amount), payout.currency) })}
               </Prompt.Description>
             </Prompt.Header>
             <div className="px-6 pb-6">
@@ -68,7 +69,7 @@ export const MarkPaidPrompt = ({ payout, onClose }: { payout: Payout; onClose: (
                 name="reference"
                 render={({ field }) => (
                   <Form.Item>
-                    <Form.Label>Transfer reference (optional)</Form.Label>
+                    <Form.Label>{t("markPaid.reference")}</Form.Label>
                     <Form.Control>
                       <Input {...field} size="small" data-testid="affiliate-payout-mark-paid-reference" />
                     </Form.Control>
@@ -78,7 +79,7 @@ export const MarkPaidPrompt = ({ payout, onClose }: { payout: Payout; onClose: (
             </div>
             <Prompt.Footer>
               <Prompt.Cancel disabled={markPaid.isPending} data-testid="affiliate-payout-mark-paid-dismiss">
-                Keep as draft
+                {t("markPaid.dismiss")}
               </Prompt.Cancel>
               <Button
                 size="small"
@@ -87,7 +88,7 @@ export const MarkPaidPrompt = ({ payout, onClose }: { payout: Payout; onClose: (
                 disabled={markPaid.isPending}
                 data-testid="affiliate-payout-mark-paid-confirm"
               >
-                Mark as paid
+                {t("markPaid.confirm")}
               </Button>
             </Prompt.Footer>
           </KeyboundForm>

@@ -9,8 +9,10 @@ import {
 } from "@medusajs/ui"
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type KeyboardEvent, useEffect, useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Container } from "../common/container"
 import { Header } from "../common/header"
+import { usePaginationTranslations } from "../common/use-pagination-translations"
 import { isUnauthorized } from "../../lib/fetch-error"
 import { createSingleFlight } from "../../lib/single-flight"
 import { campaignActions, groupProgress } from "../../lib/group-buy-campaign"
@@ -22,6 +24,8 @@ const columnHelper = createDataTableColumnHelper<Group>()
 
 // GB-6b (spec 04 Admin UI, AC-31): ตารางกลุ่มของแคมเปญ + สร้าง pool group
 export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
+  const { t } = useTranslation("ecom-group-buy")
+  const paginationTranslations = usePaginationTranslations()
   const queryClient = useQueryClient()
   const { getFullDate } = useDate()
   const [pagination, setPagination] = useState<DataTablePaginationState>({ pageIndex: 0, pageSize: 20 })
@@ -49,7 +53,7 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
     mutationFn: () => groupBuyApi.createPoolGroup(campaign.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupBuyKeys.groups(campaign.id) })
-      toast.success("Pool group created")
+      toast.success(t("groups.created"))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -68,36 +72,36 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
   const columns = useMemo(
     () => [
       columnHelper.accessor("kind", {
-        header: "Kind",
+        header: t("groups.columns.kind"),
         // marker ของแถวที่เลือก — wrapper ของตารางใช้ :has() ทำ highlight ทั้งแถว (DataTable ไม่รับ className ต่อแถว)
         cell: ({ getValue, row }) => (
           <>
-            {getValue()}
+            {t(`groupKind.${getValue()}`, { defaultValue: getValue() })}
             {row.id === selectedId && (
               <span data-testid="gb-group-selected" className="sr-only">
-                (selected)
+                {t("groups.selected")}
               </span>
             )}
           </>
         ),
       }),
-      columnHelper.accessor("name", { header: "Name", cell: ({ getValue }) => getValue() ?? "-" }),
+      columnHelper.accessor("name", { header: t("groups.columns.name"), cell: ({ getValue }) => getValue() ?? "-" }),
       columnHelper.accessor("status", {
-        header: "Status",
+        header: t("groups.columns.status"),
         cell: ({ getValue }) => (
           <Badge size="2xsmall" color={GROUP_STATUS_COLOR[getValue()]}>
-            {getValue()}
+            {t(`groupStatus.${getValue()}`, { defaultValue: getValue() })}
           </Badge>
         ),
       }),
-      columnHelper.accessor((g) => groupProgress(g, campaign), { id: "progress", header: "Progress" }),
+      columnHelper.accessor((g) => groupProgress(g, campaign), { id: "progress", header: t("groups.columns.progress") }),
       columnHelper.accessor((g) => (g.ends_at ? getFullDate({ date: g.ends_at, includeTime: true }) : "-"), {
         id: "ends_at",
-        header: "Ends (ICT)",
+        header: t("groups.columns.endsAt"),
       }),
-      columnHelper.accessor("join_token", { header: "Join token" }),
+      columnHelper.accessor("join_token", { header: t("groups.columns.joinToken") }),
     ],
-    [campaign, selectedId, getFullDate]
+    [campaign, selectedId, getFullDate, t]
   )
 
   const table = useDataTable({
@@ -120,7 +124,7 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
   return (
     <Container>
       <Header
-        title="Groups"
+        title={t("groups.title")}
         actions={
           campaignActions(campaign).createPool
             ? [
@@ -133,7 +137,7 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
                     onKeyDown: onCreatePoolKeyDown,
                     isLoading: createPool.isPending,
                     disabled: createPool.isPending,
-                    children: "Create pool group",
+                    children: t("groups.createPool"),
                   },
                 },
               ]
@@ -151,12 +155,12 @@ export const GroupsSection = ({ campaign }: { campaign: Campaign }) => {
             <DataTable.Table
               emptyState={{
                 empty: loadFailed
-                  ? { heading: "Could not load groups", description: error?.message }
-                  : { heading: "No groups yet", description: "Pool groups are created here; teams by customers." },
+                  ? { heading: t("groups.loadError"), description: error?.message }
+                  : { heading: t("groups.emptyHeading"), description: t("groups.emptyDescription") },
               }}
             />
             {/* spec 08 กฎ 29a: ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results") */}
-            {!loadFailed && <DataTable.Pagination />}
+            {!loadFailed && <DataTable.Pagination translations={paginationTranslations} />}
           </DataTable>
         </div>
       </div>

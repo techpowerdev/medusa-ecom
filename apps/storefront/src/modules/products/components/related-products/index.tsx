@@ -49,10 +49,10 @@ export default async function RelatedProducts({
   return (
     <div className="product-page-constraint">
       <div className="flex flex-col items-center text-center mb-16">
-        <span className="text-base-regular text-gray-600 mb-6">
+        <span className="text-sm leading-6 font-normal text-gray-600 mb-6">
           สินค้าที่เกี่ยวข้อง
         </span>
-        <p className="text-2xl-regular text-ui-fg-base max-w-lg">
+        <p className="text-[30px] leading-[48px] font-normal text-foreground max-w-lg">
           สินค้าเหล่านี้อาจถูกใจคุณ
         </p>
       </div>

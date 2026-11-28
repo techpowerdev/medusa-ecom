@@ -14,6 +14,7 @@ import {
 } from "@medusajs/ui"
 import { keepPreviousData, useIsMutating, useMutation, useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import {
   CODE_STATUSES,
   evoucherApi,
@@ -36,15 +37,6 @@ const PAGE_SIZE = 50
 const PREFIX = "codes"
 const REVEAL_KEY = ["evoucher", "code-reveal"]
 
-// spec 08 AC-7: กรองสถานะด้วย filter ของ DataTable (radio = ค่าเดียว ตรงกับ `status` ของ API)
-const filters = [
-  filterHelper.accessor("status", {
-    type: "radio",
-    label: "Status",
-    options: CODE_STATUSES.map((status) => ({ label: status, value: status })),
-  }),
-]
-
 /**
  * ADM-16 (spec 08 กฎ 20a): Reveal ต่อแถวใน ActionMenu — ถือ prompt/mutation ของแถวเอง (แบบ `ProgramActions`)
  * guard `revealOnce` มาจากตาราง (ตัวเดียวทั้งตาราง) และ Reveal disabled ทุกแถวระหว่าง reveal ใดๆ ยังไม่จบ (mutationKey เดียวกัน)
@@ -58,6 +50,7 @@ const CodeActions = ({
   revealOnce: ReturnType<typeof createSingleFlight>
   onRevealed: (code: RevealedCode) => void
 }) => {
+  const { t } = useTranslation("ecom-evoucher")
   const prompt = usePrompt()
   const revealing = useIsMutating({ mutationKey: REVEAL_KEY }) > 0
   // useMutation (ไม่ใช่ useQuery) เพื่อไม่ให้ค่าจริงค้างใน query cache
@@ -72,10 +65,10 @@ const CodeActions = ({
   const onReveal = () =>
     revealOnce(async () => {
       const ok = await prompt({
-        title: "Reveal code?",
-        description: "The real code and PIN will be shown. This action is recorded in the audit log.",
-        confirmText: "Reveal",
-        cancelText: "Cancel",
+        title: t("codes.revealTitle"),
+        description: t("codes.revealDescription"),
+        confirmText: t("codes.reveal"),
+        cancelText: t("actions.cancel", { ns: "translation" }),
         variant: "confirmation",
       })
       if (ok) {
@@ -84,7 +77,7 @@ const CodeActions = ({
     })
 
   return (
-    <ActionMenu groups={[{ actions: [{ label: "Reveal", icon: <Eye />, disabled: revealing, onClick: onReveal }] }]}>
+    <ActionMenu groups={[{ actions: [{ label: t("codes.reveal"), icon: <Eye />, disabled: revealing, onClick: onReveal }] }]}>
       <IconButton size="small" variant="transparent" data-testid="evoucher-code-row-actions">
         <EllipsisHorizontal />
       </IconButton>
@@ -95,6 +88,7 @@ const CodeActions = ({
 // รายการ code แบบ masked (AC-8); ค่าจริงดูได้ทีละ code ผ่าน reveal ซึ่ง backend เขียน audit ทุกครั้ง
 // ADM-4: DataTable ของ dashboard (หน้า/filter อยู่ใน URL `codes_offset`, `codes_status`), Reveal ต่อแถวใน ActionMenu
 export const CodesTable = ({ poolId }: { poolId: string }) => {
+  const { t } = useTranslation("ecom-evoucher")
   const { getFullDate } = useDate()
   const [revealOnce] = useState(createSingleFlight)
   const [revealed, setRevealed] = useState<RevealedCode | null>(null)
@@ -133,38 +127,54 @@ export const CodesTable = ({ poolId }: { poolId: string }) => {
     [revealOnce]
   )
 
+  // spec 08 AC-7: กรองสถานะด้วย filter ของ DataTable (radio = ค่าเดียว ตรงกับ `status` ของ API)
+  // spec 10 กฎ 4e, 7: ย้ายเข้า component เพื่อแปล label — `value` ของตัวเลือก (ค่าใน URL/API) คงเป็นค่าดิบ
+  const filters = useMemo(
+    () => [
+      filterHelper.accessor("status", {
+        type: "radio",
+        label: t("fields.status"),
+        options: CODE_STATUSES.map((status) => ({
+          label: t(`codeStatus.${status}`, { defaultValue: status }),
+          value: status,
+        })),
+      }),
+    ],
+    [t]
+  )
+
   const columns = useMemo(
     () => [
       columnHelper.accessor("code", {
-        header: "Code",
+        header: t("fields.code"),
         cell: ({ getValue }) => <span className="font-mono">{getValue()}</span>,
       }),
       columnHelper.accessor("has_pin", {
-        header: "PIN",
+        header: t("fields.pin"),
         cell: ({ getValue }) => (getValue() ? "****" : "-"),
       }),
       columnHelper.accessor("status", {
-        header: "Status",
+        header: t("fields.status"),
         cell: ({ getValue }) => (
           <Badge size="2xsmall" color={STATUS_COLOR[getValue()]}>
-            {getValue()}
+            {t(`codeStatus.${getValue()}`, { defaultValue: getValue() })}
           </Badge>
         ),
       }),
       columnHelper.accessor("expires_at", {
-        header: "Expires",
+        header: t("fields.expires"),
         cell: ({ getValue }) => {
           const value = getValue()
           return value ? getFullDate({ date: value }) : "-"
         },
       }),
       columnHelper.accessor("order_id", {
-        header: "Order",
+        header: t("fields.order"),
         cell: ({ getValue }) => getValue() ?? "-",
       }),
       actionsColumn,
     ],
-    [actionsColumn, getFullDate]
+    [actionsColumn, getFullDate, t]
   )
 
   return (
@@ -179,7 +189,7 @@ export const CodesTable = ({ poolId }: { poolId: string }) => {
             getRowId={(code) => code.id}
             rowCount={data?.count ?? 0}
             isLoading={isLoading || pastLastPage}
-            heading="Codes"
+            heading={t("codes.heading")}
             headingLevel="h2"
             prefix={PREFIX}
             pageSize={PAGE_SIZE}
@@ -188,12 +198,12 @@ export const CodesTable = ({ poolId }: { poolId: string }) => {
             enableSearch={false}
             emptyState={{
               empty: loadFailed
-                ? { heading: "Could not load codes", description: error?.message }
-                : { heading: "No codes", description: "Import a CSV to add codes." },
+                ? { heading: t("codes.loadError"), description: error?.message }
+                : { heading: t("codes.emptyHeading"), description: t("codes.emptyDescription") },
               // มี filter ใน URL → DataTable แสดง filtered แทน empty: ล้มแล้วต้องเป็น error เช่นกัน
               filtered: loadFailed
-                ? { heading: "Could not load codes", description: error?.message }
-                : { heading: "No codes", description: "No codes match the selected status." },
+                ? { heading: t("codes.loadError"), description: error?.message }
+                : { heading: t("codes.emptyHeading"), description: t("codes.filteredDescription") },
             }}
           />
         </PageOffsetGate>
@@ -202,14 +212,14 @@ export const CodesTable = ({ poolId }: { poolId: string }) => {
       <Drawer open={!!revealed} onOpenChange={(open) => !open && setRevealed(null)}>
         <Drawer.Content>
           <Drawer.Header>
-            <Drawer.Title>Revealed code</Drawer.Title>
+            <Drawer.Title>{t("codes.revealedTitle")}</Drawer.Title>
           </Drawer.Header>
           <Drawer.Body className="flex flex-col gap-y-4 p-4">
             {revealed && (
               <>
                 <div className="flex flex-col gap-y-1">
                   <Text size="small" weight="plus">
-                    Code
+                    {t("fields.code")}
                   </Text>
                   <div className="flex items-center gap-x-2">
                     <Text className="font-mono" data-testid="evoucher-revealed-code">
@@ -220,13 +230,14 @@ export const CodesTable = ({ poolId }: { poolId: string }) => {
                 </div>
                 <div className="flex flex-col gap-y-1">
                   <Text size="small" weight="plus">
-                    PIN
+                    {t("fields.pin")}
                   </Text>
                   <Text className="font-mono">{revealed.pin ?? "-"}</Text>
                 </div>
                 <Text size="small" className="text-ui-fg-subtle">
-                  Expires {revealed.expires_at ? getFullDate({ date: revealed.expires_at }) : "-"} · This reveal was
-                  recorded in the audit log.
+                  {t("codes.revealedNote", {
+                    date: revealed.expires_at ? getFullDate({ date: revealed.expires_at }) : "-",
+                  })}
                 </Text>
               </>
             )}

@@ -19,7 +19,7 @@ import {
 } from "@lib/util/place-order-outcome"
 import { stripeErrorMessage } from "@lib/util/stripe-error"
 import { HttpTypes } from "@medusajs/types"
-import { Button, Text } from "@modules/common/components/ui"
+import { Button } from "@/components/button"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
 import { useParams, useRouter } from "next/navigation"
 import React, { useEffect, useRef, useState } from "react"
@@ -86,16 +86,16 @@ export const usePlaceOrder = (paid: boolean, order: (retry: boolean) => ReturnTy
 export const PlaceOrderNotice = ({ shown, errorTestId }: { shown: Shown | null; errorTestId: string }) => {
   if (shown?.kind === "refunded") {
     return (
-      <Text role="alert" className="pt-2 txt-medium text-ui-fg-base" data-testid="checkout-refunded-notice">
+      <p role="alert" className="pt-2 text-sm leading-[1.4rem] text-foreground" data-testid="checkout-refunded-notice">
         {shown.text}
-      </Text>
+      </p>
     )
   }
   if (shown?.kind === "processing") {
     return (
-      <Text aria-live="polite" className="pt-2 txt-medium text-ui-fg-base" data-testid="checkout-processing-notice">
+      <p aria-live="polite" className="pt-2 text-sm leading-[1.4rem] text-foreground" data-testid="checkout-processing-notice">
         {PROCESSING_NOTICE}
-      </Text>
+      </p>
     )
   }
   if (shown?.kind === "delayed") return <PromptPayOrderDelayed />
@@ -262,7 +262,6 @@ const StripePaymentButton = ({
       <Button
         disabled={disabled || notReady || busy}
         onClick={handlePayment}
-        size="large"
         isLoading={submitting || shown?.kind === "processing"}
         data-testid={dataTestId}
       >
@@ -306,7 +305,6 @@ const ManualTestPaymentButton = ({
         disabled={notReady || busy}
         isLoading={submitting || shown?.kind === "processing"}
         onClick={handlePayment}
-        size="large"
         data-testid="submit-order-button"
       >
         ยืนยันคำสั่งซื้อ

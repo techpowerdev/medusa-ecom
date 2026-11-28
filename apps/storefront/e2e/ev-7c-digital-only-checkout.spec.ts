@@ -119,10 +119,11 @@ test("AC-37, AC-3: cart มีแต่ voucher → ไม่มีขั้น 
     await page.getByTestId("billing-first-name-input").fill("สมชาย")
     await page.getByTestId("billing-last-name-input").fill("ใจดี")
     await page.getByTestId("billing-address-input").fill(BILLING.address_1)
+    await page.getByTestId("billing-address-2-input").fill("คลองเตยเหนือ")
     await page.getByTestId("billing-postal-input").fill(BILLING.postal_code)
     // CORE-52 (spec 01 กฎข้อ 110b): เขต/อำเภอเป็นช่องบังคับของที่อยู่ใบกำกับภาษีด้วย
     await page.getByTestId("billing-city-input").fill("วัฒนา")
-    await page.getByTestId("billing-country-select").selectOption(BILLING.country_code)
+    await page.getByTestId("billing-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
     await page.getByTestId("billing-email-input").fill(customer.email)
     // CORE-43 (กฎข้อ 101b): setAddresses ช้าเกิน 5 วินาทีได้ตอนเครื่องโหลดสูง — รอ action ที่ส่งอีเมลนี้ตอบ redirect ไปขั้นชำระเงิน
     const saved = waitForServerAction(page, (body) => body.includes(customer.email))

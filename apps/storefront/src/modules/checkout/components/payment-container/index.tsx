@@ -1,8 +1,6 @@
-import { Radio as RadioGroupOption } from "@headlessui/react"
-import { Text, clx } from "@modules/common/components/ui"
-import React, { useContext, useEffect, useRef, useState, type JSX } from "react"
-
-import Radio from "@modules/common/components/radio"
+import { Field, FieldContent, FieldDescription, FieldLabel, FieldTitle } from "@/components/ui/field"
+import { RadioGroupItem } from "@/components/ui/radio-group"
+import React, { useContext, useEffect, useId, useRef, useState, type JSX } from "react"
 
 import { isManual } from "@lib/constants"
 import { intentIsTerminal } from "@lib/util/payment-session"
@@ -19,49 +17,41 @@ type PaymentContainerProps = {
   children?: React.ReactNode
 }
 
+// SFUI-21c (spec 09 กฎ 80, ADR-034 D8): ตัวเลือก = "Choice Card" ของ shadcn (`field` + `radio-group`) โครงเดียวกับตัวเลือกจัดส่ง —
+// FieldLabel (การ์ด คลิกได้ทั้งใบ) → Field horizontal → FieldContent (ชื่อวิธี + icon) + RadioGroupItem (ต้องอยู่ใน RadioGroup ของผู้เรียก;
+// testid/aria-disabled อยู่ที่ปุ่ม role="radio" — กฎ 9); ช่องกรอกบัตร/QR (children) อยู่ถัดจาก label นอก <label> (iframe ของ Stripe อยู่ใน label ไม่ได้)
 const PaymentContainer: React.FC<PaymentContainerProps> = ({
   paymentProviderId,
-  selectedPaymentOptionId,
   paymentInfoMap,
   disabled = false,
   children,
 }) => {
   const isDevelopment = process.env.NODE_ENV === "development"
+  const id = useId()
 
   return (
-    <RadioGroupOption
-      key={paymentProviderId}
-      value={paymentProviderId}
-      // PAY-16 (review #541): headless Radio ใช้ disabled ของ RadioGroup เฉพาะเมื่อ prop เป็น undefined — false จะทับ group
-      disabled={disabled || undefined}
-      data-testid={`payment-option-${paymentProviderId}`}
-      className={clx(
-        "flex flex-col gap-y-2 text-small-regular cursor-pointer py-4 border rounded-rounded px-8 mb-2 hover:shadow-borders-interactive-with-active",
-        {
-          "border-ui-border-interactive":
-            selectedPaymentOptionId === paymentProviderId,
-        }
-      )}
-    >
-      <div className="flex items-center justify-between ">
-        <div className="flex items-center gap-x-4">
-          <Radio checked={selectedPaymentOptionId === paymentProviderId} />
-          <Text className="text-base-regular">
-            {paymentInfoMap[paymentProviderId]?.title || paymentProviderId}
-          </Text>
-          {isManual(paymentProviderId) && isDevelopment && (
-            <PaymentTest className="hidden small:block" />
-          )}
-        </div>
-        <span className="justify-self-end text-ui-fg-base">
-          {paymentInfoMap[paymentProviderId]?.icon}
-        </span>
-      </div>
-      {isManual(paymentProviderId) && isDevelopment && (
-        <PaymentTest className="small:hidden text-[10px]" />
-      )}
+    <div className="flex flex-col gap-2">
+      <FieldLabel htmlFor={id}>
+        <Field orientation="horizontal" data-disabled={disabled || undefined}>
+          <FieldContent>
+            <FieldTitle>
+              {paymentInfoMap[paymentProviderId]?.title || paymentProviderId}
+              {isManual(paymentProviderId) && isDevelopment && <PaymentTest />}
+            </FieldTitle>
+            <FieldDescription>{paymentInfoMap[paymentProviderId]?.icon}</FieldDescription>
+          </FieldContent>
+          <RadioGroupItem
+            value={paymentProviderId}
+            id={id}
+            disabled={disabled}
+            // คง aria-disabled แบบ headless เดิม (Radix ใส่แค่ disabled) — payments-order-pay อ่านค่านี้ระหว่างส่ง
+            aria-disabled={disabled || undefined}
+            data-testid={`payment-option-${paymentProviderId}`}
+          />
+        </Field>
+      </FieldLabel>
       {children}
-    </RadioGroupOption>
+    </div>
   )
 }
 
@@ -106,9 +96,9 @@ const StripeCardFields = ({ clientSecret, onStaleSession, setError, setPaymentCo
 
   return (
     <div className="my-4 transition-all duration-150 ease-in-out">
-      <Text className="txt-medium-plus text-ui-fg-base mb-1">
+      <p className="text-sm leading-[1.4rem] font-medium text-foreground mb-1">
         กรอกข้อมูลการชำระเงิน:
-      </Text>
+      </p>
       <PaymentElement
         options={{ layout: "accordion" }}
         onChange={(e) => {

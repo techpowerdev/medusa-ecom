@@ -4,6 +4,7 @@ import { ArrowPath, CheckCircle, EllipsisHorizontal, PencilSquare, XCircle } fro
 import { Badge, createDataTableColumnHelper, IconButton, toast, usePrompt } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { AdminAffiliate, affiliateKeys, updateAffiliate } from "../../lib/affiliate"
 import { affiliateAction } from "../../lib/affiliate-account"
 import { createSingleFlight } from "../../lib/single-flight"
@@ -20,12 +21,13 @@ type Update = { id: string; body: Parameters<typeof updateAffiliate>[1] }
 
 // แถว (สถานะ) และ drawer ข้อมูลรับเงินใช้ mutation แบบเดียวกัน
 const useUpdateAffiliate = () => {
+  const { t } = useTranslation("ecom-affiliate")
   const queryClient = useQueryClient()
   const refetch = () => queryClient.invalidateQueries({ queryKey: affiliateKeys.list("affiliates") })
   return useMutation({
     mutationFn: ({ id, body }: Update) => updateAffiliate(id, body),
     onSuccess: () => {
-      toast.success("Affiliate updated")
+      toast.success(t("affiliates.updated"))
       return refetch()
     },
     // ล้ม (เช่น สถานะถูกเปลี่ยนไปแล้ว 409 AFFILIATE_STATUS_CHANGED) → toast ข้อความจาก API แล้วโหลดรายการใหม่ (กฎ 37)
@@ -47,6 +49,7 @@ const AffiliateActions = ({
   affiliate: AdminAffiliate
   onEditPayoutInfo: (a: AdminAffiliate) => void
 }) => {
+  const { t } = useTranslation("ecom-affiliate")
   const prompt = usePrompt()
   // instance คงที่ตลอดอายุ component (กฎ 4) — กด menuitem ซ้ำหรือกดระหว่าง prompt เปิด = ไม่ยิงซ้ำ
   const [actOnce] = useState(createSingleFlight)
@@ -59,10 +62,10 @@ const AffiliateActions = ({
     actOnce(async () => {
       if (action.confirm) {
         const ok = await prompt({
-          title: `Suspend ${affiliate.name}?`,
-          description: "The affiliate stops earning new commission until reactivated.",
-          confirmText: "Suspend",
-          cancelText: "Cancel",
+          title: t("affiliates.suspendPrompt.title", { name: affiliate.name }),
+          description: t("affiliates.suspendPrompt.description"),
+          confirmText: t("affiliates.suspendPrompt.confirm"),
+          cancelText: t("actions.cancel", { ns: "translation" }),
         })
         if (!ok) {
           return
@@ -91,7 +94,7 @@ const AffiliateActions = ({
         {
           actions: [
             {
-              label: "Payout info",
+              label: t("affiliates.actions.payoutInfo"),
               icon: <PencilSquare />,
               onClick: () => {
                 remountMenu()
@@ -111,6 +114,7 @@ const AffiliateActions = ({
 
 // AF-12b (spec 05 กฎ 37b, AC-43): แท็บ Affiliates — approve/suspend/reactivate + ข้อมูลรับเงิน
 export const AffiliatesTable = () => {
+  const { t } = useTranslation("ecom-affiliate")
   const { getFullDate } = useDate()
   const list = useAffiliateList<AdminAffiliate>("affiliates", "affiliates", { searchable: true })
   const [editing, setEditing] = useState<AdminAffiliate | null>(null)
@@ -133,14 +137,14 @@ export const AffiliatesTable = () => {
       // spec 08 กฎ 39 (ADM-35): เนื้อหา 250px (แบบ ProductCell ของ dashboard) — DataTable เป็น auto layout + nowrap คอลัมน์จึงขยายตามข้อความ
       // จนปุ่ม … หลุดจอ; size/maxSize เป็น width/max-width ของ td (border-box) จึงบวก padding: คอลัมน์แรก pl-6+pr-6 = 298, คอลัมน์อื่น pr-6 = 274
       // ข้อความที่ถูกตัดยังมี tooltip ของ TruncatedCell
-      columnHelper.accessor("name", { header: "Name", size: 298, maxSize: 298 }),
-      columnHelper.accessor("email", { header: "Email", size: 274, maxSize: 274 }),
-      columnHelper.accessor("code", { header: "Code" }),
+      columnHelper.accessor("name", { header: t("affiliates.columns.name"), size: 298, maxSize: 298 }),
+      columnHelper.accessor("email", { header: t("affiliates.columns.email"), size: 274, maxSize: 274 }),
+      columnHelper.accessor("code", { header: t("affiliates.columns.code") }),
       columnHelper.accessor("status", {
-        header: "Status",
+        header: t("affiliates.columns.status"),
         cell: ({ getValue }) => (
           <Badge size="2xsmall" color={STATUS_COLOR[getValue()]} data-testid="affiliate-status">
-            {getValue()}
+            {t(`affiliates.status.${getValue()}`, { defaultValue: getValue() })}
           </Badge>
         ),
       }),
@@ -148,12 +152,12 @@ export const AffiliatesTable = () => {
       // spec 08 กฎ 41c (ADM-37, Q12 = ก): คอลัมน์สุดท้ายเป็น auto (ไม่มี width) รับความกว้างส่วนเกินที่จอกว้าง — ไม่งั้นทุก td ได้ width 150
       // (ค่าเริ่มต้นของ tanstack) ผลรวมน้อยกว่าตาราง w-full แล้ว Chrome แจกส่วนเกินตามสัดส่วนโดยไม่สน maxSize ของคอลัมน์ข้อความ
       columnHelper.accessor("created_at", {
-        header: "Joined",
+        header: t("affiliates.columns.created_at"),
         size: undefined,
         cell: ({ getValue }) => getFullDate({ date: getValue(), includeTime: true }),
       }),
     ],
-    [actionsColumn, getFullDate],
+    [actionsColumn, getFullDate, t],
   )
 
   return (
@@ -163,9 +167,9 @@ export const AffiliatesTable = () => {
         <AffiliateListTable
           {...list}
           columns={columns}
-          heading="Affiliates"
-          subHeading="Approve applicants and manage payout info."
-          empty="No affiliates yet"
+          heading={t("affiliates.heading")}
+          subHeading={t("affiliates.subHeading")}
+          empty={t("affiliates.empty")}
         />
       </div>
       {editing && (

@@ -1,8 +1,9 @@
 "use client"
 
-import { XMarkMini } from "@medusajs/icons"
+import { X } from "lucide-react"
 import { useClearRefinements, useCurrentRefinements } from "react-instantsearch"
 
+import { Button } from "@/components/ui/button"
 import { indexedCurrency, priceAttribute } from "@lib/search-client"
 import { convertToLocale } from "@lib/util/money"
 import {
@@ -78,17 +79,17 @@ const CurrentRefinements = ({ currencyCode }: { currencyCode: string }) => {
   return (
     <div className="flex flex-col gap-y-3" data-testid="current-refinements">
       <div className="flex items-center justify-between gap-x-2 pr-6">
-        <span className="txt-compact-small-plus text-ui-fg-subtle">
+        <span className="text-sm leading-5 font-medium text-muted-foreground">
           ตัวกรองที่เลือก
         </span>
         {canClearAll && (
-          <button
+          <Button
+            variant="link"
             onClick={clearAll}
-            className="txt-compact-small-plus text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
             data-testid="clear-refinements"
           >
             ล้างทั้งหมด
-          </button>
+          </Button>
         )}
       </div>
 
@@ -104,16 +105,18 @@ const CurrentRefinements = ({ currencyCode }: { currencyCode: string }) => {
               className="min-w-0 max-w-full"
             >
               {/* CORE-93 (กฎข้อ 149): ชื่อยาว (เช่น tag) ตัดด้วย truncate บรรทัดเดียว และ title บอกข้อความเต็ม */}
-              <button
+              {/* SFUI-19d (spec 09 กฎ 67c): `Button variant="outline"` ขนาด default */}
+              <Button
+                variant="outline"
                 onClick={() => refine(refinement)}
                 aria-label={`ลบตัวกรอง ${label}`}
                 title={label}
-                className="border-ui-border-interactive text-ui-fg-base border text-small-regular h-8 max-w-full rounded-rounded px-3 flex items-center gap-x-1.5 transition-colors duration-150 hover:bg-ui-bg-base-hover"
+                className="max-w-full"
                 data-testid="remove-refinement"
               >
                 <span className="truncate">{label}</span>
-                <XMarkMini className="shrink-0 text-ui-fg-muted" />
-              </button>
+                <X aria-hidden="true" />
+              </Button>
             </li>
           )
         })}

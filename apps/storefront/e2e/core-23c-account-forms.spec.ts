@@ -39,6 +39,7 @@ const ADDRESS = {
   "first-name-input": "สมหญิง",
   "last-name-input": "รักดี",
   "address-1-input": "99 ถนนสุขุมวิท",
+  "address-2-input": "คลองเตยเหนือ",
   "postal-code-input": "10110",
   "city-input": "วัฒนา",
   "state-input": "กรุงเทพมหานคร",
@@ -76,7 +77,6 @@ test.describe("AC-112", () => {
       for (const [testId, value] of Object.entries(ADDRESS)) {
         await modal.getByTestId(testId).fill(value)
       }
-      await modal.getByTestId("country-select").selectOption(CC)
       await failServerAction(page, `/${CC}/account/addresses`, "500")
     })
 
@@ -86,7 +86,6 @@ test.describe("AC-112", () => {
       await expect(error).toBeVisible()
       await expect(error).toHaveText(THAI)
       await expectValues(modal, ADDRESS)
-      await expect(modal.getByTestId("country-select")).toHaveValue(CC)
       await expect(page.getByText(PAGE_CRASH_TEXT)).toHaveCount(0)
       await evidence("01-add-address-failed-keeps-values")
     })
@@ -152,8 +151,10 @@ test.describe("AC-112", () => {
       "billing-last-name-input": "รักดี",
       "billing-phone-input": "0812345678",
       "billing-address-1-input": "99 ถนนสุขุมวิท",
+      "billing-address-2-input": "คลองเตยเหนือ",
       "billing-postcal-code-input": "10110",
       "billing-city-input": "วัฒนา",
+      "billing-province-input": "กรุงเทพมหานคร", // SFUI-20a (กฎ 69)
     }
 
     await step("เปิด editor ที่อยู่ใบเสร็จ กรอกครบ และ mock server action ให้ล้มระดับ network", async () => {
@@ -163,7 +164,6 @@ test.describe("AC-112", () => {
       for (const [testId, value] of Object.entries(values)) {
         await billing.getByTestId(testId).fill(value)
       }
-      await billing.getByTestId("billing-country-code-select").selectOption(CC)
       await failServerAction(page, `/${CC}/account/profile`, "network")
     })
 

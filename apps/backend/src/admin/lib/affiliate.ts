@@ -3,6 +3,10 @@ import { sdk } from "./client"
 
 // รูปร่าง response ของ admin API affiliate (src/api/admin/affiliate/*, AF-5/AF-9)
 export type ProgramStatus = "draft" | "published" | "ended"
+// spec 10 กฎ 7 (AI18N-4): สถานะเป็น type union ที่ตั้งชื่อ — unit อ่าน literal ด้วย TS compiler API เพื่อตรวจว่ามี key แปลครบ
+export type AffiliateStatus = "pending" | "active" | "suspended"
+export type CommissionEntryStatus = "pending" | "approved" | "reversed" | "paid"
+export type PayoutStatus = "draft" | "paid"
 
 export type ProgramScope = {
   all?: boolean
@@ -30,7 +34,7 @@ export type Affiliate = {
   email: string
   name: string
   code: string
-  status: "pending" | "active" | "suspended"
+  status: AffiliateStatus
   created_at: string
 }
 
@@ -42,7 +46,7 @@ export type CommissionEntry = {
   order_id: string
   amount: number
   currency: string
-  status: "pending" | "approved" | "reversed" | "paid"
+  status: CommissionEntryStatus
   created_at: string
 }
 
@@ -55,7 +59,7 @@ export type Payout = {
   currency: string
   period_from: string
   period_to: string
-  status: "draft" | "paid"
+  status: PayoutStatus
   paid_at: string | null
   reference: string | null
 }

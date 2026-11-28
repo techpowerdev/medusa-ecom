@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button"
 import { affiliateLogout, getAffiliate } from "@lib/data/affiliate-portal"
 import PortalError from "@modules/affiliate/components/portal-error"
 import PortalNav from "@modules/affiliate/components/portal-nav"
@@ -43,9 +44,10 @@ export default async function AffiliatePortalLayout({
           </p>
           <form action={affiliateLogout}>
             <input type="hidden" name="countryCode" value={countryCode} />
-            <button type="submit" className="underline" data-testid="affiliate-logout">
+            {/* SFUI-19b (spec 09 กฎ 60, inventory 19): ghost default เท่า logout-button ของบัญชีลูกค้า */}
+            <Button type="submit" variant="ghost" data-testid="affiliate-logout">
               ออกจากระบบ
-            </button>
+            </Button>
           </form>
         </div>
         <PortalNav countryCode={countryCode} />

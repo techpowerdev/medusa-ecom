@@ -1,7 +1,13 @@
 "use client"
 
-import { clx } from "@modules/common/components/ui"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+
+import {
+  Pagination as ShadcnPagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+} from "@/components/ui/pagination"
 
 export function Pagination({
   page,
@@ -20,43 +26,40 @@ export function Pagination({
   const arrayRange = (start: number, stop: number) =>
     Array.from({ length: stop - start + 1 }, (_, index) => start + index)
 
-  // Function to handle page changes
-  const handlePageChange = (newPage: number) => {
+  // URL ของหน้า `newPage` บน path ปัจจุบัน (คง query อื่นไว้)
+  const pageHref = (newPage: number) => {
     const params = new URLSearchParams(searchParams)
     params.set("page", newPage.toString())
-    router.push(`${pathname}?${params.toString()}`)
+    return `${pathname}?${params.toString()}`
   }
 
-  // Function to render a page button
+  // Function to render a page link — SFUI-19c (spec 09 กฎ 66): `PaginationLink` ของ shadcn มี href ของหน้านั้น
   const renderPageButton = (
     p: number,
     label: string | number,
     isCurrent: boolean
   ) => (
-    <button
-      key={p}
-      className={clx("txt-xlarge-plus text-ui-fg-muted", {
-        "text-ui-fg-base hover:text-ui-fg-subtle": isCurrent,
-      })}
-      disabled={isCurrent}
-      // CORE-78 (spec 01 กฎข้อ 136c): ป้ายสำหรับ screen reader เป็นภาษาไทย + บอกหน้าปัจจุบัน
-      aria-label={`หน้า ${p}`}
-      aria-current={isCurrent ? "page" : undefined}
-      onClick={() => handlePageChange(p)}
-    >
-      {label}
-    </button>
+    <PaginationItem key={p}>
+      <PaginationLink
+        href={pageHref(p)}
+        isActive={isCurrent}
+        // CORE-78 (spec 01 กฎข้อ 136c): ป้ายสำหรับ screen reader เป็นภาษาไทย + บอกหน้าปัจจุบัน
+        aria-label={`หน้า ${p}`}
+        onClick={(event) => {
+          event.preventDefault()
+          router.push(pageHref(p))
+        }}
+      >
+        {label}
+      </PaginationLink>
+    </PaginationItem>
   )
 
   // Function to render ellipsis
   const renderEllipsis = (key: string) => (
-    <span
-      key={key}
-      aria-hidden="true"
-      className="txt-xlarge-plus text-ui-fg-muted items-center cursor-default"
-    >
-      ...
-    </span>
+    <PaginationItem key={key}>
+      <span aria-hidden="true">...</span>
+    </PaginationItem>
   )
 
   // Function to render page buttons based on the current page and total pages
@@ -112,9 +115,9 @@ export function Pagination({
   // Render the component
   return (
     <div className="flex justify-center w-full mt-12">
-      <nav aria-label="แบ่งหน้า" className="flex gap-3 items-end" data-testid={dataTestid}>
-        {renderPageButtons()}
-      </nav>
+      <ShadcnPagination aria-label="แบ่งหน้า" data-testid={dataTestid}>
+        <PaginationContent>{renderPageButtons()}</PaginationContent>
+      </ShadcnPagination>
     </div>
   )
 }

@@ -1,8 +1,10 @@
 import { deleteLineItem } from "@lib/data/cart"
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { notifyCartUpdated } from "@lib/util/cart-events"
-import { Spinner, Trash } from "@medusajs/icons"
-import { clx } from "@modules/common/components/ui"
+import { Button } from "@/components/ui/button"
+import { FieldError } from "@/components/ui/field"
+import { cn } from "@/lib/utils"
+import { LoaderCircle, Trash2 } from "lucide-react"
 import { useState } from "react"
 
 // CORE-19c (spec 01 กฎข้อ 64): ลบล้มต้องบอกผู้ใช้ ไม่กลืน error เงียบ
@@ -45,38 +47,43 @@ const DeleteButton = ({
     }
   }
 
+  const icon = isDeleting ? (
+    <LoaderCircle className="animate-spin" data-testid="cart-item-remove-spinner" />
+  ) : (
+    <Trash2 />
+  )
+
   return (
     <div
-      className={clx(
-        "flex flex-wrap items-center justify-between text-small-regular",
+      className={cn(
+        "flex flex-wrap items-center justify-between text-xs leading-5 font-normal",
         className
       )}
     >
-      <button
-        className="flex gap-x-1 text-ui-fg-subtle hover:text-ui-fg-base cursor-pointer"
-        onClick={() => handleDelete(id)}
-        disabled={isDeleting}
-        data-testid={dataTestId}
-      >
-        {isDeleting ? (
-          <Spinner
-            className="animate-spin"
-            data-testid="cart-item-remove-spinner"
-          />
-        ) : (
-          <Trash />
-        )}
-        <span>{children}</span>
-      </button>
+      {/* SFUI-19b (spec 09 กฎ 60, inventory 18): ghost; ไม่มีข้อความ → size="icon" + aria-label ไทย */}
+      {children ? (
+        <Button variant="ghost" onClick={() => handleDelete(id)} disabled={isDeleting} data-testid={dataTestId}>
+          {icon}
+          <span>{children}</span>
+        </Button>
+      ) : (
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="ลบสินค้าออกจากตะกร้า"
+          onClick={() => handleDelete(id)}
+          disabled={isDeleting}
+          data-testid={dataTestId}
+        >
+          {icon}
+        </Button>
+      )}
       {error && (
         // qa #142 D-2: ขึ้นบรรทัดใหม่เต็มความกว้างของแถว (order-last) ไม่ถูกบีบข้างปุ่ม
-        <span
-          className="basis-full order-last text-ui-fg-error text-small-regular"
-          role="alert"
-          data-testid="cart-item-remove-error"
-        >
+        // SFUI-21d (spec 09 กฎ 74 (b)): error ในแถว = FieldError (role="alert" จาก component)
+        <FieldError className="basis-full order-last" data-testid="cart-item-remove-error">
           {error}
-        </span>
+        </FieldError>
       )}
     </div>
   )

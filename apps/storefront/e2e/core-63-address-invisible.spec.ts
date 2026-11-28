@@ -22,6 +22,7 @@ const ADDRESS = {
   "first-name-input": "สมหญิง",
   "last-name-input": "รักดี",
   "address-1-input": "99 ถนนสุขุมวิท",
+  "address-2-input": "คลองเตยเหนือ",
   "postal-code-input": "10110",
   "state-input": "กรุงเทพมหานคร",
   "phone-input": "0812345678",
@@ -63,7 +64,7 @@ test.describe("AC-162", () => {
           await modal.getByTestId(testId).fill(value)
         }
         await modal.getByTestId("city-input").fill(ZWSP)
-        await modal.getByTestId("country-select").selectOption(CC)
+        await modal.getByTestId("state-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
       })
 
       await step("บันทึก → error ไทย modal ยังเปิด และที่อยู่ใน API ไม่เปลี่ยน", async () => {
@@ -82,6 +83,7 @@ test.describe("AC-162", () => {
 
       await step("แก้เขต/อำเภอเป็นค่าจริงแล้วบันทึก → ที่อยู่เพิ่ม 1", async () => {
         await modal.getByTestId("city-input").fill("วัฒนา")
+        await modal.getByTestId("state-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
         const saved = waitForServerAction(page)
         await modal.getByTestId("save-button").click()
         expect((await saved).status(), "server action ของ addCustomerAddress").toBe(200)

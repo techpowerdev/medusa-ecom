@@ -181,7 +181,7 @@ export function CardFlashView({
     return (
       <>
         <span
-          className="rounded-rounded bg-ui-bg-subtle px-2 py-0.5 text-small-regular text-ui-fg-error"
+          className="rounded-rounded bg-muted px-2 py-0.5 text-xs leading-5 font-normal text-destructive"
           data-testid="flash-card-sold-out"
         >
           แฟลชเซลหมดแล้ว
@@ -206,13 +206,13 @@ export function FlashPrice({
   return (
     <span className="flex flex-wrap items-baseline gap-x-2">
       <span
-        className={className ?? "text-ui-fg-interactive"}
+        className={className ?? "text-primary"}
         data-testid="flash-price"
       >
         {money(price.flash_price!)}
       </span>
       <span
-        className="line-through text-ui-fg-subtle"
+        className="line-through text-muted-foreground"
         data-testid="flash-original-price"
       >
         {money(price.original_price)}
@@ -237,23 +237,23 @@ export default function FlashSale({ offer, now }: FlashOfferState) {
     : null
   return (
     <div
-      className="flex flex-col gap-y-2 rounded-rounded border border-ui-fg-interactive p-3"
+      className="flex flex-col gap-y-2 rounded-rounded border border-primary p-3"
       data-testid="flash-sale"
     >
       <p
-        className="text-base-semi text-ui-fg-interactive"
+        className="text-sm leading-6 font-semibold text-primary"
         data-testid="flash-banner"
       >
         {sale.banner_text || "แฟลชเซล ราคาพิเศษช่วงเวลาจำกัด"}
       </p>
       {countdown && (
-        <p className="text-small-regular" data-testid="flash-countdown">
+        <p className="text-xs leading-5 font-normal" data-testid="flash-countdown">
           สิ้นสุดใน <span className="tabular-nums">{countdown}</span>
         </p>
       )}
       {sale.sold_out ? (
         <p
-          className="text-base-semi text-ui-fg-error"
+          className="text-sm leading-6 font-semibold text-destructive"
           data-testid="flash-sold-out"
         >
           สินค้าหมด
@@ -263,11 +263,11 @@ export default function FlashSale({ offer, now }: FlashOfferState) {
           <p>
             <FlashPrice
               price={price}
-              className="text-xl-semi text-ui-fg-interactive"
+              className="text-2xl leading-[36px] font-semibold text-primary"
             />
           </p>
           {sale.remaining_units != null && (
-            <p className="text-small-regular" data-testid="flash-remaining">
+            <p className="text-xs leading-5 font-normal" data-testid="flash-remaining">
               เหลือ {sale.remaining_units} ชิ้น
             </p>
           )}

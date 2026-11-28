@@ -1,74 +1,218 @@
-import { Label } from "@modules/common/components/ui"
-import React, { useEffect, useImperativeHandle, useState } from "react"
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
+import { Input as ShadcnInput } from "@/components/ui/input"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group"
+import { fieldErrorMessage } from "@lib/util/field-validation"
+import { EyeIcon, EyeOffIcon } from "lucide-react"
+import React, { useEffect, useId, useImperativeHandle, useRef, useState } from "react"
 
-import Eye from "@modules/common/icons/eye"
-import EyeOff from "@modules/common/icons/eye-off"
+// HTMLButtonElement = SelectTrigger ของ Radix (validity อยู่ที่ select ซ่อนข้าง trigger)
+type Control = HTMLInputElement | HTMLSelectElement | HTMLButtonElement
+type Validatable = HTMLInputElement | HTMLSelectElement
 
-type InputProps = Omit<
-  Omit<React.InputHTMLAttributes<HTMLInputElement>, "size">,
-  "placeholder"
-> & {
+type FieldErrorOptions<T extends Control> = {
+  id: string
   label: string
+  testId?: string
+  control: "input" | "select"
+  error?: string
+  description?: React.ReactNode
+  props: {
+    title?: string
+    value?: unknown
+    onChange?: React.ChangeEventHandler<T>
+    onInvalid?: React.FormEventHandler<T>
+    "aria-describedby"?: string
+  }
+}
+
+/**
+ * select ซ่อนที่ Radix render ข้าง trigger (พี่น้องใน element เดียวกัน) — ที่อยู่ของ name/required/validity
+ * ผู้เรียกต้องวาง `SelectTrigger` เป็นลูกตรงของ `Select` (ห้ามห่อด้วย div) ตามกฎ 40b ไม่อย่างนั้นหา select ซ่อนไม่เจอ
+ */
+function hiddenSelectOf(trigger: Element | null): HTMLSelectElement | null {
+  const select = trigger?.parentElement && Array.from(trigger.parentElement.children).find((el) => el.tagName === "SELECT")
+  return (select as HTMLSelectElement | undefined) ?? null
+}
+
+const isSelectTrigger = (el: Element | null | undefined) => el?.getAttribute("data-slot") === "select-trigger"
+
+/** element ที่ถือ validity ของ control (trigger ของ Radix → select ซ่อน) */
+const validatable = (el: Element | null): Validatable | null =>
+  isSelectTrigger(el) ? hiddenSelectOf(el) : (el as Validatable | null)
+
+/**
+ * SFUI-11b (spec 09 กฎ 32b–d; ADR-032 D4): error ระดับช่องจาก validation native ของ Input / NativeSelect
+ * `invalid` → preventDefault + ข้อความไทยใน FieldError, focus ช่องแรกที่ผิดของฟอร์ม; ค่าเปลี่ยน (พิมพ์/เลือก/value จากโค้ด) จน valid → ล้าง
+ * prop `error` ของผู้เรียกแสดงแบบเดียวกัน; aria-describedby อ้างเฉพาะ id ที่มี element จริง
+ * SFUI-15 (กฎ 43; ADR-033 D3): select ของ Radix — `controlProps` ใส่ที่ `SelectTrigger`, `fieldProps` ที่ `Field`; `invalid` เกิดที่ select ซ่อน
+ * (ไม่ bubble) จึงฟังแบบ capture บน `Field`; ค่าเปลี่ยน — ผู้เรียกเก็บค่าใน state และส่ง `props.value` (กฎ 40b) → effect ด้านล่างล้าง error เมื่อ valid; focus ที่ trigger
+ */
+export function useFieldError<T extends Control>(
+  ref: React.ForwardedRef<T>,
+  { id, label, testId, control, error, description, props }: FieldErrorOptions<T>
+) {
+  const inner = useRef<T>(null)
+  const field = useRef<HTMLDivElement>(null)
+  useImperativeHandle<T | null, T | null>(ref, () => inner.current)
+  const [nativeError, setNativeError] = useState<string | null>(null)
+  const shown = error || nativeError
+  const errorId = `${id}-error`
+  const descriptionId = `${id}-description`
+  const { title, value, onChange, onInvalid } = props
+
+  const recheck = (el: Validatable) =>
+    setNativeError(el.validity.valid ? null : fieldErrorMessage(el.validity, { label, title, control }))
+
+  const handleInvalid = (e: Event, el: Validatable, focusTarget: HTMLElement) => {
+    e.preventDefault()
+    recheck(el)
+    // ช่องแรกตามลำดับ DOM: event มาถึงก่อน และ activeElement ยังไม่ใช่ช่องที่ผิดในฟอร์มเดียวกัน (trigger ของ select นับด้วย select ซ่อน)
+    const active = validatable(document.activeElement)
+    const activeInvalid = !!active && active !== el && !!el.form && active.form === el.form && active.matches(":invalid")
+    if (!activeInvalid && document.activeElement !== focusTarget) focusTarget.focus()
+  }
+
+  // select ของ Radix: ฟัง invalid แบบ capture ที่ Field (select ซ่อนอยู่ใน Field ข้าง trigger) — handler ล่าสุดผ่าน ref, ผูก listener ครั้งเดียว
+  const onFieldInvalidRef = useRef<(e: Event) => void>(() => {})
+  useEffect(() => {
+    onFieldInvalidRef.current = (e: Event) => {
+      if (isSelectTrigger(inner.current) && e.target === hiddenSelectOf(inner.current))
+        handleInvalid(e, e.target as HTMLSelectElement, inner.current!)
+    }
+  })
+  useEffect(() => {
+    const fieldEl = field.current
+    if (!fieldEl) return
+    const listener = (e: Event) => onFieldInvalidRef.current(e)
+    fieldEl.addEventListener("invalid", listener, true)
+    return () => fieldEl.removeEventListener("invalid", listener, true)
+  }, [])
+
+  // value จากโค้ด (เช่น เลือกที่อยู่ที่บันทึกไว้) ไม่มี event ของช่อง — ตรวจ validity ใหม่หลัง commit เมื่อมีข้อความค้าง
+  useEffect(() => {
+    if (nativeError !== null && validatable(inner.current)?.validity.valid) setNativeError(null)
+  }, [value, nativeError])
+
+  const describedBy =
+    [props["aria-describedby"], description ? descriptionId : null, shown ? errorId : null].filter(Boolean).join(" ") || undefined
+
+  return {
+    fieldProps: { ref: field, "data-invalid": shown ? true : undefined },
+    controlProps: {
+      ref: inner,
+      "aria-invalid": shown ? (true as const) : undefined,
+      "aria-describedby": describedBy,
+      onChange: (e: React.ChangeEvent<T>) => {
+        onChange?.(e)
+        const el = validatable(e.currentTarget)
+        if (nativeError !== null && el) recheck(el)
+      },
+      onInvalid: (e: React.FormEvent<T>) => {
+        onInvalid?.(e)
+        const el = validatable(e.currentTarget)
+        if (el) handleInvalid(e.nativeEvent, el, e.currentTarget)
+      },
+    },
+    messages: (
+      <>
+        {description && (
+          <FieldDescription id={descriptionId} data-testid={testId && `${testId}-description`}>
+            {description}
+          </FieldDescription>
+        )}
+        {shown && (
+          <FieldError id={errorId} data-testid={testId && `${testId}-error`}>
+            {shown}
+          </FieldError>
+        )}
+      </>
+    ),
+  }
+}
+
+type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> & {
+  label: string
+  /** ข้อความ error ของผู้เรียก (แสดงใน FieldError แบบเดียวกับ error ของ validation) */
+  error?: string
+  description?: React.ReactNode
   errors?: Record<string, unknown>
   touched?: Record<string, unknown>
   name: string
-  topLabel?: string
+  "data-testid"?: string
 }
 
+// SFUI-11a (spec 09 กฎ 28–31, 34–35; ADR-032): โครงตามตัวอย่างของ shadcn — Field → FieldLabel (เหนือช่อง) → control → FieldDescription → FieldError
+// id = prop id ของผู้เรียก หรือ useId() (ไม่ใช้ name — ฟอร์มใน Dialog/checkout มีชื่อซ้ำได้); ช่องบังคับมี * แบบ aria-hidden
+// ช่องรหัสผ่านใช้ InputGroup + ปุ่มแสดง/ซ่อน (`<t>-toggle`); ขนาดตาม default ของ shadcn (h-9) ไม่ override
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ type, name, label, touched: _touched, required, topLabel, ...props }, ref) => {
-    const inputRef = React.useRef<HTMLInputElement>(null)
+  (
+    {
+      type,
+      name,
+      label,
+      id,
+      required,
+      className,
+      error,
+      description,
+      errors: _errors,
+      touched: _touched,
+      "data-testid": testId,
+      ...props
+    },
+    ref
+  ) => {
+    const autoId = useId()
+    const inputId = id ?? autoId
     const [showPassword, setShowPassword] = useState(false)
-    const [inputType, setInputType] = useState(type)
+    const { fieldProps, controlProps, messages } = useFieldError(ref, {
+      id: inputId,
+      label,
+      testId,
+      control: "input",
+      error,
+      description,
+      props,
+    })
 
-    useEffect(() => {
-      if (type === "password" && showPassword) {
-        setInputType("text")
-      }
+    const control = { ...props, ...controlProps, id: inputId, name, required, "data-testid": testId }
 
-      if (type === "password" && !showPassword) {
-        setInputType("password")
-      }
-    }, [type, showPassword])
-
-    useImperativeHandle(ref, () => inputRef.current!)
-
+    // className ของผู้เรียก = layout ภายนอก (เช่นตำแหน่งใน grid) → ที่ Field ไม่ส่งลง control (กฎ 28)
     return (
-      <div className="flex flex-col w-full">
-        {topLabel && (
-          <Label className="mb-2 txt-compact-medium-plus">{topLabel}</Label>
-        )}
-        <div className="flex relative z-0 w-full txt-compact-medium">
-          <input
-            type={inputType}
-            name={name}
-            placeholder=" "
-            required={required}
-            className="pt-5 pb-1 block w-full h-12 px-4 mt-0 bg-ui-bg-field border rounded-md appearance-none focus:outline-none focus:ring-0 focus:shadow-borders-interactive-with-active border-ui-border-base hover:bg-ui-bg-field-hover"
-            {...props}
-            ref={inputRef}
-          />
-          {/* CORE-4e (qa #109): transition เฉพาะตอน focus (globals.css) — ค่าที่เติมจากโค้ด (เลือกที่อยู่ที่บันทึกไว้)
-              ทำให้ label ลอยทันทีไม่ทับข้อความ; h-12/pt-5 เผื่อสระบน/ล่างของอักษรไทย */}
-          <label
-            htmlFor={name}
-            onClick={() => inputRef.current?.focus()}
-            className="flex items-center justify-center mx-3 px-1 absolute top-3.5 -z-1 origin-0 text-ui-fg-subtle"
-          >
-            {label}
-            {required && <span className="text-rose-500">*</span>}
-          </label>
-          {type === "password" && (
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="text-ui-fg-subtle px-4 focus:outline-none transition-all duration-150 outline-none focus:text-ui-fg-base absolute right-0 top-3.5"
-            >
-              {showPassword ? <Eye /> : <EyeOff />}
-            </button>
+      <Field className={className} {...fieldProps}>
+        <FieldLabel htmlFor={inputId} data-testid={testId && `${testId}-label`}>
+          {label}
+          {required && (
+            <span aria-hidden="true" className="text-destructive">
+              *
+            </span>
           )}
-        </div>
-      </div>
+        </FieldLabel>
+        {type === "password" ? (
+          <InputGroup>
+            <InputGroupInput {...control} type={showPassword ? "text" : "password"} />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton
+                size="icon-xs"
+                aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                aria-pressed={showPassword}
+                onClick={() => setShowPassword(!showPassword)}
+                data-testid={testId && `${testId}-toggle`}
+              >
+                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+        ) : (
+          <ShadcnInput {...control} type={type} />
+        )}
+        {messages}
+      </Field>
     )
   }
 )

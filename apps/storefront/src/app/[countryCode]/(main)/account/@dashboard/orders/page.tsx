@@ -50,8 +50,8 @@ export default async function Orders(props: Props) {
   return (
     <div className="w-full" data-testid="orders-page-wrapper">
       <div className="mb-8 flex flex-col gap-y-4" data-testid="account-page-header">
-        <h1 className="text-2xl-semi">คำสั่งซื้อ</h1>
-        <p className="text-base-regular">
+        <h1 className="text-3xl font-semibold tracking-tight">คำสั่งซื้อ</h1>
+        <p className="text-sm leading-6 font-normal">
           ดูคำสั่งซื้อที่ผ่านมาและสถานะ รวมถึงขอคืนหรือเปลี่ยนสินค้าได้หากต้องการ
         </p>
       </div>

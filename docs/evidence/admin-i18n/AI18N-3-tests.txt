@@ -1,0 +1,299 @@
+# AI18N-3 — ผลทดสอบ (spec 10, ADR-031) — 2026-11-27 บนเครื่อง builder (node 24.12.0, pnpm 12.15.0) — stack บน AI18N-1 (4b9e94fa)
+
+## Red (ก่อนแก้โค้ด)
+- lib/__tests__/i18n-evoucher.unit.spec.ts: ล้มทุกเคส (poolFormSchema ภาษา th ยังได้ "Select a partner", ไม่มี key codeStatus/orderChangeStatus/refundBlocked.changeType, ไฟล์ .tsx ของกลุ่มยังไม่ใช้ useTranslation("ecom-evoucher"))
+- order-refund-blocked.unit.spec.ts: refundBlockedMessage is not a function
+- i18n.unit.spec.ts (เอากลุ่ม evoucher ออกจาก I18N_PENDING): guard กฎ 14 จับข้อความฮาร์ดโค้ดในไฟล์ของกลุ่ม
+
+## unit backend: pnpm --filter backend test:unit
+Test Suites: 135 passed, 135 total
+Tests:       2549 passed, 2549 total
+Time:        128.937 s
+
+## unit (verbose): lib/__tests__/i18n-evoucher + evoucher-* + order-refund-blocked
+PASS src/admin/lib/__tests__/evoucher-backordered.unit.spec.ts
+  backorderedItems
+    ✓ returns only lines flagged with evoucher_backordered=true (2 ms)
+    ✓ handles an order without items (1 ms)
+    ✓ returns nothing for a canceled order even when lines are still flagged (1 ms)
+PASS src/admin/lib/__tests__/evoucher-partner-form.unit.spec.ts
+  partnerFormSchema
+    ✓ ค่าเริ่มต้นของฟอร์มสร้างเป็น string ว่างทุกช่อง (2 ms)
+    ✓ ค่าของ partner เดิม → ค่าฟอร์ม (null → ว่าง)
+    ✓ แปลงค่าฟอร์มเป็น body (trim; ช่องไม่บังคับที่ว่าง → null เพื่อล้างค่าเดิม) (1 ms)
+    ✓ name "" → Name is required (1 ms)
+    ✓ name "   " → Name is required (1 ms)
+    ✓ URL "http://example.com/logo.png" (http/https) ผ่าน
+    ✓ URL "https://example.com/terms" (http/https) ผ่าน
+    ✓ URL "HTTPS://EXAMPLE.COM" (http/https) ผ่าน
+    ✓ URL "javascript:alert(1)" ไม่ใช่ http(s) → error ใต้ช่องนั้น (1 ms)
+    ✓ URL "data:text/html,x" ไม่ใช่ http(s) → error ใต้ช่องนั้น (1 ms)
+    ✓ URL "ftp://example.com/file" ไม่ใช่ http(s) → error ใต้ช่องนั้น
+    ✓ URL "example.com" ไม่ใช่ http(s) → error ใต้ช่องนั้น (1 ms)
+    ✓ URL "vbscript:msgbox(1)" ไม่ใช่ http(s) → error ใต้ช่องนั้น
+    ✓ URL "https//x" ไม่ใช่ http(s) → error ใต้ช่องนั้น
+    ✓ ค่าที่ไม่ใช่ string (เช่น undefined) ได้ข้อความต่อช่องจาก fieldErrorMap ไม่ใช่ Invalid input
+PASS src/admin/lib/__tests__/evoucher-resend.unit.spec.ts
+  canResendEvouchers
+    ✓ is true when any code is delivered or allocated (4 ms)
+    ✓ is false for no codes or only available/void codes
+  resendErrorMessage
+    ✓ drops notification ids and the Notification module prefix (2 ms)
+    ✓ keeps a short backend message as is (1 ms)
+    ✓ does not double the full stop when the backend reason ends with one
+    ✓ collapses repeated full stops
+    ✓ falls back to a generic hint when there is no message (1 ms)
+PASS src/admin/lib/__tests__/evoucher-pool-delete.unit.spec.ts
+  poolStockState
+    ✓ is no_codes when the pool has no codes at all (2 ms)
+    ✓ is no_codes even if low_stock is true (older API response)
+    ✓ is low when there are codes and low_stock is true (1 ms)
+    ✓ is ok otherwise
+  deletePoolPrompt
+    ✓ names the pool and the number of codes that will be deleted (3 ms)
+    ✓ uses the singular for one code
+    ✓ says no codes when the pool is empty
+PASS src/admin/lib/__tests__/evoucher-allocate.unit.spec.ts
+  allocateResultToast
+    ✓ reports success when every line got its codes (7 ms)
+    ✓ warns to import more codes when a line is still backordered (1 ms)
+    ✓ never says allocated when a line has codes that were not delivered
+    ✓ mentions both problems when lines are backordered and stuck (1 ms)
+  allocateErrorMessage
+    ✓ shows the API message (1 ms)
+    ✓ falls back to a generic message when the API sent none (1 ms)
+    ✓ formats "Cannot allocate e-voucher codes (payment not captured.). Try again or check the server logs." the same way as the resend toast (2 ms)
+    ✓ formats "Cannot allocate e-voucher codes: order canceled.. Try again or check the logs." the same way as the resend toast (1 ms)
+    ✓ formats "Cannot allocate e-voucher codes for a canceled order" the same way as the resend toast
+PASS src/admin/lib/__tests__/evoucher-query.unit.spec.ts
+  codesListQuery
+    ✓ ไม่มี filter → ไม่ส่ง status (2 ms)
+    ✓ filter radio ของ DataTable เก็บเป็น JSON string → ส่ง status (1 ms)
+    ✓ ค่าดิบที่ไม่ใช่ JSON อ่านแบบเดียวกับ DataTable ของ dashboard (ใช้ string ตรงๆ)
+    ✓ ทุกสถานะใน CODE_STATUSES ("available") ส่งเป็น status ได้ (1 ms)
+    ✓ ทุกสถานะใน CODE_STATUSES ("allocated") ส่งเป็น status ได้
+    ✓ ทุกสถานะใน CODE_STATUSES ("delivered") ส่งเป็น status ได้
+    ✓ ทุกสถานะใน CODE_STATUSES ("void") ส่งเป็น status ได้
+    ✓ status "\"bogus\"" ที่ไม่ใช่สถานะของ code → ไม่ส่ง status (1 ms)
+    ✓ status "[\"delivered\"]" ที่ไม่ใช่สถานะของ code → ไม่ส่ง status
+    ✓ status "{" ที่ไม่ใช่สถานะของ code → ไม่ส่ง status
+PASS src/admin/lib/__tests__/order-refund-blocked.unit.spec.ts
+  order refund blocked widget
+    ✓ uses the same active statuses as the PAY-8 refund guard (3 ms)
+    ✓ warns with the message of rule 12, matching the wording of the PAY-8 toast (1 ms)
+    ✓ reads the active change of the order preview in a readable form (1 ms)
+    ✓ is null when the order has no active change
+  order details default layout
+    ✓ targets the order details layout zone and the widget id declared in the widget config
+    ✓ puts the widget first when no layout exists (1 ms)
+    ✓ keeps the other widgets of an existing default layout
+    ✓ does not override a placement the admin already chose for the widget
+PASS src/admin/lib/__tests__/evoucher-pool-form.unit.spec.ts
+  poolFormSchema
+    ✓ ค่าเริ่มต้น low_stock_threshold = 20 (3 ms)
+    ✓ แปลงค่าฟอร์มเป็น body ของ createPool (ไม่รวม variant_id) (2 ms)
+    ✓ แปลง face_value/low_stock_threshold/validity_note ที่กรอก (1 ms)
+    ✓ low_stock_threshold ว่าง → 20 (ค่าเดิมของฟอร์ม)
+    ✓ ไม่เลือก partner และไม่กรอกช่องบังคับ → error ที่ทุกช่องบังคับ (1 ms)
+    ✓ name ที่มีแต่ช่องว่าง → error (1 ms)
+    ✓ face_value "-1" → error
+    ✓ face_value "abc" → error (1 ms)
+    ✓ low_stock_threshold "-1" → error (1 ms)
+    ✓ low_stock_threshold "1.5" → error
+    ✓ low_stock_threshold "abc" → error
+PASS src/admin/lib/__tests__/i18n-evoucher.unit.spec.ts
+  ✓ keyIssues: helper ที่ key เป็น template (enum) ไม่ถูกตีเป็น key ไม่รู้ namespace; key literal ที่ไม่มียังถูกจับ (31 ms)
+  AC-4a ตัวแทน e-voucher: poolFormSchema ที่ไม่เลือก partner
+    ✓ en = ข้อความเดิม, th = ค่าไทย, de → en (ข้อความ lazy เรียกตอน parse) (7 ms)
+    ✓ ข้อความ validation อื่นของฟอร์ม pool/partner เปลี่ยนตามภาษา (zod lazy + fieldErrorMap แบบ function) (1 ms)
+  ข้อความจาก lib ของกลุ่ม (กฎ 4b, 8)
+    ✓ ข้อความที่ admin สร้างแปลตามภาษา ข้อความจาก backend คงเดิม (1 ms)
+    ✓ AC-7: refundBlockedMessage ค่า en = ถ้อยคำของ middleware PAY-8; th เป็นไทย; activeChangeType แปลชนิด change (1 ms)
+  enum ของกลุ่มมี key ครบ (AC-3, กฎ 7)
+    ✓ codeStatus (1 ms)
+    ✓ orderChangeStatus
+    ✓ refundBlocked.changeType (1 ms)
+  component ของกลุ่มใช้ namespace ecom-evoucher (กฎ 4a, 10)
+    ✓ routes/evouchers/page.tsx (1 ms)
+    ✓ routes/evouchers/pools/[id]/page.tsx
+    ✓ components/evoucher/codes-table.tsx
+    ✓ components/evoucher/import-codes.tsx (1 ms)
+    ✓ components/evoucher/partners-section.tsx
+    ✓ components/evoucher/pool-delete.tsx
+    ✓ components/evoucher/pools-table.tsx (1 ms)
+    ✓ widgets/order-evouchers.tsx
+    ✓ widgets/variant-evoucher-pool.tsx
+    ✓ widgets/order-refund-blocked.tsx
+Test Suites: 9 passed, 9 total
+Tests:       88 passed, 88 total
+
+## unit (verbose, เฉพาะแถวของกลุ่ม): __tests__/i18n.unit.spec.ts
+    ✓ json/en/ecom-evoucher.json มีอยู่และ parse ได้
+    ✓ json/th/ecom-evoucher.json มีอยู่และ parse ได้
+    ✓ ecom-evoucher: key/{{var}} ตรงกันและค่า th มีอักษรไทย (1 ms)
+    ✓ lib/evoucher-allocate.ts (22 ms)
+    ✓ lib/evoucher-partner-form.ts (24 ms)
+    ✓ lib/evoucher-pool-delete.ts (28 ms)
+    ✓ lib/evoucher-pool-form.ts (17 ms)
+    ✓ lib/evoucher-query.ts (17 ms)
+    ✓ lib/evoucher-resend.ts (17 ms)
+    ✓ lib/evoucher-status.ts (17 ms)
+    ✓ lib/evoucher.ts (18 ms)
+    ✓ lib/order-refund-blocked.ts (16 ms)
+    ✓ widgets/order-evouchers.tsx (18 ms)
+    ✓ widgets/order-refund-blocked.tsx (16 ms)
+    ✓ widgets/variant-evoucher-pool.tsx (18 ms)
+    ✓ components/evoucher/codes-table.tsx (17 ms)
+    ✓ components/evoucher/import-codes.tsx (16 ms)
+    ✓ components/evoucher/partners-section.tsx (17 ms)
+    ✓ components/evoucher/pool-delete.tsx (17 ms)
+    ✓ components/evoucher/pools-table.tsx (16 ms)
+    ✓ routes/evouchers/page.tsx (20 ms)
+    ✓ routes/evouchers/pools/[id]/page.tsx (17 ms)
+    ✓ lib/evoucher-allocate.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/evoucher-partner-form.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด (1 ms)
+    ✓ lib/evoucher-pool-delete.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/evoucher-pool-form.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/evoucher-query.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/evoucher-resend.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/evoucher-status.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ lib/evoucher.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด (1 ms)
+    ✓ lib/order-refund-blocked.ts ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด (1 ms)
+    ✓ widgets/order-evouchers.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด (1 ms)
+    ✓ widgets/order-refund-blocked.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด (1 ms)
+    ✓ widgets/variant-evoucher-pool.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด (1 ms)
+    ✓ components/evoucher/codes-table.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด (1 ms)
+    ✓ components/evoucher/import-codes.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด (1 ms)
+    ✓ components/evoucher/partners-section.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด (1 ms)
+    ✓ components/evoucher/pool-delete.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด (1 ms)
+    ✓ components/evoucher/pools-table.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+    ✓ routes/evouchers/page.tsx ไม่มีข้อความ UI ฮาร์ดโค้ด / ไม่เรียก t ตอนโหลด
+
+## lint / typecheck / build
+pnpm lint: exit 0 (0 errors; warning เดิมนอกไฟล์ของ task)
+pnpm typecheck: exit 0 (backend + admin tsconfig + storefront)
+NODE_ENV=production pnpm --filter backend build: exit 0
+
+## e2e (prod build, backend :9331, DB medusa_ai18n3, Redis db 13, chromium)
+### AC-10: e2e/admin-i18n-evoucher.spec.ts
+  ✓  1 [chromium] › e2e/admin-i18n-evoucher.spec.ts:102:7 › lng=th › AC-10: เมนู/breadcrumb/ตาราง e-voucher, หน้า pool และ widget variant/order เป็นค่า th (3.5s)
+  ✓  2 [chromium] › e2e/admin-i18n-evoucher.spec.ts:112:7 › lng=en › AC-10: element เดียวกันเป็นค่า en (ข้อความเดิม) ไม่มีอักษรไทย (3.1s)
+  2 passed (7.2s)
+
+### AC-7: spec เดิมที่อ้างหน้า e-voucher/widget (21 ไฟล์, ไม่แก้ไฟล์ spec)
+  ✓    1 [chromium] › e2e/admin-create-double-submit.spec.ts:318:7 › AC-44: Create partner (backend จริง — ADM-B1) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้
+  ✓    2 [chromium] › e2e/admin-create-double-submit.spec.ts:318:7 › AC-44: Create program (backend จริง) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้
+  ✓    3 [chromium] › e2e/admin-create-double-submit.spec.ts:318:7 › AC-44: Create payout (mock สำเร็จ — payout จริงต้องมี commission entry ใหม่ทุกครั้ง) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้
+  ✓    4 [chromium] › e2e/admin-create-double-submit.spec.ts:318:7 › AC-44: Create campaign (mock สำเร็จ — แคมเปญลบผ่าน API ไม่ได้) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้
+  ✓    5 [chromium] › e2e/admin-create-double-submit.spec.ts:318:7 › AC-44: Create pool บนหน้า variant (mock สำเร็จ — pool จริงสร้างได้ครั้งเดียวต่อ variant) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้
+  ✓    6 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create partner (backend จริง — ADM-B1) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่
+  ✓    7 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create program (backend จริง) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่
+  ✓    8 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create payout (mock สำเร็จ — payout จริงต้องมี commission entry ใหม่ทุกครั้ง) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่
+  ✓    9 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create pool บนหน้า variant (mock สำเร็จ — pool จริงสร้างได้ครั้งเดียวต่อ variant) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่
+  ✓   10 [chromium] › e2e/admin-create-double-submit.spec.ts:503:5 › AC-44: Create pool group (ปุ่มบนหน้าแคมเปญ ไม่มี modal) — ดับเบิลคลิกเว้น 100ms = POST 1 ครั้ง; 500 แล้วกดใหม่ได้; คลิกแยกครั้งใหม่สร้างได้
+  ✓   11 [chromium] › e2e/admin-create-double-submit.spec.ts:546:5 › AC-51 (b): Create pool group — กด Enter ค้าง (keydown repeat) = POST 1 ครั้ง; คลิกแยก 2 ครั้งหลัง response = 2 group
+  ✓   12 [chromium] › e2e/admin-create-double-submit.spec.ts:593:5 › AC-44: Import codes (หน้า pool) — ดับเบิลคลิกเว้น 100ms = POST 1 ครั้ง; 500 แล้วกดใหม่ได้; เลือกไฟล์ใหม่ import ได้
+  ✓   13 [chromium] › e2e/admin-detail-loader.spec.ts:75:5 › AC-15: หน้ารายละเอียดใช้ผลของ loader (ไม่ GET ซ้ำ), คลิกจากรายการเร็วขึ้น และ breadcrumb E-vouchers
+  ✓   14 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create partner — dialog มี accessible name และไม่มี console error DialogTitle
+  ✓   15 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create program — dialog มี accessible name และไม่มี console error DialogTitle
+  ✓   16 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create payout — dialog มี accessible name และไม่มี console error DialogTitle
+  ✓   17 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create campaign — dialog มี accessible name และไม่มี console error DialogTitle
+  ✓   18 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้าง partner — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที
+  ✓   19 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้างแคมเปญ — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที
+  ✓   20 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้าง program — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที
+  ✓   21 [chromium] › e2e/admin-form-discard-prompt.spec.ts:122:5 › AC-32: Drawer แก้ partner — กรอกแล้วคลิกปุ่ม close ของ Drawer → alertdialog; Escape 2 ครั้งติดกันที่ฟอร์มสร้าง → alertdialog ตัวเดียว; บันทึกสำเร็จไม่ถาม
+  ✓   22 [chromium] › e2e/admin-form-discard-prompt.spec.ts:184:5 › AC-32: ฟอร์ม payout dirty + Combobox ขยาย → Escape ไม่มี alertdialog และ dialog ยังเปิด (กฎ 31d)
+  ✓   23 [chromium] › e2e/admin-form-discard-prompt.spec.ts:231:5 › AC-32: ฟอร์มสร้าง partner — กด Save แล้ว Escape ทันที → ไม่มี alertdialog ระหว่างบันทึก และหลังบันทึกสำเร็จฟอร์มปิดโดยไม่มี prompt ค้าง
+  ✓   24 [chromium] › e2e/admin-form-pilot.spec.ts:23:5 › AC-6: drawer flash sale — Total cap 0 แสดง error ไม่ POST; dblclick Save และ Meta+Enter = POST 1 ครั้ง
+  ✓   25 [chromium] › e2e/admin-form-pilot.spec.ts:109:5 › AC-6: ฟอร์ม Create pool — Save โดยไม่เลือก partner → error ใต้ช่อง Partner และไม่มี POST; เลือกแล้ว dblclick = POST 1 ครั้ง
+  ✓   26 [chromium] › e2e/admin-form-pilot.spec.ts:189:7 › AC-16: ช่อง number ที่ไม่ใช่ตัวเลข (validity.badInput) › drawer flash sale — Total cap / Per-customer limit = e, 1e → error ไม่ POST; ล้างช่องแล้ว Save → total_cap null
+  ✓   27 [chromium] › e2e/admin-form-pilot.spec.ts:248:7 › AC-16: ช่อง number ที่ไม่ใช่ตัวเลข (validity.badInput) › modal Create pool — Face value / Low-stock threshold = e → error ใต้ช่องและไม่มี POST
+  ✓   28 [chromium] › e2e/admin-i18n-common.spec.ts:63:7 › lng=th › AC-8: prompt ออกจากฟอร์มเป็นไทย (key ของ Medusa + ecom-common) และเมนู Settings ของ Medusa เป็นไทย
+  ✓   29 [chromium] › e2e/admin-i18n-common.spec.ts:87:7 › lng=en › AC-8: prompt ออกจากฟอร์มเป็นอังกฤษเดิม (ค่า en) ไม่มีอักษรไทย
+  ✓   30 [chromium] › e2e/admin-list-create-action.spec.ts:58:7 › AC-18: Partners — ปุ่มสร้างอยู่แถวเดียวกับหัวตารางใน evoucher-partners-table และเปิด modal เดิม
+  ✓   31 [chromium] › e2e/admin-list-create-action.spec.ts:58:7 › AC-18: Programs — ปุ่มสร้างอยู่แถวเดียวกับหัวตารางใน affiliate-programs-table และเปิด modal เดิม
+  ✓   32 [chromium] › e2e/admin-list-create-action.spec.ts:58:7 › AC-18: Payouts — ปุ่มสร้างอยู่แถวเดียวกับหัวตารางใน affiliate-payouts-table และเปิด modal เดิม
+  ✓   33 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create partner — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด
+  ✓   34 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create program — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด
+  ✓   35 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create payout — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด
+  ✓   36 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create campaign — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด
+  ✓   37 [chromium] › e2e/admin-modal-return-focus.spec.ts:104:5 › AC-39b: Create pool (หน้า variant ที่ยังไม่มี pool) — Escape ปิดแล้ว focus กลับปุ่ม
+  ✓   38 [chromium] › e2e/admin-modal-return-focus.spec.ts:139:5 › AC-39b: Create partner — บันทึกสำเร็จแล้ว focus กลับปุ่ม Create partner
+  ✓   39 [chromium] › e2e/admin-modal-return-focus.spec.ts:170:7 › AC-39b: Create partner — dirty + Escape → Leave แล้ว focus กลับปุ่มที่เปิด
+  ✓   40 [chromium] › e2e/admin-modal-return-focus.spec.ts:170:7 › AC-39b: Create program — dirty + Escape → Leave แล้ว focus กลับปุ่มที่เปิด
+  ✓   41 [chromium] › e2e/admin-row-menu-escape.spec.ts:69:5 › AC-38: e-voucher partners — Escape ครั้งเดียวปิดเมนูต่อแถว
+  ✓   42 [chromium] › e2e/admin-row-menu-escape.spec.ts:93:5 › AC-38: e-voucher codes — Escape ครั้งเดียวปิดเมนูต่อแถว
+  ✓   43 [chromium] › e2e/admin-row-menu-escape.spec.ts:103:5 › AC-38: affiliate programs — Escape ครั้งเดียวปิดเมนูต่อแถว
+  ✓   44 [chromium] › e2e/admin-row-menu-escape.spec.ts:130:5 › AC-38: affiliate affiliates — Escape ครั้งเดียวปิดเมนูต่อแถว
+  ✓   45 [chromium] › e2e/admin-row-menu-escape.spec.ts:143:5 › AC-38: affiliate payouts — Escape ครั้งเดียวปิดเมนูต่อแถว
+  ✓   46 [chromium] › e2e/admin-row-menu-return-focus.spec.ts:38:5 › AC-52: partners — Edit จากเมนู … ปิดด้วย Cancel / Escape / Save สำเร็จ → focus ที่ปุ่ม … ของแถว
+  ✓   47 [chromium] › e2e/admin-row-menu-return-focus.spec.ts:88:5 › AC-52: affiliates — Payout info จากเมนู … ปิดด้วย Escape (Drawer ไม่มีปุ่ม Cancel) / Save สำเร็จ → focus ที่ปุ่ม … ของแถว
+  ✘   48 [chromium] › e2e/admin-row-menu-return-focus.spec.ts:129:5 › AC-52: payouts — Mark paid จากเมนู … ปิดด้วย Keep as draft / Escape → focus ที่ปุ่ม … ของแถว; ยืนยันสำเร็จ → แถว paid ไม่มีปุ่ม … (กฎ 10)
+  ✓   49 [chromium] › e2e/admin-table-long-text.spec.ts:224:5 › AC-40a: e-voucher partners — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม
+  ✓   50 [chromium] › e2e/admin-table-long-text.spec.ts:240:5 › AC-40a: affiliate programs — ชื่อยาวไม่ดันปุ่ม … ออกนอกจอ, tooltip ชื่อเต็ม
+  ✓   51 [chromium] › e2e/admin-table-long-text.spec.ts:300:7 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › AC-42a1: payouts 1280 — คอลัมน์ Affiliate ชื่อ/อีเมลยาว ≤ 250px, tooltip "ชื่อ อีเมล", ปุ่ม … ในจอ
+  ✓   52 [chromium] › e2e/admin-table-long-text.spec.ts:325:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: programs — ชื่อยาว ≤ 250px, ปุ่ม … ในจอ
+  ✓   53 [chromium] › e2e/admin-table-long-text.spec.ts:341:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: affiliates — ชื่อและอีเมลยาว ≤ 250px, ปุ่ม … ในจอ
+  ✓   54 [chromium] › e2e/admin-table-long-text.spec.ts:356:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: payouts — Affiliate และ Reference ยาว ≤ 250px, ปุ่ม … ในจอ
+  ✓   55 [chromium] › e2e/admin-table-long-text.spec.ts:377:9 › ADM-37: คอลัมน์ข้อความ ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-42a2: e-voucher partners (regression) — ชื่อและ support contact ยาว ≤ 250px, ปุ่ม … ในจอ
+  ✓   56 [chromium] › e2e/admin-table-long-text.spec.ts:442:7 › ADM-38: Ledger คอลัมน์ Affiliate ≤ 250px ทุกความกว้างจอ › AC-43a1: Ledger 1280 — คอลัมน์ Affiliate ชื่อ/อีเมลยาว ≤ 250px, tooltip "ชื่อ อีเมล", เห็น Status
+  ✓   57 [chromium] › e2e/admin-table-long-text.spec.ts:465:9 › ADM-38: Ledger คอลัมน์ Affiliate ≤ 250px ทุกความกว้างจอ › 1920×1080 › AC-43a2: Ledger 1920 — คอลัมน์ Affiliate ≤ 250px, เห็น Status
+  ✓   58 [chromium] › e2e/admin-table-long-text.spec.ts:572:11 › ADM-41: ตาราง Payouts ไม่ล้นแนวนอนที่ 1280/1440 › 1280×800 › AC-46: payouts 1280 — ตารางไม่ล้นแนวนอน, ปุ่ม … ทุกแถวในจอ, tooltip ชื่อเต็ม
+  ✓   59 [chromium] › e2e/admin-table-long-text.spec.ts:572:11 › ADM-41: ตาราง Payouts ไม่ล้นแนวนอนที่ 1280/1440 › 1440×900 › AC-46: payouts 1440 — ตารางไม่ล้นแนวนอน, ปุ่ม … ทุกแถวในจอ, tooltip ชื่อเต็ม
+  ✓   60 [chromium] › e2e/admin-table-long-text.spec.ts:594:11 › ADM-45: คอลัมน์ Affiliate ของ Payouts กว้างขึ้นที่จอใหญ่ › 1920×1080 › AC-50: payouts 1920 — คอลัมน์ Affiliate ตามความกว้างจอ, ตารางไม่ล้น, tooltip ชื่อเต็ม
+  ✓   61 [chromium] › e2e/admin-table-long-text.spec.ts:594:11 › ADM-45: คอลัมน์ Affiliate ของ Payouts กว้างขึ้นที่จอใหญ่ › 1440×900 › AC-50: payouts 1440 — คอลัมน์ Affiliate ตามความกว้างจอ, ตารางไม่ล้น, tooltip ชื่อเต็ม
+  ✓   62 [chromium] › e2e/admin-table-long-text.spec.ts:594:11 › ADM-45: คอลัมน์ Affiliate ของ Payouts กว้างขึ้นที่จอใหญ่ › 1280×800 › AC-50: payouts 1280 — คอลัมน์ Affiliate ตามความกว้างจอ, ตารางไม่ล้น, tooltip ชื่อเต็ม
+  ✓   63 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:43:5 › AC-43: approve ยิงครั้งเดียว, suspend ผ่าน prompt, reactivate และบันทึก/ล้างข้อมูลรับเงิน
+  ✓   64 [chromium] › e2e/affiliate-admin-affiliates.spec.ts:162:7 › AF-15 › AC-46: แท็บอื่นระงับ affiliate แล้วหน้าเดิมกด approve → 409 → toast และแถวแสดง suspended หลัง refetch
+  ✓   65 [chromium] › e2e/affiliate-admin-tables.spec.ts:32:5 › AC-11: Ledger แสดง ฿1,234.50, แบ่งหน้าใน URL ต่อแท็บ และดึงชื่อ 1 request ต่อหน้า
+  ✓   66 [chromium] › e2e/evoucher-admin-backordered.spec.ts:13:5 › AC-52: order ที่มี line backordered 1 line → widget แสดง evoucher-backordered-badge 1 ตัว
+  ✓   67 [chromium] › e2e/evoucher-admin-backordered.spec.ts:65:5 › AC-52: order ที่ยกเลิกแล้วแม้ line ยังมีธง backordered → ไม่มี evoucher-backordered-badge
+  ✓   68 [chromium] › e2e/evoucher-admin-forms.spec.ts:34:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel
+  ✓   69 [chromium] › e2e/evoucher-admin-forms.spec.ts:154:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools ตอบ 500 → evoucher-pools-error แทน "No voucher pools yet" คงหัวตาราง
+  ✓   70 [chromium] › e2e/evoucher-admin-forms.spec.ts:162:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners ตอบ 500 → evoucher-partners-error ไม่มี evoucher-partners-empty ปุ่ม Create partner ยังใช้ได้
+  ✓   71 [chromium] › e2e/evoucher-admin-forms.spec.ts:154:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools network ล้ม (route.abort) → evoucher-pools-error แทน "No voucher pools yet" คงหัวตาราง
+  ✓   72 [chromium] › e2e/evoucher-admin-forms.spec.ts:162:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners network ล้ม (route.abort) → evoucher-partners-error ไม่มี evoucher-partners-empty ปุ่ม Create partner ยังใช้ได้
+  ✓   73 [chromium] › e2e/evoucher-admin-forms.spec.ts:176:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools ตอบ 401 → ErrorBoundary พาไป /app/login
+  ✓   74 [chromium] › e2e/evoucher-admin-forms.spec.ts:176:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners ตอบ 401 → ErrorBoundary พาไป /app/login
+  ✓   75 [chromium] › e2e/evoucher-admin-forms.spec.ts:185:7 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: pools/partners ตอบรายการว่าง → empty state เดิม ไม่มี testid error
+  ✓   76 [chromium] › e2e/evoucher-admin-forms.spec.ts:209:7 › ADM-23: partners clamp ไม่กระพริบ + เมนูต่อแถว › AC-28: ?partners_offset=99999999 + GET partners หน่วง 800ms → ไม่มี empty ตลอด 2 วินาทีแรก จบหน้าสุดท้าย; Edit แล้ว Escape ไม่ค้าง pointer-events
+  ✓   77 [chromium] › e2e/evoucher-admin-forms.spec.ts:283:9 › ADM-19: partners_offset ผิดรูปตอนไม่มี partner › AC-23: GET partners ว่าง + ?partners_offset=abc → URL ไม่มี param, ปุ่ม Create partner 1 ตัว, empty state, ไม่มี NaN; กดปุ่มแล้ว modal เปิด
+  ✓   78 [chromium] › e2e/evoucher-admin-forms.spec.ts:283:9 › ADM-19: partners_offset ผิดรูปตอนไม่มี partner › AC-23: GET partners ว่าง + ?partners_offset=-50 → URL ไม่มี param, ปุ่ม Create partner 1 ตัว, empty state, ไม่มี NaN; กดปุ่มแล้ว modal เปิด
+  ✓   79 [chromium] › e2e/evoucher-admin-partners.spec.ts:52:5 › AC-8: partner 25 ราย → 20 แถวหน้าแรก, 5 แถวหน้าสอง (partners_offset ใน URL); ไม่มี partner → evoucher-partners-empty
+  ✓   80 [chromium] › e2e/evoucher-admin-partners.spec.ts:105:5 › AC-8: Create partner — ชื่อว่าง/URL ที่ไม่ใช่ http(s) → error ใต้ช่องไม่มี POST; https และช่องว่างส่งได้
+  ✓   81 [chromium] › e2e/evoucher-admin-partners.spec.ts:159:5 › AC-8: Edit/Delete ผ่าน evoucher-partner-row-actions — URL ไม่ใช่ http(s) ไม่มี POST, ยกเลิก prompt ไม่มี DELETE
+  ✓   82 [chromium] › e2e/evoucher-admin-pool-delete.spec.ts:31:5 › AC-51: ลบ pool ที่ยังไม่ส่ง code จากตาราง → prompt บอกจำนวน code → dblclick ยืนยัน = DELETE 1 ครั้ง, toast และแถวหาย
+  ✓   83 [chromium] › e2e/evoucher-admin-pool-delete.spec.ts:77:5 › AC-51: pool ที่มี code ส่งแล้ว → ลบจากหน้า pool ได้ toast error ข้อความจาก API และ pool ยังอยู่
+  ✓   84 [chromium] › e2e/evoucher-admin-pool-delete.spec.ts:116:5 › AC-51: pool ใหม่ไม่มี code → badge No codes (ไม่ใช่ Low stock) ทั้งตารางและหน้า pool; ลบจากหน้า pool แล้วกลับรายการ
+  ✓   85 [chromium] › e2e/evoucher-admin-pool-delete.spec.ts:159:7 › D1: dblclick ยืนยันลบในตาราง pools ที่มีแถวใต้ปุ่ม › AC-51: dblclick ปุ่ม Delete ใน prompt → DELETE 1 ครั้ง และไม่ถูกพาไปหน้า pool ของแถวใต้ปุ่ม
+  ✓   86 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:27:5 › AC-7: Codes ของ pool 60 code (delivered 5) แบ่งหน้าใน URL, กรอง delivered ด้วย filter และ Reveal ผ่าน ActionMenu
+  ✓   87 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:143:7 › ADM-10: offset ใน URL ที่ผิดรูป › AC-14: codes_offset = abc / -50 / 99999999 และ pools_offset = abc ถูก normalize/clamp
+  ✓   88 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:209:7 › ADM-10: offset ใน URL ที่ผิดรูป › AC-14: offset ผิดรูปไม่ถึง DataTable — Next หลังตารางแสดงไปหน้า 2 เสมอ
+  ✓   89 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:249:7 › ADM-16: empty state ไม่กระพริบตอน offset เกิน › AC-20: ?codes_offset=99999999 + GET /codes หน่วง 800ms → ไม่มี empty state ตลอด 2 วินาทีแรก และจบที่ codes_offset=50 10 แถว
+  ✓   90 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:323:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 500 → evoucher-codes-error แทน empty state คงหัวตาราง
+  ✓   91 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:332:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes network ล้ม (route.abort) → evoucher-codes-error
+  ✓   92 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:339:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 500 ขณะกรองสถานะ (?codes_status=void) → evoucher-codes-error ไม่ใช่ "No codes match"
+  ✓   93 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:355:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-30: ?codes_offset=50 และ GET codes ตอบ 500 → evoucher-codes-error ไม่มี "2 of 1 pages"
+  ✓   94 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:370:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบ 401 → ErrorBoundary พาไป /app/login
+  ✓   95 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:379:7 › ADM-21a: สถานะ error ของตาราง Codes › AC-25: GET codes ตอบรายการว่าง → empty state เดิม ไม่มี evoucher-codes-error
+  ✓   96 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:402:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ หน้าแรก) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓   97 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:402:9 › ADM-18: filter + Escape ระหว่าง loader หน่วง › AC-22: เลือก status=void รอ URL แล้ว Escape (เปิดที่ ?codes_offset=50) → codes_status คงอยู่ใน URL และ request /codes ล่าสุด
+  ✓   98 [chromium] › e2e/evoucher-admin-pool-page.spec.ts:449:7 › ADM-25: refetch ของ Codes ล้มขณะมีข้อมูล › AC-30 กฎ 24d: Import CSV แล้ว GET codes ครั้งถัดไปตอบ 500 → แถวเดิมยังแสดง ไม่มี evoucher-codes-error
+  ✓   99 [chromium] › e2e/evoucher-admin-resend.spec.ts:22:5 › AC-19: กด Resend email บน widget E-vouchers ของ order → ข้อความสำเร็จและ notification ใหม่ 1 รายการ
+  ✓  100 [chromium] › e2e/evoucher-admin-resend.spec.ts:73:7 › EV-13 › AC-32: widget E-vouchers 3 code ไม่ล้นที่ 1280px และ toast error ไม่มี noti_ id
+  ✓  101 [chromium] › e2e/evoucher-admin-retry-allocation.spec.ts:22:5 › AC-54: order backordered → dblclick Retry allocation ส่ง POST 1 ครั้ง; หลัง import code กด → toast และ badge หาย
+  ✓  102 [chromium] › e2e/evoucher-admin-retry-allocation.spec.ts:78:5 › AC-54: order ที่ไม่มี line ค้าง → ไม่เห็นปุ่ม Retry allocation
+  ✓  103 [chromium] › e2e/pay-10-refund-blocked-widget.spec.ts:50:5 › AC-23: เริ่ม return ผ่าน UI → widget ขึ้นเอง, ปิดฟอร์ม/Cancel Return → หายเองไม่ต้อง reload; return ค้างอยู่ในจอแรก; reload/order ปกติไม่เห็น
+  1 failed
+  102 passed (5.0m)
+
+หมายเหตุ: admin-row-menu-return-focus.spec.ts AC-52 (payouts — affiliate, ไม่ใช่ไฟล์ของ task นี้) ล้มครั้งเดียวที่ Escape ปิด alertdialog;
+รันซ้ำ --repeat-each=3 ผ่าน 3/3 (flaky timing ของ Escape) — ไม่เกี่ยวกับการแปลของกลุ่ม e-voucher
+
+## หลังเรียง stack (2026-11-27): rebase --onto feat/AI18N-2-group-buy-flash-sale (AI18N-1 2bc72327 + AI18N-2) — ไม่มี conflict
+range-diff f849d285 → ใหม่: ต่างเฉพาะบริบทของ I18N_PENDING (groupBuy: [] จาก AI18N-2) — ไม่มีอะไรหาย
+TEST_TYPE=unit jest src/admin: Test Suites: 27 passed, 27 total / Tests: 826 passed, 826 total
+pnpm typecheck: ผ่าน
+ที่ปลาย stack (AI18N-4 รวม 1+2+3+4): pnpm --filter backend test:unit 137 suites / 2600 passed; Playwright project unit 226 passed (รวม evidence-budget — regex รับ AI18N-* แล้ว);
+  pnpm lint 0 errors; pnpm typecheck ผ่าน; NODE_ENV=production build ผ่าน
+e2e ไม่ได้รันซ้ำหลังเรียง stack (qa รันชุดเต็มที่ปลาย stack)

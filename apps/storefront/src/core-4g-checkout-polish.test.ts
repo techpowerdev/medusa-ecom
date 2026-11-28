@@ -73,12 +73,14 @@ describe("medusaError คง status (AC-99)", () => {
     const { setAddresses } = await import("@lib/data/cart")
     const form = new FormData()
     form.set("shipping_address.address_1", "1 Sukhumvit")
+    form.set("shipping_address.address_2", "คลองเตยเหนือ")
     form.set("shipping_address.country_code", "th")
     // CORE-52 (กฎข้อ 110b): ช่องบังคับครบ — ให้ถึง updateCart ที่ test นี้ทดสอบ
     form.set("shipping_address.first_name", "Somchai")
     form.set("shipping_address.last_name", "Jaidee")
     form.set("shipping_address.postal_code", "10110")
     form.set("shipping_address.city", "Bangkok")
+    form.set("shipping_address.province", "กรุงเทพมหานคร")  // SFUI-20a (spec 09 กฎ 69): จังหวัดบังคับ
     form.set("same_as_billing", "on")
     expect(await setAddresses(null, form)).toBe(SIGN_IN_AGAIN_MESSAGE)
   })
@@ -121,5 +123,12 @@ describe("compareAddresses (AC-99)", () => {
 
   it("ค่าต่างกันจริงยังไม่เท่ากัน", () => {
     expect(compareAddresses({ ...base, company: "A" }, { ...base, company: "" })).toBe(false)
+  })
+
+  // SFUI-18a (spec 09 กฎ 56, AC-50): ตำบล/แขวง = address_2 — ต่างกันแค่ตำบลถือว่าเป็นคนละที่อยู่
+  it("ต่างกันแค่ address_2 → false; null กับ \"\" ยังเท่ากัน", () => {
+    expect(compareAddresses({ ...base, address_2: "คลองเตยเหนือ" }, { ...base, address_2: "คลองตันเหนือ" })).toBe(false)
+    expect(compareAddresses({ ...base, address_2: "คลองเตยเหนือ" }, base)).toBe(false)
+    expect(compareAddresses({ ...base, address_2: null }, { ...base, address_2: "" })).toBe(true)
   })
 })

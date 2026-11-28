@@ -1,0 +1,84 @@
+# SFUI-1b — ผล test ในเครื่อง (2026-11-26, Node 24.12.0, pnpm 12.15.0, macOS)
+# spec: docs/spec/09-storefront-shadcn-ui.md (AC-4 ขั้น 1b, AC-7, AC-1 ขั้น 1b), ADR-030 ข้อ 2, 3, 7, 10
+# shadcn: pnpm dlx shadcn@4.23.1 init -b radix --force --no-reinstall utils (components.json ตั้งค่าตามกฎ 2 ไว้ก่อน)
+
+## pnpm --filter storefront test:e2e:unit (project unit ทั้งหมด) — เฉพาะ spec ของ SFUI + evidence-budget + สรุป
+  ✓   31 [unit] › e2e/evidence-budget.unit.spec.ts:9:5 › โฟลเดอร์ evidence ทุก feature/task อยู่ตาม convention และอยู่ในงบ (19ms)
+  ✓   57 [unit] › e2e/sfui-deps.unit.spec.ts:16:5 › AC-1 (1a): tailwindcss และ @tailwindcss/postcss เป็น 4.3.5 แบบ exact ใน devDependencies (0ms)
+  ✓   59 [unit] › e2e/sfui-deps.unit.spec.ts:23:5 › AC-1 (1a): ไม่มี @medusajs/ui-preset, tailwindcss-radix, autoprefixer (0ms)
+  ✓   60 [unit] › e2e/sfui-deps.unit.spec.ts:29:5 › AC-1 (กฎ 1): ไม่มีไฟล์ tailwind.config.* และ postcss config มี plugin เดียวคือ @tailwindcss/postcss (78ms)
+  ✓   68 [unit] › e2e/sfui-shadcn-init.unit.spec.ts:19:5 › AC-7: components.json มีค่าตามกฎ 2 ทุก field (1ms)
+  ✓   69 [unit] › e2e/sfui-deps.unit.spec.ts:40:5 › AC-1 (กฎ 1): globals.css ขึ้นต้นด้วย @import "tailwindcss" (ไม่นับ comment) (0ms)
+  ✓   71 [unit] › e2e/sfui-shadcn-init.unit.spec.ts:43:5 › AC-7: tsconfig.json มี "@/*": ["*"] บน baseUrl src และคง alias เดิม (1ms)
+  ✓   72 [unit] › e2e/sfui-deps.unit.spec.ts:47:5 › AC-1 (1b): dependency ของ shadcn pin exact ตาม ADR-030 ข้อ 10 (1ms)
+  ✓   75 [unit] › e2e/sfui-shadcn-init.unit.spec.ts:53:5 › AC-7: src/lib/utils.ts export cn จาก package cn (0ms)
+  ✓   78 [unit] › e2e/sfui-shadcn-init.unit.spec.ts:68:5 › AC-7: vitest.config.mts มี alias "@" → src และ include ครอบ src/**/*.test.ts + src/**/*.test.tsx (1ms)
+  188 passed (1.5s)
+
+## pnpm --filter storefront test:unit — theme-css.test.ts + utils.test.ts (verbose)
+ ✓ src/lib/utils.test.ts > cn (@/lib/utils — AC-7) > รวม class แล้ว class ที่มาทีหลังชนะ (tailwind-merge) 1ms
+ ✓ src/lib/utils.test.ts > cn (@/lib/utils — AC-7) > ข้ามค่า falsy แบบ clsx 0ms
+ ✓ src/styles/theme-css.test.ts > globals.css — brand / grey tokens (AC-4 ขั้น 1a, กฎ 7) > มี --color-brand และ --color-brand-50..900 ค่า hex เดิมทุกตัว 1ms
+ ✓ src/styles/theme-css.test.ts > globals.css — brand / grey tokens (AC-4 ขั้น 1a, กฎ 7) > มี --color-grey-0..90 ค่าเดิม 0ms
+ ✓ src/styles/theme-css.test.ts > globals.css — brand / grey tokens (AC-4 ขั้น 1a, กฎ 7) > ไม่มี selector .dark (ไม่มี dark mode) 0ms
+ ✓ src/styles/theme-css.test.ts > globals.css — brand / grey tokens (AC-4 ขั้น 1a, กฎ 7) > class ของ brand ใช้ได้จริงหลัง compile (bg-brand-900 → --color-brand-900) 27ms
+ ✓ src/styles/theme-css.test.ts > globals.css — ฟอนต์ (AC-3 ส่วน CSS, กฎ 8) > --font-sans ค่าตัวแรกคือ var(--font-noto-sans-thai) 0ms
+ ✓ src/styles/theme-css.test.ts > globals.css — ฟอนต์ (AC-3 ส่วน CSS, กฎ 8) > body ใช้ font-sans (@theme inline → ค่าของ --font-sans ที่ขึ้นต้นด้วย Noto Sans Thai) 10ms
+ ✓ src/styles/theme-css.test.ts > globals.css — ฟอนต์ (AC-3 ส่วน CSS, กฎ 8) > class typography ของ preset (txt-*) ใช้ var(--font-sans) — ไม่ fix Inter 8ms
+ ✓ src/styles/theme-css.test.ts > globals.css — Tailwind v4 CSS-first คงค่า theme เดิม (กฎ 1) > ขึ้นต้นด้วย @import "tailwindcss" และ import ชั้นเข้ากันได้ legacy-medusa.css 0ms
+ ✓ src/styles/theme-css.test.ts > globals.css — Tailwind v4 CSS-first คงค่า theme เดิม (กฎ 1) > breakpoint, radius, max-w-8xl, text-3xl, animation เดิม generate ได้ 10ms
+ ✓ src/styles/theme-css.test.ts > globals.css — Tailwind v4 CSS-first คงค่า theme เดิม (กฎ 1) > class ใน globals.css เดิม (text-*-regular/semi, content-container, no-scrollbar) ยังใช้ได้เป็น utility 8ms
+ ✓ src/styles/theme-css.test.ts > legacy-medusa.css — ชั้นเข้ากันได้ของ preset (กฎ 16) > สี/เงา ui-* และ variant radix-state-* generate ได้ 7ms
+ ✓ src/styles/theme-css.test.ts > legacy-medusa.css — ชั้นเข้ากันได้ของ preset (กฎ 16) > ขอบเริ่มต้นเป็นสี --color-ui-border-base แบบ preset เดิม (v4 เริ่มต้นเป็น currentColor) 6ms
+ ✓ src/styles/theme-css.test.ts > globals.css — token ของ shadcn (AC-4 ขั้น 1b, กฎ 7; ADR-030 ข้อ 7) > import tw-animate-css (แทน tailwindcss-animate) 0ms
+ ✓ src/styles/theme-css.test.ts > globals.css — token ของ shadcn (AC-4 ขั้น 1b, กฎ 7; ADR-030 ข้อ 7) > :root ชี้ --primary / --primary-foreground / --ring ไปที่ brand 0ms
+ ✓ src/styles/theme-css.test.ts > globals.css — token ของ shadcn (AC-4 ขั้น 1b, กฎ 7; ADR-030 ข้อ 7) > :root มี token อื่นของ shadcn ครบ (ค่า neutral) 0ms
+ ✓ src/styles/theme-css.test.ts > globals.css — token ของ shadcn (AC-4 ขั้น 1b, กฎ 7; ADR-030 ข้อ 7) > utility ของ shadcn (bg-primary, text-primary-foreground, ring-ring, rounded-md, animate-in) generate ได้ 7ms
+ ✓ src/styles/theme-css.test.ts > globals.css — token ของ shadcn (AC-4 ขั้น 1b, กฎ 7; ADR-030 ข้อ 7) > หลัง compile ตัวแปร brand ที่ --primary/--primary-foreground/--ring อ้างถูก emit จริง (ไม่หายเพราะไม่มี class ใช้) 5ms
+ ✓ src/styles/theme-css.test.ts > globals.css — token ของ shadcn (AC-4 ขั้น 1b, กฎ 7; ADR-030 ข้อ 7) > ไม่มี @custom-variant dark และไม่ import shadcn/tailwind.css (ADR-030: CLI ไม่เป็น dependency) 0ms
+ Test Files  2 passed (2)
+      Tests  20 passed (20)
+
+## pnpm --filter storefront test:unit (Vitest ทั้งหมด)
+ Test Files  126 passed (126)
+      Tests  1969 passed (1969)
+
+## ยืนยันว่า include src/**/*.test.tsx ทำงาน: ไฟล์ probe ชั่วคราว src/lib/sfui-1b-tsx-probe.test.tsx (ลบแล้ว ไม่ commit)
+## (pnpm test:unit --reporter=verbose src/lib/ ; รันทั้งชุดตอนมี probe = 127 files / 1970 tests → ไม่มี probe = 126 / 1969)
+ ✓ src/lib/sfui-1b-tsx-probe.test.tsx > probe: ไฟล์ .test.tsx ถูกรัน และ JSX compile ได้ 1ms
+ Test Files  42 passed (42)
+      Tests  660 passed (660)
+
+## pnpm --filter storefront typecheck
+$ tsc --noEmit
+exit 0
+
+## pnpm --filter storefront lint (0 errors; warning 28 รายการเป็นของเดิมก่อน SFUI-1b ไม่มีไฟล์ของ task นี้)
+✖ 28 problems (0 errors, 28 warnings)
+
+## pnpm --filter storefront build (next build, production)
+✓ Compiled successfully in 4.6s
+CSS ที่ build แล้วมี: --primary:var(--color-brand-900), --ring:var(--color-brand-400), --color-brand-900:#171717; ไม่มี .dark
+
+## e2e chromium (backend :9120 DB medusa_sfui1b, storefront next start :8120)
+  ✓   1 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (375px) (1.2s)
+  ✓   2 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (1280px) (942ms)
+  ✓   3 [chromium] › e2e/core-38-mobile-layout.spec.ts:124:5 › AC-132: checkout — label ของฟอร์มที่อยู่ไม่ทับค่า, สรุปที่อยู่ 375 เรียงแนวตั้งและอีเมลยาวไม่ล้น, 1280 แถวเดียว (4.3s)
+  ✓   4 [chromium] › e2e/core-38-mobile-layout.spec.ts:202:5 › AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่าง + billing ต่างกัน → ข้อความอยู่ในกล่องของตัวเองที่ 375/640/1280 (3.3s)
+  ✓   5 [chromium] › e2e/core-38-mobile-layout.spec.ts:247:5 › AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่างอยู่ในกล่องของตัวเองที่ 375/640/1280 (1.6s)
+  ✓   6 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 320×640: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (578ms)
+  ✓   7 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 375×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (460ms)
+  ✓   8 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 639×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (468ms)
+  ✓   9 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1023×800: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (407ms)
+  ✘  10 [chromium] › e2e/core-50-nav-narrow.spec.ts:171:7 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1280×800: ชื่อร้านกึ่งกลาง nav-account-link แสดง ตำแหน่ง/ขนาดเท่า develop (414ms)
+  ✓  11 [chromium] › e2e/sfui-mobile-390.spec.ts:20:5 › AC-17: หน้าแรก, store, PDP, cart, checkout, account, orders ที่ 390px ไม่ล้นแนวนอน (34.1s)
+  ✓  12 [chromium] › e2e/thai-ui-shell.spec.ts:10:5 › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai (3.3s)
+  ✓  13 [chromium] › e2e/thai-ui-shell.spec.ts:61:5 › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย (252ms)
+  ✓  14 [chromium] › e2e/ui-preset-font.spec.ts:9:5 › AC-3: body, h1, h2, p, button, input และ class txt-*/*-webs บนหน้าแรกใช้ Noto Sans Thai ก่อน Inter (2.8s)
+    Error: nav-menu-button width
+    Expected: <= 1
+    Received:    1.265625
+    test-results/core-50-nav-narrow-AC-145--5c6d7-ดง-ตำแหน่ง-ขนาดเท่า-develop-chromium/test-failed-1.png
+  1 failed
+  13 passed (56.7s)
+หมายเหตุ: core-50-nav-narrow 1280×800 ต่าง 1.27px บน macOS — เหมือนก่อน SFUI-1b (baseline วัดบน Linux) ไม่เกี่ยวกับ task นี้

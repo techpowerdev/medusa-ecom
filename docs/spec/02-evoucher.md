@@ -1,6 +1,6 @@
 # 02 E-voucher — ขายต่อ voucher code ของพาร์ทเนอร์ ส่งมอบทางอีเมล
 
-สถานะ: draft (ปรับปรุง 2026-10-25: voucher เป็น code ของพาร์ทเนอร์ ไม่ใช่ของเรา; ไม่มีการ redeem; รอบ 9 2026-10-27: Q6/Q7 ตัดสินแล้ว, EV-13; รอบ 10 2026-10-27: แตก EV-7 → EV-7a/7b/7c (builder หยุด), AC-6 ทดสอบได้, EV-N1, index ใหม่, EV-9 key เรียงรอง; owner ตัดสิน Q10 = (ก), Q11 คงเดิม; รอบ 11: กฎข้อ 2 ขอบ cutoff ตรงโค้ด; รอบ 12: EV-14, EV-N2, EV-7d, EV-7e; รอบ 13 2026-11-03: EV-N3 (follow-up #201/#205 — กฎข้อ 30, AC-44), ฟอร์ม partner ตรวจ URL ฝั่ง client → ADM-5 ของ spec 08; รอบ 26 2026-11-09: EV-15 (กฎข้อ 31, AC-45 — **บล็อก release v0.1.0**), แก้ถ้อยคำกฎข้อ 28c; รอบ 27 2026-11-10: EV-16 (กฎข้อ 32, AC-46), EV-17 (กฎข้อ 33, AC-47; owner ตอบ Q14 = ก); ปิดรอบ 27 2026-11-10: ☑ EV-16 #333, EV-17 #337, เพิ่ม EV-18 (review #333 — กฎข้อ 34, AC-48); รอบ 28 2026-11-10: ☑ EV-18 #339)
+สถานะ: draft (ปรับปรุง 2026-10-25: voucher เป็น code ของพาร์ทเนอร์ ไม่ใช่ของเรา; ไม่มีการ redeem; รอบ 9 2026-10-27: Q6/Q7 ตัดสินแล้ว, EV-13; รอบ 10 2026-10-27: แตก EV-7 → EV-7a/7b/7c (builder หยุด), AC-6 ทดสอบได้, EV-N1, index ใหม่, EV-9 key เรียงรอง; owner ตัดสิน Q10 = (ก), Q11 คงเดิม; รอบ 11: กฎข้อ 2 ขอบ cutoff ตรงโค้ด; รอบ 12: EV-14, EV-N2, EV-7d, EV-7e; รอบ 13 2026-11-03: EV-N3 (follow-up #201/#205 — กฎข้อ 30, AC-44), ฟอร์ม partner ตรวจ URL ฝั่ง client → ADM-5 ของ spec 08; รอบ 26 2026-11-09: EV-15 (กฎข้อ 31, AC-45 — **บล็อก release v0.1.0**), แก้ถ้อยคำกฎข้อ 28c; รอบ 27 2026-11-10: EV-16 (กฎข้อ 32, AC-46), EV-17 (กฎข้อ 33, AC-47; owner ตอบ Q14 = ก); ปิดรอบ 27 2026-11-10: ☑ EV-16 #333, EV-17 #337, เพิ่ม EV-18 (review #333 — กฎข้อ 34, AC-48); รอบ 28 2026-11-10: ☑ EV-18 #339; รอบ 47 2026-11-27: EV-27 — กฎข้อ 43, AC-57..59; owner ตอบ Q15 = ข, Q16 = ก 2026-11-27)
 เป้าหมาย (เจ้าของระบบ): ขาย e-voucher จากพาร์ทเนอร์ (Lotus, Big C, ห้างสรรพสินค้า, คาเฟ่…) เราได้รับ
 coupon code จากพาร์ทเนอร์ล่วงหน้า และส่งมอบ 1 code ต่อ 1 หน่วยที่ขายได้ในรูปแบบดิจิทัล
 (อีเมล) การ redeem เกิดขึ้นที่พาร์ทเนอร์ เราไม่ redeem เอง
@@ -579,7 +579,87 @@ Status: done (☑ EV-26 #527 — ปิดรอบ 42 2026-11-24; รอบ 43 
 |----|------|------|------|----|---------|------|
 | EV-26 | ☑ #527 — hygiene admin e-voucher: toast warning ของ backordered + helper e2e ร่วม + ตัวจัดข้อความ error ร่วม (กฎข้อ 42) | `src/admin/lib/evoucher-allocate.ts` (+ unit), `src/admin/lib/evoucher-resend.ts`, `src/admin/widgets/order-evouchers.tsx`, `apps/storefront/e2e/{evoucher-admin-retry-allocation,evoucher-admin-backordered}.spec.ts`, `e2e/support/evoucher.ts` | ~30 LOC + ~60 LOC test | AC-56 | PR เอกสารปิดรอบ 41 | — |
 
+## Follow-up รอบ 47 (2026-11-27 — ทดสอบ manual ก่อน release v0.4.0; owner อนุมัติ)
+Status: draft
+ที่มา: สร้างคลังโค้ดจาก widget "Voucher pool" (`src/admin/widgets/variant-evoucher-pool.tsx`) แล้วแอดมินเจอ error อังกฤษจาก backend ทีละข้อหลังกดบันทึก/นำเข้า:
+`evoucher-pool.ts:80` "Voucher variant must have manage_inventory=true with an inventory item" (กฎข้อ 1), `evoucher-pool.ts:84` "Voucher product must not have a shipping profile …" (กฎข้อ 1/Q9),
+และตอนนำเข้า `import-evoucher-codes.ts:83` "Voucher variant must manage inventory with exactly one inventory item and one stock location level"
+(เงื่อนไข location level มีเฉพาะตอน **import** — การสร้าง pool ไม่ตรวจ; ยังไม่มีกฎในสเปกนี้) · กฎข้อ 14 (`evoucher-pool.ts:90-93` inventory item เดียว `required_quantity=1` ไม่ใช้ร่วม) เป็นด่านที่ 4 ตอนสร้าง
+นอกขอบเขต: เปลี่ยน validation/ข้อความ error ของ backend (คงเดิม — เป็นด่านจริง; toast ยังแสดงข้อความ API เมื่อหลุดถึง backend), ตรวจเงื่อนไขบนหน้า pool (`routes/evouchers/pools/[id]`) ก่อน import, แปลข้อความ error ของ API
+
+### สิ่งที่ Medusa มีให้อยู่แล้ว (รอบ 47)
+| ความต้องการ | Medusa มีให้ | วิธีใช้ |
+|---|---|---|
+| ข้อมูล `manage_inventory`, inventory item (`required_quantity`, variant ที่ใช้ร่วม), location level, shipping profile ของ product | `GET /admin/products/:id` + `fields` ผ่าน hook `useProduct` ของ `@medusajs/dashboard/hooks` (หน้า product ของ dashboard เองขอ `*shipping_profile` — `PRODUCT_DETAIL_FIELDS`); path ของ inventory ตรงกับที่ backend ใช้ใน `query.graph` | **ใช้ตามที่มี** — ไม่เพิ่ม API (กฎข้อ 43a); dashboard 2.22.1 export hook ของ variant ด้วย (`useProductVariants`, `useVariants`/`useInfiniteVariants` — `hooks.d.ts`) แต่ไม่มี hook ราย inventory item; ใช้ `useProduct` เพราะได้ shipping profile ของ product และ inventory ของ variant ใน request เดียว |
+| หน้าแก้แต่ละเงื่อนไข | route ของ dashboard 2.22.1: `/products/:id/variants/:variant_id/edit` (สวิตช์ manage inventory), `/products/:id/variants/:variant_id/manage-items` (inventory item), `/products/:id/shipping-profile`, `/inventory/:inventory_item_id/locations` (`app.js` route table) | **ลิงก์ไปหน้าของ Medusa** (กฎข้อ 43c) — ไม่สร้างฟอร์มแก้เอง |
+| รายการเงื่อนไขใน modal/ลิงก์ | `FocusModal` (ใช้อยู่แล้ว), `Text` ของ `@medusajs/ui`; `Header` ของเรา (`components/common/header`, dashboard ไม่ export); `Link` ของ `react-router-dom` | ใช้ตามที่มี — ไม่สร้าง component ใหม่ |
+| ข้อความไทย/อังกฤษ | i18n ของ Medusa admin + namespace `ecom-evoucher` (ADR-031, spec 10 กฎ 5 parity) | เพิ่ม key ใต้ `variantWidget.prerequisites.*` |
+| ด่านจริงตอนสร้าง/นำเข้า | `validateEvoucherVariantStep`, `resolveEvoucherPoolInventoryStep` (ของเรา) | **คงเดิม** |
+
+### Business rules (รอบ 47)
+43. (EV-27 — admin; owner ตอบ Q15 = ข 2026-11-27) widget "Voucher pool" บนหน้า variant ตรวจเงื่อนไขเมื่อแอดมินกด "Create pool" จากข้อมูลของ Medusa แล้วแสดงรายการเงื่อนไข**แทนฟอร์ม**ถ้ายังไม่ครบ
+    (หน้า variant ของสินค้าปกติจึงไม่มีกล่องเงื่อนไขแสดงค้าง):
+    (a) โหลด `useProduct(variant.product_id, { fields }, { enabled: open, staleTime: 0 })` เมื่อเปิด FocusModal (แบบรายชื่อ partner เดิม) และได้ข้อมูลใหม่ทุกครั้งที่เปิด
+        (แก้ในหน้า Medusa แล้วกลับมากดใหม่โดยไม่ reload ต้องเห็นผลล่าสุด — builder ยืนยันว่า `staleTime: 0` + `enabled` พอ หรือเรียก `refetch()` ตอนเปิด) โดย `fields` = `id,*shipping_profile,variants.id,variants.manage_inventory,variants.inventory_items.inventory_item_id,`
+        `variants.inventory_items.required_quantity,variants.inventory_items.inventory.variants.id,variants.inventory_items.inventory.location_levels.location_id`
+        (ไม่พึ่ง field ที่หน้า variant ของ dashboard โหลดให้ — เปลี่ยนได้เมื่อ bump) แล้วเลือก variant ตาม `variant.id`; ถ้า Admin API ไม่คืน path `inventory.variants` builder ตัดเงื่อนไข "ใช้ร่วม" ออกจาก (b) แล้วระบุใน PR (backend ยังกันด้วยกฎข้อ 14)
+    (b) pure function `evoucherPoolPrerequisites(product, variantId)` (`src/admin/lib/evoucher-pool-prerequisites.ts`) คืนรายการ issue ที่ไม่ผ่าน เรียงตามลำดับคงที่นี้ แต่ละตัว `{ code, to }`:
+        1. `manageInventory` — `manage_inventory !== true` → `to` = `/products/<product_id>/variants/<variant_id>/edit`
+        2. `inventoryItem` — จำนวน inventory item ≠ 1 หรือ `required_quantity` ≠ 1 หรือ item นั้นมี variant อื่นใช้ร่วม (กฎข้อ 14) → `to` = `/products/<product_id>/variants/<variant_id>/manage-items`
+        3. `shippingProfile` — `product.shipping_profile?.id` มีค่า (กฎข้อ 1/Q9; `null`/ไม่มี field = ผ่าน) → `to` = `/products/<product_id>/shipping-profile`
+        4. `stockLocation` — ตรวจเฉพาะเมื่อข้อ 2 ผ่าน: `location_levels` ของ item นั้นมีจำนวน ≠ 1 (เงื่อนไขของ import `import-evoucher-codes.ts:80`) → `to` = `/inventory/<inventory_item_id>/locations`
+        ทุกข้อผ่าน → `[]`; ไม่พบ `variantId` ใน `product.variants` → `null`
+    (c) ปุ่ม "Create pool" (เพิ่ม `data-testid="evoucher-pool-create"` ผ่าน `props` ของ `Header`; ชื่อปุ่มคงเดิม) **กดได้เสมอ**เมื่อยังไม่มี pool (ตามเดิม: ซ่อนระหว่างโหลด/ล้มของรายการ pool;
+        กันกดซ้ำ/`submitLocked` ของฟอร์มคงเดิม) — **ไม่มี**กล่องเงื่อนไขบนหน้า variant ก่อนกด; กดแล้ว FocusModal เปิด (heading `variantWidget.createTitle` คงเดิม — กฎ `admin-dialog-title`) แล้ว body แสดงอย่างใดอย่างหนึ่ง:
+        1. ระหว่างโหลดเงื่อนไข → `evoucher-pool-prerequisites-loading` (ข้อความ `general.loading`) — ไม่มีฟอร์ม ไม่มีปุ่ม Save
+        2. โหลดล้ม → `evoucher-pool-prerequisites-error` (ข้อความ `variantWidget.prerequisites.loadError` พร้อม `{{message}}`) **แทนฟอร์ม** ไม่มีปุ่ม Save — ไม่ให้สร้าง pool โดยไม่รู้ผลตรวจ; ปิดแล้วกดใหม่ = โหลดใหม่
+        3. รายการไม่ว่าง → `evoucher-pool-prerequisites` **แทนฟอร์ม** ไม่มีปุ่ม Save: หัวข้อ `variantWidget.prerequisites.title` แล้วหนึ่งแถวต่อ issue
+           `evoucher-pool-prereq-<code>` = ข้อความ `variantWidget.prerequisites.<code>` + ลิงก์ `evoucher-pool-prereq-<code>-link` (`to` ตาม (b), ข้อความ `variantWidget.prerequisites.fix`);
+           คลิกลิงก์ → ปิด modal (`setOpen(false)`) แล้ว navigate — route ที่เป็นลูกของหน้า variant (`edit`, `manage-items`) จึงไม่ถูก modal บัง
+        4. รายการว่าง → ฟอร์มเดิม (`data-testid="evoucher-pool-form"` ที่ `KeyboundForm`) + ปุ่ม Save; ฟอร์ม/single-flight/กฎข้อ 11 คงเดิม
+        กรณี 1–3 ไม่มีทางยิง `POST /admin/evoucher/pools` (ไม่มีฟอร์มให้ submit — ⌘/Ctrl+Enter ก็ไม่ยิง)
+    (d) มี pool แล้ว → widget คงเดิม (ปุ่ม "Manage codes" อย่างเดียว ไม่ตรวจ ไม่แสดงกล่อง) — การบอกเงื่อนไขตอนกดนำเข้าโค้ดบนหน้า pool ไม่ทำในรอบนี้ (Q16 = ก, owner 2026-11-27)
+    (e) ข้อความทั้งหมดผ่าน `t()` ของ namespace `ecom-evoucher`: `en` เป็นถ้อยคำอังกฤษใหม่, `th` คำแปล (ชื่อฟิลด์/หน้าใช้คำเดียวกับคำแปลไทยของ Medusa เช่น "จัดการสินค้าคงคลัง", "โปรไฟล์การจัดส่ง", "จัดการสถานที่"); parity ตาม spec 10 กฎ 5
+    (f) backend ไม่เปลี่ยน — diff ของ EV-27 ไม่แตะ `apps/backend/src/workflows/**` และ `apps/backend/src/api/**`; สร้าง pool ผ่าน API โดยไม่มี location level ยังได้ตามเดิม (UI เข้มกว่า backend เฉพาะข้อ 4 — เพื่อไม่ให้ import ล้มทีหลัง)
+    (g) e2e เดิมที่เปิดฟอร์ม Create pool บน variant ที่สร้างด้วย `POST /admin/products` ธรรมดา (`manage_inventory` ค่าเริ่มต้น `false` → กดแล้วจะได้รายการเงื่อนไขแทนฟอร์ม) เปลี่ยนไปใช้ variant ที่ผ่านเงื่อนไขจาก helper ร่วม
+        `createPoolReadyVariant` ใน `e2e/support/evoucher.ts` (แยกจากส่วนต้นของ `createVoucher` — ผู้ใช้ ≥ 2 ที่) ไม่ copy
+
+### Acceptance criteria (รอบ 47)
+- AC-57 ☑ #602 (EV-27, กฎข้อ 43b) unit `src/admin/lib/__tests__/evoucher-pool-prerequisites.unit.spec.ts` (ไฟล์ใหม่ — ล้มบน develop เพราะไม่มี module): variant พร้อม (manage on, item เดียว qty 1 ไม่ใช้ร่วม, location 1, `shipping_profile: null`) → `[]`;
+  `shipping_profile` ไม่มี field → `[]`; `manage_inventory=false` + 0 item → code `["manageInventory","inventoryItem"]` (ไม่มี `stockLocation`); 2 item → `["inventoryItem"]`; `required_quantity=2` → `["inventoryItem"]`;
+  item มี variant อื่นใน `inventory.variants` → `["inventoryItem"]`; มี shipping profile → `["shippingProfile"]`; location 0 และ 2 → `["stockLocation"]`; ไม่ผ่านทุกข้อ → ลำดับ `manageInventory, inventoryItem, shippingProfile` ตามกฎ 43b;
+  `to` ของแต่ละ code เท่ากับ path ในกฎ 43b ตรงตัว (แทน id จริงของ fixture); `variantId` ไม่พบใน `product.variants` → `null` (widget แสดงแบบกรณี 2 ของกฎ 43c — error แทนฟอร์ม)
+- AC-58 ☑ #602 (EV-27, กฎข้อ 43c–e) e2e admin `apps/storefront/e2e/evoucher-admin-pool-prerequisites.spec.ts` รันทั้ง `lng=th` (`ADMIN_UI_OPTIONS_TH`) และ `lng=en` (`ADMIN_UI_OPTIONS`); ค่าที่คาดสร้างจาก `adminText(lng, "ecom-evoucher", key)`;
+  `th` ต้องตรง regex อักษรไทย, `en` ต้องไม่มีอักษรไทย; หาด้วย testid (ข้อยกเว้นเฉพาะ element ของหน้า Medusa ตาม ADR-018):
+  (a) product ที่มี shipping profile Default + variant `manage_inventory=false` (สร้างผ่าน Admin API) → ก่อนกด: ไม่มี `evoucher-pool-prerequisites` บนหน้า และ `evoucher-pool-create` enabled;
+      กดปุ่ม → ใน dialog เห็น `evoucher-pool-prerequisites` (หัวข้อ `prerequisites.title`) มี `evoucher-pool-prereq-manageInventory`, `-inventoryItem`, `-shippingProfile` ข้อความตรง key และไม่มี `-stockLocation`;
+      ไม่มี `evoucher-pool-form` และไม่มีปุ่ม Save ใน dialog; กด ⌘/Ctrl+Enter → นับ `POST /admin/evoucher/pools` ตลอด test = 0; `href` ของลิงก์แต่ละตัวลงท้ายด้วย path ตามกฎ 43b;
+      คลิก `evoucher-pool-prereq-manageInventory-link` → dialog ปิด และ URL เป็น `/app/products/<id>/variants/<variant_id>/edit`
+  (b) แก้ผ่าน Admin API (manage inventory + inventory item, `shipping_profile_id: null`) **โดยไม่ reload** → กลับหน้า variant (ปิด drawer ของ Medusa / goto ภายใน SPA) แล้วกดปุ่มอีกครั้ง → รายการเหลือ `evoucher-pool-prereq-stockLocation` เท่านั้น ยังไม่มี `evoucher-pool-form`;
+      ปิด dialog เพิ่ม location level ผ่าน API แล้วกดใหม่ → ไม่มี `evoucher-pool-prerequisites`, เห็น `evoucher-pool-form` + heading `variantWidget.createTitle` (แทน `{{title}}` ด้วยชื่อ variant — หาด้วย role + ชื่อภายใน dialog); กรอกแล้ว Save → POST 1 ครั้งและ 200
+  (c) variant ที่มี pool แล้ว (`createVoucher`) → ไม่มี `evoucher-pool-prerequisites` และไม่มี `evoucher-pool-create` บนหน้า (regression กฎ 43d)
+  (d) `GET /admin/products/:id` ถูก route mock ให้ตอบ 500 (mock เฉพาะ pathname `/admin/products/<id>` ตรงตัว — ไม่โดน `/admin/products/<id>/variants/...` ที่หน้า variant ใช้; ติดตั้งหลังหน้า variant โหลดครบ) → กดปุ่ม → `evoucher-pool-prerequisites-error` แสดงข้อความ `loadError` (`{{message}}` แทนแล้ว) ไม่มี `evoucher-pool-form` และ POST = 0;
+      ยกเลิก mock ปิด dialog แล้วกดใหม่ → ได้ผลตรวจจริง (ไม่ค้าง error)
+- AC-59 ☑ #602 (EV-27, กฎข้อ 43f–g) regression: `git diff --name-only origin/develop...HEAD` ไม่มี path ใต้ `apps/backend/src/workflows/` หรือ `apps/backend/src/api/`;
+  e2e ที่เปิด Create pool บนหน้า variant — `admin-form-pilot`, `admin-create-double-submit`, `admin-modal-return-focus`, `evoucher-admin-forms` — ผ่านโดย fixture ใช้ `createPoolReadyVariant`;
+  e2e ที่เปิดหน้า variant ที่มี pool แล้ว (`admin-i18n-evoucher`) และ static ของ dialog title (`admin-dialog-title`) ผ่าน; static: `createPoolReadyVariant` ถูก import ใน ≥ 2 ไฟล์ (รวม `createVoucher`); unit parity/guard ของ spec 10 (AC-2, AC-5) ผ่านกับ key ใหม่
+
+### แผนการทดสอบ (รอบ 47)
+- unit: AC-57 (+ parity/guard ของ spec 10 ใน AC-59) · e2e admin: AC-58, AC-59 · integration: none (backend ไม่เปลี่ยน — test เดิมของ AC-11/กฎข้อ 14/import ต้องผ่านตาม CI)
+
+### Tasks (รอบ 47)
+| ID | Task | ไฟล์ที่น่าจะแตะ | ขนาด | AC | Depends | ชนไฟล์ |
+|----|------|------|------|----|---------|------|
+| EV-27 | ☑ #602 — (admin UI) กด "Create pool" แล้วตรวจเงื่อนไข → ไม่ครบแสดงรายการไทย/อังกฤษพร้อมลิงก์ไปหน้า Medusa **แทนฟอร์ม** ไม่ยิง POST (กฎข้อ 43, Q15 = ข); qa | `src/admin/lib/evoucher-pool-prerequisites.ts` (ใหม่ + unit), `src/admin/widgets/variant-evoucher-pool.tsx`, `src/admin/i18n/json/{en,th}/ecom-evoucher.json`, `apps/storefront/e2e/evoucher-admin-pool-prerequisites.spec.ts` (ใหม่), `e2e/support/evoucher.ts` (`createPoolReadyVariant`), fixture ของ e2e ที่เปิด Create pool (กฎ 43g) | ~110 LOC + ~350 LOC test | AC-57, AC-58, AC-59 | ไม่มี (นอกจาก PR เอกสารนี้) | ∥ AI18N-N2 (spec 10 — คนละไฟล์ ยกเว้น `ecom-*.json` ถ้า N2 แตะ `ecom-evoucher.json` ตัวหลัง sync เก็บทั้งสองฝั่ง) |
+
 ## คำถามที่ยังเปิดอยู่
+- ~~Q16~~ ตัดสินแล้ว (owner 2026-11-27): **(ก)** ไม่ทำตอนนี้ — คำถามเดิม: (รอบ 47 — ไม่บล็อก EV-27) pool ที่มีอยู่แล้วแต่ variant ไม่ผ่านเงื่อนไขของ import (เช่นลบ location level ทีหลัง หรือสร้าง pool ผ่าน API โดยไม่มี location) — import บนหน้า pool
+  (`routes/evouchers/pools/[id]`) ยังได้ toast ข้อความอังกฤษของ backend (`import-evoucher-codes.ts:83`) หลังเลือกไฟล์:
+  (ก) **[เลือก]** ไม่ทำตอนนี้ — EV-27 ทำให้ pool ที่สร้างผ่าน UI มี location ครบแล้ว เหลือเฉพาะกรณีแก้ทีหลัง/สร้างผ่าน API ซึ่งเกิดยาก
+  (ข) task ใหม่ EV-28: ปุ่มนำเข้าโค้ดบนหน้า pool ตรวจเงื่อนไขเดียวกันเมื่อกด (ใช้ `evoucherPoolPrerequisites` ร่วม — ผู้ใช้ที่ 2) แล้วแสดงรายการแทนฟอร์ม import แบบ Q15 = ข (~60 LOC + ~120 LOC test)
+- ~~Q15~~ ตัดสินแล้ว (owner 2026-11-27): **(ข)** ปุ่ม "Create pool" กดได้เสมอ (ยกเว้นระหว่างส่ง/โหลดตามกฎกันกดซ้ำเดิม); กดแล้วเงื่อนไขไม่ครบ → แสดงรายการเงื่อนไขพร้อมลิงก์ไปแก้
+  **แทนฟอร์ม** และไม่ยิง request สร้าง pool; หน้า variant ของสินค้าปกติไม่มีกล่องเงื่อนไขค้าง — กฎข้อ 43c, AC-58;
+  คำถามเดิม: กล่องเงื่อนไขขึ้นบน variant ทุกตัวที่ยังไม่มี pool รวมสินค้าปกติ (ก แสดงเสมอ + ปุ่ม disabled / ข แสดงเมื่อกดปุ่มแทนฟอร์ม)
 - ~~Q14~~ ตัดสินแล้ว (owner 2026-11-10): **(ก)** — กฎข้อ 33c–e, AC-47, EV-17; คำถามเดิม (รอบ 27, EV-17 กฎข้อ 33) ป้องกัน stock เกินเมื่อยกเลิก fulfillment ของ code ที่ส่งมอบแล้วด้วยทางใด:
   (ก) **[เลือก]** หลังส่งอีเมลสำเร็จ (allocation และ resend) สร้าง shipment ของ fulfillment นั้นด้วย `createOrderShipmentWorkflow` แบบ `no_notification: true` (subscriber `shipment-created.ts:9` จึงไม่ส่งอีเมลจัดส่ง) → Medusa ไม่ยอมยกเลิก fulfillment ที่ shipped และจึงยกเลิก order นั้นไม่ได้
   — ตรงกับกฎข้อ 6 (code ส่งแล้ว admin คืนเงินเองโดยไม่ยกเลิก) และใช้กติกาของ Medusa ไม่ต้องปรับ inventory เอง; ข้อเสีย: order ผสมที่มี voucher ส่งแล้วยกเลิกทั้ง order ไม่ได้ ต้องคืนเงินบางส่วนแทน และ fulfillment ที่ยังไม่ได้ส่งอีเมล (code `allocated`) ยังยกเลิกได้ตามเดิม

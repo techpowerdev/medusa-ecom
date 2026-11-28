@@ -10,8 +10,8 @@ export const metadata: Metadata = {
 export default function NotFound() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)]">
-      <h1 className="text-2xl-semi text-ui-fg-base">ไม่พบหน้านี้</h1>
-      <p className="text-small-regular text-ui-fg-base">
+      <h1 className="text-3xl font-semibold tracking-tight text-foreground">ไม่พบหน้านี้</h1>
+      <p className="text-xs leading-5 font-normal text-foreground">
         ไม่พบตะกร้าสินค้าที่คุณต้องการเปิด ลองล้างคุกกี้แล้วลองใหม่อีกครั้ง
       </p>
       <InteractiveLink href="/">กลับหน้าแรก</InteractiveLink>

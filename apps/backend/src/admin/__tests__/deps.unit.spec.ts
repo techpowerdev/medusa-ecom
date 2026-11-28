@@ -25,6 +25,19 @@ describe("admin dependencies (spec 08 AC-1)", () => {
     expect(ours[name]).toBe(expected)
   })
 
+  // spec 10 AC-6 (กฎ 16): react-i18next = instance เดียวกับ dashboard (runtime); i18next ใช้เฉพาะ jest setup จึงเป็น devDependency
+  it("react-i18next อยู่ใน dependencies และตรงกับ @medusajs/dashboard แบบ exact", () => {
+    expect(dashboardPkg.dependencies["react-i18next"]).toMatch(/^\d+\.\d+\.\d+$/)
+    expect(ours["react-i18next"]).toBe(dashboardPkg.dependencies["react-i18next"])
+  })
+
+  it("i18next อยู่ใน devDependencies (ไม่อยู่ใน dependencies) และตรงกับ @medusajs/dashboard แบบ exact", () => {
+    const dev = backendPkg.devDependencies as Record<string, string | undefined>
+    expect(dashboardPkg.dependencies.i18next).toMatch(/^\d+\.\d+\.\d+$/)
+    expect(dev.i18next).toBe(dashboardPkg.dependencies.i18next)
+    expect(ours).not.toHaveProperty("i18next")
+  })
+
   it("jest โหลด @medusajs/dashboard/lib ได้ (กฎ 2)", async () => {
     const lib = await import("@medusajs/dashboard/lib")
     expect(lib.optionalInt.safeParse("2").success).toBe(true)

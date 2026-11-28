@@ -1,5 +1,4 @@
 import { HttpTypes } from "@medusajs/types"
-import { Heading, Text } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 type ProductInfoProps = {
@@ -13,25 +12,24 @@ const ProductInfo = ({ product }: ProductInfoProps) => {
         {product.collection && (
           <LocalizedClientLink
             href={`/collections/${product.collection.handle}`}
-            className="text-medium text-ui-fg-muted hover:text-ui-fg-subtle"
+            className="text-muted-foreground hover:text-foreground"
           >
             {product.collection.title}
           </LocalizedClientLink>
         )}
-        <Heading
-          level="h1"
-          className="text-3xl leading-10 text-ui-fg-base"
+        <h1
+          className="text-3xl font-semibold tracking-tight text-foreground"
           data-testid="product-title"
         >
           {product.title}
-        </Heading>
+        </h1>
 
-        <Text
-          className="text-medium text-ui-fg-subtle whitespace-pre-line"
+        <p
+          className="text-sm leading-[1.4rem] text-muted-foreground whitespace-pre-line"
           data-testid="product-description"
         >
           {product.description}
-        </Text>
+        </p>
       </div>
     </div>
   )

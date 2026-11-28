@@ -15,6 +15,7 @@ import {
 import { keepPreviousData, useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { evoucherApi, evoucherKeys, Partner, PartnerInput } from "../../lib/evoucher"
 import {
   PARTNER_PARSE_OPTIONS,
@@ -38,32 +39,35 @@ const PAGE_SIZE = 20
 const PREFIX = "partners"
 const DELETE_KEY = ["evoucher", "partner-delete"]
 
-const FIELDS: { name: keyof PartnerFormValues; label: string }[] = [
-  { name: "name", label: "Name *" },
-  { name: "logo_url", label: "Logo URL" },
-  { name: "terms_url", label: "Terms URL" },
-  { name: "support_contact", label: "Support contact" },
-]
-
-const PartnerFields = () => (
-  <div className="flex flex-col gap-y-4">
-    {FIELDS.map(({ name, label }) => (
-      <Form.Field
-        key={name}
-        name={name}
-        render={({ field }) => (
-          <Form.Item>
-            <Form.Label>{label}</Form.Label>
-            <Form.Control>
-              <Input {...field} size="small" />
-            </Form.Control>
-            <Form.ErrorMessage data-testid={`evoucher-partner-${name}-error`} />
-          </Form.Item>
-        )}
-      />
-    ))}
-  </div>
-)
+const PartnerFields = () => {
+  // spec 10 กฎ 4e: รายการช่องย้ายเข้า component เพื่อแปล label (ลำดับ/ชื่อช่องเดิม)
+  const { t } = useTranslation("ecom-evoucher")
+  const fields: { name: keyof PartnerFormValues; label: string }[] = [
+    { name: "name", label: t("fields.nameRequired") },
+    { name: "logo_url", label: t("fields.logoUrl") },
+    { name: "terms_url", label: t("fields.termsUrl") },
+    { name: "support_contact", label: t("fields.supportContact") },
+  ]
+  return (
+    <div className="flex flex-col gap-y-4">
+      {fields.map(({ name, label }) => (
+        <Form.Field
+          key={name}
+          name={name}
+          render={({ field }) => (
+            <Form.Item>
+              <Form.Label>{label}</Form.Label>
+              <Form.Control>
+                <Input {...field} size="small" />
+              </Form.Control>
+              <Form.ErrorMessage data-testid={`evoucher-partner-${name}-error`} />
+            </Form.Item>
+          )}
+        />
+      ))}
+    </div>
+  )
+}
 
 /**
  * ADM-16 (spec 08 กฎ 20a): Edit/Delete ต่อแถวใน ActionMenu — ถือ prompt/mutation ลบของแถวเอง (แบบ `ProgramActions`)
@@ -78,6 +82,7 @@ const PartnerActions = ({
   deleteOnce: ReturnType<typeof createSingleFlight>
   onEdit: (partner: Partner) => void
 }) => {
+  const { t } = useTranslation("ecom-evoucher")
   const prompt = usePrompt()
   const queryClient = useQueryClient()
   const removing = useIsMutating({ mutationKey: DELETE_KEY }) > 0
@@ -89,7 +94,7 @@ const PartnerActions = ({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: evoucherKeys.partners })
       queryClient.invalidateQueries({ queryKey: evoucherKeys.pools })
-      toast.success("Partner deleted")
+      toast.success(t("partners.deleted"))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -98,10 +103,10 @@ const PartnerActions = ({
   const confirmDelete = () =>
     deleteOnce(async () => {
       const ok = await prompt({
-        title: `Delete ${partner.name}?`,
-        description: "Partners that still have pools cannot be deleted.",
-        confirmText: "Delete",
-        cancelText: "Cancel",
+        title: t("partners.deleteTitle", { name: partner.name }),
+        description: t("partners.deleteDescription"),
+        confirmText: t("actions.delete", { ns: "translation" }),
+        cancelText: t("actions.cancel", { ns: "translation" }),
       })
       if (ok) {
         await remove.mutateAsync().catch(() => undefined)
@@ -115,7 +120,7 @@ const PartnerActions = ({
         {
           actions: [
             {
-              label: "Edit",
+              label: t("actions.edit", { ns: "translation" }),
               icon: <PencilSquare />,
               disabled: removing,
               onClick: () => {
@@ -123,7 +128,7 @@ const PartnerActions = ({
                 onEdit(partner)
               },
             },
-            { label: "Delete", icon: <Trash />, disabled: removing, onClick: confirmDelete },
+            { label: t("actions.delete", { ns: "translation" }), icon: <Trash />, disabled: removing, onClick: confirmDelete },
           ],
         },
       ]}
@@ -138,6 +143,7 @@ const PartnerActions = ({
 // EV-6: พาร์ทเนอร์ของ e-voucher — ADM-5: DataTable ของ dashboard (แบ่งหน้าใน URL), Edit/Delete ใน ActionMenu,
 // ฟอร์มเป็น Form + zod (สร้าง = FocusModal, แก้ = Drawer แบบ state — ADR-018 Q5)
 export const PartnersSection = () => {
+  const { t } = useTranslation("ecom-evoucher")
   const queryClient = useQueryClient()
   const [createOpen, setCreateOpen] = useState(false)
   const [editing, setEditing] = useState<Partner | null>(null)
@@ -184,7 +190,7 @@ export const PartnersSection = () => {
   const save = useMutation({
     mutationFn: ({ id, body }: { id?: string; body: PartnerInput }) =>
       id ? evoucherApi.updatePartner(id, body) : evoucherApi.createPartner(body),
-    onSuccess: (_, { id }) => onSuccess(id ? "Partner updated" : "Partner created"),
+    onSuccess: (_, { id }) => onSuccess(id ? t("partners.updated") : t("partners.created")),
     onError,
   })
 
@@ -224,16 +230,16 @@ export const PartnersSection = () => {
       // spec 08 กฎ 39 (ADM-35): เนื้อหา 250px (แบบ ProductCell ของ dashboard) — DataTable เป็น auto layout + nowrap คอลัมน์จึงขยายตามข้อความ
       // จนปุ่ม … หลุดจอ; size/maxSize เป็น width/max-width ของ td (border-box) จึงบวก padding: คอลัมน์แรก pl-6+pr-6 = 298, คอลัมน์อื่น pr-6 = 274
       // ข้อความที่ถูกตัดยังมี tooltip ของ TruncatedCell
-      columnHelper.accessor("name", { header: "Name", size: 298, maxSize: 298 }),
+      columnHelper.accessor("name", { header: t("fields.name"), size: 298, maxSize: 298 }),
       columnHelper.accessor("support_contact", {
-        header: "Support contact",
+        header: t("fields.supportContact"),
         size: 274,
         maxSize: 274,
         cell: ({ getValue }) => getValue() ?? "-",
       }),
       actionsColumn,
     ],
-    [actionsColumn]
+    [actionsColumn, t]
   )
 
   const submit = form.handleSubmit((values) =>
@@ -264,7 +270,7 @@ export const PartnersSection = () => {
       isLoading={save.isPending}
       data-testid="evoucher-partner-save"
     >
-      Save
+      {t("actions.save", { ns: "translation" })}
     </Button>
   )
 
@@ -281,9 +287,9 @@ export const PartnersSection = () => {
               getRowId={(partner) => partner.id}
               rowCount={data?.count ?? 0}
               isLoading={isLoading || pastLastPage}
-              heading="Partners"
+              heading={t("partners.heading")}
               headingLevel="h2"
-              action={{ label: "Create partner", onClick: openCreate }}
+              action={{ label: t("partners.create"), onClick: openCreate }}
               prefix={PREFIX}
               pageSize={PAGE_SIZE}
               // spec 08 กฎ 29a: ตอน error ไม่มีแถบแบ่งหน้า ("0 of 0 results"/"2 of 1 pages" จาก rowCount 0)
@@ -291,11 +297,11 @@ export const PartnersSection = () => {
               enableSearch={false}
               emptyState={{
                 empty: loadFailed
-                  ? { heading: "Could not load partners", description: error?.message }
+                  ? { heading: t("partners.loadError"), description: error?.message }
                   : {
                       custom: (
                         <div data-testid="evoucher-partners-empty">
-                          <NoRecords title="No partners yet" message="Create a partner before creating voucher pools." />
+                          <NoRecords title={t("partners.emptyTitle")} message={t("partners.emptyMessage")} />
                         </div>
                       ),
                     },
@@ -316,7 +322,7 @@ export const PartnersSection = () => {
               <FocusModal.Body className="flex flex-1 justify-center overflow-auto py-16">
                 <div className="flex w-full max-w-lg flex-col gap-y-6">
                   <FocusModal.Title asChild>
-                    <Heading>Create partner</Heading>
+                    <Heading>{t("partners.create")}</Heading>
                   </FocusModal.Title>
                   <PartnerFields />
                 </div>
@@ -331,7 +337,7 @@ export const PartnersSection = () => {
           <Form {...form}>
             <KeyboundForm noValidate onSubmit={submit} className="flex flex-1 flex-col overflow-hidden">
               <Drawer.Header>
-                <Drawer.Title>Edit partner</Drawer.Title>
+                <Drawer.Title>{t("partners.edit")}</Drawer.Title>
               </Drawer.Header>
               <Drawer.Body className="flex-1 overflow-auto p-4">
                 <PartnerFields />
@@ -340,7 +346,7 @@ export const PartnersSection = () => {
                 <div className="flex items-center justify-end gap-x-2">
                   <Drawer.Close asChild>
                     <Button size="small" variant="secondary" type="button" disabled={save.isPending}>
-                      Cancel
+                      {t("actions.cancel", { ns: "translation" })}
                     </Button>
                   </Drawer.Close>
                   {saveButton}

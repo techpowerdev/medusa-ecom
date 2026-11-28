@@ -1,16 +1,16 @@
 import { HttpTypes } from "@medusajs/types"
-import { Container } from "@modules/common/components/ui"
 import Checkbox from "@modules/common/components/checkbox"
 import Input from "@modules/common/components/input"
 import { mapKeys } from "lodash"
 import React, { useMemo, useState } from "react"
 import AddressSelect from "../address-select"
-import CountrySelect from "../country-select"
+import { ADDRESS_COUNTRY_CODE } from "@lib/util/address-required"
 
 const SAVED_ADDRESS_FIELDS = [
   "first_name",
   "last_name",
   "address_1",
+  "address_2",
   "company",
   "postal_code",
   "city",
@@ -34,10 +34,12 @@ const ShippingAddress = ({
     "shipping_address.first_name": cart?.shipping_address?.first_name || "",
     "shipping_address.last_name": cart?.shipping_address?.last_name || "",
     "shipping_address.address_1": cart?.shipping_address?.address_1 || "",
+    "shipping_address.address_2": cart?.shipping_address?.address_2 || "",
     "shipping_address.company": cart?.shipping_address?.company || "",
     "shipping_address.postal_code": cart?.shipping_address?.postal_code || "",
     "shipping_address.city": cart?.shipping_address?.city || "",
-    "shipping_address.country_code": cart?.shipping_address?.country_code || "",
+    // SFUI-20b (spec 09 กฎ 70 ทาง (ก)): ประเทศคงที่ — ไม่มี UI ที่เขียนค่านี้ และไม่คัดลอกจากที่อยู่ต้นทาง
+    "shipping_address.country_code": ADDRESS_COUNTRY_CODE,
     "shipping_address.province": cart?.shipping_address?.province || "",
     "shipping_address.phone": cart?.shipping_address?.phone || "",
     email: cart?.email || customer?.email || "",
@@ -67,10 +69,11 @@ const ShippingAddress = ({
         "shipping_address.first_name": address?.first_name || "",
         "shipping_address.last_name": address?.last_name || "",
         "shipping_address.address_1": address?.address_1 || "",
+        "shipping_address.address_2": address?.address_2 || "",
         "shipping_address.company": address?.company || "",
         "shipping_address.postal_code": address?.postal_code || "",
         "shipping_address.city": address?.city || "",
-        "shipping_address.country_code": address?.country_code || "",
+        "shipping_address.country_code": ADDRESS_COUNTRY_CODE,
         "shipping_address.province": address?.province || "",
         "shipping_address.phone": address?.phone || "",
       }))
@@ -118,11 +121,11 @@ const ShippingAddress = ({
   return (
     <>
       {customer && (addressesInRegion?.length || 0) > 0 && (
-        <Container
-          className="mb-6 flex flex-col gap-y-4 p-5"
+        <div
+          className="rounded-lg bg-card mb-6 flex flex-col gap-y-4 p-5"
           data-testid="saved-address-greeting"
         >
-          <p className="text-small-regular">
+          <p className="text-xs leading-5 font-normal">
             {`สวัสดีคุณ ${customer.first_name} ต้องการใช้ที่อยู่ที่บันทึกไว้หรือไม่?`}
           </p>
           <AddressSelect
@@ -134,9 +137,10 @@ const ShippingAddress = ({
             }
             onSelect={setFormAddress}
           />
-        </Container>
+        </div>
       )}
-      <div className="grid grid-cols-2 gap-4">
+      {/* SFUI-18b (spec 09 กฎ 53–54): ลำดับแบบที่อยู่ไทย; < 768px แถวละช่อง, ≥ md คู่ ชื่อ–นามสกุล, ตำบล/แขวง–เขต/อำเภอ, จังหวัด–รหัสไปรษณีย์ (ช่องอื่นเต็มแถว) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input
           label="ชื่อ"
           name="shipping_address.first_name"
@@ -156,30 +160,33 @@ const ShippingAddress = ({
           data-testid="shipping-last-name-input"
         />
         <Input
-          label="ที่อยู่"
-          name="shipping_address.address_1"
-          autoComplete="address-line1"
-          value={formData["shipping_address.address_1"]}
-          onChange={handleChange}
-          required
-          data-testid="shipping-address-input"
-        />
-        <Input
           label="บริษัท"
           name="shipping_address.company"
           value={formData["shipping_address.company"]}
           onChange={handleChange}
           autoComplete="organization"
+          className="md:col-span-2"
           data-testid="shipping-company-input"
         />
         <Input
-          label="รหัสไปรษณีย์"
-          name="shipping_address.postal_code"
-          autoComplete="postal-code"
-          value={formData["shipping_address.postal_code"]}
+          label="บ้านเลขที่ หมู่ ซอย ถนน"
+          name="shipping_address.address_1"
+          autoComplete="address-line1"
+          placeholder="เช่น 99/1 หมู่ 2 ซ.สุขุมวิท 3 ถ.สุขุมวิท"
+          value={formData["shipping_address.address_1"]}
           onChange={handleChange}
           required
-          data-testid="shipping-postal-code-input"
+          className="md:col-span-2"
+          data-testid="shipping-address-input"
+        />
+        <Input
+          label="ตำบล/แขวง"
+          name="shipping_address.address_2"
+          autoComplete="address-level3"
+          value={formData["shipping_address.address_2"]}
+          onChange={handleChange}
+          required
+          data-testid="shipping-address-2-input"
         />
         <Input
           label="เขต/อำเภอ"
@@ -190,23 +197,27 @@ const ShippingAddress = ({
           required
           data-testid="shipping-city-input"
         />
-        <CountrySelect
-          name="shipping_address.country_code"
-          autoComplete="country"
-          region={cart?.region}
-          value={formData["shipping_address.country_code"]}
-          onChange={handleChange}
-          required
-          data-testid="shipping-country-select"
-        />
         <Input
           label="จังหวัด"
           name="shipping_address.province"
           autoComplete="address-level1"
           value={formData["shipping_address.province"]}
           onChange={handleChange}
+          required
           data-testid="shipping-province-input"
         />
+        <Input
+          label="รหัสไปรษณีย์"
+          name="shipping_address.postal_code"
+          autoComplete="postal-code"
+          placeholder="เช่น 10110"
+          value={formData["shipping_address.postal_code"]}
+          onChange={handleChange}
+          required
+          data-testid="shipping-postal-code-input"
+        />
+        {/* SFUI-20b (spec 09 กฎ 70 — ADR-034 D5): เปิดขายเฉพาะไทย → ไม่ render ช่องประเทศ ส่งค่าคงที่ */}
+        <input type="hidden" name="shipping_address.country_code" value={formData["shipping_address.country_code"]} />
       </div>
       <div className="my-8">
         <Checkbox
@@ -217,7 +228,7 @@ const ShippingAddress = ({
           data-testid="billing-address-checkbox"
         />
       </div>
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <Input
           label="อีเมล"
           name="email"
@@ -233,6 +244,7 @@ const ShippingAddress = ({
           label="เบอร์โทรศัพท์"
           name="shipping_address.phone"
           autoComplete="tel"
+          placeholder="เช่น 0812345678"
           value={formData["shipping_address.phone"]}
           onChange={handleChange}
           data-testid="shipping-phone-input"

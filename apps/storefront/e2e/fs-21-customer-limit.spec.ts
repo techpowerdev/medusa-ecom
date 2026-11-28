@@ -1,6 +1,7 @@
 import { APIResponse, Page } from "@playwright/test"
 
 import { BACKEND_URL, expect, test } from "./support/fixtures"
+import { chooseOption, selectOptions } from "./support/select"
 import {
   STOREFRONT_COUNTRY as CC,
   Headers,
@@ -135,7 +136,7 @@ test("AC-28 (a): limit 1 ยังไม่เคยซื้อ → PDP เล�
     await expect(limit).toBeVisible()
     await expect(limit).toHaveText(THAI)
     await expect(limit).toContainText("1")
-    await expect(page.getByTestId("product-quantity-select").locator("option")).toHaveCount(1)
+    expect((await selectOptions(page.getByTestId("product-quantity-select"))).options).toHaveLength(1)
     await expect(page.getByTestId("flash-customer-limit-reached")).toHaveCount(0)
     await expect(page.getByTestId("add-product-button")).toBeEnabled()
     await evidence("01-pdp-customer-limit")
@@ -202,7 +203,7 @@ test("AC-28 (c): cart มี line flash qty 2 ขณะ limit 1 → เตือ
 
   await step("แก้จำนวนเป็น 1 ในตะกร้า → คำเตือนหาย และขั้น review ปุ่มกดได้", async () => {
     await page.goto(`/${CC}/cart`)
-    await page.getByTestId("product-select-button").selectOption("1")
+    await chooseOption(page.getByTestId("product-select-button"), "1")
     await expect(page.getByTestId("cart-flash-exceeds-customer-limit")).toHaveCount(0)
     await toReview(page)
     await expect(page.getByTestId("review-flash-exceeds-customer-limit")).toHaveCount(0)

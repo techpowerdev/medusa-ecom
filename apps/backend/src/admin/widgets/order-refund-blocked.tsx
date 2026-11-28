@@ -2,7 +2,8 @@ import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { useOrderPreview } from "@medusajs/dashboard/hooks"
 import { DetailWidgetProps, HttpTypes } from "@medusajs/framework/types"
 import { Alert, Text } from "@medusajs/ui"
-import { REFUND_BLOCKED_MESSAGE, activeChangeType } from "../lib/order-refund-blocked"
+import { useTranslation } from "react-i18next"
+import { activeChangeType, refundBlockedMessage } from "../lib/order-refund-blocked"
 
 // PAY-10 (spec 06 กฎข้อ 12, Q-P11 = ก): ปุ่ม Refund ของหน้า order เป็นของ @medusajs/dashboard (ไม่มีจุดขยายให้ปิด)
 // จึงเตือนบนหน้า order เมื่อมี order change ค้าง — ปุ่มยังกดได้ แล้ว middleware ของ PAY-8 ตอบ 400 เป็น toast
@@ -12,6 +13,8 @@ import { REFUND_BLOCKED_MESSAGE, activeChangeType } from "../lib/order-refund-bl
 // `order_change` ของ preview = active change ที่ order module หาด้วย status pending/requested = เงื่อนไขของ guard PAY-8
 // โหลดอยู่/โหลดล้ม → ไม่ render (เป็นคำเตือนเสริม backend กัน refund อยู่แล้ว)
 const OrderRefundBlockedWidget = ({ data: order }: DetailWidgetProps<HttpTypes.AdminOrder>) => {
+  // spec 10: useTranslation ให้ widget render ใหม่เมื่อเปลี่ยนภาษา (ข้อความจาก lib แปลตอนเรียก)
+  const { t } = useTranslation("ecom-evoucher")
   const { order: preview } = useOrderPreview(order.id)
   const type = activeChangeType(preview?.order_change)
 
@@ -22,10 +25,10 @@ const OrderRefundBlockedWidget = ({ data: order }: DetailWidgetProps<HttpTypes.A
   return (
     <Alert variant="warning" data-testid="order-refund-blocked">
       <Text size="small" leading="compact" weight="plus">
-        {REFUND_BLOCKED_MESSAGE}
+        {refundBlockedMessage()}
       </Text>
       <Text size="small" leading="compact" className="text-ui-fg-subtle" data-testid="order-refund-blocked-types">
-        Pending: {type}
+        {t("refundBlocked.pending", { type })}
       </Text>
     </Alert>
   )

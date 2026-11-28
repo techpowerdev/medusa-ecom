@@ -1,7 +1,7 @@
 import { lineReferenceTotal } from "@lib/util/line-item-compare-at"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
-import { clx } from "@modules/common/components/ui"
+import { cn } from "@/lib/utils"
 
 type LineItemUnitPriceProps = {
   item: HttpTypes.StoreCartLineItem | HttpTypes.StoreOrderLineItem
@@ -24,12 +24,12 @@ const LineItemUnitPrice = ({
   )
 
   return (
-    <div className="flex flex-col text-ui-fg-muted justify-center h-full">
+    <div className="flex flex-col text-muted-foreground justify-center h-full">
       {hasReducedPrice && (
         <>
           <p>
             {style === "default" && (
-              <span className="text-ui-fg-muted">ราคาปกติ: </span>
+              <span className="text-muted-foreground">ราคาปกติ: </span>
             )}
             <span
               className="line-through"
@@ -42,13 +42,13 @@ const LineItemUnitPrice = ({
             </span>
           </p>
           {style === "default" && (
-            <span className="text-ui-fg-interactive">-{percentage_diff}%</span>
+            <span className="text-primary">-{percentage_diff}%</span>
           )}
         </>
       )}
       <span
-        className={clx("text-base-regular", {
-          "text-ui-fg-interactive": hasReducedPrice,
+        className={cn("text-sm leading-6 font-normal", {
+          "text-primary": hasReducedPrice,
         })}
         data-testid="product-unit-price"
       >

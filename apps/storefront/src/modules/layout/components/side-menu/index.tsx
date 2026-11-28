@@ -1,12 +1,21 @@
 "use client"
 
-import { Popover, PopoverPanel, Transition } from "@headlessui/react"
 import useToggleState from "@lib/hooks/use-toggle-state"
-import { ArrowRightMini, XMark } from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { Text, clx } from "@modules/common/components/ui"
-import { Fragment } from "react"
+import { ArrowRight, X } from "lucide-react"
+import { useState } from "react"
+
+import { SheetContent } from "@/components/sheet"
+import {
+  Sheet,
+  SheetClose,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import CountrySelect from "../country-select"
 
 // test id คงเดิมของ starter (`<key>-link`) — e2e หาด้วย test id ไม่ใช่ข้อความ (ADR-014)
@@ -22,101 +31,90 @@ type SideMenuProps = {
   storeName: string
 }
 
+// SFUI-3b (spec 09 กฎ 4): side menu เป็น `Sheet side="left"` — Radix จัดการ focus trap, Escape และคืน focus ให้ `nav-menu-button`
 const SideMenu = ({ regions, storeName }: SideMenuProps) => {
+  const [open, setOpen] = useState(false)
   const countryToggleState = useToggleState()
+  const close = () => setOpen(false)
+  // SFUI-20c (spec 09 กฎ 72 — ADR-034 D6): ประเทศรวมทุก region ≤ 1 → ไม่มีอะไรให้เลือก ไม่ render ตัวเลือก region และลูกศร
+  const countryCount = regions?.flatMap((r) => r.countries ?? []).length ?? 0
 
   return (
     <div className="h-full">
       <div className="flex items-center h-full">
-        <Popover className="h-full flex">
-          {({ open, close }) => (
-            <>
-              <div className="relative flex h-full">
-                <Popover.Button
-                  data-testid="nav-menu-button"
-                  className="relative h-full flex items-center transition-all ease-out duration-200 focus:outline-none hover:text-ui-fg-base"
-                >
-                  เมนู
-                </Popover.Button>
-              </div>
-
-              {open && (
-                <div
-                  className="fixed inset-0 z-[50] bg-black/0 pointer-events-auto"
-                  onClick={close}
-                  data-testid="side-menu-backdrop"
-                />
-              )}
-
-              <Transition
-                show={open}
-                as={Fragment}
-                enter="transition ease-out duration-150"
-                enterFrom="opacity-0"
-                enterTo="opacity-100 backdrop-blur-2xl"
-                leave="transition ease-in duration-150"
-                leaveFrom="opacity-100 backdrop-blur-2xl"
-                leaveTo="opacity-0"
+        <div className="h-full flex">
+          <Sheet open={open} onOpenChange={setOpen}>
+            <div className="relative flex h-full">
+              <SheetTrigger
+                data-testid="nav-menu-button"
+                className="relative h-full flex items-center transition-all ease-out duration-200 focus:outline-hidden hover:text-foreground"
               >
-                <PopoverPanel className="flex flex-col absolute w-full pr-4 sm:pr-0 sm:w-1/3 2xl:w-1/4 sm:min-w-min h-[calc(100vh-1rem)] z-[51] inset-x-0 text-sm text-ui-fg-on-color m-2 backdrop-blur-2xl">
-                  <div
-                    data-testid="nav-menu-popup"
-                    className="flex flex-col h-full bg-[rgba(3,7,18,0.5)] rounded-rounded justify-between p-6"
-                  >
-                    <div className="flex justify-end" id="xmark">
-                      <button
-                        data-testid="close-menu-button"
+                เมนู
+              </SheetTrigger>
+            </div>
+
+            <SheetContent
+              side="left"
+              overlayProps={{ "data-testid": "side-menu-backdrop" }}
+              // เต็มจอบนมือถือเหมือนเดิม (แผงเดิม w-full) — w-3/4 ของ Sheet แคบกว่ารายการประเทศ (min-w 320px) จนลูกศรหลุดจอ
+              className="w-full justify-between gap-0 p-6 text-sm sm:max-w-sm"
+              data-testid="nav-menu-popup"
+            >
+              <div className="flex items-center justify-between">
+                <SheetTitle className="text-base">เมนู</SheetTitle>
+                {/* SFUI-21a (spec 09 กฎ 76): ปุ่มปิด = Close asChild → Button ghost icon ขนาด default ของ shadcn (icon X size-4) */}
+                <SheetClose asChild>
+                  <Button variant="ghost" size="icon" aria-label="ปิดเมนู" data-testid="close-menu-button">
+                    <X />
+                  </Button>
+                </SheetClose>
+              </div>
+              <SheetDescription className="sr-only">
+                ลิงก์ไปยังหน้าต่างๆ ของร้าน และเลือกประเทศที่จัดส่ง
+              </SheetDescription>
+              <ul className="flex flex-col gap-6 items-start justify-start">
+                {SideMenuItems.map(({ key, label, href }) => {
+                  return (
+                    <li key={key}>
+                      <LocalizedClientLink
+                        href={href}
+                        className="text-3xl leading-10 hover:text-muted-foreground/60"
                         onClick={close}
-                        aria-label="ปิดเมนู"
+                        data-testid={`${key}-link`}
                       >
-                        <XMark />
-                      </button>
-                    </div>
-                    <ul className="flex flex-col gap-6 items-start justify-start">
-                      {SideMenuItems.map(({ key, label, href }) => {
-                        return (
-                          <li key={key}>
-                            <LocalizedClientLink
-                              href={href}
-                              className="text-3xl leading-10 hover:text-ui-fg-disabled"
-                              onClick={close}
-                              data-testid={`${key}-link`}
-                            >
-                              {label}
-                            </LocalizedClientLink>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                    <div className="flex flex-col gap-y-6">
-                      <div
-                        className="flex justify-between"
-                        onMouseEnter={countryToggleState.open}
-                        onMouseLeave={countryToggleState.close}
-                      >
-                        {regions && (
-                          <CountrySelect
-                            toggleState={countryToggleState}
-                            regions={regions}
-                          />
-                        )}
-                        <ArrowRightMini
-                          className={clx(
-                            "transition-transform duration-150",
-                            countryToggleState.state ? "-rotate-90" : ""
-                          )}
-                        />
-                      </div>
-                      <Text className="flex justify-between txt-compact-small">
-                        © {new Date().getFullYear()} {storeName} สงวนลิขสิทธิ์
-                      </Text>
-                    </div>
+                        {label}
+                      </LocalizedClientLink>
+                    </li>
+                  )
+                })}
+              </ul>
+              <div className="flex flex-col gap-y-6">
+                {/* SFUI-3b (review SFUI-3c): ลูกศรสะท้อนสถานะเปิดของรายการประเทศผ่าน `toggleState` — ไม่เปิด/ปิดตาม hover
+                    (รายการประเทศเปิดด้วยคลิก/คีย์บอร์ดของ Select ใน SFUI-3c) */}
+                {regions && countryCount > 1 && (
+                  <div className="flex justify-between">
+                    <CountrySelect
+                      toggleState={countryToggleState}
+                      regions={regions}
+                    />
+                    <ArrowRight
+                      aria-hidden
+                      data-testid="country-select-arrow"
+                      data-state={countryToggleState.state ? "open" : "closed"}
+                      className={cn(
+                        "size-4 transition-transform duration-150",
+                        countryToggleState.state ? "-rotate-90" : ""
+                      )}
+                    />
                   </div>
-                </PopoverPanel>
-              </Transition>
-            </>
-          )}
-        </Popover>
+                )}
+                <p className="flex justify-between text-sm leading-5 text-muted-foreground">
+                  © {new Date().getFullYear()} {storeName} สงวนลิขสิทธิ์
+                </p>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </div>
   )

@@ -1,0 +1,157 @@
+# SFUI-12b — evidence (spec 09 รอบ 48 กฎ 28–33, 37; AC-33, AC-34, AC-36, AC-37)
+# ฐาน: feat/SFUI-11b-field-errors 9b440e36 (stack); Node 24.12.0; storefront prod build (next start :8421), backend medusa start จาก .medusa/server (NODE_ENV=production, :9421), DB medusa_sfui12b, Redis db 13; Stripe test key จาก shell + stripe listen (events ตาม CI)
+
+## Red (build ของ commit ฐาน 9b440e36) — e2e/sfui-12b-checkout-forms.spec.ts: 3 failed
+1) shipping-postal-code-input: placeholder — Expected "เช่น 10110" (ไม่มี placeholder)
+2) digital-only billing-postal-input: placeholder — Expected "เช่น 10110"
+3) discount-input-label: element(s) not found (ช่องโค้ดไม่มี label)
+option ของ shipping-country-select/billing-country-select บน commit ฐาน: [["","เลือกประเทศ",true],["th","Thailand",false]]
+
+## Green: e2e/sfui-12b-checkout-forms.spec.ts — 3 passed
+  ✓  108 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:187:5 › AC-34, AC-37: checkout ที่อยู่จัดส่ง + ใบเสร็จ — label เหนือช่อง, placeholder, option เท่าเดิม, แถวละช่อง < 768px / คู่ ≥ 768px 
+  ✓  109 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:238:5 › AC-34, AC-37: checkout ของ cart digital-only — อีเมลแถวเดียว, ช่องใบเสร็จเป็นคู่ ≥ 768px 
+  ✓  110 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:271:5 › AC-34: โค้ดส่วนลด — label เหนือช่อง และ promotion-error ผูก aria-describedby ขณะช่องเปิด (กฎ 32d) 
+
+## AC-36: git diff origin/develop --stat -- apps/backend apps/storefront/package.json pnpm-lock.yaml apps/storefront/src/styles/globals.css
+จำนวนบรรทัด output: 0 (ว่าง) · src/components/ui ไม่เปลี่ยนจาก 9b440e36: 0 บรรทัด
+
+## vitest ทั้งหมด
+ Test Files  134 passed (134)
+      Tests  2051 passed (2051)
+## playwright project unit (รวม evidence-budget, AC-5, AC-19, AC-26)
+  240 passed (2.2s)
+## pnpm lint: 0 errors (warning เดิม storefront 27 ไม่มีในไฟล์ของ task) · pnpm typecheck: ผ่าน · pnpm --filter storefront build: ผ่าน
+
+## computed style ส่วนอื่นของหน้า (build ฐานเทียบ build นี้, 375 และ 1280px)
+เท่าเดิม: addresses-heading, submit-address-button, add-discount-button, discount-apply-button (36px x 67.67px), promotion-error, saved-address-greeting, checkout-summary, h2 ที่อยู่ใบเสร็จ, discount-input (182px@1280 / 204px@375 x 36px)
+ต่างโดยตั้งใจ (กฎ 37a): ความสูง addresses-section, ความกว้างช่องที่ 375px; สีพื้นของ discount-apply-button ที่ 1280 ต่างเพราะวัดกลาง transition ของ hover (ที่ 375 ค่า hover ตรงกันทั้งสอง build)
+label ทุกตัวบรรทัดเดียวที่ 768/1023/1024/1100/1279/1280px (กฎ 37c-d)
+
+## e2e ทุก spec ที่อ้าง checkout/ที่อยู่/discount/testid ของกฎ 32e (46 ไฟล์/124 test, chromium, --workers=2)
+✓    2 [chromium] › e2e/affiliate-last-click.spec.ts:22:5 › AF-3b: click Ann → add to cart → click Bob → checkout ทันที → order เป็นของ Bob (AC-21)
+✓    3 [chromium] › e2e/core-14-buy-login.spec.ts:103:5 › AC-42, AC-56: UCP, cart/resume และหน้า order transfer → 404
+✓    4 [chromium] › e2e/core-14-buy-login.spec.ts:126:5 › AC-43: ไม่มี session แต่มี cookie cart ค้าง → หน้า cart ว่าง ไม่มี 5xx และ cookie ถูกล้าง
+✓    1 [chromium] › e2e/core-14-buy-login.spec.ts:39:5 › AC-41: /buy ไม่มี session → login พร้อม return URL ไม่สร้าง cart; ล็อกอินแล้ว → checkout ด้วย cart ของลูกค้า
+✓    5 [chromium] › e2e/core-14g-action-stale-jwt.spec.ts:101:5 › AC-120: ลบ _medusa_jwt บน /th/cart แล้วเปลี่ยนจำนวน/ลบโค้ด/ใส่โค้ด/ลบสินค้า → SIGN_IN_AGAIN_MESSAGE แถวสินค้ายังอยู่
+✓    6 [chromium] › e2e/core-19b-continue-to-review.spec.ts:23:5 › AC-64: กด Continue to review ครั้งเดียว 20 รอบ (cart ใหม่ทุกรอบ) → step=review ภายใน 10 วินาที
+✓   21 [chromium] › e2e/core-19b-continue-to-review.spec.ts:74:5 › AC-64: PromptPay — กดครั้งเดียวทันทีที่ปุ่มพร้อม 20 รอบ → step=review ภายใน 10 วินาที และมี session เดียว
+✓    9 [chromium] › e2e/core-23c-account-forms.spec.ts:140:7 › AC-112 › ที่อยู่ใบเสร็จ: action ล้มระดับ network → ยังเห็นฟอร์มพร้อม error ไทย
+✓   10 [chromium] › e2e/core-23c-account-forms.spec.ts:183:7 › AC-112 › กดแก้ไขแล้วพิมพ์ทันที → input มีค่าที่พิมพ์
+✓   11 [chromium] › e2e/core-23c-account-forms.spec.ts:202:7 › AC-112 › /th/account ไม่มี 404 ใต้ /th/ และลิงก์บริการลูกค้าชี้ /contact
+✓    7 [chromium] › e2e/core-23c-account-forms.spec.ts:61:7 › AC-112 › เพิ่มที่อยู่ล้ม (500) → ค่าที่พิมพ์ยังอยู่และ error ไทย
+✓    8 [chromium] › e2e/core-23c-account-forms.spec.ts:95:7 › AC-112 › แก้ที่อยู่ล้ม (500) → ค่าที่พิมพ์ยังอยู่และ error ไทย
+✓   14 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:126:7 › CORE-33 › AC-127 checkout: cart t-shirt ที่ค้าง Digital delivery ไม่มี radio ติ๊ก ปุ่ม disabled จนเลือก Standard
+✓   15 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:176:7 › CORE-35 › AC-129 checkout: cart ค้าง Digital delivery เปิด step=payment/review ตรงๆ → กลับ delivery; เลือก Standard แล้วไป payment ได้
+✓   12 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:37:5 › AC-125 checkout: ขั้น delivery ของ cart t-shirt มี Standard ไม่มี Digital delivery
+✓   13 [chromium] › e2e/core-32-shipping-profile-filter.spec.ts:59:5 › AC-125 หน้ากลุ่ม: หลังกด group-shipping-load ไม่มี option ของ Digital delivery
+✓   18 [chromium] › e2e/core-38-mobile-layout.spec.ts:125:5 › AC-132: checkout — label ของฟอร์มที่อยู่ไม่ทับค่า, สรุปที่อยู่ 375 เรียงแนวตั้งและอีเมลยาวไม่ล้น, 1280 แถวเดียว
+✓   19 [chromium] › e2e/core-38-mobile-layout.spec.ts:203:5 › AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่าง + billing ต่างกัน → ข้อความอยู่ในกล่องของตัวเองที่ 375/640/1280
+✓   20 [chromium] › e2e/core-38-mobile-layout.spec.ts:248:5 › AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่างอยู่ในกล่องของตัวเองที่ 375/640/1280
+✓   17 [chromium] › e2e/core-38-mobile-layout.spec.ts:95:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (1280px)
+✓   16 [chromium] › e2e/core-38-mobile-layout.spec.ts:95:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (375px)
+✓   22 [chromium] › e2e/core-40-discount-action-race.spec.ts:67:5 › AC-134: ลบโค้ด A ค้าง → ปุ่มใส่โค้ด disabled; ปล่อยแล้วใส่ B → cart มีแค่ B
+✓   26 [chromium] › e2e/core-41-checkout-first-step.spec.ts:152:7 › CORE-45 step ที่ใช้ไม่ได้ › AC-139 cart t-shirt ไม่มีที่อยู่: step=delivery / ไม่มี step / step=foo / step ซ้ำ → step=address
+✓   27 [chromium] › e2e/core-41-checkout-first-step.spec.ts:177:7 › CORE-45 step ที่ใช้ไม่ได้ › AC-139 cart มีที่อยู่ + Standard: ไม่มี step → step=payment, step=delivery ไม่ถูก redirect
+✓   28 [chromium] › e2e/core-41-checkout-first-step.spec.ts:206:7 › CORE-45 step ที่ใช้ไม่ได้ › D-1 cart ใน cache ยังไม่มีที่อยู่ แต่ cart จริงมีแล้ว: step=delivery ไม่เด้งกลับ address
+✓   29 [chromium] › e2e/core-41-checkout-first-step.spec.ts:232:7 › CORE-45 step ที่ใช้ไม่ได้ › AC-139 cart digital-only มีที่อยู่: step=delivery → step=payment
+✓   23 [chromium] › e2e/core-41-checkout-first-step.spec.ts:41:5 › AC-135 cart t-shirt ไม่มีที่อยู่: เปิด step=payment/review ตรงๆ → step=address ฟอร์มที่อยู่เปิด
+✓   24 [chromium] › e2e/core-41-checkout-first-step.spec.ts:65:5 › AC-135 cart digital-only ไม่มีที่อยู่: เปิด step=review ตรงๆ → step=address ฟอร์มที่อยู่ใบเสร็จเปิด
+✓   25 [chromium] › e2e/core-41-checkout-first-step.spec.ts:88:5 › AC-135 regression: cart มีที่อยู่ + Standard เปิด step=payment ตรงๆ → ไม่ถูก redirect
+✓   30 [chromium] › e2e/core-47-cart-375-long-title.spec.ts:125:5 › AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90 ตัวอ่านได้ ยอด 7 หลักไม่ถูกตัด, ≥ 1024 ตารางเดิม, preview ไม่เปลี่ยน
+✓   31 [chromium] › e2e/core-4e-checkout-polish.spec.ts:127:5 › AC-91: ขั้นที่อยู่ของ checkout — placeholder ไทย, test id/aria-label ของ popup, label ไม่ทับค่า
+✓   32 [chromium] › e2e/core-4g-checkout-polish.spec.ts:73:5 › AC-99: โค้ดหมดอายุแสดง promotion-error ไทย, dropdown ที่อยู่ที่มี field ว่าง, ความสูง CountrySelect
+✓   34 [chromium] › e2e/core-4j-checkout-discount-address.spec.ts:110:5 › AC-111: หลัง document.fonts.ready billing-country-code-select สูงเท่า input ข้างเคียง (±1px)
+✓   33 [chromium] › e2e/core-4j-checkout-discount-address.spec.ts:53:5 › AC-111: โค้ดมีช่องว่างหัวท้ายใช้ได้ และค่าที่พิมพ์ในฟอร์มที่อยู่ไม่หายหลังใส่โค้ด
+✓   36 [chromium] › e2e/core-52-checkout-guards.spec.ts:119:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (1280x800)
+✓   47 [chromium] › e2e/core-52-checkout-guards.spec.ts:119:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (375x812)
+✓   38 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 1280x800 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (1280x800)
+✓   48 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 375x812 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (375x812)
+✓   40 [chromium] › e2e/core-52-checkout-guards.spec.ts:177:9 › viewport 1280x800 › AC-147 ใบเสร็จแยก: error แล้วแก้ส่งใหม่ → billing เป็นค่าที่กรอก (1280x800)
+✓   50 [chromium] › e2e/core-52-checkout-guards.spec.ts:177:9 › viewport 375x812 › AC-147 ใบเสร็จแยก: error แล้วแก้ส่งใหม่ → billing เป็นค่าที่กรอก (375x812)
+✓   42 [chromium] › e2e/core-52-checkout-guards.spec.ts:224:9 › viewport 1280x800 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (1280x800)
+✓   52 [chromium] › e2e/core-52-checkout-guards.spec.ts:224:9 › viewport 375x812 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (375x812)
+✓   44 [chromium] › e2e/core-52-checkout-guards.spec.ts:259:9 › viewport 1280x800 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (1280x800)
+✓   54 [chromium] › e2e/core-52-checkout-guards.spec.ts:259:9 › viewport 375x812 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (375x812)
+✓   55 [chromium] › e2e/core-52-checkout-guards.spec.ts:299:7 › CORE-58 อักขระที่มองไม่เห็น 1280x800 › AC-157 เขต/อำเภอเป็น U+200B ล้วน → error ไทย ไม่บันทึกลง cart
+✓   57 [chromium] › e2e/core-52-checkout-guards.spec.ts:327:7 › CORE-58 อักขระที่มองไม่เห็น 1280x800 › AC-157 cart digital-only: เขต/อำเภอใบเสร็จเป็น U+200B ล้วน → error ไทย ไม่บันทึกลง cart
+✓   35 [chromium] › e2e/core-52-checkout-guards.spec.ts:97:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (1280x800)
+✓   45 [chromium] › e2e/core-52-checkout-guards.spec.ts:97:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (375x812)
+✓   37 [chromium] › e2e/core-57-cart-totals.spec.ts:62:5 › AC-156: ค่าจัดส่งใน cart-totals = ราคา option ที่เลือก และแถวรวม VAT รวมได้ยอดสุทธิ ที่ /th/cart และขั้น review
+✓   41 [chromium] › e2e/core-60-cart-subtotal-label.spec.ts:161:7 › CORE-62 › AC-161: ส่วนลดค่าส่งอย่างเดียว ป้ายแถวแรกเท่ากับเมื่อไม่มีส่วนลด และแถวรวมได้ยอดสุทธิ
+✓   39 [chromium] › e2e/core-60-cart-subtotal-label.spec.ts:44:5 › AC-159: ป้ายแถวแรกของ cart-totals เปลี่ยนเมื่อมีส่วนลด ตัวเลขเท่าเดิม และไม่ล้นที่ 375
+✓   43 [chromium] › e2e/core-66-checkout-preview-unit-price.spec.ts:78:5 › AC-165 (a)–(d): preview ของ checkout — qty 1 ไม่มีราคาต่อหน่วย, qty 2 คงต่อหน่วย + รวม ที่ 1280 และ 375; /cart คงเดิม
+✓   46 [chromium] › e2e/core-67-sale-price-strikethrough.spec.ts:110:5 › AC-166b: price list แบบ sale แสดงราคาเดิม (compare_at_unit_price) ขีดฆ่าใน /cart, preview และ order-completed ไม่ซ้อนกับ promotion
+✓   51 [chromium] › e2e/core-69-review-without-payment.spec.ts:52:7 › AC-168 cart มีที่อยู่ + Standard, มี payment collection แต่ไม่มี session: เปิด step=review → step=payment เห็นตัวเลือกการชำระเงิน
+✓   49 [chromium] › e2e/core-69-review-without-payment.spec.ts:52:7 › AC-168 cart มีที่อยู่ + Standard, ไม่มี payment collection: เปิด step=review → step=payment เห็นตัวเลือกการชำระเงิน
+✓   53 [chromium] › e2e/core-69-review-without-payment.spec.ts:75:5 › AC-168 regression: cart มี session ของ manual payment เปิด step=review → อยู่ที่ review และปุ่มสั่งซื้อพร้อม
+✓   56 [chromium] › e2e/core-76-place-order-outcome.spec.ts:122:7 › AC-175: ผลของการยืนยันคำสั่งซื้อในขั้น review › (a) manual: ชิ้นสุดท้ายถูกซื้อไประหว่างอยู่ขั้น review → ข้อความให้ลดจำนวน ไม่มีคำ คืนเงิน
+✓   59 [chromium] › e2e/core-76-place-order-outcome.spec.ts:148:7 › AC-175: ผลของการยืนยันคำสั่งซื้อในขั้น review › (a2) 409 กำลัง complete อยู่ แล้ว order มีอยู่ → หน้า order confirmed ภายใน 10 วินาที
+✓   62 [chromium] › e2e/core-76-place-order-outcome.spec.ts:173:7 › AC-175: ผลของการยืนยันคำสั่งซื้อในขั้น review › (a2) 409 กำลัง complete อยู่ และยังไม่มี order → checkout-processing-notice ไม่ใช่ notice คืนเงิน
+✓   65 [chromium] › e2e/core-76-place-order-outcome.spec.ts:197:7 › AC-175: ผลของการยืนยันคำสั่งซื้อในขั้น review › (a2) 401 (session หมดอายุ) → หน้า login ไม่เห็น notice คืนเงิน
+✓   58 [chromium] › e2e/core-89-payment-summary-mobile.spec.ts:62:7 › 375×812 › AC-186: payment-details-summary อยู่ใต้ payment-method-summary และกว้าง ≥ 300px
+✓   61 [chromium] › e2e/core-89-payment-summary-mobile.spec.ts:80:7 › AC-186 (1280): สองกล่องสรุปการชำระเงินอยู่แถวเดียวกันเหมือนเดิม
+✓   60 [chromium] › e2e/core-89-payment-summary-mobile.spec.ts:80:7 › AC-186 (640): สองกล่องสรุปการชำระเงินอยู่แถวเดียวกันเหมือนเดิม
+✓   67 [chromium] › e2e/core-store.spec.ts:170:5 › AC-4: admin สร้างสินค้า 2 variant พร้อม stock → ขึ้นบน storefront ภายใน 5 วินาที
+✓   63 [chromium] › e2e/core-store.spec.ts:20:5 › AC-6: guest กด Add to cart → ไปหน้า login, API cart ตอบ 401, ล็อกอินแล้วสินค้าเข้า cart
+✓   64 [chromium] › e2e/core-store.spec.ts:60:5 › AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture → shipped email → My orders
+✓   69 [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:163:5 › AC-37 (กฎข้อ 24d): cart ผสม voucher + สินค้าจัดส่ง ใช้ flow ปกติที่มีขั้น delivery
+✓   66 [chromium] › e2e/ev-7c-digital-only-checkout.spec.ts:87:5 › AC-37, AC-3: cart มีแต่ voucher → ไม่มีขั้น delivery, ที่อยู่ใบกำกับภาษีเป็น shipping_address, order สำเร็จ
+✓   68 [chromium] › e2e/ev-7d-digital-only-totals.spec.ts:18:5 › AC-42: cart digital-only ไม่มีค่าจัดส่งใน cart-totals ที่ /cart และขั้น review
+✓   70 [chromium] › e2e/ev-7d-digital-only-totals.spec.ts:72:5 › AC-42: cart ผสม voucher + สินค้าจัดส่ง ยังมีแถวค่าจัดส่ง
+✓   71 [chromium] › e2e/flash-sale-fs15.spec.ts:122:5 › AC-21: PDP เลือกจำนวน 3 ขณะ remaining_units=2 → เตือน + ปุ่ม disabled; เลือก 2 → กดได้
+✓   74 [chromium] › e2e/flash-sale-fs15.spec.ts:149:5 › AC-21: show_remaining=false (remaining_units=null) เลือก 3 → ไม่เตือน
+✓   76 [chromium] › e2e/flash-sale-fs15.spec.ts:165:5 › AC-21: cart มี line ของสินค้า flash qty 3 ขณะ remaining_units=2 → cart-flash-exceeds-remaining
+✓   78 [chromium] › e2e/flash-sale-fs15.spec.ts:195:5 › AC-22: complete ล้ม 409 FLASH_SOLD_OUT ระหว่าง checkout → ข้อความไทยของ code ในขั้น review
+✓   72 [chromium] › e2e/flash-sale-storefront.spec.ts:183:5 › AC-4, AC-13: PDP แสดง banner, countdown, ราคา flash + ราคาขีดฆ่า, เหลือ N ชิ้น และหายเมื่อเลย ends_at (T−1min / T+1min)
+✓   73 [chromium] › e2e/flash-sale-storefront.spec.ts:212:5 › AC-1, AC-8 (g): cart ได้ส่วนลด flash; ใส่ code แล้วแสดงข้อความว่าใช้ร่วมกันไม่ได้
+✓   75 [chromium] › e2e/flash-sale-storefront.spec.ts:245:5 › AC-13 (e): units_sold ถึง total_cap → PDP แสดง 'สินค้าหมด'
+✓   77 [chromium] › e2e/flash-sale-storefront.spec.ts:285:5 › AC-1: หลัง ends_at cart ใหม่แสดงราคาเต็ม
+✓   79 [chromium] › e2e/fs-21-customer-limit.spec.ts:122:5 › AC-28 (a): limit 1 ยังไม่เคยซื้อ → PDP เลือกจำนวนได้สูงสุด 1 และเห็น flash-customer-limit
+✓   80 [chromium] › e2e/fs-21-customer-limit.spec.ts:145:5 › AC-28 (b): ซื้อครบสิทธิ์แล้ว → add-product-button disabled + flash-customer-limit-reached
+✓   81 [chromium] › e2e/fs-21-customer-limit.spec.ts:168:5 › AC-28 (c): cart มี line flash qty 2 ขณะ limit 1 → เตือนใน cart และ review ไม่ให้สั่งซื้อจนแก้จำนวน
+✓   84 [chromium] › e2e/fs-22-refunded-notice.spec.ts:104:5 › AC-29 (b): total_cap ของ flash ครบระหว่างอยู่ขั้น review → จ่ายด้วยบัตร → checkout-refunded-notice
+✓   82 [chromium] › e2e/fs-22-refunded-notice.spec.ts:70:5 › AC-29 (a): ชิ้นสุดท้ายถูกซื้อไประหว่างอยู่ขั้น review → จ่ายด้วยบัตร → checkout-refunded-notice และ Stripe คืนเงินจริง
+✓   83 [chromium] › e2e/fs-24-card-race-refund.spec.ts:85:5 › AC-31: สองลูกค้าแย่ง flash ชิ้นสุดท้าย (cap 1) ด้วยบัตร 4242 → ผู้ชนะได้ order, ผู้แพ้เห็น checkout-refunded-notice และได้ refund เต็มจำนวนภายใน 30 วินาที
+✓   85 [chromium] › e2e/pay-12-cart-error-notice.spec.ts:21:5 › AC-25: cart-error-notice ภาษาไทยต่อค่า error และไม่แสดงเมื่อค่าไม่รู้จัก
+✓   86 [chromium] › e2e/pay-12-cart-error-notice.spec.ts:81:5 › AC-25 (D-1, D-2): session หมดอายุ → login โดยไม่มี client_secret แล้วจบ flow
+✓   89 [chromium] › e2e/pay-14-stale-session.spec.ts:145:5 › AC-27 a: สร้างอัตโนมัติล้ม 1 ครั้ง → notice ไทย แล้วคลิกตัวเลือกบัตรที่เลือกอยู่ → ได้ session ใหม่
+✓   90 [chromium] › e2e/pay-14-stale-session.spec.ts:214:7 › PAY-16 (AC-29) › AC-29 a: notice แล้วเลือก manual → notice และปุ่มลองอีกครั้งหาย ไม่สร้าง session ของบัตรเพิ่ม
+✓   92 [chromium] › e2e/pay-14-stale-session.spec.ts:243:7 › PAY-16 (AC-29) › AC-29 b: dblclick ปุ่มลองอีกครั้ง → สร้าง session 1 ครั้ง แล้วได้ PI ใหม่
+✓   93 [chromium] › e2e/pay-14-stale-session.spec.ts:261:7 › PAY-16 (AC-29) › AC-29 c: สร้าง session ใหม่ 'สำเร็จ' แต่ cart ไม่ได้ session ใหม่ → ภายใน 12 วินาทีเห็น notice ไม่เห็น skeleton แล้วกดลองอีกครั้งได้
+✓   95 [chromium] › e2e/pay-14-stale-session.spec.ts:301:7 › PAY-16 (AC-29) › AC-29 d: PAYMENT_ALREADY_COMPLETED → ระหว่างรอ order radio วิธีชำระ disabled
+✓   87 [chromium] › e2e/pay-14-stale-session.spec.ts:96:5 › AC-27 a/b/c: session ชี้ PI ที่จบแล้ว → สร้าง session ใหม่อัตโนมัติ ไม่ confirm PI เดิม แล้วจ่ายได้ order captured
+-  124 [chromium] › e2e/pay-19-promptpay-refunded-reload.spec.ts:118:5 › AC-32: PromptPay ถูกคืนเงินจริง → ขั้น review แสดง notice + ลิงก์ตะกร้าหลัง refresh, reload และ Back; เลือกวิธีชำระใหม่แล้วจ่ายได้
+✓   88 [chromium] › e2e/pay-9-refunded-cart-repay.spec.ts:74:5 › AC-22c: ใช้สิทธิ์ flash จาก cart อื่นระหว่างอยู่หน้า review → จ่ายด้วยบัตรแล้วถูกคืนเงิน → จ่ายใหม่ใน cart เดิม → order captured มี payment collection ชุดเดียว
+✓   91 [chromium] › e2e/payments-promptpay-already-paid.spec.ts:38:7 › PromptPay ชำระแล้วตอน QR หมดอายุ (AC-12, AC-12b) › 409 → รอสร้าง order → complete cart ทางสำรอง (webhook ไม่มา) → หน้า order confirmed
+✓   94 [chromium] › e2e/payments-promptpay-already-paid.spec.ts:69:7 › PromptPay ชำระแล้วตอน QR หมดอายุ (AC-12, AC-12b) › complete cart ล้ม → ยังรอสร้าง order และ poll ต่อ → ลองใหม่สำเร็จ
+✓   96 [chromium] › e2e/payments-promptpay-fallback-cap.spec.ts:47:7 › PromptPay ทางสำรองมีเพดาน + เงินถูกคืน (AC-17) › complete cart ล้มทุกครั้ง → ยิงรวม ≤ 10 แล้วแสดง promptpay-order-delayed และหยุดยิง
+✓  100 [chromium] › e2e/payments-promptpay-fallback-cap.spec.ts:90:7 › PromptPay ทางสำรองมีเพดาน + เงินถูกคืน (AC-17) › เงินถูกคืนระหว่างทางสำรอง → แสดง promptpay-refunded และปุ่มเริ่มชำระใหม่
+✓   99 [chromium] › e2e/payments.spec.ts:109:7 › บัตร (Stripe Elements) › AC-2: บัตร 3DS (4000 0027 6000 3184) → 3DS modal → สำเร็จ
+✓  103 [chromium] › e2e/payments.spec.ts:136:7 › บัตร (Stripe Elements) › AC-3: บัตรถูกปฏิเสธ (4000 0000 0000 0002) → แสดง error, ไม่สร้าง order, cart ยังอยู่
+✓  106 [chromium] › e2e/payments.spec.ts:169:7 › PromptPay (QR + polling) › AC-4: แสดง QR → authorize test payment → webhook → order captured
+✓  114 [chromium] › e2e/payments.spec.ts:226:7 › PromptPay (QR + polling) › AC-5: ไม่ชำระภายใน 10 นาที → session ถูกยกเลิก, cart ยังใช้งานได้
+✓   97 [chromium] › e2e/payments.spec.ts:49:5 › AC-9: session บัตรจาก checkout → PaymentIntent มี payment_method_types ['card']; PromptPay → ['promptpay']
+✓   98 [chromium] › e2e/payments.spec.ts:91:7 › บัตร (Stripe Elements) › AC-1: บัตร 4242 → order สำเร็จ payment_status=captured
+✓  102 [chromium] › e2e/sfui-11-form-field.spec.ts:129:5 › AC-28: checkout step=address — label เหนือช่อง, checkbox แนวนอน, ประเทศสูงเท่าเขต/อำเภอ, 390px ไม่ล้น
+✓  101 [chromium] › e2e/sfui-11-form-field.spec.ts:92:5 › AC-28: login และ register — label เหนือช่อง, * เฉพาะช่องบังคับ, สูง 36px, 390px ไม่ล้น
+✓  107 [chromium] › e2e/sfui-11b-field-errors.spec.ts:144:5 › AC-32: affiliate สมัคร — รหัสแนะนำผิด pattern → error = title ของช่อง
+✓  104 [chromium] › e2e/sfui-11b-field-errors.spec.ts:36:5 › AC-32: login — ช่องว่างแสดง error ใต้ช่อง ไม่ส่งฟอร์ม, อีเมลผิดรูปแบบใช้ title, กรอกถูกแล้ว error หาย
+✓  105 [chromium] › e2e/sfui-11b-field-errors.spec.ts:76:5 › AC-32: checkout step=address — ช่องว่างแสดง error, focus ช่องแรก; เลือกที่อยู่ที่บันทึกไว้แล้ว error ของช่องที่เติมหาย
+✓  108 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:187:5 › AC-34, AC-37: checkout ที่อยู่จัดส่ง + ใบเสร็จ — label เหนือช่อง, placeholder, option เท่าเดิม, แถวละช่อง < 768px / คู่ ≥ 768px
+✓  109 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:238:5 › AC-34, AC-37: checkout ของ cart digital-only — อีเมลแถวเดียว, ช่องใบเสร็จเป็นคู่ ≥ 768px
+✓  110 [chromium] › e2e/sfui-12b-checkout-forms.spec.ts:271:5 › AC-34: โค้ดส่วนลด — label เหนือช่อง และ promotion-error ผูก aria-describedby ขณะช่องเปิด (กฎ 32d)
+✓  113 [chromium] › e2e/sfui-3c-select.spec.ts:132:5 › กฎ 4b: ชี้ nav-cart-link → nav-cart-dropdown เป็น PopoverContent ภาษาไทย, ออกจากพื้นที่ → ปิด
+✓  115 [chromium] › e2e/sfui-3c-select.spec.ts:165:5 › กฎ 4: ตัวเลือกประเทศใน side menu เป็น Select — คลิกเปิดรายการภาษาไทย/ประเทศ, Escape ปิด
+✓  111 [chromium] › e2e/sfui-3c-select.spec.ts:29:5 › AC-11: เลือกที่อยู่ที่บันทึกไว้ด้วย ArrowDown + Enter และ Escape ไม่เปลี่ยนค่า
+✓  112 [chromium] › e2e/sfui-3c-select.spec.ts:97:5 › AC-11: กดแก้ไขเบอร์โทร → edit-panel ของเบอร์โทร data-open=true แผงอื่น false (Collapsible)
+✓  116 [chromium] › e2e/sfui-3e-shipping.spec.ts:16:5 › AC-13: ขั้น delivery — ตัวเลือกเป็น role=radio ที่ยังไม่ติ๊ก และหัวขั้นจัดส่ง/ชำระเงินขนาด 24px/32px semibold
+✓  117 [chromium] › e2e/sfui-5c-checkout-heading.spec.ts:15:5 › AC-15: หัวข้อขั้น checkout คงขนาด 24px/32px semibold เท่า develop
+✓  118 [chromium] › e2e/sfui-5c-checkout-heading.spec.ts:49:5 › AC-15: หัวข้อตะกร้าว่างคงขนาด 32px/44px semibold เท่า develop
+✓  119 [chromium] › e2e/sfui-9c-font.spec.ts:46:5 › AC-21: checkout (not-found, ที่อยู่, จัดส่ง, ชำระเงิน) และตะกร้าว่าง คงขนาดตัวอักษร/ระยะบรรทัด/น้ำหนักเดิม
+✓  120 [chromium] › e2e/sfui-mobile-390.spec.ts:20:5 › AC-17: หน้าแรก, store, PDP, cart, checkout, account, orders ที่ 390px ไม่ล้นแนวนอน
+✓  122 [chromium] › e2e/smoke.spec.ts:20:5 › backend /health ตอบ 200 และหน้า login ของ admin แสดงผล
+✓  121 [chromium] › e2e/smoke.spec.ts:8:5 › storefront เสิร์ฟ robots.txt ได้
+✓  123 [chromium] › e2e/thai-ui-checkout.spec.ts:22:5 › AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษาไทย
+  1 skipped
+  123 passed (7.6m)
+(skipped: pay-19 ต้องใช้ secret E2E_PROMPTPAY_REFUND_EMAIL — รอ CI)

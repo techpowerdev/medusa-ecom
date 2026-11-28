@@ -1,7 +1,7 @@
 "use client"
 
-import { ArrowRightOnRectangle } from "@medusajs/icons"
-import { clx } from "@modules/common/components/ui"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import { useLinkStatus } from "next/link"
 import { useParams, usePathname } from "next/navigation"
 
@@ -31,7 +31,7 @@ const AccountNav = ({
         {route !== `/${countryCode}/account` ? (
           <LocalizedClientLink
             href="/account"
-            className="flex items-center gap-x-2 text-small-regular py-2"
+            className="flex items-center gap-x-2 text-xs leading-5 font-normal py-2"
             data-testid="account-main-link"
           >
             <>
@@ -41,10 +41,10 @@ const AccountNav = ({
           </LocalizedClientLink>
         ) : (
           <>
-            <div className="text-xl-semi mb-4 px-8">
+            <div className="text-2xl leading-[36px] font-semibold mb-4 px-8">
               สวัสดี {customer?.first_name}
             </div>
-            <div className="text-base-regular">
+            <div className="text-sm leading-6 font-normal">
               <ul>
                 <li>
                   <LocalizedClientLink
@@ -106,19 +106,18 @@ const AccountNav = ({
                     <ChevronDown className="transform -rotate-90" />
                   </LocalizedClientLink>
                 </li>
-                <li>
-                  <button
+                <li className="py-2 border-b border-gray-200 px-8">
+                  {/* SFUI-19b (spec 09 กฎ 60, inventory 19): ghost default แบบเดียวกับ desktop และ affiliate-logout
+                      SFUI-23 (กฎ 84): -ml-4 ให้ข้อความตรง icon ของแถวอื่น (padding/พื้นที่กดคงตาม default) */}
+                  <Button
                     type="button"
-                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8 w-full"
+                    variant="ghost"
+                    className="-ml-4"
                     onClick={handleLogout}
                     data-testid="logout-button"
                   >
-                    <div className="flex items-center gap-x-2">
-                      <ArrowRightOnRectangle />
-                      <span>ออกจากระบบ</span>
-                    </div>
-                    <ChevronDown className="transform -rotate-90" />
-                  </button>
+                    ออกจากระบบ
+                  </Button>
                 </li>
               </ul>
             </div>
@@ -128,9 +127,9 @@ const AccountNav = ({
       <div className="hidden small:block" data-testid="account-nav">
         <div>
           <div className="pb-4">
-            <h3 className="text-base-semi">บัญชี</h3>
+            <h3 className="text-sm leading-6 font-semibold">บัญชี</h3>
           </div>
-          <div className="text-base-regular">
+          <div className="text-sm leading-6 font-normal">
             <ul className="flex mb-0 justify-start items-start flex-col gap-y-4">
               <li>
                 <AccountNavLink
@@ -178,13 +177,16 @@ const AccountNav = ({
                 </AccountNavLink>
               </li>
               <li className="text-grey-700">
-                <button
+                {/* SFUI-23 (spec 09 กฎ 84): -ml-4 ให้ข้อความตรงแนวลิงก์เมนู */}
+                <Button
                   type="button"
+                  variant="ghost"
+                  className="-ml-4"
                   onClick={handleLogout}
                   data-testid="logout-button"
                 >
                   ออกจากระบบ
-                </button>
+                </Button>
               </li>
             </ul>
           </div>
@@ -213,8 +215,8 @@ const AccountNavLink = ({
   return (
     <LocalizedClientLink
       href={href}
-      className={clx("text-ui-fg-subtle hover:text-ui-fg-base", {
-        "text-ui-fg-base font-semibold": active,
+      className={cn("text-muted-foreground hover:text-foreground", {
+        "text-foreground font-semibold": active,
       })}
       data-testid={dataTestId}
     >
@@ -232,7 +234,7 @@ const NavPending = () => {
     <span
       role="status"
       aria-label="กำลังโหลด"
-      className="ml-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-ui-fg-muted border-t-transparent align-middle"
+      className="ml-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent align-middle"
       data-testid="account-nav-pending"
     />
   )

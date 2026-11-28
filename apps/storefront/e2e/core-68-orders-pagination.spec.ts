@@ -14,6 +14,7 @@ import { expectThai } from "./support/thai-text"
 // CORE-68: spec 01 AC-167 (กฎข้อ 126) — /account/orders หน้าละ 10 จาก count ของ Medusa, `orders-pagination`, ?page= 1-based,
 // หน้าเกินจำนวน → หน้าสุดท้าย; overview คง 5 ล่าสุด + ลิงก์ "ดูทั้งหมด" (เดิมแสดงแค่ 10 ใบล่าสุด ไม่มีหน้า 2)
 // หาด้วย data-testid; ปุ่มเลขหน้าของ Pagination (component ของ starter ไม่มี testid ต่อปุ่ม) หาด้วย role + ชื่อภายใน `orders-pagination`
+// SFUI-19c (spec 09 กฎ 66, 78 (iv)): เลขหน้าเป็นลิงก์ `PaginationLink` ของ shadcn → หาด้วย role link
 // (ชื่อเป็น aria-label ไทย "หน้า N" ตั้งแต่ CORE-78 กฎข้อ 136c)
 test.use({ evidenceTarget: { feature: "core", taskId: "CORE-68" }, viewport: { width: 1280, height: 800 } })
 
@@ -55,7 +56,7 @@ test("AC-167: ลูกค้า 12 order → หน้า 1 มี 10 แถว
     })
 
     await step("กดหน้า 2 → ?page=2 มี 2 ใบ (order เก่าสุดอยู่หน้า 2)", async () => {
-      await pagination.getByRole("button", { name: "หน้า 2", exact: true }).click()
+      await pagination.getByRole("link", { name: "หน้า 2", exact: true }).click()
       await expect(page).toHaveURL(new RegExp(`${ordersPath}\\?page=2$`))
       await expect(cards).toHaveCount(2)
       await expect(cards.getByTestId("order-display-id")).toHaveText(displayIds(newestFirst.slice(10)))

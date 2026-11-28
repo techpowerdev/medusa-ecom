@@ -8,6 +8,7 @@ import {
   publishableKey,
   signInAs,
 } from "./support/medusa"
+import { chooseOption, expectSelected } from "./support/select"
 
 // PAY-18: spec 06 AC-31 (กฎข้อ 20c) — cart-error-notice หายเมื่อลูกค้าแก้ตะกร้าสำเร็จครั้งแรก และ URL ไม่มี error
 // (router.replace — ไม่เพิ่ม history) ทางแยกของ /api/payment-return และหน้า checkout ตรวจใน unit
@@ -45,19 +46,17 @@ test("AC-31: แก้จำนวนสำเร็จ → cart-error-notice �
     await context.addCookies([{ name: "_medusa_cart_id", value: cartId, url: baseURL! }])
     await page.goto(`/${CC}/cart?error=refunded`)
     await expect(notice).toBeVisible()
-    await expect(select).toHaveValue("1")
+    await expectSelected(select, "1")
   })
   const historyBefore = await page.evaluate(() => history.length)
 
   await step("แก้จำนวนเป็น 2 สำเร็จ → notice หาย, URL ไม่มี error, history ไม่เพิ่ม", async () => {
-    // ก่อน hydrate selectOption เปลี่ยนแค่ DOM (review #287) — เลือกซ้ำจน backend ได้จำนวน 2 (idempotent)
-    await expect(async () => {
-      await select.selectOption("2")
-      expect(await lineQuantity()).toBe(2)
-    }).toPass({ timeout: 30_000 })
+    // SFUI-17 (spec 09 กฎ 48): chooseOption รอ hydrate เอง แล้วคลิก item ครั้งเดียว — รอ backend ได้จำนวน 2 (ค่าบน trigger ตรวจด้านล่าง)
+    await chooseOption(select, "2", { waitValue: false })
+    await expect.poll(lineQuantity, { timeout: 30_000 }).toBe(2)
     await expect(notice).toHaveCount(0)
     await expect(page).toHaveURL((url) => url.pathname === `/${CC}/cart` && !url.searchParams.has("error"))
-    await expect(select).toHaveValue("2")
+    await expectSelected(select, "2")
     expect(await page.evaluate(() => history.length)).toBe(historyBefore)
     await evidence("01-cart-error-notice-cleared")
   })

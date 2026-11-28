@@ -130,16 +130,7 @@ test("AC-99: โค้ดหมดอายุแสดง promotion-error ไ�
       await expect(select).not.toHaveText(/เลือกที่อยู่/)
     })
 
-    await step("หลังฟอนต์โหลดครบ CountrySelect สูงเท่า Input ข้างเคียง (±1px)", async () => {
-      await page.evaluate(() => document.fonts.ready)
-      const heightOf = async (testId: string) => (await page.getByTestId(testId).boundingBox())!.height
-      const country = await heightOf("shipping-country-select")
-      const city = await heightOf("shipping-city-input")
-      const province = await heightOf("shipping-province-input")
-      expect(Math.abs(country - city), `country ${country} city ${city}`).toBeLessThanOrEqual(1)
-      expect(Math.abs(country - province), `country ${country} province ${province}`).toBeLessThanOrEqual(1)
-      await evidence("4g-01-address-select-and-country-height")
-    })
+    // SFUI-20b (spec 09 กฎ 70): ไม่มีช่องประเทศแล้ว — ขั้นวัดความสูง CountrySelect (spec 01 กฎข้อ 63(d)) ถูกแทน
 
     await step("ใส่โค้ดของ campaign ที่หมดอายุ → promotion-error ไทย และ cart ไม่มีโค้ดนั้น", async () => {
       await page.getByTestId("add-discount-button").click()

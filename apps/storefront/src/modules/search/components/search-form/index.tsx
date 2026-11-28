@@ -1,4 +1,6 @@
-import { clx } from "@modules/common/components/ui"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 
 type SearchFormProps = {
   countryCode: string
@@ -12,7 +14,7 @@ const SearchForm = ({ countryCode, defaultValue, className }: SearchFormProps) =
     role="search"
     method="get"
     action={`/${countryCode}/search`}
-    className={clx("flex gap-2", className)}
+    className={cn("flex gap-2", className)}
     {...{
       toolname: "search_products",
       tooldescription: "Search the store's products by keyword",
@@ -21,22 +23,18 @@ const SearchForm = ({ countryCode, defaultValue, className }: SearchFormProps) =
     <label htmlFor="search-q" className="sr-only">
       ค้นหาสินค้า
     </label>
-    <input
+    {/* SFUI-19c (spec 09 กฎ 65a): ตัวอย่าง docs "Input with button" ของ shadcn */}
+    <Input
       id="search-q"
       type="search"
       name="q"
       defaultValue={defaultValue}
       placeholder="ค้นหาสินค้า"
       data-testid="search-query-input"
-      className="flex-1 h-10 px-4 border rounded-md border-ui-border-base bg-ui-bg-field txt-compact-medium"
     />
-    <button
-      type="submit"
-      className="h-10 px-4 rounded-md bg-black text-white hover:bg-gray-800"
-      data-testid="search-submit"
-    >
+    <Button type="submit" data-testid="search-submit">
       ค้นหา
-    </button>
+    </Button>
   </form>
 )
 

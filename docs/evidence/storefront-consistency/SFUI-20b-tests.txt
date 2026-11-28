@@ -1,0 +1,23 @@
+# SFUI-20b — ผลทดสอบ (spec 09 กฎ 70, AC-63/68)
+สภาพแวดล้อม: stack บน feat/SFUI-20a-province-required (baf03521), node 24, prod build — backend :9481 (NODE_ENV=production,
+start จาก .medusa/server, DB medusa_sfui20b, Redis db 12), storefront :8481, Stripe test จริง (stripe listen → :9481)
+
+## Red
+- static (guard ที่แก้ก่อนโค้ด): sfui-11-form-field AC-26 (c) และ sfui-13-form-guard AC-47 (REMOVED_MODULES + checkout/components/country-select)
+  — 2 failed / 19 (ไดเรกทอรี country-select ยังอยู่, profile-billing-address ยังมี SelectTrigger)
+- e2e ใหม่ AC-63 (sfui-20-address.spec) บน build ที่ src = 20a: 2 failed / 2 (shipping-country-select / country-select ยังมี)
+
+## Green
+- vitest (apps/storefront): 138 files / 2085 tests passed (ลบ test ของ CountrySelect 2 ตัว, เพิ่ม hidden th คงที่ใน core-52-address-form-state)
+- playwright project unit (รวม sfui-baseline, sfui-11, sfui-13, core-4g-e2e-hygiene, evidence-budget): 257 passed
+- e2e sfui-20-address.spec (AC-62 ×2 + AC-63 ×2): 4 passed
+- e2e ที่แก้/อ้างฟอร์มที่อยู่/checkoutToPayment/shipping-address-select (44 ไฟล์, --workers=1): 138 passed / 2 failed (11.3m)
+  - sfui-12b AC-34/37: SHIPPING_ORDER ยัง slice 9 ช่อง (รวมประเทศ) → แก้เป็น 8 แล้วรันซ้ำ 2 passed
+  - sfui-16 AC-49 (ย้ายไป shipping-address-select ตามแถว): ล้ม — ที่ 390×844 กล่อง shipping-address-options ขอบขวา 425px > 390
+    (ข้อความที่อยู่ไม่ตัดบรรทัด) → คำตัดสิน session หลัก: ดึง checkout/components/address-select (inventory 34) จาก 21a มาแก้ใน 20b
+
+## หลังแก้ address-select (SelectTrigger default + SelectContent กว้างเท่า trigger)
+- sfui-16 AC-49 --repeat-each=3: 3 passed / 3
+- ชุดเดิม 44 ไฟล์ + sfui-3c-select + sfui-9c-font (DB/seed ใหม่, prod build, --workers=1): 140 passed / 140 (11.1m)
+- vitest 2085 passed; playwright project unit 257 passed
+- pnpm lint && pnpm typecheck: ผ่าน (0 error); pnpm --filter storefront build: ผ่าน

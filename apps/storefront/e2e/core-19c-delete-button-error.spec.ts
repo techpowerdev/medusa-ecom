@@ -92,9 +92,8 @@ async function expectReadableError(page: Page, scope: Locator, neighbours: strin
   expect(box.height, `ความสูง error (line-height ${lineHeight}px)`).toBeLessThanOrEqual(lineHeight * 2 + 1)
   for (const id of neighbours) {
     const el = scope.getByTestId(id)
-    // `<select>` ของ CartItemSelect สูง h-16 ล้นกรอบที่มองเห็น (badge h-10 ของ starter) — วัดกรอบที่มองเห็นแทน
-    const visible = id === "product-select-button" ? el.locator("xpath=..") : el
-    const other = (await visible.boundingBox())!
+    // SFUI-16c (spec 09 กฎ 49): product-select-button เป็น trigger ของ Select (shadcn) — วัด trigger ตรงๆ
+    const other = (await el.boundingBox())!
     expect(overlaps(box, other), `error ทับ ${id}`).toBe(false)
   }
   const viewport = page.viewportSize()!.width

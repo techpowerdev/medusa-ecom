@@ -1,6 +1,5 @@
 import {
   FLASH_SALE_PARSE_OPTIONS,
-  POSITIVE_INT_MESSAGE,
   flashSaleFormSchema,
   optionalPositiveInt,
   toFlashSaleFormValues,
@@ -54,7 +53,8 @@ describe("flashSaleFormSchema", () => {
     expect(parsed.error!.issues.length).toBeGreaterThanOrEqual(1)
     for (const issue of parsed.error!.issues) {
       expect(issue.path).toEqual(["total_cap"])
-      expect(issue.message).toBe(POSITIVE_INT_MESSAGE)
+      // spec 10 กฎ 4d (AI18N-2): ข้อความเป็น function เรียกตอน parse — ค่า en เท่าข้อความเดิม
+      expect(issue.message).toBe("Must be a whole number greater than 0")
     }
   })
 })

@@ -156,9 +156,10 @@ for (const viewport of VIEWPORTS) {
       await page.getByTestId("shipping-first-name-input").fill("สมชาย")
       await page.getByTestId("shipping-last-name-input").fill("ใจดี")
       await page.getByTestId("shipping-address-input").fill("99 ถนนสุขุมวิท")
+      await page.getByTestId("shipping-address-2-input").fill("คลองเตยเหนือ")
       await page.getByTestId("shipping-postal-code-input").fill("10110")
       await page.getByTestId("shipping-city-input").fill("   ")
-      await page.getByTestId("shipping-country-select").selectOption(CC)
+      await page.getByTestId("shipping-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
       await page.getByTestId("shipping-email-input").fill(customer.email)
       const saved = waitForServerAction(page, (body) => body.includes(customer.email))
       await page.getByTestId("submit-address-button").click()
@@ -166,7 +167,6 @@ for (const viewport of VIEWPORTS) {
 
       await expect(page.getByTestId("address-error-message")).toHaveText(THAI)
       await expect(page).toHaveURL(/step=address/)
-      await expect(page.getByTestId("shipping-country-select")).toHaveValue(CC)
       const { cart } = await call(request, storeHeaders(pk, customer), `/store/carts/${cartId}?fields=id,*shipping_address`)
       expect(cart.shipping_address?.city ?? null, "ไม่บันทึกเมืองว่างลง cart").toBeNull()
       if (saveEvidence) await evidence("02-blank-city-error-country-kept")
@@ -191,9 +191,10 @@ for (const viewport of VIEWPORTS) {
       await page.getByTestId("shipping-first-name-input").fill("สมชาย")
       await page.getByTestId("shipping-last-name-input").fill("ใจดี")
       await page.getByTestId("shipping-address-input").fill("99 ถนนสุขุมวิท")
+      await page.getByTestId("shipping-address-2-input").fill("คลองเตยเหนือ")
       await page.getByTestId("shipping-postal-code-input").fill("10110")
       await page.getByTestId("shipping-city-input").fill("วัฒนา")
-      await page.getByTestId("shipping-country-select").selectOption(CC)
+      await page.getByTestId("shipping-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
       await page.getByTestId("shipping-email-input").fill(customer.email)
       const checkbox = page.getByTestId("billing-address-checkbox")
       await checkbox.click()
@@ -201,9 +202,10 @@ for (const viewport of VIEWPORTS) {
       await page.getByTestId("billing-first-name-input").fill("สมหญิง")
       await page.getByTestId("billing-last-name-input").fill("รักดี")
       await page.getByTestId("billing-address-input").fill("1 ถนนสีลม")
+      await page.getByTestId("billing-address-2-input").fill("คลองเตยเหนือ")
       await page.getByTestId("billing-postal-input").fill("10500")
       await page.getByTestId("billing-city-input").fill("   ")
-      await page.getByTestId("billing-country-select").selectOption(CC)
+      await page.getByTestId("billing-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
       const failed = waitForServerAction(page, (body) => body.includes(customer.email))
       await page.getByTestId("submit-address-button").click()
       await failed
@@ -211,9 +213,9 @@ for (const viewport of VIEWPORTS) {
       await expect(page.getByTestId("address-error-message")).toHaveText(THAI)
       await expect(checkbox).not.toBeChecked()
       await expect(page.getByTestId("billing-first-name-input")).toHaveValue("สมหญิง")
-      await expect(page.getByTestId("billing-country-select")).toHaveValue(CC)
 
       await page.getByTestId("billing-city-input").fill("บางรัก")
+      await page.getByTestId("billing-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
       const saved = waitForServerAction(page, (body) => body.includes(customer.email))
       await page.getByTestId("submit-address-button").click()
       expect((await saved).headers()["x-action-redirect"]).toMatch(/step=delivery/)
@@ -236,14 +238,13 @@ for (const viewport of VIEWPORTS) {
       await signedInWithCart(context, baseURL!, customer, cartId)
 
       await page.goto(`/${CC}/checkout?step=address`)
-      // ค่าเริ่มต้นเป็น placeholder — ถ้า reset ของ form ย้อนกลับ ค่าจะไม่ใช่ CC
-      await expect(page.getByTestId("billing-country-select")).toHaveValue("")
       await page.getByTestId("billing-first-name-input").fill("สมชาย")
       await page.getByTestId("billing-last-name-input").fill("ใจดี")
       await page.getByTestId("billing-address-input").fill("99 ถนนสุขุมวิท")
+      await page.getByTestId("billing-address-2-input").fill("คลองเตยเหนือ")
       await page.getByTestId("billing-postal-input").fill("10110")
       await page.getByTestId("billing-city-input").fill("   ")
-      await page.getByTestId("billing-country-select").selectOption(CC)
+      await page.getByTestId("billing-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
       await page.getByTestId("billing-email-input").fill(customer.email)
       const saved = waitForServerAction(page, (body) => body.includes(customer.email))
       await page.getByTestId("submit-address-button").click()
@@ -251,7 +252,6 @@ for (const viewport of VIEWPORTS) {
 
       await expect(page.getByTestId("address-error-message")).toHaveText(THAI)
       await expect(page).toHaveURL(/step=address/)
-      await expect(page.getByTestId("billing-country-select")).toHaveValue(CC)
       const { cart } = await call(request, storeHeaders(pk, customer), `/store/carts/${cartId}?fields=id,*billing_address`)
       expect(cart.billing_address?.city ?? null, "ไม่บันทึกเมืองว่างลง cart").toBeNull()
     })
@@ -308,10 +308,11 @@ test.describe("CORE-58 อักขระที่มองไม่เห็น
     await page.getByTestId("shipping-first-name-input").fill("สมชาย")
     await page.getByTestId("shipping-last-name-input").fill("ใจดี")
     await page.getByTestId("shipping-address-input").fill("99 ถนนสุขุมวิท")
+    await page.getByTestId("shipping-address-2-input").fill("คลองเตยเหนือ")
     await page.getByTestId("shipping-postal-code-input").fill("10110")
     const before = await call(request, storeHeaders(pk, customer), `/store/carts/${cartId}?fields=id,*shipping_address`)
     await page.getByTestId("shipping-city-input").fill(ZWSP)
-    await page.getByTestId("shipping-country-select").selectOption(CC)
+    await page.getByTestId("shipping-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
     await page.getByTestId("shipping-email-input").fill(customer.email)
     const saved = waitForServerAction(page, (body) => body.includes(customer.email))
     await page.getByTestId("submit-address-button").click()
@@ -342,10 +343,11 @@ test.describe("CORE-58 อักขระที่มองไม่เห็น
     await page.getByTestId("billing-first-name-input").fill("สมชาย")
     await page.getByTestId("billing-last-name-input").fill("ใจดี")
     await page.getByTestId("billing-address-input").fill("99 ถนนสุขุมวิท")
+    await page.getByTestId("billing-address-2-input").fill("คลองเตยเหนือ")
     await page.getByTestId("billing-postal-input").fill("10110")
     const before = await call(request, storeHeaders(pk, customer), `/store/carts/${cartId}?fields=id,*billing_address`)
     await page.getByTestId("billing-city-input").fill(ZWSP)
-    await page.getByTestId("billing-country-select").selectOption(CC)
+    await page.getByTestId("billing-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
     await page.getByTestId("billing-email-input").fill(customer.email)
     const saved = waitForServerAction(page, (body) => body.includes(customer.email))
     await page.getByTestId("submit-address-button").click()

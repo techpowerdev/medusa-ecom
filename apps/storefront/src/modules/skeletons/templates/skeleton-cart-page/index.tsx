@@ -1,4 +1,4 @@
-import { Table } from "@modules/common/components/ui"
+import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 import repeat from "@lib/util/repeat"
 import SkeletonCartItem from "@modules/skeletons/components/skeleton-cart-item"
@@ -26,30 +26,30 @@ const SkeletonCartPage = () => {
                 <div className="w-20 h-12 bg-gray-200 animate-pulse" />
               </div>
               <Table>
-                <Table.Header className="border-t-0">
-                  <Table.Row>
-                    <Table.HeaderCell className="!pl-0">
+                <TableHeader className="border-t-0">
+                  <TableRow>
+                    <TableHead className="h-12 whitespace-normal px-4 pl-0!">
                       <div className="w-10 h-6 bg-gray-200 animate-pulse" />
-                    </Table.HeaderCell>
-                    <Table.HeaderCell></Table.HeaderCell>
-                    <Table.HeaderCell>
+                    </TableHead>
+                    <TableHead className="h-12 whitespace-normal px-4"></TableHead>
+                    <TableHead className="h-12 whitespace-normal px-4">
                       <div className="w-16 h-6 bg-gray-200 animate-pulse" />
-                    </Table.HeaderCell>
-                    <Table.HeaderCell>
+                    </TableHead>
+                    <TableHead className="h-12 whitespace-normal px-4">
                       <div className="w-12 h-6 bg-gray-200 animate-pulse" />
-                    </Table.HeaderCell>
-                    <Table.HeaderCell className="!pr-0">
+                    </TableHead>
+                    <TableHead className="h-12 whitespace-normal px-4 pr-0!">
                       <div className="flex justify-end">
                         <div className="w-12 h-6 bg-gray-200 animate-pulse" />
                       </div>
-                    </Table.HeaderCell>
-                  </Table.Row>
-                </Table.Header>
-                <Table.Body>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {repeat(4).map((index) => (
                     <SkeletonCartItem key={index} />
                   ))}
-                </Table.Body>
+                </TableBody>
               </Table>
             </div>
           </div>

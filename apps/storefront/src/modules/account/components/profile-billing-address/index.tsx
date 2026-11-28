@@ -3,12 +3,13 @@
 import React, { useActionState, useEffect, useMemo } from "react"
 
 import Input from "@modules/common/components/input"
-import NativeSelect from "@modules/common/components/native-select"
+import { ADDRESS_COUNTRY_CODE } from "@lib/util/address-required"
 
 import { addCustomerAddress, updateCustomerAddress } from "@lib/data/customer"
 import { HttpTypes } from "@medusajs/types"
 import AccountInfo from "../account-info"
 import { submitWithoutReset } from "@lib/util/submit-without-reset"
+import { addressLines } from "@lib/util/address-lines"
 import { withActionFallback } from "@lib/util/action-fallback"
 
 // CORE-23c (กฎข้อ 74b): action ล้มระดับ network/5xx → error ไทยในฟอร์ม ไม่ใช่หน้า "This page couldn't load"
@@ -17,25 +18,9 @@ const updateBillingAddress = withActionFallback(updateCustomerAddress)
 
 type MyInformationProps = {
   customer: HttpTypes.StoreCustomer
-  regions: HttpTypes.StoreRegion[]
 }
 
-const ProfileBillingAddress: React.FC<MyInformationProps> = ({
-  customer,
-  regions,
-}) => {
-  const regionOptions = useMemo(() => {
-    return (
-      regions
-        ?.map((region) => {
-          return region.countries?.map((country) => ({
-            value: country.iso_2,
-            label: country.display_name,
-          }))
-        })
-        .flat() || []
-    )
-  }, [regions])
+const ProfileBillingAddress: React.FC<MyInformationProps> = ({ customer }) => {
 
   const [successState, setSuccessState] = React.useState(false)
 
@@ -78,28 +63,17 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
       return "ยังไม่มีที่อยู่สำหรับออกใบเสร็จ"
     }
 
-    const country =
-      regionOptions?.find(
-        (country) => country?.value === billingAddress.country_code
-      )?.label || billingAddress.country_code?.toUpperCase()
-
     return (
       <div className="flex flex-col font-semibold" data-testid="current-info">
         <span>
           {billingAddress.first_name} {billingAddress.last_name}
         </span>
         <span>{billingAddress.company}</span>
-        <span>
-          {billingAddress.address_1}
-          {billingAddress.address_2 ? `, ${billingAddress.address_2}` : ""}
-        </span>
-        <span>
-          {billingAddress.postal_code}, {billingAddress.city}
-        </span>
-        <span>{country}</span>
+        {/* SFUI-18a (spec 09 กฎ 57): บรรทัดที่อยู่ตามลำดับไทย; SFUI-20c (กฎ 71): ไม่มีบรรทัดประเทศ */}
+        <span>{addressLines(billingAddress)[0]}</span>
       </div>
     )
-  }, [billingAddress, regionOptions])
+  }, [billingAddress])
 
   return (
     <form onSubmit={onSubmit} onReset={() => clearState()} className="w-full">
@@ -114,8 +88,8 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
         isPending={isPending}
         data-testid="account-billing-address-editor"
       >
-        <div className="grid grid-cols-1 gap-y-2">
-          <div className="grid grid-cols-2 gap-x-2">
+        <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="ชื่อ"
               name="first_name"
@@ -138,34 +112,23 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
             data-testid="billing-company-input"
           />
           <Input
-            label="เบอร์โทรศัพท์"
-            name="phone"
-            type="phone"
-            autoComplete="phone"
-            required
-            defaultValue={billingAddress?.phone ?? customer?.phone ?? ""}
-            data-testid="billing-phone-input"
-          />
-          <Input
-            label="ที่อยู่"
+            label="บ้านเลขที่ หมู่ ซอย ถนน"
             name="address_1"
+            autoComplete="address-line1"
+            placeholder="เช่น 99/1 หมู่ 2 ซ.สุขุมวิท 3 ถ.สุขุมวิท"
             defaultValue={billingAddress?.address_1 || undefined}
             required
             data-testid="billing-address-1-input"
           />
-          <Input
-            label="อาคาร ห้อง ฯลฯ"
-            name="address_2"
-            defaultValue={billingAddress?.address_2 || undefined}
-            data-testid="billing-address-2-input"
-          />
-          <div className="grid grid-cols-[144px_1fr] gap-x-2">
+          {/* SFUI-18b (spec 09 กฎ 53–54): ตำบล/แขวง–เขต/อำเภอ และ จังหวัด–รหัสไปรษณีย์ แถวเดียวกันที่ ≥ 768px; ประเทศ/เบอร์โทรศัพท์แถวละช่อง */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="รหัสไปรษณีย์"
-              name="postal_code"
-              defaultValue={billingAddress?.postal_code || undefined}
+              label="ตำบล/แขวง"
+              name="address_2"
               required
-              data-testid="billing-postcal-code-input"
+              autoComplete="address-level3"
+              defaultValue={billingAddress?.address_2 || undefined}
+              data-testid="billing-address-2-input"
             />
             <Input
               label="เขต/อำเภอ"
@@ -175,29 +138,35 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
               data-testid="billing-city-input"
             />
           </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="จังหวัด"
+              name="province"
+              defaultValue={billingAddress?.province || undefined}
+              required
+              data-testid="billing-province-input"
+            />
+            <Input
+              label="รหัสไปรษณีย์"
+              name="postal_code"
+              defaultValue={billingAddress?.postal_code || undefined}
+              required
+              placeholder="เช่น 10110"
+              data-testid="billing-postcal-code-input"
+            />
+          </div>
+          {/* SFUI-20b (spec 09 กฎ 70 — ADR-034 D5): ไม่ render ช่องประเทศ ส่งค่าคงที่ */}
+          <input type="hidden" name="country_code" value={ADDRESS_COUNTRY_CODE} />
           <Input
-            label="จังหวัด"
-            name="province"
-            defaultValue={billingAddress?.province || undefined}
-            data-testid="billing-province-input"
-          />
-          {/* CORE-4j (กฎข้อ 73c): สูงเท่า Input (h-12) แบบ CountrySelect ของ checkout (กฎข้อ 63d) */}
-          <NativeSelect
-            name="country_code"
-            defaultValue={billingAddress?.country_code || undefined}
+            label="เบอร์โทรศัพท์"
+            name="phone"
+            type="tel"
+            autoComplete="tel"
+            placeholder="เช่น 0812345678"
             required
-            className="h-12"
-            data-testid="billing-country-code-select"
-          >
-            <option value="">-</option>
-            {regionOptions.map((option, i) => {
-              return (
-                <option key={i} value={option?.value}>
-                  {option?.label}
-                </option>
-              )
-            })}
-          </NativeSelect>
+            defaultValue={billingAddress?.phone ?? customer?.phone ?? ""}
+            data-testid="billing-phone-input"
+          />
         </div>
       </AccountInfo>
     </form>

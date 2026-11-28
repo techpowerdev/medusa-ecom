@@ -2,9 +2,11 @@
 
 import { leaveGroupBuyMembership } from "@lib/data/group-buy"
 import { GENERIC_ERROR_MESSAGE } from "@lib/util/error-message"
-import { Button } from "@modules/common/components/ui"
 import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
+
+import { Button } from "@/components/button"
+import { FieldError } from "@/components/ui/field"
 
 // GB-7b (spec 04 กฎข้อ 13): ออกจากกลุ่ม = ยกเลิก draft order ของ membership นี้ — ยืนยันก่อนส่ง และกันกดซ้ำด้วย ref (in-flight) + disabled
 // render ทุกแถวเสมอ (review #223): ถ้าถอด component เมื่อ canLeave เป็น false หลัง router.refresh() state error จะหายไปด้วย
@@ -46,10 +48,10 @@ export default function LeaveGroupButton({ membershipId, canLeave }: { membershi
       {!canLeave ? null : confirming ? (
         // GB-12 (กฎข้อ 32d): < 640px ข้อความหนึ่งแถว ปุ่มสองปุ่มอีกแถว (ไม่ตัดคำ); ≥ 640px (`sm` ของ Tailwind — `small` ของ starter คือ 1024px) แถวเดียว
         <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center" data-testid="group-leave-confirm-box">
-          <span className="text-small-regular">ยืนยันออกจากกลุ่ม? คำสั่งซื้อนี้จะถูกยกเลิก</span>
+          <span className="text-xs leading-5 font-normal">ยืนยันออกจากกลุ่ม? คำสั่งซื้อนี้จะถูกยกเลิก</span>
           <div className="flex shrink-0 gap-2">
             <Button
-              variant="secondary"
+              variant="outline"
               className="whitespace-nowrap"
               disabled={pending}
               onClick={() => setConfirming(false)}
@@ -63,14 +65,13 @@ export default function LeaveGroupButton({ membershipId, canLeave }: { membershi
           </div>
         </div>
       ) : (
-        <Button variant="secondary" onClick={() => setConfirming(true)} data-testid="group-leave-button">
+        <Button variant="outline" onClick={() => setConfirming(true)} data-testid="group-leave-button">
           ออกจากกลุ่ม
         </Button>
       )}
       {error && (
-        <p className="text-small-regular text-ui-fg-error" data-testid="group-leave-error">
-          {error}
-        </p>
+        // SFUI-21e (spec 09 กฎ 74 (b)): error ผูกกับแถวคำสั่งซื้อกลุ่ม = FieldError (inline)
+        <FieldError data-testid="group-leave-error">{error}</FieldError>
       )}
     </div>
   )

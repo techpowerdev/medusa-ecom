@@ -4,6 +4,7 @@ import { EllipsisHorizontal, PencilSquare, Trash } from "@medusajs/icons"
 import { Badge, createDataTableColumnHelper, IconButton, toast, usePrompt } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { affiliateKeys, deleteProgram, Program } from "../../lib/affiliate"
 import { canDeleteProgram } from "../../lib/affiliate-program-form"
 import { createSingleFlight } from "../../lib/single-flight"
@@ -18,6 +19,7 @@ const program = createDataTableColumnHelper<Program>()
  * modal แก้อยู่นอกตาราง (render ใน cell แล้ว Escape ครั้งแรกไม่ปิด modal)
  */
 const ProgramActions = ({ row, onEdit }: { row: Program; onEdit: (p: Program) => void }) => {
+  const { t } = useTranslation("ecom-affiliate")
   const prompt = usePrompt()
   const queryClient = useQueryClient()
   const [deleteOnce] = useState(createSingleFlight)
@@ -28,7 +30,7 @@ const ProgramActions = ({ row, onEdit }: { row: Program; onEdit: (p: Program) =>
   const remove = useMutation({
     mutationFn: deleteProgram,
     onSuccess: () => {
-      toast.success("Program deleted")
+      toast.success(t("programs.deleted"))
       return refetch()
     },
     onError: (e: Error) => {
@@ -41,10 +43,10 @@ const ProgramActions = ({ row, onEdit }: { row: Program; onEdit: (p: Program) =>
   const confirmDelete = () =>
     deleteOnce(async () => {
       const ok = await prompt({
-        title: `Delete ${row.name}?`,
-        description: "Only draft programs can be deleted. This cannot be undone.",
-        confirmText: "Delete program",
-        cancelText: "Keep program",
+        title: t("programs.deletePrompt.title", { name: row.name }),
+        description: t("programs.deletePrompt.description"),
+        confirmText: t("programs.deletePrompt.confirm"),
+        cancelText: t("programs.deletePrompt.cancel"),
       })
       if (ok) {
         await remove.mutateAsync(row.id).catch(() => undefined)
@@ -58,7 +60,7 @@ const ProgramActions = ({ row, onEdit }: { row: Program; onEdit: (p: Program) =>
         {
           actions: [
             {
-              label: "Edit",
+              label: t("actions.edit", { ns: "translation" }),
               icon: <PencilSquare />,
               // ระหว่าง Delete กำลังส่ง แก้ไม่ได้ (สอดคล้องกับแถว payout — review #316)
               disabled: remove.isPending,
@@ -71,7 +73,18 @@ const ProgramActions = ({ row, onEdit }: { row: Program; onEdit: (p: Program) =>
         },
         // ลบได้เฉพาะ draft — สถานะอื่นไม่มี menuitem Delete (spec 08 กฎ 10)
         ...(canDeleteProgram(row)
-          ? [{ actions: [{ label: "Delete", icon: <Trash />, disabled: remove.isPending, onClick: confirmDelete }] }]
+          ? [
+              {
+                actions: [
+                  {
+                    label: t("actions.delete", { ns: "translation" }),
+                    icon: <Trash />,
+                    disabled: remove.isPending,
+                    onClick: confirmDelete,
+                  },
+                ],
+              },
+            ]
           : []),
       ]}
     >
@@ -84,6 +97,7 @@ const ProgramActions = ({ row, onEdit }: { row: Program; onEdit: (p: Program) =>
 
 // AF-12a (spec 05 กฎ 37a): แท็บ Programs — สร้าง (FocusModal)/แก้ (Drawer — ADM-44) และลบเฉพาะ draft (usePrompt) ผ่าน admin API ของ AF-5
 export const ProgramsTable = () => {
+  const { t } = useTranslation("ecom-affiliate")
   const { getFullDate } = useDate()
   const list = useAffiliateList<Program>("programs", "programs")
   // modal: undefined = ปิด, null = สร้าง, Program = แก้; `opened` เป็น key ให้ฟอร์ม mount ใหม่ทุกครั้งที่เปิด
@@ -109,29 +123,29 @@ export const ProgramsTable = () => {
       // spec 08 กฎ 39 (ADM-35): เนื้อหา 250px (แบบ ProductCell ของ dashboard) — DataTable เป็น auto layout + nowrap คอลัมน์จึงขยายตามข้อความ
       // จนปุ่ม … หลุดจอ; size/maxSize เป็น width/max-width ของ td (border-box) จึงบวก padding: คอลัมน์แรก pl-6+pr-6 = 298, คอลัมน์อื่น pr-6 = 274
       // ข้อความที่ถูกตัดยังมี tooltip ของ TruncatedCell
-      program.accessor("name", { header: "Program", size: 298, maxSize: 298 }),
+      program.accessor("name", { header: t("programs.columns.name"), size: 298, maxSize: 298 }),
       program.accessor("status", {
-        header: "Status",
-        cell: ({ getValue }) => <Badge size="2xsmall">{getValue()}</Badge>,
+        header: t("programs.columns.status"),
+        cell: ({ getValue }) => <Badge size="2xsmall">{t(`programs.status.${getValue()}`, { defaultValue: getValue() })}</Badge>,
       }),
       actionsColumn,
       program.accessor("starts_at", {
-        header: "Starts",
+        header: t("programs.columns.starts_at"),
         cell: ({ getValue }) => getFullDate({ date: getValue(), includeTime: true }),
       }),
       program.accessor("ends_at", {
-        header: "Ends",
+        header: t("programs.columns.ends_at"),
         cell: ({ getValue }) => getFullDate({ date: getValue(), includeTime: true }),
       }),
       program.accessor((row) => `${row.commission_value}%`, {
         id: "rate",
-        header: "Commission",
+        header: t("programs.columns.rate"),
       }),
       // spec 08 กฎ 41c (ADM-37, Q12 = ก): คอลัมน์สุดท้ายเป็น auto (ไม่มี width) รับความกว้างส่วนเกินที่จอกว้าง — ไม่งั้นทุก td ได้ width 150
       // (ค่าเริ่มต้นของ tanstack) ผลรวมน้อยกว่าตาราง w-full แล้ว Chrome แจกส่วนเกินตามสัดส่วนโดยไม่สน maxSize ของคอลัมน์ข้อความ
-      program.accessor("hold_days", { header: "Hold days", size: undefined }),
+      program.accessor("hold_days", { header: t("programs.columns.hold_days"), size: undefined }),
     ],
-    [actionsColumn, getFullDate],
+    [actionsColumn, getFullDate, t],
   )
 
   return (
@@ -141,11 +155,11 @@ export const ProgramsTable = () => {
         <AffiliateListTable
           {...list}
           columns={columns}
-          heading="Programs"
-          subHeading="Only draft programs can be deleted."
+          heading={t("programs.heading")}
+          subHeading={t("programs.subHeading")}
           // กดซ้ำขณะ modal เปิดอยู่ไม่เปลี่ยน `opened` (ฟอร์มไม่ mount ใหม่)
-          action={{ label: "Create program", onClick: () => setModal((m) => m ?? { program: null, opened: Date.now() }) }}
-          empty="No programs yet"
+          action={{ label: t("programs.create"), onClick: () => setModal((m) => m ?? { program: null, opened: Date.now() }) }}
+          empty={t("programs.empty")}
         />
       </div>
       {modal && (

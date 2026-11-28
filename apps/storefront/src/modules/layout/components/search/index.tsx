@@ -1,6 +1,6 @@
 "use client"
 
-import { MagnifyingGlass } from "@medusajs/icons"
+import { Search as SearchIcon } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -16,7 +16,6 @@ import {
 import useSearchSettled from "@lib/hooks/use-search-settled"
 import useToggleState from "@lib/hooks/use-toggle-state"
 import { PRODUCT_INDEX_NAME, searchClient } from "@lib/search-client"
-import { Text } from "@modules/common/components/ui"
 import SearchDrawer from "./drawer"
 import SearchHit, { ProductHit } from "./hit"
 
@@ -57,8 +56,8 @@ const SearchPanel = ({ onNavigate }: { onNavigate: () => void }) => {
 
   return (
     <>
-      <div className="flex items-center gap-x-3 border-b border-ui-border-base px-4">
-        <MagnifyingGlass className="shrink-0 text-ui-fg-muted" />
+      <div className="flex items-center gap-x-3 border-b px-4">
+        <SearchIcon className="size-4 shrink-0 text-muted-foreground" />
         <input
           type="search"
           value={inputValue}
@@ -69,33 +68,33 @@ const SearchPanel = ({ onNavigate }: { onNavigate: () => void }) => {
           placeholder="ค้นหาสินค้า"
           aria-label="ค้นหาสินค้า"
           autoFocus
-          className="txt-medium w-full bg-transparent py-4 text-ui-fg-base outline-none placeholder:text-ui-fg-muted"
+          className="text-sm leading-[1.4rem] w-full bg-transparent py-4 text-foreground outline-hidden placeholder:text-muted-foreground"
           data-testid="search-input"
         />
       </div>
 
       <div className="flex-1 overflow-y-auto">
         {!hasInput ? (
-          <Text
-            className="px-4 py-6 text-center text-ui-fg-muted"
+          <p
+            className="px-4 py-6 text-sm leading-[1.4rem] text-center text-muted-foreground"
             data-testid="search-empty"
           >
             พิมพ์เพื่อค้นหาสินค้า
-          </Text>
+          </p>
         ) : status === "error" ? (
-          <Text
-            className="px-4 py-6 text-center text-ui-fg-error"
+          <p
+            className="px-4 py-6 text-sm leading-[1.4rem] text-center text-destructive"
             data-testid="search-drawer-error"
           >
             ค้นหาสินค้าไม่สำเร็จ
-          </Text>
+          </p>
         ) : !isSettled ? (
-          <Text
-            className="px-4 py-6 text-center text-ui-fg-muted"
+          <p
+            className="px-4 py-6 text-sm leading-[1.4rem] text-center text-muted-foreground"
             data-testid="search-loading"
           >
             กำลังค้นหา&hellip;
-          </Text>
+          </p>
         ) : hasResults ? (
           <ul className="py-2" data-testid="search-results">
             {items.map((hit) => (
@@ -103,19 +102,19 @@ const SearchPanel = ({ onNavigate }: { onNavigate: () => void }) => {
             ))}
           </ul>
         ) : isPending || !query.trim() ? (
-          <Text
-            className="px-4 py-6 text-center text-ui-fg-muted"
+          <p
+            className="px-4 py-6 text-sm leading-[1.4rem] text-center text-muted-foreground"
             data-testid="search-loading"
           >
             กำลังค้นหา&hellip;
-          </Text>
+          </p>
         ) : (
-          <Text
-            className="px-4 py-6 text-center text-ui-fg-subtle [overflow-wrap:anywhere]"
+          <p
+            className="px-4 py-6 text-sm leading-[1.4rem] text-center text-muted-foreground [overflow-wrap:anywhere]"
             data-testid="search-no-results"
           >
             ไม่พบสินค้าสำหรับ &quot;{query}&quot;
-          </Text>
+          </p>
         )}
       </div>
     </>
@@ -125,24 +124,27 @@ const SearchPanel = ({ onNavigate }: { onNavigate: () => void }) => {
 const Search = () => {
   const { state: isOpen, open, close } = useToggleState()
   const { countryCode } = useParams<{ countryCode: string }>()
+  const buttonRef = useRef<HTMLAnchorElement>(null)
 
   return (
     <>
       {/* A real link so search works without JavaScript; with JS it opens the drawer instead. */}
       <Link
+        ref={buttonRef}
         href={`/${countryCode}/search`}
         onClick={(event) => {
           event.preventDefault()
           open()
         }}
         aria-label="ค้นหาสินค้า"
-        className="flex items-center hover:text-ui-fg-base"
+        className="flex items-center hover:text-foreground"
         data-testid="nav-search-button"
       >
-        <MagnifyingGlass />
+        {/* 15px = ขนาดเดิมของ MagnifyingGlass — core-50 เทียบตำแหน่ง/ขนาดของ nav-search-button กับ develop */}
+        <SearchIcon className="size-[15px]" />
       </Link>
 
-      <SearchDrawer isOpen={isOpen} close={close}>
+      <SearchDrawer isOpen={isOpen} close={close} returnFocusRef={buttonRef}>
         <InstantSearch
           indexName={PRODUCT_INDEX_NAME}
           searchClient={searchClient as unknown as SearchClient}

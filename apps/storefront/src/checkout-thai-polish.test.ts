@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 // CORE-4e (spec 01 กฎข้อ 54–55, AC-90): error ของ server action ใน checkout เป็นไทยผ่าน friendlyErrorMessage,
-// Stripe Elements ใช้ locale "th", placeholder ของ CountrySelect เป็นไทย และ STORE_NAME ตามด้วยคำไทยมีเว้นวรรค
+// Stripe Elements ใช้ locale "th" และ STORE_NAME ตามด้วยคำไทยมีเว้นวรรค (ส่วน placeholder ของ CountrySelect ถูกลบใน SFUI-20b — กฎ 70)
 const THAI = /[฀-๿]/
 const RAW = "Cart not found"
 
@@ -128,14 +128,6 @@ describe("UI ของ checkout (กฎข้อ 54–55)", () => {
   it("ชื่อวิธีชำระพร้อมเพย์เป็น \"พร้อมเพย์\"", async () => {
     const { paymentInfoMap } = await import("@lib/constants")
     expect(paymentInfoMap["pp_stripe-promptpay_stripe"].title).toBe("พร้อมเพย์")
-  })
-
-  it("CountrySelect ใช้ placeholder \"เลือกประเทศ\"", async () => {
-    const { default: CountrySelect } = await import(
-      "@modules/checkout/components/country-select"
-    )
-    const html = renderToStaticMarkup(createElement(CountrySelect, { name: "country" }))
-    expect(html).toContain("เลือกประเทศ")
   })
 
   it("{STORE_NAME} ที่ตามด้วยอักษรไทยใน JSX มีเว้นวรรค", () => {

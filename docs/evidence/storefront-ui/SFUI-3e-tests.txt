@@ -1,0 +1,131 @@
+# SFUI-3e — ผล test ในเครื่อง (2026-11-26, Node v22.23.3, pnpm 12.15.0, macOS)
+# spec: docs/spec/09-storefront-shadcn-ui.md (กฎ 4, 6, 9, 12, 13, 19–21; AC-13, AC-6 ลบ key SFUI-3e), ADR-030 — stack ต่อจาก SFUI-3d (6ca746d6)
+# backend prod build :9130 (DB medusa_sfui3e, Redis db 13), storefront prod build :8130
+
+## Red (ก่อนแก้โค้ด)
+- src/sfui-3e-shipping-radio.test.ts: 3 failed / 3 passed — ตัวเลือกยังเป็น <span> ของ headless Radio (expected 'SPAN' to be 'BUTTON'), ไม่มี disabled บน element
+- e2e/sfui-legacy.unit.spec.ts (ลบ key SFUI-3e จาก PENDING): AC-6 (a) failed — shipping/index.tsx ยังมี pattern ต้องห้าม
+- test ArrowDown (กฎ 12) เพิ่มหลัง Green เป็น regression test ของพฤติกรรม (headless เดิมก็รองรับลูกศร)
+
+## Green: unit ที่เกี่ยวกับขั้น delivery (verbose)
+ ✓ src/core-33-delivery-empty.test.ts > CORE-33: ขั้น delivery หลังกรองวิธีส่ง (AC-127) > รายการมีแต่ Digital delivery กับ cart ที่ต้องจัดส่ง → delivery-options-empty ภาษาไทย ไม่มี radio ปุ่ม disabled 209ms
+ ✓ src/core-33-delivery-empty.test.ts > CORE-33: ขั้น delivery หลังกรองวิธีส่ง (AC-127) > มี Standard ในรายการ → ไม่มี delivery-options-empty 28ms
+ ✓ src/core-33-delivery-empty.test.ts > CORE-33: ขั้น delivery หลังกรองวิธีส่ง (AC-127) > cart ค้าง Digital delivery (ถูกกรองออก) → ไม่มี radio ที่ติ๊ก และปุ่ม disabled 5ms
+ ✓ src/core-33-delivery-empty.test.ts > CORE-33: ขั้น delivery หลังกรองวิธีส่ง (AC-127) > cart เลือก Standard ไว้ → radio ของ Standard ติ๊ก และปุ่ม enabled 65ms
+ ✓ src/core-33-delivery-empty.test.ts > CORE-33: ขั้น delivery หลังกรองวิธีส่ง (AC-127) > ขั้นปิด + method ล่าสุดถูกกรองออก → สรุปไม่มีชื่อและราคาของ method นั้น 2ms
+ ✓ src/sfui-3e-shipping-radio.test.ts > SFUI-3e: ตัวเลือกจัดส่งใน RadioGroup ของ shadcn (Radix) > testid + data-option-id อยู่บนปุ่ม role=radio ใน radiogroup ที่มีชื่อและราคาอยู่ข้างใน 223ms
+ ✓ src/sfui-3e-shipping-radio.test.ts > SFUI-3e: ตัวเลือกจัดส่งใน RadioGroup ของ shadcn (Radix) > ยังไม่เลือก → ไม่มีตัวที่ติ๊ก ไม่มี [checked] และไม่มี input ซ่อน (ไม่อยู่ใน <form>) 8ms
+ ✓ src/sfui-3e-shipping-radio.test.ts > SFUI-3e: ตัวเลือกจัดส่งใน RadioGroup ของ shadcn (Radix) > คลิกตัวเลือก → setShippingMethod(id) ครั้งเดียวและตัวนั้นติ๊ก; คลิกตัวที่เลือกอยู่ → ไม่เรียกซ้ำ 68ms
+ ✓ src/core-4i-b-ui-results.test.ts > checkout ขั้นชำระเงิน (Payment) อ่านผลของ initiatePaymentSession > เลือกวิธีชำระ → unauthorized แสดง SIGN_IN_AGAIN_MESSAGE 238ms
+ ✓ src/core-4i-b-ui-results.test.ts > checkout ขั้นชำระเงิน (Payment) อ่านผลของ initiatePaymentSession > เลือกวิธีชำระ → failed กับ action reject ได้ข้อความ fallback ไทยเดียวกัน 16ms
+ ✓ src/core-4i-b-ui-results.test.ts > checkout ขั้นชำระเงิน (Payment) อ่านผลของ initiatePaymentSession > กด Continue → ผลล้มไม่ไปขั้น review และแสดง SIGN_IN_AGAIN_MESSAGE เมื่อ unauthorized 6ms
+ ✓ src/core-4i-b-ui-results.test.ts > checkout ขั้นชำระเงิน (Payment) อ่านผลของ initiatePaymentSession > กด Continue → สร้าง session สำเร็จ → ไปขั้น review เมื่อ cart มี session (CORE-19f กฎข้อ 75 b) 7ms
+ ✓ src/core-4i-b-ui-results.test.ts > ปุ่มยืนยันคำสั่งซื้อ (completeOrder) อ่านผลของ placeOrder > unauthorized → kind unauthorized 1ms
+ ✓ src/core-4i-b-ui-results.test.ts > ปุ่มยืนยันคำสั่งซื้อ (completeOrder) อ่านผลของ placeOrder > FLASH_SOLD_OUT (manual) → ข้อความไทยของ code นั้น 2ms
+ ✓ src/core-4i-b-ui-results.test.ts > ปุ่มยืนยันคำสั่งซื้อ (completeOrder) อ่านผลของ placeOrder > failed กับ action reject ได้ข้อความ fallback ไทยเดียวกัน 1ms
+ ✓ src/core-4i-b-ui-results.test.ts > ปุ่มยืนยันคำสั่งซื้อ (completeOrder) อ่านผลของ placeOrder > redirect ไปหน้า confirmed (action ไม่คืนค่า) → null 0ms
+ ✓ src/core-4i-b-ui-results.test.ts > ขั้น delivery (selectShippingMethod) อ่านผลของ setShippingMethod > ok → null; unauthorized → SIGN_IN_AGAIN_MESSAGE 19ms
+ ✓ src/core-4i-b-ui-results.test.ts > ขั้น delivery (selectShippingMethod) อ่านผลของ setShippingMethod > failed กับ action reject ได้ข้อความ fallback ไทยเดียวกัน 1ms
+ ✓ src/core-4i-b-ui-results.test.ts > QR พร้อมเพย์หมดอายุ (renewPromptPayQr) อ่านผลของ renewPromptPaySession > ok → renewed; PAYMENT_ALREADY_COMPLETED → already-paid 1ms
+ ✓ src/core-4i-b-ui-results.test.ts > QR พร้อมเพย์หมดอายุ (renewPromptPayQr) อ่านผลของ renewPromptPaySession > unauthorized → SIGN_IN_AGAIN_MESSAGE; failed/reject → ข้อความ fallback ไทย 0ms
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > unauthorized → SIGN_IN_AGAIN_MESSAGE + refresh (layout พาไป login) และไม่อ่าน GB-8 24ms
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > PAYMENT_ALREADY_COMPLETED → ทาง poll ของกฎข้อ 9(d) (order-pay-awaiting) ไม่มี error 2ms
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > failed → (d2) อ่าน GB-8 1 ครั้ง: ยังไม่ชำระ → order-pay-error ไทย 2ms
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > action reject → (d2) อ่าน GB-8 1 ครั้ง: ยังไม่ชำระ → order-pay-error ไทย 2ms
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > failed + GB-8 มีการชำระแล้ว → ทาง poll (d) ไม่มี error 3ms
+ ✓ src/core-4i-b-ui-results.test.ts > หน้า /account/orders/:id/pay (OrderPay) อ่านผลของ startPaymentSession > ok → อ่าน GB-8 ใหม่ ไม่มี error 2ms
+ ✓ src/sfui-3e-shipping-radio.test.ts > SFUI-3e: ตัวเลือกจัดส่งใน RadioGroup ของ shadcn (Radix) > กฎ 12: focus ตัวเลือกแรกแล้วกด ArrowDown (ค้าง) → ตัวถัดไปได้ focus และถูกเลือกผ่าน setShippingMethod 26ms
+ ✓ src/sfui-3e-shipping-radio.test.ts > SFUI-3e: ตัวเลือกจัดส่งใน RadioGroup ของ shadcn (Radix) > เลือกไม่สำเร็จ → กลับไปตัวเดิม และแสดงข้อความไทย 10ms
+ ✓ src/sfui-3e-shipping-radio.test.ts > SFUI-3e: ตัวเลือกจัดส่งใน RadioGroup ของ shadcn (Radix) > option แบบ calculated ที่คำนวณราคาไม่ได้ → disabled (+ aria-disabled แบบเดิม) และคลิกแล้วไม่เลือก 8ms
+ ✓ src/sfui-3e-shipping-radio.test.ts > SFUI-3e: ตัวเลือกจัดส่งใน RadioGroup ของ shadcn (Radix) > มี pickup → ตัวเลือก 'รับสินค้าด้วยตนเอง' เลือก pickup ตัวแรกที่มีของ แล้วแสดงรายการสาขา (ตัวที่ของไม่พอ disabled) 11ms
+      Tests  30 passed (30)
+
+## pnpm --filter storefront test:unit (Vitest ทั้งหมด)
+ Test Files  129 passed (129)
+      Tests  2008 passed (2008)
+
+## pnpm --filter storefront lint / typecheck
+lint: exit 0 — ✖ 28 problems (0 errors, 28 warnings) (warning เดิม; shipping/index.tsx มี set-state-in-effect 2 ตัวเดิม ไม่ได้แตะ)
+typecheck: exit 0
+
+## pnpm --filter storefront build (production): exit 0
+
+## pnpm --filter storefront test:e2e:unit (project unit ทั้งหมด) — SFUI + สรุป
+  ✓   33 [unit] › e2e/evidence-budget.unit.spec.ts:9:5 › โฟลเดอร์ evidence ทุก feature/task อยู่ตาม convention และอยู่ในงบ (52ms)
+  ✓   57 [unit] › e2e/sfui-baseline.unit.spec.ts:19:5 › AC-5: baseline ไม่ว่าง (กันผ่านแบบว่างเปล่า) (1ms)
+  ✓   56 [unit] › e2e/sfui-deps.unit.spec.ts:16:5 › AC-1 (1a): tailwindcss และ @tailwindcss/postcss เป็น 4.3.5 แบบ exact ใน devDependencies (4ms)
+  ✓   59 [unit] › e2e/sfui-deps.unit.spec.ts:23:5 › AC-1 (1a): ไม่มี @medusajs/ui-preset, tailwindcss-radix, autoprefixer (0ms)
+  ✓   58 [unit] › e2e/sfui-baseline.unit.spec.ts:24:5 › AC-5: data-testid ทุกค่าใน baseline ยังอยู่ใน src/** (112ms)
+  ✓   63 [unit] › e2e/sfui-legacy-css.unit.spec.ts:44:5 › AC-2: มีไฟล์ legacy-medusa.css และ globals.css import ไฟล์นี้ (1ms)
+  ✓   60 [unit] › e2e/sfui-deps.unit.spec.ts:29:5 › AC-1 (กฎ 1): ไม่มีไฟล์ tailwind.config.* และ postcss config มี plugin เดียวคือ @tailwindcss/postcss (148ms)
+  ✓   64 [unit] › e2e/sfui-legacy-css.unit.spec.ts:51:5 › AC-2: ทุก class ของ preset ที่ใช้ใน src/** มีนิยามใน legacy-medusa.css (1ms)
+  ✓   65 [unit] › e2e/sfui-deps.unit.spec.ts:40:5 › AC-1 (กฎ 1): globals.css ขึ้นต้นด้วย @import "tailwindcss" (ไม่นับ comment) (1ms)
+  ✓   67 [unit] › e2e/sfui-deps.unit.spec.ts:47:5 › AC-1 (1b): dependency ของ shadcn pin exact ตาม ADR-030 ข้อ 10 (3ms)
+  ✓   66 [unit] › e2e/sfui-legacy-css.unit.spec.ts:63:5 › AC-2: legacy-medusa.css ไม่มีชื่อที่ไม่ถูกใช้ใน src/** (10ms)
+  ✓   68 [unit] › e2e/sfui-shadcn-init.unit.spec.ts:19:5 › AC-7: components.json มีค่าตามกฎ 2 ทุก field (4ms)
+  ✓   70 [unit] › e2e/sfui-shadcn-init.unit.spec.ts:43:5 › AC-7: tsconfig.json มี "@/*": ["*"] บน baseUrl src และคง alias เดิม (1ms)
+  ✓   71 [unit] › e2e/sfui-shadcn-init.unit.spec.ts:55:5 › AC-7: src/lib/utils.ts export cn ที่สร้างจาก package cn (createCn ของ cn/config) (5ms)
+  ✓   69 [unit] › e2e/sfui-legacy-css.unit.spec.ts:76:5 › AC-2: ชื่อใน NO_STYLE_IN_PRESET ยังถูกใช้จริง (ลบออกเมื่อ task เจ้าของไฟล์ย้ายเสร็จ) (10ms)
+  ✓   72 [unit] › e2e/sfui-shadcn-init.unit.spec.ts:83:5 › AC-7: vitest.config.mts มี alias "@" → src และ include ครอบ src/**/*.test.ts + src/**/*.test.tsx (1ms)
+  ✓   61 [unit] › e2e/sfui-baseline.unit.spec.ts:28:5 › AC-5: ข้อความไทยทุกค่าใน baseline ยังอยู่ใน src/** (96ms)
+  ✓   75 [unit] › e2e/sfui-baseline.unit.spec.ts:33:5 › AC-5: ตัวดึง testid รองรับ JSX, {"…"}, template literal, ternary และ object key (7ms)
+  ✓   73 [unit] › e2e/sfui-legacy-css.unit.spec.ts:80:5 › AC-2: map class → นิยามที่ต้องมี (1ms)
+  ✓   78 [unit] › e2e/sfui-baseline.unit.spec.ts:53:5 › AC-5: ตัวดึงข้อความไทยเก็บสตริงและข้อความ JSX ที่มีอักษรไทย ไม่เก็บ comment/ละติน (5ms)
+  ✓   79 [unit] › e2e/sfui-legacy-css.unit.spec.ts:116:5 › AC-2: ทุก var(--…) ที่ src/** อ้างตรงมีนิยามใน src/styles/*.css (ยกเว้นของ Tailwind/next/font/Radix) (17ms)
+  ✓   83 [unit] › e2e/sfui-legacy-css.unit.spec.ts:124:5 › AC-2: ตัวแปรดิบใน :root ของ legacy-medusa.css ถูกอ้างจริงทุกตัว (ไม่มีชื่อที่ไม่ถูกใช้) (14ms)
+  ✓   62 [unit] › e2e/sfui-legacy.unit.spec.ts:215:5 › AC-6 (a): ทุกไฟล์ที่มี pattern ต้องห้ามอยู่ใน PENDING ของ task ใด task หนึ่ง (252ms)
+  ✓  100 [unit] › e2e/sfui-legacy.unit.spec.ts:220:5 › AC-6 (b): ทุกไฟล์ใน PENDING ยังมีอยู่และยังมี pattern (ย้ายเสร็จแล้วต้องลบออกจากรายการ) (15ms)
+  ✓  106 [unit] › e2e/sfui-legacy.unit.spec.ts:227:5 › AC-6 (c): key ของ PENDING เป็น task ที่ยังไม่ merge เท่านั้น และไม่มีไฟล์ซ้ำข้าม task (1ms)
+  ✓  112 [unit] › e2e/sfui-legacy.unit.spec.ts:233:5 › AC-6: ตัวจับ class ของ preset แยก variant/important/opacity และไม่นับ class ของ Tailwind ปกติ (2ms)
+  ✓  116 [unit] › e2e/sfui-legacy.unit.spec.ts:255:5 › AC-6: ตัวแปรดิบของ preset var(--fg-*/--bg-*/--border-*) ในไฟล์ที่ไม่ใช่ test นับเป็น pattern ต้องห้าม (2ms)
+  ✓  121 [unit] › e2e/sfui-legacy.unit.spec.ts:264:5 › AC-6: ไฟล์ที่อ้าง var(--fg-*) อยู่ใน PENDING ของ task เจ้าของไฟล์ (0ms)
+  192 passed (2.3s)
+
+## e2e (prod build) ที่อ้างขั้น delivery/testid ของไฟล์ + AC-13 + AC-17 + ผู้ใช้ checkoutToPayment — Playwright ไม่ตั้ง STRIPE_API_KEY (spec ที่ต้อง Stripe จริง skip)
+## รายการ: e2e/affiliate-last-click.spec.ts e2e/core-19f-switch-payment-method.spec.ts e2e/core-32-shipping-profile-filter.spec.ts e2e/core-38-mobile-layout.spec.ts e2e/core-41-checkout-first-step.spec.ts e2e/core-46-e2e-hygiene.unit.spec.ts e2e/core-4e-checkout-polish.spec.ts e2e/core-57-cart-totals.spec.ts e2e/core-95-payment-received-notice.spec.ts e2e/core-store.spec.ts e2e/ev-7c-digital-only-checkout.spec.ts e2e/ev-7d-digital-only-totals.spec.ts e2e/group-buy-account-orders.spec.ts e2e/group-buy-group-page.spec.ts e2e/group-buy-home-campaigns.spec.ts e2e/group-buy-join.spec.ts e2e/group-buy-not-started.spec.ts e2e/group-buy-ui-polish.spec.ts e2e/pay-17-stripe-error-thai.spec.ts e2e/payments.spec.ts e2e/sfui-3d-payment.spec.ts e2e/sfui-mobile-390.spec.ts e2e/thai-ui-checkout.spec.ts 
+  12 skipped
+  58 passed (1.7m)
+
+## e2e รอบ 2: STRIPE_API_KEY ค่าหลอก sk_test_ (backend มี provider Stripe) — sfui-3d-payment (ผ่าน delivery ด้วย checkoutToPayment) + core-32 ซ้ำ
+  5 passed (12.1s)
+
+## spec ที่รันในเครื่องไม่ได้ (ต้องใช้ Stripe test key จริง — ให้ CI รัน): 12 test ที่ skip ใน payments.spec, pay-17-stripe-error-thai,
+## group-buy-account-orders (Stripe), core-19f-switch-payment-method, core-95-payment-received-notice
+
+## แก้เพิ่มหลัง approve (review 5c): หัวขั้น "การจัดส่ง"/"การชำระเงิน" ต้องเท่า develop (Heading h2 = text-2xl font-semibold → 24px/32px)
+## backend prod :9160 (DB medusa_sfui3e, Redis db 10, STRIPE_API_KEY ค่าหลอก sk_test_), storefront prod :8160
+Red — e2e/sfui-3e-shipping.spec.ts ใหม่ (ก่อนแก้: text-3xl-regular font-semibold):
+    Error: expect(locator).toHaveCSS(expected) failed
+    Expected: "24px"
+    Received: "32px"
+    test-results/sfui-3e-shipping-AC-13-ขั้-5ce16-เงินขนาด-24px-32px-semibold-chromium/test-failed-1.png
+Green — payment/index.tsx + shipping/index.tsx: text-3xl-regular → text-2xl (คง font-semibold) แล้ว prod build ใหม่:
+e2e: e2e/sfui-3e-shipping.spec.ts e2e/sfui-3d-payment.spec.ts e2e/core-32-shipping-profile-filter.spec.ts e2e/thai-ui-checkout.spec.ts e2e/core-38-mobile-layout.spec.ts
+  e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (375px)
+  e2e/core-32-shipping-profile-filter.spec.ts:37:5 › AC-125 checkout: ขั้น delivery ของ cart t-shirt มี Standard ไม่มี Digital delivery
+  e2e/sfui-3d-payment.spec.ts:9:5 › AC-12: focus ตัวเลือกบัตรแล้วกด ArrowDown → พร้อมเพย์ถูกเลือก (aria-checked)
+  e2e/sfui-3e-shipping.spec.ts:16:5 › AC-13: ขั้น delivery — ตัวเลือกเป็น role=radio ที่ยังไม่ติ๊ก และหัวขั้นจัดส่ง/ชำระเงินขนาด 24px/32px semibold
+  e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (1280px)
+  e2e/core-38-mobile-layout.spec.ts:124:5 › AC-132: checkout — label ของฟอร์มที่อยู่ไม่ทับค่า, สรุปที่อยู่ 375 เรียงแนวตั้งและอีเมลยาวไม่ล้น, 1280 แถวเดียว
+  e2e/thai-ui-checkout.spec.ts:22:5 › AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษาไทย
+  e2e/core-32-shipping-profile-filter.spec.ts:59:5 › AC-125 หน้ากลุ่ม: หลังกด group-shipping-load ไม่มี option ของ Digital delivery
+  e2e/core-32-shipping-profile-filter.spec.ts:126:7 › CORE-33 › AC-127 checkout: cart t-shirt ที่ค้าง Digital delivery ไม่มี radio ติ๊ก ปุ่ม disabled จนเลือก Standard
+  e2e/core-38-mobile-layout.spec.ts:202:5 › AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่าง + billing ต่างกัน → ข้อความอยู่ในกล่องของตัวเองที่ 375/640/1280
+  e2e/core-32-shipping-profile-filter.spec.ts:176:7 › CORE-35 › AC-129 checkout: cart ค้าง Digital delivery เปิด step=payment/review ตรงๆ → กลับ delivery; เลือก Standard แล้วไป payment ได้
+  e2e/core-38-mobile-layout.spec.ts:247:5 › AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่างอยู่ในกล่องของตัวเองที่ 375/640/1280
+  12 passed (16.9s)
+test:unit: Tests 2008 passed (2008) | typecheck: exit 0 | lint: 0 errors, 28 warnings (เดิม) | build prod: exit 0 | test:e2e:unit: 192 passed (2.2s)
+
+## D-1 (qa SFUI): submit-delivery-option-button คงความสูง 48px (h-12) ของ size large เดิม (2026-11-26)
+### red — e2e/sfui-button-lg.unit.spec.ts (หลัง merge SFUI-3d ก่อนแก้ shipping)
+    +   "src/modules/checkout/components/shipping/index.tsx:397",
+  1 failed
+  1 passed
+### green
+  2 passed (558ms)
+$ tsc --noEmit
+✖ 27 problems (0 errors, 27 warnings)
+
+ Test Files  130 passed (130)
+      Tests  2016 passed (2016)
+  194 passed (1.4s)

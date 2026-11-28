@@ -59,7 +59,7 @@ export function EvoucherPartnerBlockView({ pool }: { pool: EvoucherPool | null }
 
   return (
     <div
-      className="flex flex-col gap-y-3 rounded-lg border border-ui-border-base p-4 text-small-regular"
+      className="flex flex-col gap-y-3 rounded-lg border border-border p-4 text-xs leading-5 font-normal"
       data-testid="evoucher-partner-block"
     >
       <div className="flex items-center gap-x-3">
@@ -68,8 +68,8 @@ export function EvoucherPartnerBlockView({ pool }: { pool: EvoucherPool | null }
           <img src={logoUrl} alt={partner.name} className="h-10 w-10 object-contain" />
         )}
         <div className="flex flex-col">
-          <span className="text-ui-fg-muted">บัตรกำนัลจากพาร์ทเนอร์</span>
-          <span className="text-base-semi" data-testid="evoucher-partner-name">
+          <span className="text-muted-foreground">บัตรกำนัลจากพาร์ทเนอร์</span>
+          <span className="text-sm leading-6 font-semibold" data-testid="evoucher-partner-name">
             {partner.name}
           </span>
         </div>
@@ -86,7 +86,7 @@ export function EvoucherPartnerBlockView({ pool }: { pool: EvoucherPool | null }
           <p data-testid="evoucher-validity-note">{pool.validity_note}</p>
         </div>
       )}
-      <p className="text-ui-fg-subtle" data-testid="evoucher-delivery-note">
+      <p className="text-muted-foreground" data-testid="evoucher-delivery-note">
         ส่งมอบรหัสทางอีเมลหลังชำระเงิน และดูได้ที่หน้าบัตรกำนัลของฉันในบัญชี
       </p>
       {termsUrl && (

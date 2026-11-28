@@ -36,11 +36,12 @@ describe("รายการแคมเปญ (spec 08 AC-9)", () => {
   })
 
   // ADM-20 (AC-24, กฎ 24): API ล้มและไม่มีข้อมูล → error ผ่าน emptyState ของ DataTable (คงหัวตาราง + ปุ่ม Create campaign)
+  // spec 10 AC-7 (AI18N-2): ข้อความเป็น key ของ ecom-group-buy (ค่า en "Could not load campaigns" ตรวจใน i18n-group-buy.unit.spec.ts)
   it("isError && !data แสดง \"Could not load campaigns\" ใน emptyState ของ DataTable ไม่แทนตารางด้วย NoRecords", () => {
     expect(src).toMatch(/isError && !data/)
     // prop emptyState ของ <DataTable ... /> (ตั้งแต่ emptyState= จนปิด tag)
     const emptyState = src.match(/<DataTable\b[\s\S]*?emptyState=([\s\S]*?)\/>/)?.[1] ?? ""
-    expect(emptyState).toMatch(/"Could not load campaigns"/)
+    expect(emptyState).toMatch(/t\("list\.loadError"\)/)
     expect(src).not.toMatch(/\bNoRecords\b/)
     expect(src).toMatch(/data-testid=\{loadFailed \? "gb-campaigns-error" : undefined\}/)
   })
@@ -51,8 +52,11 @@ describe("รายการแคมเปญ (spec 08 AC-9)", () => {
     expect(src).toMatch(/if \(isUnauthorized\(error\)\) \{\s*throw error\s*\}/)
   })
 
+  // spec 10 กฎ 9 (AI18N-2): breadcrumb เรียก helper t ตอนรัน (ค่า en "Group buying")
+  // AI18N-N1: helper import แบบ alias ไม่ซ้อนชื่อกับ t ของ useTranslation
   it("export handle.breadcrumb เป็น \"Group buying\" (breadcrumb 2 ระดับร่วมกับหน้ารายละเอียด)", () => {
-    expect(src).toMatch(/export const handle\s*=\s*{\s*breadcrumb:\s*\(\)\s*=>\s*"Group buying"/)
+    expect(src).toMatch(/import \{ t as tNs \} from "\.\.\/\.\.\/i18n\/t"/)
+    expect(src).toMatch(/export const handle\s*=\s*{\s*breadcrumb:\s*\(\)\s*=>\s*tNs\("ecom-group-buy", "nav\.groupBuying"\)/)
   })
 })
 
@@ -74,6 +78,9 @@ describe("รายละเอียดแคมเปญ (spec 08 AC-9)", () =
   it("export loader และ handle.breadcrumb (ชื่อแคมเปญ)", () => {
     expect(src).toMatch(/export const loader\b/)
     expect(src).toMatch(/export const handle\s*=\s*{[^}]*\bbreadcrumb\b/)
+    // AI18N-N1: fallback ใช้ helper แบบ alias ไม่ซ้อนชื่อกับ t ของ useTranslation
+    expect(src).toMatch(/import \{ t as tNs \} from "\.\.\/\.\.\/\.\.\/i18n\/t"/)
+    expect(src).toMatch(/\?\? tNs\("ecom-group-buy", "breadcrumb\.campaign"\)/)
   })
 })
 

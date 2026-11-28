@@ -35,7 +35,7 @@ export default async function AffiliateEarningsPage({ params }: { params: Promis
 
   return (
     <div className="content-container py-8 flex flex-col gap-y-6" data-testid="affiliate-earnings-page">
-      <h1 className="text-xl-semi">รายได้ค่าคอมมิชชัน</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">รายได้ค่าคอมมิชชัน</h1>
       {!byStatus ? (
         <StatusNotice status={affiliate.status} />
       ) : (
@@ -43,22 +43,22 @@ export default async function AffiliateEarningsPage({ params }: { params: Promis
           {EARNING_STATUSES.map((status) => (
             <div
               key={status}
-              className="flex flex-col gap-y-1 border border-ui-border-base rounded-rounded p-4"
+              className="flex flex-col gap-y-1 border border-border rounded-rounded p-4"
               data-testid={`affiliate-earnings-${status}`}
             >
-              <dt className="text-small-regular text-ui-fg-subtle">{LABEL[status]}</dt>
+              <dt className="text-xs leading-5 font-normal text-muted-foreground">{LABEL[status]}</dt>
               {byStatus[status].map((m) => (
-                <dd key={m.currency_code} className="text-large-semi">
+                <dd key={m.currency_code} className="text-base leading-6 font-semibold">
                   {portalAmount(m)}
                 </dd>
               ))}
               {status === "pending" && (
-                <dd className="text-small-regular text-ui-fg-subtle" data-testid="affiliate-earnings-pending-note">
+                <dd className="text-xs leading-5 font-normal text-muted-foreground" data-testid="affiliate-earnings-pending-note">
                   หักรายการยกเลิก/คืนเงินแล้ว
                 </dd>
               )}
               {status === "reversed" && (
-                <dd className="text-small-regular text-ui-fg-subtle" data-testid="affiliate-earnings-reversed-note">
+                <dd className="text-xs leading-5 font-normal text-muted-foreground" data-testid="affiliate-earnings-reversed-note">
                   ยอดที่ถูกหักจากคำสั่งซื้อที่ยกเลิกหรือคืนเงิน แสดงแยกจากยอดอื่น
                 </dd>
               )}

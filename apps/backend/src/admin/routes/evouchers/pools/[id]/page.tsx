@@ -3,18 +3,22 @@ import { EllipsisHorizontal } from "@medusajs/icons"
 import { Badge, IconButton, Text } from "@medusajs/ui"
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { LoaderFunctionArgs, UIMatch, useLoaderData, useNavigate, useParams } from "react-router-dom"
 import { Container } from "../../../../components/common/container"
 import { Header } from "../../../../components/common/header"
 import { CodesTable } from "../../../../components/evoucher/codes-table"
 import { ImportCodes } from "../../../../components/evoucher/import-codes"
 import { PoolDeleteMenu, PoolStockBadge } from "../../../../components/evoucher/pool-delete"
+// helper t ของ breadcrumb (นอก component) — import เป็น tNs ไม่ซ้อนกับ t ของ useTranslation; guard ใน __tests__/i18n-check.ts รู้จัก alias นี้ (spec 10 กฎ 6, AI18N-N1)
+import { t as tNs } from "../../../../i18n/t"
 import { CODE_STATUSES, evoucherApi, evoucherKeys, STATUS_COLOR } from "../../../../lib/evoucher"
 import { createSingleFlight } from "../../../../lib/single-flight"
 
 // EV-6: รายละเอียด pool — จำนวน code ต่อสถานะ, import CSV, รายการ code (masked) + reveal (audit)
 // ADM-4: LayoutComposer (core:single-column) + Header + SectionRow ของ dashboard
 const PoolPage = () => {
+  const { t } = useTranslation("ecom-evoucher")
   const { id } = useParams()
   const poolId = id!
 
@@ -44,12 +48,12 @@ const PoolPage = () => {
             <LayoutComposer.Entry id="EvoucherPoolGeneralSection">
               <Container>
                 <Header
-                  title={isLoading ? "Loading…" : (pool?.name ?? "")}
+                  title={isLoading ? t("general.loading") : (pool?.name ?? "")}
                   actions={[
                     ...(pool ? [{ type: "custom" as const, children: <PoolStockBadge pool={pool} /> }] : []),
                     {
                       type: "button",
-                      props: { variant: "secondary", children: "All pools" },
+                      props: { variant: "secondary", children: t("pool.allPools") },
                       link: { to: "/evouchers" },
                     },
                     ...(pool
@@ -73,7 +77,7 @@ const PoolPage = () => {
                     {CODE_STATUSES.map((status) => (
                       <div key={status} className="flex flex-col gap-y-1">
                         <Badge size="2xsmall" color={STATUS_COLOR[status]} className="w-fit">
-                          {status}
+                          {t(`codeStatus.${status}`, { defaultValue: status })}
                         </Badge>
                         <Text size="xlarge" weight="plus">
                           {pool.code_counts[status]}
@@ -84,9 +88,9 @@ const PoolPage = () => {
                 )}
                 {pool && (
                   <>
-                    <SectionRow title="Partner" value={pool.partner.name} />
-                    <SectionRow title="Face value" value={pool.face_value != null ? String(pool.face_value) : null} />
-                    <SectionRow title="How to use" value={pool.how_to_use} />
+                    <SectionRow title={t("fields.partner")} value={pool.partner.name} />
+                    <SectionRow title={t("fields.faceValue")} value={pool.face_value != null ? String(pool.face_value) : null} />
+                    <SectionRow title={t("fields.howToUse")} value={pool.how_to_use} />
                   </>
                 )}
               </Container>
@@ -110,8 +114,10 @@ type PoolLoaderData = Awaited<ReturnType<typeof evoucherApi.retrievePool>>
 export const loader = async ({ params }: LoaderFunctionArgs) =>
   evoucherApi.retrievePool(params.id!)
 
+// spec 10 กฎ 4b: fallback แปลด้วย helper t (alias tNs ไม่ซ้อนกับ t ของ useTranslation — AI18N-N1) ตอนรัน (ชื่อ pool จาก loader คงเดิม)
 export const handle = {
-  breadcrumb: ({ loaderData }: UIMatch<PoolLoaderData>) => loaderData?.pool.name ?? "Pool",
+  breadcrumb: ({ loaderData }: UIMatch<PoolLoaderData>) =>
+    loaderData?.pool.name ?? tNs("ecom-evoucher", "pool.breadcrumb"),
 }
 
 export default PoolPage

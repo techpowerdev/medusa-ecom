@@ -2,6 +2,7 @@ import { Locator, Page } from "@playwright/test"
 
 import { ADMIN_UI_OPTIONS, loginAdmin } from "./support/admin"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
+import { createPoolReadyVariant } from "./support/evoucher"
 import { adminHeaders } from "./support/medusa"
 
 // ADM-34 (spec 08 AC-39b, กฎ 38): FocusModal แบบ state (ไม่มี FocusModal.Trigger) ปิดแล้ว focus กลับปุ่มที่ใช้เปิด
@@ -104,20 +105,12 @@ for (const c of CASES) {
 test("AC-39b: Create pool (หน้า variant ที่ยังไม่มี pool) — Escape ปิดแล้ว focus กลับปุ่ม", async ({ page, request, step }) => {
   test.setTimeout(120_000)
   const admin = await adminHeaders(request)
-  const res = await request.post(`${BACKEND_URL}/admin/products`, {
-    headers: admin,
-    data: {
-      title: `ADM-34 voucher ${uniqueTag()}`,
-      options: [{ title: "Value", values: ["500"] }],
-      variants: [{ title: "500 THB", options: { Value: "500" }, prices: [{ currency_code: "thb", amount: 500 }] }],
-    },
-  })
-  expect(res.status(), await res.text()).toBe(200)
-  const { product } = await res.json()
+  // EV-27 (spec 02 กฎข้อ 43g): variant ที่ผ่านเงื่อนไข — modal เปิดเป็นฟอร์ม (openForm รอช่อง How to use)
+  const { productId, variantId } = await createPoolReadyVariant(request, admin, `ADM-34 voucher ${uniqueTag()}`)
   const poolCase: Case = {
     name: "Create pool",
     goto: async (p) => {
-      await p.goto(`${BACKEND_URL}/app/products/${product.id}/variants/${product.variants[0].id}`)
+      await p.goto(`${BACKEND_URL}/app/products/${productId}/variants/${variantId}`)
     },
     opener: (p) => p.getByRole("button", { name: "Create pool" }),
     field: (p) => p.getByLabel("How to use * (shown in the delivery email)", { exact: true }),
@@ -131,8 +124,8 @@ test("AC-39b: Create pool (หน้า variant ที่ยังไม่ม�
       await expectFocusBack(page, poolCase)
     })
   } finally {
-    const removed = await request.delete(`${BACKEND_URL}/admin/products/${product.id}`, { headers: admin })
-    expect.soft(removed.ok(), `ลบ product ${product.id}`).toBe(true)
+    const removed = await request.delete(`${BACKEND_URL}/admin/products/${productId}`, { headers: admin })
+    expect.soft(removed.ok(), `ลบ product ${productId}`).toBe(true)
   }
 })
 

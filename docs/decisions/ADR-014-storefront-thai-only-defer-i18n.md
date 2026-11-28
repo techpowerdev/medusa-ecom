@@ -2,6 +2,7 @@
 
 สถานะ: accepted (owner, 2026-10-26)
 เกี่ยวข้อง: ADR-008 (supersede **เฉพาะส่วน i18n**), ADR-002, spec 01 (CORE-4b/4c/4d, CORE-7), spec 02–06 (ข้อความ UI storefront)
+— หมายเหตุ 2026-11-26: [ADR-030](ADR-030-storefront-shadcn-ui.md) (shadcn/ui) **ไม่กระทบ** ADR นี้ — ข้อความไทยเขียนตรงในโค้ดคงเดิม, ข้อความ a11y ใหม่ของ overlay (`DialogTitle`/`DialogDescription`) เป็นภาษาไทย
 
 ## บริบท
 - ADR-008 ข้อ 1–3 ให้แปล UI ด้วย next-intl และเลือก locale จาก cookie `_medusa_locale` โดยคาดว่า "หน้าที่อ่าน cookie render แบบ dynamic
@@ -31,6 +32,7 @@ C. ทำ i18n ต่อแบบ locale ใน URL (`/[countryCode]/[locale]/..
 5. backend CORE-7 (Translation module + store locales `th-TH`, `en-US`) **คงไว้ไม่ถอด** แต่ storefront ไม่ใช้: ไม่มี cookie จึงไม่ส่ง header
    `x-medusa-locale` → Medusa คืนเนื้อหาต้นฉบับ (ภาษาไทย ตามข้อตัดสิน owner ใน spec 01 CORE-4 ข้อ 1)
 6. Admin dashboard และ admin extension (`src/admin/`) อยู่นอก ADR นี้ (คงภาษาอังกฤษตาม Medusa admin)
+   — หมายเหตุ 2026-11-26: [ADR-031](ADR-031-admin-extensions-thai-i18n.md) (accepted 2026-11-26) ให้ admin extension สองภาษา en/th ตามภาษาที่เลือกใน Medusa admin; storefront ไม่กระทบ
 
 ### เงื่อนไขที่จะกลับมาทำ i18n
 ต้องมี **ADR ใหม่** ที่เลือกระหว่างทางเลือก B (dynamic SSR — ต้องวัดผลกระทบ cache/latency ของ home/PDP) หรือ C (locale ใน URL — ดีต่อ

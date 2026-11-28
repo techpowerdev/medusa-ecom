@@ -113,6 +113,7 @@ describe("SearchPagination ของ /store (กฎข้อ 148c)", () => {
       currentRefinement,
       nbPages,
       refine: vi.fn(),
+      createURL: (page: number) => `/th/store?product%5Bpage%5D=${page + 1}`,
     })
     const { default: SearchPagination } = await import(
       "@modules/store/components/store-hits/pagination"
@@ -120,21 +121,27 @@ describe("SearchPagination ของ /store (กฎข้อ 148c)", () => {
     return renderToStaticMarkup(createElement(SearchPagination))
   }
 
-  it("nav มี aria-label ไทย, ปุ่มหน้าปัจจุบันเท่านั้นที่มี aria-current=page, aria-label ของปุ่มเป็นไทย", async () => {
+  // SFUI-19c (spec 09 กฎ 66): `pagination` ของ shadcn — เลขหน้าเป็นลิงก์ `PaginationLink` ที่มี href ของหน้านั้น
+  it("nav มี aria-label ไทย, ลิงก์หน้าปัจจุบันเท่านั้นที่มี aria-current=page, aria-label ของลิงก์เป็นไทย", async () => {
     const html = await renderPagination(1, [0, 1, 2, 3], 4)
     expect(html).toMatch(
       /<nav[^>]*aria-label="แบ่งหน้า"[^>]*data-testid="product-pagination"/
     )
-    const buttons = html.match(/<button[^>]*>/g) ?? []
-    expect(buttons).toHaveLength(4)
-    buttons.forEach((b, i) => {
-      const label = b.match(/aria-label="([^"]*)"/)?.[1] ?? ""
+    expect(html).toContain('data-slot="pagination"')
+    expect(html).not.toMatch(/<button/)
+    const links = html.match(/<a[^>]*>/g) ?? []
+    expect(links).toHaveLength(4)
+    links.forEach((a, i) => {
+      expect(a).toContain('data-slot="pagination-link"')
+      expect(a).toContain(`href="/th/store?product%5Bpage%5D=${i + 1}"`)
+      const label = a.match(/aria-label="([^"]*)"/)?.[1] ?? ""
       expect(label).toBe(`หน้า ${i + 1}`)
       expect(label).toMatch(THAI)
     })
-    expect(buttons.filter((b) => b.includes('aria-current="page"'))).toEqual([
+    expect(links.filter((a) => a.includes('aria-current="page"'))).toEqual([
       expect.stringContaining('aria-label="หน้า 2"'),
     ])
+    expect(html).not.toMatch(/Previous|Next|More pages|aria-label="pagination"/)
   })
 
   it("จุดไข่ปลาซ่อนจาก screen reader", async () => {

@@ -31,8 +31,8 @@ export default function CollectionTemplate({
         hideOptionsPicker
       />
       <div className="w-full">
-        <div className="mb-8 text-2xl-semi">
-          <h1 data-testid="collection-page-title">{collection.title}</h1>
+        <div className="mb-8 text-[30px] leading-[48px] font-semibold">
+          <h1 className="text-3xl font-semibold tracking-tight" data-testid="collection-page-title">{collection.title}</h1>
         </div>
         <Suspense
           fallback={

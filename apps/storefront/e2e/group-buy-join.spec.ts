@@ -7,6 +7,7 @@ import { addAddresses, cartWithItems, joinWith, poolGroup, type PoolGroupCtx } f
 import { STOREFRONT_COUNTRY as CC, createCustomer, signInAs, type Customer } from "./support/medusa"
 import { isNavCartReadBody, isServerAction, waitForServerAction } from "./support/server-action"
 import { expectThai } from "./support/thai-text"
+import { chooseOption, expectSelected, selectOptions } from "./support/select"
 
 // GB-7a2 (spec 04 กฎข้อ 14c, 27, 29c–f, 31; AC-28 ส่วน e2e, AC-47): join จากหน้ากลุ่มด้วย cart ใหม่หลาย line
 test.use({ evidenceTarget: { feature: "group-buying", taskId: "GB-7a2" } })
@@ -57,7 +58,7 @@ async function shopper(request: APIRequestContext, context: BrowserContext, base
 /** เลือก option (ไซซ์) ภายใต้ wrapper ของหน้ากลุ่ม + จำนวน แล้วเพิ่มในรายการ */
 async function addVariant(page: Page, size: string, quantity: number) {
   await page.getByTestId("group-options").getByTestId("option-button").filter({ hasText: new RegExp(`^${size}$`) }).click()
-  await page.getByTestId("group-quantity").selectOption(String(quantity))
+  await chooseOption(page.getByTestId("group-quantity"), String(quantity))
   await page.getByTestId("group-add-variant").click()
 }
 
@@ -65,8 +66,8 @@ async function addVariant(page: Page, size: string, quantity: number) {
 async function pickStandard(page: Page) {
   const shipping = page.getByTestId("group-shipping-option")
   await expect(shipping).toBeVisible()
-  const id = (await shipping.locator("option").filter({ hasText: "Standard" }).getAttribute("value"))!
-  await shipping.selectOption(id)
+  const id = (await selectOptions(shipping)).options.find(([, text]) => text.includes("Standard"))![0]
+  await chooseOption(shipping, id)
   return id
 }
 
@@ -101,7 +102,7 @@ test.describe("join จากหน้ากลุ่ม (AC-28, AC-47)", () => 
     await addVariant(page, "S", 2)
     await addVariant(page, "M", 1)
     await expect(page.getByTestId("group-selection-item")).toHaveCount(2)
-    await page.getByTestId("group-address-select").selectOption(addressIds[1])
+    await chooseOption(page.getByTestId("group-address-select"), addressIds[1])
     // CORE-61 (spec 01 กฎข้อ 119a): รอผลจริงของ prepareGroupCart (body มี id ของที่อยู่ H2) ก่อนหา option วิธีส่ง
     const prepared = waitForServerAction(page, (body) => body.includes(`"addressId":"${addressIds[1]}"`))
     // dblclick: สร้าง cart ใหม่ครั้งเดียว (in-flight flag)
@@ -110,11 +111,10 @@ test.describe("join จากหน้ากลุ่ม (AC-28, AC-47)", () => 
     const shipping = page.getByTestId("group-shipping-option")
     await expect(shipping).toBeVisible()
     // qa #238 D1: ไม่เลือกวิธีส่งให้ (ตัวแรกอาจเป็น Digital delivery ฿0 — spec 02 กฎ 8) → ยังกด join ไม่ได้จนกว่าลูกค้าเลือกเอง
-    await expect(shipping).toHaveValue("")
+    await expectSelected(shipping, "")
     await expect(page.getByTestId("group-join-button")).toBeDisabled()
-    const standard = shipping.locator("option").filter({ hasText: "Standard" })
-    const optionId = (await standard.getAttribute("value"))!
-    await shipping.selectOption(optionId)
+    const optionId = (await selectOptions(shipping)).options.find(([, text]) => text.includes("Standard"))![0]
+    await chooseOption(shipping, optionId)
 
     const actions = await recordActions(page)
     // CORE-61 (กฎข้อ 119a): รอ joinGroupBuy(token, cartId) — action เดียวของชุดที่ argument แรกเป็น token ของกลุ่ม

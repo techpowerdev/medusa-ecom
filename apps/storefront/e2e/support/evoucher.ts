@@ -24,19 +24,21 @@ export async function call(
 
 export type Voucher = { variantId: string; handle: string; partnerName: string; partnerId: string; poolId: string }
 
-/** voucher variant (ไม่มี shipping profile) + pool + import `count` code (`code,pin,expires_at?`) ผ่าน admin API (`count` 0 = pool ว่าง ไม่ import) */
-export async function createVoucher(
+export type PoolReadyVariant = { productId: string; variantId: string; handle: string }
+
+/**
+ * EV-27 (spec 02 กฎข้อ 43g): product + variant ที่ผ่านเงื่อนไขสร้าง pool ของ widget (manage inventory, inventory item เดียว
+ * qty 1 ไม่ใช้ร่วม, ไม่มี shipping profile, location level 1 แห่ง) ผ่าน admin API — ใช้ร่วมกับ `createVoucher` และ e2e ที่เปิดฟอร์ม Create pool
+ */
+export async function createPoolReadyVariant(
   request: APIRequestContext,
   admin: Headers,
-  count = 2,
-  pool: { validity_note?: string; expires_at?: string } = {},
-  partnerFields: { support_contact?: string } = {}
-): Promise<Voucher> {
-  const tag = `ev-${Date.now()}-${crypto.randomInt(1e6)}`
+  title = `Voucher ev-${Date.now()}-${crypto.randomInt(1e6)}`
+): Promise<PoolReadyVariant> {
   const { sales_channels } = await call(request, admin, "/admin/sales-channels?name=Default%20Sales%20Channel")
   const { stock_locations } = await call(request, admin, "/admin/stock-locations?limit=1")
   const { product } = await call(request, admin, "/admin/products", {
-    title: `Voucher ${tag}`,
+    title,
     status: "published",
     sales_channels: [{ id: sales_channels[0].id }],
     options: [{ title: "Value", values: ["500"] }],
@@ -55,10 +57,24 @@ export async function createVoucher(
     admin,
     `/admin/products/${product.id}/variants/${variantId}?fields=inventory_items.inventory_item_id`
   )
-  await call(request, admin, `/admin/inventory-items/${variant.inventory_items[0].inventory_item_id}/location-levels`, {
+  const inventoryItemId: string = variant.inventory_items[0].inventory_item_id
+  await call(request, admin, `/admin/inventory-items/${inventoryItemId}/location-levels`, {
     location_id: stock_locations[0].id,
     stocked_quantity: 0,
   })
+  return { productId: product.id, variantId, handle: product.handle }
+}
+
+/** voucher variant (ไม่มี shipping profile) + pool + import `count` code (`code,pin,expires_at?`) ผ่าน admin API (`count` 0 = pool ว่าง ไม่ import) */
+export async function createVoucher(
+  request: APIRequestContext,
+  admin: Headers,
+  count = 2,
+  pool: { validity_note?: string; expires_at?: string } = {},
+  partnerFields: { support_contact?: string } = {}
+): Promise<Voucher> {
+  const tag = `ev-${Date.now()}-${crypto.randomInt(1e6)}`
+  const { variantId, handle } = await createPoolReadyVariant(request, admin, `Voucher ${tag}`)
   const partnerName = `Partner ${tag}`
   const { partner } = await call(request, admin, "/admin/evoucher/partners", { name: partnerName, ...partnerFields })
   const created = await call(request, admin, "/admin/evoucher/pools", {
@@ -68,7 +84,7 @@ export async function createVoucher(
     how_to_use: "แสดง code ที่แคชเชียร์",
     ...(pool.validity_note ? { validity_note: pool.validity_note } : {}),
   })
-  const voucher = { variantId, handle: product.handle, partnerName, partnerId: partner.id, poolId: created.pool.id as string }
+  const voucher = { variantId, handle, partnerName, partnerId: partner.id, poolId: created.pool.id as string }
   if (count === 0) return voucher
   const expires = pool.expires_at ? `,${pool.expires_at}` : ""
   const imported = await request.post(`${BACKEND_URL}/admin/evoucher/pools/${created.pool.id}/import`, {

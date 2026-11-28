@@ -1,5 +1,4 @@
-import { Container } from "@modules/common/components/ui"
-
+import { Button } from "@/components/ui/button"
 import ChevronDown from "@modules/common/icons/chevron-down"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { convertToLocale } from "@lib/util/money"
@@ -17,11 +16,11 @@ const Overview = ({ customer, orders, hasGroupOrders = false }: OverviewProps) =
   return (
     <div data-testid="overview-page-wrapper">
       <div className="hidden small:block">
-        <div className="text-xl-semi flex justify-between items-center mb-4">
+        <div className="text-2xl leading-[36px] font-semibold flex justify-between items-center mb-4">
           <span data-testid="welcome-message" data-value={customer?.first_name}>
             สวัสดี {customer?.first_name}
           </span>
-          <span className="text-small-regular text-ui-fg-base">
+          <span className="text-xs leading-5 font-normal text-foreground">
             เข้าสู่ระบบด้วย:{" "}
             <span
               className="font-semibold"
@@ -39,32 +38,32 @@ const Overview = ({ customer, orders, hasGroupOrders = false }: OverviewProps) =
               data-testid="overview-stats"
             >
               <div className="flex flex-col gap-y-4">
-                <h3 className="text-large-semi">โปรไฟล์</h3>
+                <h3 className="text-base leading-6 font-semibold">โปรไฟล์</h3>
                 <div className="flex items-end gap-x-2">
                   <span
-                    className="text-3xl-semi leading-none"
+                    className="text-[32px] leading-none font-semibold"
                     data-testid="customer-profile-completion"
                     data-value={getProfileCompletion(customer)}
                   >
                     {getProfileCompletion(customer)}%
                   </span>
-                  <span className="uppercase text-base-regular text-ui-fg-subtle">
+                  <span className="uppercase text-sm leading-6 font-normal text-muted-foreground">
                     สมบูรณ์
                   </span>
                 </div>
               </div>
 
               <div className="flex flex-col gap-y-4">
-                <h3 className="text-large-semi">ที่อยู่</h3>
+                <h3 className="text-base leading-6 font-semibold">ที่อยู่</h3>
                 <div className="flex items-end gap-x-2">
                   <span
-                    className="text-3xl-semi leading-none"
+                    className="text-[32px] leading-none font-semibold"
                     data-testid="addresses-count"
                     data-value={customer?.addresses?.length || 0}
                   >
                     {customer?.addresses?.length || 0}
                   </span>
-                  <span className="uppercase text-base-regular text-ui-fg-subtle">
+                  <span className="uppercase text-sm leading-6 font-normal text-muted-foreground">
                     ที่บันทึกไว้
                   </span>
                 </div>
@@ -73,11 +72,11 @@ const Overview = ({ customer, orders, hasGroupOrders = false }: OverviewProps) =
 
             <div className="flex flex-col gap-y-4">
               <div className="flex items-center justify-between gap-x-2">
-                <h3 className="text-large-semi">คำสั่งซื้อล่าสุด</h3>
+                <h3 className="text-base leading-6 font-semibold">คำสั่งซื้อล่าสุด</h3>
                 {((orders && orders.length > 0) || hasGroupOrders) && (
                   <LocalizedClientLink
                     href="/account/orders"
-                    className="text-small-regular text-ui-fg-interactive hover:underline"
+                    className="text-xs leading-5 font-normal text-primary underline-offset-4 hover:underline"
                     data-testid="overview-orders-view-all"
                   >
                     ดูทั้งหมด
@@ -99,8 +98,8 @@ const Overview = ({ customer, orders, hasGroupOrders = false }: OverviewProps) =
                         <LocalizedClientLink
                           href={`/account/orders/details/${order.id}`}
                         >
-                          <Container className="bg-gray-50 flex justify-between items-center p-4">
-                            <div className="grid grid-cols-3 grid-rows-2 text-small-regular gap-x-4 flex-1">
+                          <div className="rounded-lg bg-card flex justify-between items-center p-4">
+                            <div className="grid grid-cols-3 grid-rows-2 text-xs leading-5 font-normal gap-x-4 flex-1">
                               <span className="font-semibold">วันที่สั่งซื้อ</span>
                               <span className="font-semibold">
                                 เลขที่คำสั่งซื้อ
@@ -124,16 +123,18 @@ const Overview = ({ customer, orders, hasGroupOrders = false }: OverviewProps) =
                                 })}
                               </span>
                             </div>
-                            <button
-                              className="flex items-center justify-between"
-                              data-testid="open-order-button"
-                            >
-                              <span className="sr-only">
-                                ไปที่คำสั่งซื้อ #{order.display_id}
+                            {/* SFUI-19b (spec 09 กฎ 60, inventory 20): อยู่ในลิงก์ของการ์ดแล้ว → asChild บน <span>
+                                (หน้าตา ghost icon โดยไม่ซ้อน element ที่ focus ได้ในลิงก์ — spec 01 กฎ 146b) */}
+                            <Button asChild variant="ghost" size="icon">
+                              <span
+                                role="img"
+                                aria-label={`ไปที่คำสั่งซื้อ #${order.display_id}`}
+                                data-testid="open-order-button"
+                              >
+                                <ChevronDown className="-rotate-90" />
                               </span>
-                              <ChevronDown className="-rotate-90" />
-                            </button>
-                          </Container>
+                            </Button>
+                          </div>
                         </LocalizedClientLink>
                       </li>
                     )

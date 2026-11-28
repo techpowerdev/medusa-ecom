@@ -1,8 +1,9 @@
 "use client"
 
 import { STORE_NAME } from "@lib/store-content"
+import ErrorMessage from "@modules/checkout/components/error-message"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { Heading, Text, clx } from "@modules/common/components/ui"
+import { cn } from "@/lib/utils"
 
 import PaymentButton from "../payment-button"
 import { useSearchParams } from "next/navigation"
@@ -35,10 +36,9 @@ const Review = ({
   return (
     <div className="bg-white">
       <div className="flex flex-row items-center justify-between mb-6">
-        <Heading
-          level="h2"
-          className={clx(
-            "flex flex-row text-3xl-regular gap-x-2 items-baseline",
+        <h2
+          className={cn(
+            "text-2xl font-semibold flex flex-row gap-x-2 items-baseline",
             {
               "opacity-50 pointer-events-none select-none": !isOpen,
             }
@@ -46,34 +46,38 @@ const Review = ({
           data-testid="review-heading"
         >
           ตรวจสอบคำสั่งซื้อ
-        </Heading>
+        </h2>
       </div>
       {isOpen && previousStepsCompleted && (
         <>
           <div className="flex items-start gap-x-1 w-full mb-6">
             <div className="w-full">
-              <Text
-                className="txt-medium-plus text-ui-fg-base mb-1"
+              <p
+                className="text-sm leading-[1.4rem] font-medium text-foreground mb-1"
                 data-testid="review-terms"
               >
                 เมื่อกดปุ่มยืนยันคำสั่งซื้อ คุณยืนยันว่าได้อ่าน เข้าใจ และยอมรับข้อกำหนดการใช้งาน
                 เงื่อนไขการขาย และนโยบายการคืนสินค้า รวมถึงรับทราบนโยบายความเป็นส่วนตัวของ{" "}
                 {STORE_NAME} แล้ว
-              </Text>
+              </p>
             </div>
           </div>
           {flashLimitExceeded && (
-            <Text
-              className="txt-medium text-ui-fg-error mb-4"
-              role="alert"
-              data-testid="review-flash-exceeds-customer-limit"
-            >
-              จำนวนสินค้าแฟลชเซลในตะกร้าเกินสิทธิ์ที่คุณซื้อได้{" "}
-              <LocalizedClientLink href="/cart" className="underline">
-                กรุณาแก้จำนวนในตะกร้า
-              </LocalizedClientLink>{" "}
-              ก่อนสั่งซื้อ
-            </Text>
+            // SFUI-21d (spec 09 กฎ 74 (a)): error ของขั้น review = Alert ผ่าน ErrorMessage (ระยะห่างภายนอกที่ wrapper)
+            <div className="mb-4">
+              <ErrorMessage
+                data-testid="review-flash-exceeds-customer-limit"
+                error={
+                  <span>
+                    จำนวนสินค้าแฟลชเซลในตะกร้าเกินสิทธิ์ที่คุณซื้อได้{" "}
+                    <LocalizedClientLink href="/cart" className="underline">
+                      กรุณาแก้จำนวนในตะกร้า
+                    </LocalizedClientLink>{" "}
+                    ก่อนสั่งซื้อ
+                  </span>
+                }
+              />
+            </div>
           )}
           <PaymentButton
             cart={cart}

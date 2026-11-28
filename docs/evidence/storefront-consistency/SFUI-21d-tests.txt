@@ -1,0 +1,26 @@
+# SFUI-21d — ผลทดสอบ (spec 09 กฎ 64, 74, 78 (i); AC-70/68)
+สภาพแวดล้อม: stack บน feat/SFUI-21c-choice-cards (6639970b), node 24, prod build — backend :9491 (NODE_ENV=production,
+start จาก .medusa/server, DB medusa_sfui21d, Redis db 13, Stripe test + stripe listen ชุด events ของ CI), storefront :8491
+
+## Red
+- static sfui-21-consistency.unit (เพิ่ม AC-70 (1)): 2 failed (alert.tsx ไม่อยู่ใน manifest/มี text-rose-/ErrorMessage ไม่ใช่ Alert;
+  testid แบบ (a)/(b) ของ 21d ไม่อยู่บน ErrorMessage/FieldError)
+- unit error-message.test.tsx: 1 failed / 2 (root ไม่ใช่ Alert)
+- e2e ใหม่ sfui-21d-alert บน build ของ 21c: 6 failed / 6 (data-slot ไม่ใช่ alert/field-error)
+
+## Green
+- e2e sfui-21d-alert: 6 passed; sfui-9a-font + sfui-9c-font (ค่าฟอนต์ error ตามกฎ 78 (i) = 14px/20px/400): 4 passed
+- playwright project unit (รวม evidence-budget, AC-19): 268 passed; vitest: 140 files / 2089 tests passed
+- pnpm lint && pnpm typecheck: ผ่าน; pnpm --filter storefront build: ผ่าน
+- pnpm dlx shadcn@4.23.1 add alert --dry-run --diff: alert.tsx "No changes."
+- e2e ที่อ้าง testid/หน้าที่แตะ (72 ไฟล์, --workers=2): 242 passed, 5 failed
+  - affiliate-portal AF-21, AF-22 1280, core-14b AC-44: รันซ้ำทั้งไฟล์ 12 passed (ล้มจากโหลดตอนรันขนาน)
+  - core-19c AC-100 หน้า /th/cart (1280, 375): cart-item-remove-error สูง 60px > 41px (FieldError 14px ตัด 3 บรรทัดใน w-28)
+    → หยุดรายงาน; คำตัดสิน session หลัก: ปรับ layout ด้วย className (ไม่แก้ core-19c/ข้อความ)
+
+## แก้ตามคำตัดสิน (cart/components/item: กล่องปุ่มลบ+จำนวน `w-28` → `w-max min-w-28 max-w-full`)
+- core-19c: 5 passed (error 1 บรรทัดที่ 1280 และ 375); core-42 AC-136a (quantityBoxWidth 112 เมื่อไม่มี error): passed
+  (ลอง `w-full min-w-28` ก่อน → คอลัมน์จำนวนที่ 1280 ขยายเป็น 213px ทำ core-42 ล้ม จึงใช้ w-max)
+- e2e ตะกร้า/dropdown + sfui-21d-alert (grep product-row/nav-cart-dropdown/cart-item-remove/product-*-button/product-error-message,
+  30 ไฟล์, --workers=1): 92 passed
+- playwright project unit: 268 passed; vitest: 140 files / 2089 passed; pnpm lint && pnpm typecheck: ผ่าน; storefront build: ผ่าน

@@ -1,10 +1,15 @@
 "use client"
 
-import * as Accordion from "@radix-ui/react-accordion"
-import { ChevronDownMini } from "@medusajs/icons"
-import clsx from "clsx"
 import { useState } from "react"
 import { useRefinementList } from "react-instantsearch"
+
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 import { OPTION_VALUES_ATTRIBUTE } from "./attributes"
 
@@ -67,7 +72,7 @@ const OptionRefinements = () => {
   }
 
   return (
-    <Accordion.Root
+    <Accordion
       type="multiple"
       value={groups
         .map((group) => group.title)
@@ -81,63 +86,53 @@ const OptionRefinements = () => {
       }
       className="flex flex-col gap-y-3 pr-6"
     >
-      {groups.map((group) => {
-        const isOpen = !closedGroups.includes(group.title)
-
-        return (
-          <Accordion.Item
-            key={group.title}
-            value={group.title}
-            className="overflow-hidden"
-          >
-            <Accordion.Header>
-              <Accordion.Trigger className="flex w-full items-center justify-between py-3 text-left">
-                {/* CORE-87 (spec 01 กฎข้อ 143): ไม่มีตัวเลขที่หัว — facet ของ index มีจำนวนต่อ "<option>:<ค่า>" เท่านั้น
-                    ไม่มีจำนวนสินค้าต่อ option และรวมจากค่าย่อยไม่ได้ (สินค้าหนึ่งมีหลายค่า) */}
-                <span
-                  className="txt-compact-small-plus text-ui-fg-base"
-                  data-testid="option-refinement-title"
+      {groups.map((group) => (
+        <AccordionItem
+          key={group.title}
+          value={group.title}
+          className="overflow-hidden border-b-0"
+        >
+          {/* SFUI-4: chevron มาจาก AccordionTrigger ของ shadcn (หมุนเมื่อเปิดด้วย data-state) */}
+          <AccordionTrigger className="items-center">
+            {/* CORE-87 (spec 01 กฎข้อ 143): ไม่มีตัวเลขที่หัว — facet ของ index มีจำนวนต่อ "<option>:<ค่า>" เท่านั้น
+                ไม่มีจำนวนสินค้าต่อ option และรวมจากค่าย่อยไม่ได้ (สินค้าหนึ่งมีหลายค่า) */}
+            <span
+              className="text-sm font-medium leading-5 text-foreground"
+              data-testid="option-refinement-title"
+            >
+              {group.title}
+            </span>
+          </AccordionTrigger>
+          <AccordionContent className="pb-4 pt-1">
+            {/* SFUI-19d (spec 09 กฎ 67a): `toggle-group` ของ shadcn — กลุ่มส่งค่าที่เลือกทั้งหมด จึง refine เฉพาะค่าที่เปลี่ยน */}
+            <ToggleGroup
+              type="multiple"
+              variant="outline"
+              spacing={2}
+              className="flex-wrap"
+              value={group.values.filter((v) => v.isRefined).map((v) => v.value)}
+              onValueChange={(next) => {
+                const changed = group.values.find(
+                  (v) => v.isRefined !== next.includes(v.value)
+                )
+                if (changed) refine(changed.value)
+              }}
+            >
+              {group.values.map((value) => (
+                <ToggleGroupItem
+                  key={value.value}
+                  value={value.value}
+                  data-testid="option-refinement"
                 >
-                  {group.title}
-                </span>
-                <span
-                  className={clsx(
-                    "flex h-7 w-7 items-center justify-center text-ui-fg-muted transition-transform duration-150",
-                    { "rotate-180": isOpen }
-                  )}
-                >
-                  <ChevronDownMini />
-                </span>
-              </Accordion.Trigger>
-            </Accordion.Header>
-            <Accordion.Content className="pb-4 pt-1">
-              <div className="flex flex-wrap gap-2">
-                {group.values.map((value) => (
-                  <button
-                    key={value.value}
-                    onClick={() => refine(value.value)}
-                    aria-pressed={value.isRefined}
-                    className={clsx(
-                      "border-ui-border-base border text-small-regular h-10 rounded-rounded px-3 flex items-center gap-x-1.5 transition-colors duration-150",
-                      {
-                        "border-ui-border-interactive text-ui-fg-base":
-                          value.isRefined,
-                        "text-ui-fg-muted hover:text-ui-fg-base":
-                          !value.isRefined,
-                      }
-                    )}
-                    data-testid="option-refinement"
-                  >
-                    {value.label}
-                    <span className="text-ui-fg-muted">({value.count})</span>
-                  </button>
-                ))}
-              </div>
-            </Accordion.Content>
-          </Accordion.Item>
-        )
-      })}
-    </Accordion.Root>
+                  {value.label}
+                  <span className="text-muted-foreground">({value.count})</span>
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </AccordionContent>
+        </AccordionItem>
+      ))}
+    </Accordion>
   )
 }
 

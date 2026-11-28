@@ -1,0 +1,33 @@
+SFUI-17 — ปิดงาน select: ลบ common/components/native-select, ส่วน NativeSelect ใน input.test.tsx, guard AC-47 (spec 09 รอบ 49 กฎ 39, 40c, 48; AC-47, AC-48; ADR-033)
+วันที่ 2026-11-28 · ฐาน: SFUI-16d (7a99ca42) · node 24 · prod build: backend :9501 (NODE_ENV=production), storefront next start :8501, DB medusa_sfui17, Redis db 14
+
+== Red (guard ใหม่ก่อนลบ native-select) ==
+e2e/sfui-13-form-guard.unit.spec.ts → 3 failed / 7 passed:
+  AC-35 (<select> ใน native-select อยู่นอก common หลังตัด native-select ออกจาก COMMON_CONTROLS),
+  AC-47 ไม่มี <select ใน JSX, AC-47 ไม่มีไดเรกทอรี native-select
+
+== Green ==
+-- Playwright project unit (รวม sfui-13-form-guard 10 test, sfui-11-form-field, sfui-15-select, evidence-budget): 253 passed
+-- vitest: Test Files 135 passed (135) · Tests 2051 passed (2051)
+   ลดจาก 2058 = 7 test ที่ผูกกับ NativeSelect: input.test.tsx 5 (NativeSelect + label x2, className ไม่มี label, ไม่มี label + required,
+   controlled select กฎ 32d — select ของ shadcn ครอบโดย select-field-error.test.tsx AC-40/41) + test ต่อไฟล์ของ native-select/index.tsx
+   ใน thai-ui-rule.test.ts และ core-84-gb-affiliate-codes.test.ts (ไฟล์ถูกลบ); test className ของ Input คงไว้ (ตัดเฉพาะส่วน NativeSelect)
+-- pnpm lint: 0 errors (warning เดิม) · pnpm typecheck: ผ่าน · pnpm --filter storefront build: ผ่าน
+
+== e2e ที่แก้ใน task นี้ (nit จาก review: ถอด loop toPass ที่ห่อ chooseOption, ชื่อ step/คอมเมนต์ selectOption) ==
+[1/11] [chromium] › e2e/core-44-cart-summary-qty.spec.ts:68:5 › AC-138: /cart ที่ 1024/1280 คอลัมน์สรุปไม่ล้นเมื่อมีส่วนลด และตัวเลือกจำนวนแสดง/แก้จำนวนจริง (99 → 2)
+[2/11] [chromium] › e2e/core-48-cart-insufficient-stock.spec.ts:67:7 › AC-143: 1280×800 แก้จำนวนเกิน stock → ข้อความไทยว่าสินค้าไม่พอ, จำนวนคงเดิม แล้วแก้ได้
+[3/11] [chromium] › e2e/core-48-cart-insufficient-stock.spec.ts:67:7 › AC-143: 375×812 แก้จำนวนเกิน stock → ข้อความไทยว่าสินค้าไม่พอ, จำนวนคงเดิม แล้วแก้ได้
+[4/11] [chromium] › e2e/pay-18-cart-error-notice-clear.spec.ts:18:5 › AC-31: แก้จำนวนสำเร็จ → cart-error-notice หายและ URL ไม่มี error
+[5/11] [chromium] › e2e/sfui-16-select.spec.ts:44:7 › 16a: ฟอร์มคืนสินค้า (AC-43) › return-item-quantity: Enter เปิด, ArrowDown + Enter เปลี่ยนค่า, Escape ไม่เปลี่ยน; เลือกเหตุผลแล้วข้อความ trigger = ข้อความของ item; สูง 36px
+[6/11] [chromium] › e2e/sfui-16-select.spec.ts:96:7 › 16a: group buy join (AC-43) › selectOptions ของ group-shipping-option มี placeholder เลือกวิธีจัดส่ง และไม่มี item value ว่าง; ทั้งสามช่องสูง 36px
+[7/11] [chromium] › e2e/sfui-16-select.spec.ts:128:7 › SFUI-16b ประเทศ › AC-49: 390×844 แตะ shipping-country-select → shipping-country-select-options อยู่ในจอ เลือกได้ และไม่ล้นแนวนอน
+[8/11] [chromium] › e2e/sfui-16-select.spec.ts:218:5 › AC-45: เลือก 2 ใน product-select-button → updateLineItem ถูกส่ง 1 ครั้ง, cart ใน backend จำนวน 2, ชื่อที่เข้าถึงได้ จำนวน
+[9/11] [chromium] › e2e/sfui-16-select.spec.ts:253:7 › AC-49 (ตะกร้า): มือถือ 390×844 แตะ trigger แล้วกล่องรายการอยู่ในจอ › product-select-button-options อยู่ในจอทั้งกล่อง เลือกได้ และหน้าไม่ล้นแนวนอน
+[10/11] [chromium] › e2e/sfui-16-select.spec.ts:316:9 › 16d: จำนวนบน PDP (AC-46) › ปิด JavaScript › ไม่มี select[name=quantity] ในหน้า และ product-quantity-select แสดง 1
+[11/11] [chromium] › e2e/sfui-16-select.spec.ts:325:7 › 16d: จำนวนบน PDP (AC-46) › เปิด JS: product-quantity-select เป็น button[role=combobox] ชื่อ จำนวน, label อยู่เหนือ trigger, เลือก 3 แล้วเพิ่ม → cart qty 3
+  11 passed (1.2m)
+
+== หมายเหตุ (nit e จาก review 16d) ==
+ถ้อยคำ spec 01 AC-44 (CORE-14b) และ AC-94 (CORE-24) ท่อนจำนวนตอนปิด JS ถูกแทนด้วย spec 09 กฎ 47a แล้ว (มีผลตั้งแต่ SFUI-16d):
+ปิด JS ไม่มีตัวเลือกจำนวน → URL ไม่มี add_quantity และ cart ได้ quantity=1 — REPORT/evidence เก่าของ CORE-14b/CORE-24 (quantity 2/3) คงไว้เป็นประวัติ

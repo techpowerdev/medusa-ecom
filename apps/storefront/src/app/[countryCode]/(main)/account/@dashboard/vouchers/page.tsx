@@ -31,8 +31,8 @@ export default async function Vouchers(props: Props) {
   return (
     <div className="w-full" data-testid="vouchers-page-wrapper">
       <div className="mb-8 flex flex-col gap-y-4" data-testid="account-page-header">
-        <h1 className="text-2xl-semi">บัตรกำนัลของฉัน</h1>
-        <p className="text-base-regular">
+        <h1 className="text-3xl font-semibold tracking-tight">บัตรกำนัลของฉัน</h1>
+        <p className="text-sm leading-6 font-normal">
           รหัสบัตรกำนัลจากคำสั่งซื้อของคุณ คัดลอกรหัสไปใช้ตามวิธีใช้ของพาร์ทเนอร์แต่ละราย
         </p>
       </div>
@@ -43,14 +43,14 @@ export default async function Vouchers(props: Props) {
           ))}
         </ul>
       ) : (
-        <p className="text-base-regular text-ui-fg-subtle" data-testid="vouchers-empty">
+        <p className="text-sm leading-6 font-normal text-muted-foreground" data-testid="vouchers-empty">
           ยังไม่มีบัตรกำนัล
         </p>
       )}
       {(hasPrev || hasNext) && (
         <nav
           aria-label="แบ่งหน้าบัตรกำนัล"
-          className="mt-8 flex items-center justify-between text-small-regular"
+          className="mt-8 flex items-center justify-between text-xs leading-5 font-normal"
           data-testid="vouchers-pagination"
         >
           {hasPrev ? (
@@ -64,7 +64,7 @@ export default async function Vouchers(props: Props) {
           ) : (
             <span />
           )}
-          <span className="text-ui-fg-subtle">หน้า {pagination.page}</span>
+          <span className="text-muted-foreground">หน้า {pagination.page}</span>
           {hasNext ? (
             <Link
               href={`?page=${pagination.page + 1}`}

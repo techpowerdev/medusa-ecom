@@ -117,11 +117,13 @@ describe("setAddresses ตัดสิน digital-only จาก cart ฝั่�
     form.set("checkout_country_code", cc)
     form.set("email", "a@example.com")
     form.set("billing_address.address_1", "99 ถนนสุขุมวิท")
+    form.set("billing_address.address_2", "คลองเตยเหนือ")
     form.set("billing_address.country_code", "th")
     form.set("billing_address.first_name", "สมชาย")
     form.set("billing_address.last_name", "ใจดี")
     form.set("billing_address.postal_code", "10110")
     form.set("billing_address.city", "วัฒนา")
+    form.set("billing_address.province", "กรุงเทพมหานคร")  // SFUI-20a (spec 09 กฎ 69): จังหวัดบังคับ
     return form
   }
   const shippingForm = (cc = "th") => {
@@ -129,11 +131,13 @@ describe("setAddresses ตัดสิน digital-only จาก cart ฝั่�
     form.set("checkout_country_code", cc)
     form.set("email", "a@example.com")
     form.set("shipping_address.address_1", "1 Sukhumvit")
+    form.set("shipping_address.address_2", "คลองเตยเหนือ")
     form.set("shipping_address.country_code", "th")
     form.set("shipping_address.first_name", "Somchai")
     form.set("shipping_address.last_name", "Jaidee")
     form.set("shipping_address.postal_code", "10110")
     form.set("shipping_address.city", "Bangkok")
+    form.set("shipping_address.province", "กรุงเทพมหานคร")  // SFUI-20a (spec 09 กฎ 69): จังหวัดบังคับ
     form.set("same_as_billing", "on")
     return form
   }

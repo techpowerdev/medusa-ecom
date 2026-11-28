@@ -25,8 +25,8 @@ export default async function Profile() {
   return (
     <div className="w-full" data-testid="profile-page-wrapper">
       <div className="mb-8 flex flex-col gap-y-4" data-testid="account-page-header">
-        <h1 className="text-2xl-semi">โปรไฟล์</h1>
-        <p className="text-base-regular">
+        <h1 className="text-3xl font-semibold tracking-tight">โปรไฟล์</h1>
+        <p className="text-sm leading-6 font-normal">
           ดูข้อมูลโปรไฟล์และแก้ไขชื่อ เบอร์โทรศัพท์ รวมถึงที่อยู่สำหรับออกใบเสร็จ
         </p>
       </div>
@@ -39,7 +39,7 @@ export default async function Profile() {
         <Divider />
         {/* <ProfilePassword customer={customer} />
         <Divider /> */}
-        <ProfileBillingAddress customer={customer} regions={regions} />
+        <ProfileBillingAddress customer={customer} />
       </div>
     </div>
   )

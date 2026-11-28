@@ -1,0 +1,140 @@
+# EV-27 — ผลทดสอบ (spec docs/spec/02-evoucher.md กฎข้อ 43, AC-57..59) — 2026-11-27
+
+## RED (บน develop 547d9250 + test ใหม่)
+### backend unit: src/admin/lib/__tests__/evoucher-pool-prerequisites.unit.spec.ts
+    Cannot find module '../evoucher-pool-prerequisites' from 'src/admin/lib/__tests__/evoucher-pool-prerequisites.unit.spec.ts'
+    Test Suites: 1 failed, 1 total
+    Tests:       0 total
+
+### storefront e2e unit (static AC-59): e2e/ev-27-pool-ready-variant.unit.spec.ts
+  ✘  1 [unit] › e2e/ev-27-pool-ready-variant.unit.spec.ts:20:7 › AC-59: admin-form-pilot.spec.ts import createPoolReadyVariant และไม่สร้าง variant voucher ธรรมดาเอง (3ms)
+  ✘  2 [unit] › e2e/ev-27-pool-ready-variant.unit.spec.ts:20:7 › AC-59: admin-create-double-submit.spec.ts import createPoolReadyVariant และไม่สร้าง variant voucher ธรรมดาเอง (4ms)
+  ✘  3 [unit] › e2e/ev-27-pool-ready-variant.unit.spec.ts:20:7 › AC-59: admin-modal-return-focus.spec.ts import createPoolReadyVariant และไม่สร้าง variant voucher ธรรมดาเอง (3ms)
+  ✘  4 [unit] › e2e/ev-27-pool-ready-variant.unit.spec.ts:20:7 › AC-59: evoucher-admin-forms.spec.ts import createPoolReadyVariant และไม่สร้าง variant voucher ธรรมดาเอง (3ms)
+  ✘  5 [unit] › e2e/ev-27-pool-ready-variant.unit.spec.ts:20:7 › AC-59: evoucher-admin-pool-prerequisites.spec.ts import createPoolReadyVariant และไม่สร้าง variant voucher ธรรมดาเอง (1ms)
+  ✘  6 [unit] › e2e/ev-27-pool-ready-variant.unit.spec.ts:27:5 › AC-59: support/evoucher.ts export createPoolReadyVariant และ createVoucher ใช้ helper นี้ (2ms)
+  6 failed
+
+### e2e AC-58: develop ไม่มี data-testid="evoucher-pool-create" และไม่มี evoucher-pool-prerequisites* → ทุกเคสล้มที่ step แรก (ไม่ได้ build develop ซ้ำเพื่อรัน)
+
+## GREEN
+### backend unit: evoucher-pool-prerequisites.unit.spec.ts (AC-57)
+    ✓ returns [] for a ready variant (1 ms)
+    ✓ treats a missing shipping_profile field as passing
+    ✓ flags manageInventory and inventoryItem (not stockLocation) when inventory is off with no item
+    ✓ flags inventoryItem when there are two items
+    ✓ flags inventoryItem when required_quantity is 2
+    ✓ flags inventoryItem when another variant shares the item
+    ✓ flags shippingProfile when the product has one
+    ✓ flags stockLocation when the item has 0 location levels (1 ms)
+    ✓ flags stockLocation when the item has 2 location levels
+    ✓ orders every failure as manageInventory, inventoryItem, shippingProfile
+    ✓ links each code to the Medusa page that fixes it
+    ✓ returns null when the variant is not on the product
+Tests:       12 passed, 12 total
+
+### backend jest src/admin (รวม parity/guard i18n ของ spec 10)
+Test Suites: 29 passed, 29 total
+Tests:       955 passed, 955 total
+
+### backend test:unit (ทั้งชุด)
+Test Suites: 138 passed, 138 total
+Tests:       2717 passed, 2717 total
+
+### storefront playwright --project=unit (รวม evidence-budget, ev-27-pool-ready-variant)
+  ✓   33 [unit] › e2e/ev-27-pool-ready-variant.unit.spec.ts:20:7 › AC-59: admin-form-pilot.spec.ts import createPoolReadyVariant และไม่สร้าง variant voucher ธรรมดาเอง (0ms)
+  ✓   34 [unit] › e2e/ev-27-pool-ready-variant.unit.spec.ts:20:7 › AC-59: admin-create-double-submit.spec.ts import createPoolReadyVariant และไม่สร้าง variant voucher ธรรมดาเอง (0ms)
+  ✓   37 [unit] › e2e/ev-27-pool-ready-variant.unit.spec.ts:20:7 › AC-59: admin-modal-return-focus.spec.ts import createPoolReadyVariant และไม่สร้าง variant voucher ธรรมดาเอง (0ms)
+  ✓   40 [unit] › e2e/ev-27-pool-ready-variant.unit.spec.ts:20:7 › AC-59: evoucher-admin-forms.spec.ts import createPoolReadyVariant และไม่สร้าง variant voucher ธรรมดาเอง (0ms)
+  ✓   41 [unit] › e2e/ev-27-pool-ready-variant.unit.spec.ts:20:7 › AC-59: evoucher-admin-pool-prerequisites.spec.ts import createPoolReadyVariant และไม่สร้าง variant voucher ธรรมดาเอง (0ms)
+  ✓   43 [unit] › e2e/ev-27-pool-ready-variant.unit.spec.ts:27:5 › AC-59: support/evoucher.ts export createPoolReadyVariant และ createVoucher ใช้ helper นี้ (0ms)
+  ✓   39 [unit] › e2e/evidence-budget.unit.spec.ts:9:5 › โฟลเดอร์ evidence ทุก feature/task อยู่ตาม convention และอยู่ในงบ (46ms)
+  234 passed (1.6s)
+
+### e2e (chromium) — backend NODE_ENV=production build, port 9381, DB medusa_ev27, Redis db 13
+#### e2e/evoucher-admin-pool-prerequisites.spec.ts (AC-58)
+  ✓  1 [chromium] › e2e/evoucher-admin-pool-prerequisites.spec.ts:60:7 › lng=th › (a)+(b) เงื่อนไขไม่ครบ → รายการแทนฟอร์ม ไม่มี POST; แก้ผ่าน API แล้วกดใหม่ได้ผลล่าสุดจนเห็นฟอร์มและสร้างได้ (3.3s)
+  ✓  2 [chromium] › e2e/evoucher-admin-pool-prerequisites.spec.ts:176:7 › lng=th › (c) variant ที่มี pool แล้ว → ไม่มีกล่องเงื่อนไขและไม่มีปุ่ม Create pool (1.2s)
+  ✓  3 [chromium] › e2e/evoucher-admin-pool-prerequisites.spec.ts:191:7 › lng=th › (d) GET /admin/products/:id ล้ม → error แทนฟอร์ม ไม่มี POST; ยกเลิก mock แล้วกดใหม่ได้ผลตรวจจริง (3.1s)
+  ✓  4 [chromium] › e2e/evoucher-admin-pool-prerequisites.spec.ts:60:7 › lng=en › (a)+(b) เงื่อนไขไม่ครบ → รายการแทนฟอร์ม ไม่มี POST; แก้ผ่าน API แล้วกดใหม่ได้ผลล่าสุดจนเห็นฟอร์มและสร้างได้ (3.1s)
+  ✓  5 [chromium] › e2e/evoucher-admin-pool-prerequisites.spec.ts:176:7 › lng=en › (c) variant ที่มี pool แล้ว → ไม่มีกล่องเงื่อนไขและไม่มีปุ่ม Create pool (1.2s)
+  ✓  6 [chromium] › e2e/evoucher-admin-pool-prerequisites.spec.ts:191:7 › lng=en › (d) GET /admin/products/:id ล้ม → error แทนฟอร์ม ไม่มี POST; ยกเลิก mock แล้วกดใหม่ได้ผลตรวจจริง (3.0s)
+  6 passed (15.8s)
+
+#### regression (AC-59): admin-form-pilot, admin-create-double-submit, admin-modal-return-focus, evoucher-admin-forms, admin-i18n-evoucher, admin-dialog-title, evoucher-admin-pool-delete
+  ✓   2 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create partner — dialog มี accessible name และไม่มี console error DialogTitle
+  ✓   5 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create program — dialog มี accessible name และไม่มี console error DialogTitle
+  ✓   6 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create payout — dialog มี accessible name และไม่มี console error DialogTitle
+  ✓   4 [chromium] › e2e/admin-i18n-evoucher.spec.ts:102:7 › lng=th › AC-10: เมนู/breadcrumb/ตาราง e-voucher, หน้า pool และ widget variant/order เป็นค่า th
+  ✓   7 [chromium] › e2e/admin-form-pilot.spec.ts:110:5 › AC-6: ฟอร์ม Create pool — Save โดยไม่เลือก partner → error ใต้ช่อง Partner และไม่มี POST; เลือกแล้ว dblclick = POST 1 ครั้ง
+  ✓   8 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create campaign — dialog มี accessible name และไม่มี console error DialogTitle
+  ✓   9 [chromium] › e2e/admin-i18n-evoucher.spec.ts:112:7 › lng=en › AC-10: element เดียวกันเป็นค่า en (ข้อความเดิม) ไม่มีอักษรไทย
+  ✓  14 [chromium] › e2e/admin-form-pilot.spec.ts:241:7 › AC-16: ช่อง number ที่ไม่ใช่ตัวเลข (validity.badInput) › modal Create pool — Face value / Low-stock threshold = e → error ใต้ช่องและไม่มี POST
+  ✓  16 [chromium] › e2e/evoucher-admin-forms.spec.ts:35:5 › AC-20: dblclick Save ของ Create partner → POST 1 ครั้ง partner ใหม่ 1 แถว; input ของฟอร์ม partner/pool หาได้ด้วย getByLabel
+  ✓  19 [chromium] › e2e/evoucher-admin-pool-delete.spec.ts:31:5 › AC-51: ลบ pool ที่ยังไม่ส่ง code จากตาราง → prompt บอกจำนวน code → dblclick ยืนยัน = DELETE 1 ครั้ง, toast และแถวหาย
+  ✓  20 [chromium] › e2e/admin-modal-return-focus.spec.ts:105:5 › AC-39b: Create pool (หน้า variant ที่ยังไม่มี pool) — Escape ปิดแล้ว focus กลับปุ่ม
+  ✓  21 [chromium] › e2e/evoucher-admin-forms.spec.ts:152:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools ตอบ 500 → evoucher-pools-error แทน "No voucher pools yet" คงหัวตาราง
+  ✓  22 [chromium] › e2e/evoucher-admin-pool-delete.spec.ts:77:5 › AC-51: pool ที่มี code ส่งแล้ว → ลบจากหน้า pool ได้ toast error ข้อความจาก API และ pool ยังอยู่
+  ✓  24 [chromium] › e2e/evoucher-admin-forms.spec.ts:160:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners ตอบ 500 → evoucher-partners-error ไม่มี evoucher-partners-empty ปุ่ม Create partner ยังใช้ได้
+  ✓  28 [chromium] › e2e/evoucher-admin-pool-delete.spec.ts:116:5 › AC-51: pool ใหม่ไม่มี code → badge No codes (ไม่ใช่ Low stock) ทั้งตารางและหน้า pool; ลบจากหน้า pool แล้วกลับรายการ
+  ✓  29 [chromium] › e2e/evoucher-admin-forms.spec.ts:152:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools network ล้ม (route.abort) → evoucher-pools-error แทน "No voucher pools yet" คงหัวตาราง
+  ✓  30 [chromium] › e2e/evoucher-admin-pool-delete.spec.ts:159:7 › D1: dblclick ยืนยันลบในตาราง pools ที่มีแถวใต้ปุ่ม › AC-51: dblclick ปุ่ม Delete ใน prompt → DELETE 1 ครั้ง และไม่ถูกพาไปหน้า pool ของแถวใต้ปุ่ม
+  ✓  31 [chromium] › e2e/evoucher-admin-forms.spec.ts:160:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners network ล้ม (route.abort) → evoucher-partners-error ไม่มี evoucher-partners-empty ปุ่ม Create partner ยังใช้ได้
+  ✓  32 [chromium] › e2e/evoucher-admin-forms.spec.ts:174:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET pools ตอบ 401 → ErrorBoundary พาไป /app/login
+  ✓  34 [chromium] › e2e/evoucher-admin-forms.spec.ts:174:9 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: GET partners ตอบ 401 → ErrorBoundary พาไป /app/login
+  ✓  35 [chromium] › e2e/evoucher-admin-forms.spec.ts:183:7 › ADM-21a: สถานะ error ของตาราง pools / partners › AC-25: pools/partners ตอบรายการว่าง → empty state เดิม ไม่มี testid error
+  ✓  33 [chromium] › e2e/admin-create-double-submit.spec.ts:315:7 › AC-44: Create pool บนหน้า variant (mock สำเร็จ — pool จริงสร้างได้ครั้งเดียวต่อ variant) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้
+  ✓  41 [chromium] › e2e/admin-create-double-submit.spec.ts:423:7 › AC-53: Create pool บนหน้า variant (mock สำเร็จ — pool จริงสร้างได้ครั้งเดียวต่อ variant) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่
+  ✓  43 [chromium] › e2e/admin-create-double-submit.spec.ts:500:5 › AC-44: Create pool group (ปุ่มบนหน้าแคมเปญ ไม่มี modal) — ดับเบิลคลิกเว้น 100ms = POST 1 ครั้ง; 500 แล้วกดใหม่ได้; คลิกแยกครั้งใหม่สร้างได้
+  ✓  44 [chromium] › e2e/admin-create-double-submit.spec.ts:543:5 › AC-51 (b): Create pool group — กด Enter ค้าง (keydown repeat) = POST 1 ครั้ง; คลิกแยก 2 ครั้งหลัง response = 2 group
+  ✓  45 [chromium] › e2e/admin-create-double-submit.spec.ts:590:5 › AC-44: Import codes (หน้า pool) — ดับเบิลคลิกเว้น 100ms = POST 1 ครั้ง; 500 แล้วกดใหม่ได้; เลือกไฟล์ใหม่ import ได้
+  45 passed (56.8s)
+
+### AC-59 diff: git diff --name-only origin/develop...HEAD | grep apps/backend/src/(workflows|api)/ → 0 บรรทัด
+
+### pnpm lint: 0 errors (warning เดิม ไม่มีในไฟล์ที่แตะ) · pnpm typecheck: ผ่าน · NODE_ENV=production pnpm --filter backend build: สำเร็จ
+
+## รอบแก้ nit จาก review #602 (2026-11-27) — commit ต่อจาก 746e03ba
+แก้: (1) ใช้ isFetching ของ Tanstack Query แทน openedAt (prerequisiteCheck) (2) enum key PrerequisiteCode ใน i18n-evoucher (3) ศัพท์ไทยตาม th.json ของ dashboard (4) ลบ PoolReadyVariant.inventoryItemId (5) ไม่มี product_id → error variantMissing
+
+### RED ข้อ 5 (+1): prerequisiteCheck ยังไม่มี
+    ✕ is an error (no message) when the variant has no product_id — not stuck loading
+    ✕ is loading while pending or while refetching cached data
+    ✕ is an error with the API message when the request failed
+    ✕ is an error (no message) when the variant is not on the product
+    ✕ returns the issues once fetched
+Tests:       5 failed, 12 passed, 17 total
+
+### RED ข้อ 2: ลบ en variantWidget.prerequisites.stockLocation ชั่วคราว → test enum ล้ม (คืนไฟล์แล้ว)
+    ✕ variantWidget.prerequisites (PrerequisiteCode) (11 ms)
+Tests:       1 failed, 18 skipped, 19 total
+
+### GREEN
+#### evoucher-pool-prerequisites.unit.spec.ts + i18n-evoucher.unit.spec.ts
+  prerequisiteCheck
+    ✓ is an error (no message) when the variant has no product_id — not stuck loading
+    ✓ is loading while pending or while refetching cached data
+    ✓ is an error with the API message when the request failed
+    ✓ is an error (no message) when the variant is not on the product
+    ✓ returns the issues once fetched (1 ms)
+    ✓ variantWidget.prerequisites (PrerequisiteCode) (8 ms)
+Tests:       36 passed, 36 total
+#### jest src/admin
+Test Suites: 29 passed, 29 total
+Tests:       961 passed, 961 total
+#### backend test:unit (ทั้งชุด)
+Test Suites: 138 passed, 138 total
+Tests:       2723 passed, 2723 total
+#### storefront --project=unit (รวม evidence-budget)
+  234 passed (1.6s)
+#### e2e/evoucher-admin-pool-prerequisites.spec.ts (prod build :9381, DB medusa_ev27, Redis db 13)
+  ✓  1 [chromium] › e2e/evoucher-admin-pool-prerequisites.spec.ts:60:7 › lng=th › (a)+(b) เงื่อนไขไม่ครบ → รายการแทนฟอร์ม ไม่มี POST; แก้ผ่าน API แล้วกดใหม่ได้ผลล่าสุดจนเห็นฟอร์มและสร้างได้
+  ✓  2 [chromium] › e2e/evoucher-admin-pool-prerequisites.spec.ts:176:7 › lng=th › (c) variant ที่มี pool แล้ว → ไม่มีกล่องเงื่อนไขและไม่มีปุ่ม Create pool
+  ✓  3 [chromium] › e2e/evoucher-admin-pool-prerequisites.spec.ts:191:7 › lng=th › (d) GET /admin/products/:id ล้ม → error แทนฟอร์ม ไม่มี POST; ยกเลิก mock แล้วกดใหม่ได้ผลตรวจจริง
+  ✓  4 [chromium] › e2e/evoucher-admin-pool-prerequisites.spec.ts:60:7 › lng=en › (a)+(b) เงื่อนไขไม่ครบ → รายการแทนฟอร์ม ไม่มี POST; แก้ผ่าน API แล้วกดใหม่ได้ผลล่าสุดจนเห็นฟอร์มและสร้างได้
+  ✓  5 [chromium] › e2e/evoucher-admin-pool-prerequisites.spec.ts:176:7 › lng=en › (c) variant ที่มี pool แล้ว → ไม่มีกล่องเงื่อนไขและไม่มีปุ่ม Create pool
+  ✓  6 [chromium] › e2e/evoucher-admin-pool-prerequisites.spec.ts:191:7 › lng=en › (d) GET /admin/products/:id ล้ม → error แทนฟอร์ม ไม่มี POST; ยกเลิก mock แล้วกดใหม่ได้ผลตรวจจริง
+  6 passed
+#### regression: admin-form-pilot, admin-create-double-submit, admin-modal-return-focus, evoucher-admin-forms, admin-i18n-evoucher, admin-dialog-title
+  41 passed (55.0s)
+#### pnpm lint: 0 errors · pnpm typecheck: ผ่าน · NODE_ENV=production pnpm --filter backend build: สำเร็จ

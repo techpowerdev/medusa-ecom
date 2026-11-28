@@ -1,0 +1,243 @@
+SFUI-5a (spec 09 กฎ 15, 16, 19–21, AC-15, AC-6) — ผลทดสอบในเครื่อง (macOS, Node 22.23.3) วันที่ 2026-11-26
+base: feat/SFUI-2-shadcn-base 8afaceb5; backend :9140 (DB medusa_sfui5a, Redis db 14), storefront prod build :8140
+
+== pnpm --filter storefront lint: 0 errors, 28 warnings (ไม่มี warning ในไฟล์ที่ task นี้แก้)
+== pnpm --filter storefront typecheck: ผ่าน (exit 0)
+== NODE_ENV=production pnpm --filter storefront build: ผ่าน (Compiled successfully)
+
+== pnpm --filter storefront test:unit (vitest)
+ ✓ src/styles/theme-css.test.ts > globals.css — brand / grey tokens (AC-4 ขั้น 1a, กฎ 7) > มี --color-brand และ --color-brand-50..900 ค่า hex เดิมทุกตัว 1ms
+ ✓ src/styles/theme-css.test.ts > globals.css — brand / grey tokens (AC-4 ขั้น 1a, กฎ 7) > มี --color-grey-0..90 ค่าเดิม 0ms
+ ✓ src/styles/theme-css.test.ts > globals.css — brand / grey tokens (AC-4 ขั้น 1a, กฎ 7) > ไม่มี selector .dark (ไม่มี dark mode) 0ms
+ ✓ src/styles/theme-css.test.ts > globals.css — brand / grey tokens (AC-4 ขั้น 1a, กฎ 7) > class ของ brand ใช้ได้จริงหลัง compile (bg-brand-900 → --color-brand-900) 44ms
+ ✓ src/styles/theme-css.test.ts > globals.css — ฟอนต์ (AC-3 ส่วน CSS, กฎ 8) > --font-sans ค่าตัวแรกคือ var(--font-noto-sans-thai) 0ms
+ ✓ src/styles/theme-css.test.ts > globals.css — ฟอนต์ (AC-3 ส่วน CSS, กฎ 8) > body ใช้ font-sans (@theme inline → ค่าของ --font-sans ที่ขึ้นต้นด้วย Noto Sans Thai) 21ms
+ ✓ src/styles/theme-css.test.ts > globals.css — ฟอนต์ (AC-3 ส่วน CSS, กฎ 8) > class typography ของ preset (txt-*) ใช้ var(--font-sans) — ไม่ fix Inter 27ms
+ ✓ src/styles/theme-css.test.ts > globals.css — Tailwind v4 CSS-first คงค่า theme เดิม (กฎ 1) > ขึ้นต้นด้วย @import "tailwindcss" และ import ชั้นเข้ากันได้ legacy-medusa.css 1ms
+ ✓ src/styles/theme-css.test.ts > globals.css — Tailwind v4 CSS-first คงค่า theme เดิม (กฎ 1) > breakpoint, radius, max-w-8xl, text-3xl, animation เดิม generate ได้ 33ms
+ ✓ src/styles/theme-css.test.ts > globals.css — Tailwind v4 CSS-first คงค่า theme เดิม (กฎ 1) > class ใน globals.css เดิม (text-*-regular/semi, content-container, no-scrollbar) ยังใช้ได้เป็น utility 16ms
+ ✓ src/styles/theme-css.test.ts > legacy-medusa.css — ชั้นเข้ากันได้ของ preset (กฎ 16) > สี/เงา ui-* และ variant radix-state-* generate ได้ 21ms
+ ✓ src/styles/theme-css.test.ts > legacy-medusa.css — ชั้นเข้ากันได้ของ preset (กฎ 16) > ring ที่ไม่ระบุสีเป็น blue-500/50 แบบ v3 และตัวแปรดิบ --fg-* ของ preset อยู่ใน :root 15ms
+ ✓ src/styles/theme-css.test.ts > legacy-medusa.css — ชั้นเข้ากันได้ของ preset (กฎ 16) > ขอบเริ่มต้นเป็นสี --color-ui-border-base แบบ preset เดิม (v4 เริ่มต้นเป็น currentColor) 19ms
+ ✓ src/styles/theme-css.test.ts > globals.css — token ของ shadcn (AC-4 ขั้น 1b, กฎ 7; ADR-030 ข้อ 7) > import tw-animate-css (แทน tailwindcss-animate) 0ms
+ ✓ src/styles/theme-css.test.ts > globals.css — token ของ shadcn (AC-4 ขั้น 1b, กฎ 7; ADR-030 ข้อ 7) > :root ชี้ --primary / --primary-foreground / --ring ไปที่ brand 0ms
+ ✓ src/styles/theme-css.test.ts > globals.css — token ของ shadcn (AC-4 ขั้น 1b, กฎ 7; ADR-030 ข้อ 7) > :root มี token อื่นของ shadcn ครบ (ค่า neutral) 0ms
+ ✓ src/styles/theme-css.test.ts > globals.css — token ของ shadcn (AC-4 ขั้น 1b, กฎ 7; ADR-030 ข้อ 7) > utility ของ shadcn (bg-primary, text-primary-foreground, ring-ring, rounded-md, animate-in) generate ได้ 10ms
+ ✓ src/styles/theme-css.test.ts > globals.css — token ของ shadcn (AC-4 ขั้น 1b, กฎ 7; ADR-030 ข้อ 7) > หลัง compile ตัวแปร brand ที่ --primary/--primary-foreground/--ring อ้างถูก emit จริง (ไม่หายเพราะไม่มี class ใช้) 12ms
+ ✓ src/styles/theme-css.test.ts > globals.css — token ของ shadcn (AC-4 ขั้น 1b, กฎ 7; ADR-030 ข้อ 7) > ไม่ import shadcn/tailwind.css (ADR-030: CLI ไม่เป็น dependency) 0ms
+ ✓ src/styles/theme-css.test.ts > globals.css — token ของ shadcn (AC-4 ขั้น 1b, กฎ 7; ADR-030 ข้อ 7) > @custom-variant dark ผูกกับ [data-mode=dark] — dark:* ไม่ถูก compile เป็น prefers-color-scheme 10ms
+ ✓ src/modules/common/components/checkbox/index.test.tsx > CheckboxWithLabel (shadcn Checkbox) > testid อยู่บน root ของ shadcn ที่เป็น role=checkbox และสถานะตาม checked 86ms
+ ✓ src/modules/common/components/checkbox/index.test.tsx > CheckboxWithLabel (shadcn Checkbox) > ติ๊ก → FormData มี same_as_billing="on"; กดอีกครั้ง → ไม่มีค่า 7ms
+ ✓ src/modules/common/components/checkbox/index.test.tsx > CheckboxWithLabel (shadcn Checkbox) > ไม่ติ๊กแล้ว form.reset() → ยังไม่ติ๊กและ FormData ไม่มี same_as_billing 4ms
+ ✓ src/modules/common/components/checkbox/index.test.tsx > CheckboxWithLabel (shadcn Checkbox) > กด label → สลับค่า (htmlFor ชี้ id ของ checkbox) 4ms
+ ✓ src/modules/common/components/filter-radio-group/index.test.tsx > FilterRadioGroup (shadcn RadioGroup) > render radio ของ Radix (sr-only) + radio-label ที่มี data-active ตามค่าที่เลือก 96ms
+ ✓ src/modules/common/components/filter-radio-group/index.test.tsx > FilterRadioGroup (shadcn RadioGroup) > กด label → handleChange(value) 8ms
+ ✓ src/core-52-address-form-state.test.ts > CountrySelect หลัง form.reset() (กฎข้อ 110d) > คงค่า value ที่ควบคุมอยู่ ไม่กลับไปตัวเลือกแรก 189ms
+ ✓ src/core-52-address-form-state.test.ts > ShippingAddress sync จากที่อยู่ใน cart (กฎข้อ 110e, 73b) > ที่อยู่ที่บันทึกเปลี่ยน → ฟอร์มแสดงค่าใหม่ 171ms
+ ✓ src/core-52-address-form-state.test.ts > ShippingAddress sync จากที่อยู่ใน cart (กฎข้อ 110e, 73b) > cart ไม่มีอีเมล → ใช้อีเมลของลูกค้า 5ms
+ ✓ src/core-52-address-form-state.test.ts > ฟอร์มที่อยู่หลัง form.reset() (กฎข้อ 110d, qa #353 D-1) > ไม่ติ๊กใช้ที่อยู่จัดส่ง → reset แล้ว checkbox ยังไม่ติ๊ก และค่าที่พิมพ์ในฟอร์มใบเสร็จไม่หาย 26ms
+ Test Files  4 passed (4)
+      Tests  30 passed (30)
+ทั้งชุด: Test Files 130 passed (130); Tests 1999 passed (1999)
+
+== pnpm --filter storefront test:e2e:unit (project unit ทั้งหมด): 192 passed
+
+== e2e ใหม่ e2e/sfui-5a-common.spec.ts (Red ก่อนแก้: 2 failed — label อยู่หลัง input / ลูกศรไม่มี stroke)
+  ✓  200 [chromium] › e2e/sfui-5a-common.spec.ts:23:5 › label ลอยของช่องกรอก (common/components/input) มองเห็นได้ทั้งก่อนและหลังกรอก (337ms)
+  ✓  201 [chromium] › e2e/sfui-5a-common.spec.ts:50:5 › 404: ลูกศรของลิงก์กลับหน้าแรกมองเห็นและใช้สีเดียวกับข้อความ (token ของ shadcn) (201ms)
+
+== e2e ทุก spec ที่อ้าง testid/path ในขอบเขต (79 ไฟล์ ยกเว้น e2e admin ล้วน) บน prod build:
+  6 failed
+    [chromium] › e2e/core-38-mobile-layout.spec.ts:202:5 › AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่าง + billing ต่างกัน → ข้อความอยู่ในกล่องของตัวเองที่ 375/640/1280 
+    [chromium] › e2e/core-38-mobile-layout.spec.ts:247:5 › AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่างอยู่ในกล่องของตัวเองที่ 375/640/1280 
+    [chromium] › e2e/core-42-cart-voucher-layout.spec.ts:85:5 › AC-136a: ตารางสินค้า /cart ไม่ล้นที่ 375 (จำนวน 1 และ 99 + ส่วนลด) และ layout ที่ 1280 คงเดิม 
+    [chromium] › e2e/core-47-cart-375-long-title.spec.ts:125:5 › AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90 ตัวอ่านได้ ยอด 7 หลักไม่ถูกตัด, ≥ 1024 ตารางเดิม, preview ไม่เปลี่ยน 
+    [chromium] › e2e/core-50-nav-narrow.spec.ts:171:7 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1280×800: ชื่อร้านกึ่งกลาง nav-account-link แสดง ตำแหน่ง/ขนาดเท่า develop 
+    [chromium] › e2e/payments-promptpay-race.spec.ts:94:5 › AC-11: ชำระ PromptPay สำเร็จแล้วทันทีสร้าง session ใหม่ (หมดอายุ) → ยังได้ order captured ที่อ้าง PI นั้น 
+  10 skipped
+  199 passed (4.2m)
+
+หมายเหตุความล้มที่ไม่ใช่ของ task นี้ (รันเทียบบน base 8afaceb5 prod build: ล้มเหมือนกันทุกตัว)
+- core-38 :202 / :247 — ข้อความล้นกล่องสรุปที่อยู่ 375px (กล่องสรุปของ checkout = SFUI-5c)
+- core-42 :85 / core-47 :125 — padding ของ TableHead/TableCell 8px แทน 16px (ตาราง cart = SFUI-5c บน Table ของ SFUI-2)
+- core-50 :171 — nav-menu-button width ต่าง 1.265625px (macOS render ไทย — เรื่องเดิม; ค่าไม่เปลี่ยนจาก base: nav-store-link 98.48px ทั้งก่อน/หลัง)
+- payments-promptpay-race :94 — no-order (ไม่มี stripe listen/webhook ในเครื่อง)
+
+รายชื่อ spec ที่รัน:
+e2e/affiliate-last-click.spec.ts
+e2e/affiliate-portal-pages.spec.ts
+e2e/core-14-buy-login.spec.ts
+e2e/core-14b-add-variant.spec.ts
+e2e/core-14c-login-foreign-cart.spec.ts
+e2e/core-14d-cart-after-login.spec.ts
+e2e/core-14g-action-stale-jwt.spec.ts
+e2e/core-15b-search-drawer-error.spec.ts
+e2e/core-19a-nav-cart-search.spec.ts
+e2e/core-19c-delete-button-error.spec.ts
+e2e/core-20-return-request.spec.ts
+e2e/core-20c-return-window.spec.ts
+e2e/core-20d-return-window.spec.ts
+e2e/core-23b-account-progress.spec.ts
+e2e/core-23c-account-forms.spec.ts
+e2e/core-24-pdp-quantity.spec.ts
+e2e/core-26-cart-dropdown-total.spec.ts
+e2e/core-29-restore-cart.spec.ts
+e2e/core-30-login-return.spec.ts
+e2e/core-32-shipping-profile-filter.spec.ts
+e2e/core-38-mobile-layout.spec.ts
+e2e/core-41-checkout-first-step.spec.ts
+e2e/core-42-cart-voucher-layout.spec.ts
+e2e/core-44-cart-summary-qty.spec.ts
+e2e/core-47-cart-375-long-title.spec.ts
+e2e/core-48-cart-insufficient-stock.spec.ts
+e2e/core-4e-checkout-polish.spec.ts
+e2e/core-4f-auth-errors.spec.ts
+e2e/core-4g-checkout-polish.spec.ts
+e2e/core-4h-auth-reason.spec.ts
+e2e/core-4j-checkout-discount-address.spec.ts
+e2e/core-50-nav-narrow.spec.ts
+e2e/core-52-checkout-guards.spec.ts
+e2e/core-55-return-receive.spec.ts
+e2e/core-57-cart-totals.spec.ts
+e2e/core-60-cart-subtotal-label.spec.ts
+e2e/core-63-address-invisible.spec.ts
+e2e/core-64-promotion-fixed-vat.spec.ts
+e2e/core-65-order-item-unit-price.spec.ts
+e2e/core-66-checkout-preview-unit-price.spec.ts
+e2e/core-67-sale-price-strikethrough.spec.ts
+e2e/core-70-unified-search.spec.ts
+e2e/core-71-return-contact-store.spec.ts
+e2e/core-72-cart-count-no-flash.spec.ts
+e2e/core-73-register-existing-email.spec.ts
+e2e/core-75-thai-substring-search.spec.ts
+e2e/core-76-place-order-outcome.spec.ts
+e2e/core-77-cart-label-error.spec.ts
+e2e/core-79-login-link-mobile.spec.ts
+e2e/core-85-contact-page.spec.ts
+e2e/core-87-facet-heading.spec.ts
+e2e/core-91-cart-dropdown-known.spec.ts
+e2e/core-93-label-chip.spec.ts
+e2e/core-95-payment-received-notice.spec.ts
+e2e/core-store.spec.ts
+e2e/ev-7c-digital-only-checkout.spec.ts
+e2e/ev-7d-digital-only-totals.spec.ts
+e2e/flash-sale-fs13.spec.ts
+e2e/flash-sale-fs14.spec.ts
+e2e/flash-sale-fs15.spec.ts
+e2e/flash-sale-fs16.spec.ts
+e2e/flash-sale-fs19.spec.ts
+e2e/flash-sale-storefront.spec.ts
+e2e/fs-21-customer-limit.spec.ts
+e2e/fs-23-pdp-cart-aware-limit.spec.ts
+e2e/group-buy-join.spec.ts
+e2e/pay-10-refund-blocked-widget.spec.ts
+e2e/pay-12-cart-error-notice.spec.ts
+e2e/pay-14-stale-session.spec.ts
+e2e/pay-19-promptpay-refunded-reload.spec.ts
+e2e/payments-promptpay-fallback-cap.spec.ts
+e2e/payments-promptpay-race.spec.ts
+e2e/payments-refund.spec.ts
+e2e/register-policy-links.spec.ts
+e2e/sfui-5a-common.spec.ts
+e2e/store-content.spec.ts
+e2e/thai-ui-account.spec.ts
+e2e/thai-ui-cart-order.spec.ts
+e2e/thai-ui-checkout.spec.ts
+e2e/thai-ui-pages.spec.ts
+e2e/thai-ui-shell.spec.ts
+
+================ รอบแก้ตาม review (REQUEST CHANGES — หลักฐาน e2e) 2026-11-26 ================
+การแก้: ลบ src/components/ui/native-select.tsx (ไม่มีผู้ใช้ — session หลักตัดสินคง <select> ของ common/native-select);
+  checkbox: เอา transform-none!/text-sm! ออก (input ซ่อนของ Radix อยู่ใน <span> แยกแล้ว rule input ~ label ไม่จับ label) + แก้ comment;
+  nav: ลอง font-medium ตามกฎ 21 แล้ว core-50 แย่ลง (nav-menu-button ต่าง 1.27 → 1.67px, ทุกลิงก์ใน nav กว้างขึ้น) จึงคงน้ำหนัก 400 ตามค่าที่ render จริงบน base/develop และใส่ comment เหตุผล
+== lint: 0 errors (28 warnings เดิม) | typecheck: ผ่าน | build prod: ผ่าน
+== test:unit:  Test Files 130 passed (130)
+ Tests 1998 passed (1998)
+   (ลดลง 1 case จากรอบก่อน = core-84-gb-affiliate-codes static ที่สร้าง case ต่อไฟล์ — components/ui/native-select.tsx ถูกลบ)
+== test:e2e:unit:   192 passed (1.7s)
+== e2e (prod build) ที่ review ขอ + spec ที่อ้าง nav/checkbox:
+  ✓   1 [chromium] › e2e/core-23-profile-order.spec.ts:42:5 › AC-85: ล้างช่องเบอร์แล้วบันทึก → phone ว่าง และแสดง ยังไม่ได้ระบุ (1.8s)
+  ✓   4 [chromium] › e2e/core-23-profile-order.spec.ts:74:5 › AC-86, AC-89: อีเมลอ่านอย่างเดียว และ ยังไม่ได้ระบุ ชิดแนวเดียวกับค่าชื่อ (1.0s)
+  ✓   3 [chromium] › e2e/core-37-copy-button.spec.ts:14:5 › AC-131: แถวรหัสของการ์ด voucher ไม่เยื้องที่ 1280 และข้อความคัดลอกล้มไม่ล้นจอที่ 375 (5.0s)
+  ✓   6 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (375px) (1.5s)
+  ✓   2 [chromium] › e2e/core-22-account-fixes.spec.ts:19:5 › AC-82: title ของหน้า account ที่ล็อกอินแล้วตรงหน้า และหน้า login ยังเป็น เข้าสู่ระบบ (8.5s)
+  ✓   7 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (1280px) (1.6s)
+  ✓   5 [chromium] › e2e/core-23-profile-order.spec.ts:106:5 › AC-87: order ที่ไม่มีอยู่ และ order ของ customer อื่น ตอบ HTTP 404 (6.2s)
+  ✓   8 [chromium] › e2e/core-22-account-fixes.spec.ts:68:5 › AC-83, AC-84: profile เบอร์ว่างไม่แสดง null และกด แก้ไข เบอร์โทรไม่โดน editor อื่นที่ปิดอยู่ (1.1s)
+  ✓  10 [chromium] › e2e/core-23-profile-order.spec.ts:128:5 › AC-88: token หายระหว่างบันทึกเบอร์ → ไม่มี error ดิบของ React และแสดงข้อความไทย (1.1s)
+  ✓  11 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 320×640: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (376ms)
+  ✓  13 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 375×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (347ms)
+  ✓  14 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 639×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (519ms)
+  ✓  15 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1023×800: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64 (629ms)
+  ✘  16 [chromium] › e2e/core-50-nav-narrow.spec.ts:171:7 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1280×800: ชื่อร้านกึ่งกลาง nav-account-link แสดง ตำแหน่ง/ขนาดเท่า develop (437ms)
+  ✓  12 [chromium] › e2e/core-52-checkout-guards.spec.ts:97:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (1280x800) (3.6s)
+  ✓   9 [chromium] › e2e/core-38-mobile-layout.spec.ts:124:5 › AC-132: checkout — label ของฟอร์มที่อยู่ไม่ทับค่า, สรุปที่อยู่ 375 เรียงแนวตั้งและอีเมลยาวไม่ล้น, 1280 แถวเดียว (6.4s)
+  ✓  18 [chromium] › e2e/core-52-checkout-guards.spec.ts:119:9 › viewport 1280x800 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (1280x800) (2.3s)
+  ✓  17 [chromium] › e2e/evoucher-storefront.spec.ts:16:5 › AC-36: PDP ของ voucher มี evoucher-partner-block ภาษาไทย ส่วนสินค้าปกติไม่มี (3.0s)
+  ✓  20 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 1280x800 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (1280x800) (1.1s)
+  ✘  19 [chromium] › e2e/core-38-mobile-layout.spec.ts:202:5 › AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่าง + billing ต่างกัน → ข้อความอยู่ในกล่องของตัวเองที่ 375/640/1280 (5.0s)
+  ✓  22 [chromium] › e2e/core-52-checkout-guards.spec.ts:177:9 › viewport 1280x800 › AC-147 ใบเสร็จแยก: error แล้วแก้ส่งใหม่ → billing เป็นค่าที่กรอก (1280x800) (3.4s)
+  ✓  21 [chromium] › e2e/evoucher-storefront.spec.ts:40:5 › AC-6 + AC-36: บัตรกำนัลของฉันแสดงเฉพาะ code ของตนเอง พร้อมปุ่มคัดลอก (5.4s)
+  ✓  25 [chromium] › e2e/sfui-5a-common.spec.ts:23:5 › label ลอยของช่องกรอก (common/components/input) มองเห็นได้ทั้งก่อนและหลังกรอก (580ms)
+  ✓  26 [chromium] › e2e/sfui-5a-common.spec.ts:50:5 › 404: ลูกศรของลิงก์กลับหน้าแรกมองเห็นและใช้สีเดียวกับข้อความ (token ของ shadcn) (371ms)
+  ✓  24 [chromium] › e2e/core-52-checkout-guards.spec.ts:224:9 › viewport 1280x800 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (1280x800) (3.3s)
+  ✘  23 [chromium] › e2e/core-38-mobile-layout.spec.ts:247:5 › AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่างอยู่ในกล่องของตัวเองที่ 375/640/1280 (6.1s)
+  ✓  28 [chromium] › e2e/core-52-checkout-guards.spec.ts:259:9 › viewport 1280x800 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (1280x800) (6.4s)
+  ✓  30 [chromium] › e2e/core-52-checkout-guards.spec.ts:97:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: reload ขั้น review → /th/cart (375x812) (2.5s)
+  ✓  29 [chromium] › e2e/thai-ui-checkout.spec.ts:22:5 › AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษาไทย (6.5s)
+  ✓  31 [chromium] › e2e/core-52-checkout-guards.spec.ts:119:9 › viewport 375x812 › AC-147 ตะกร้าว่างจากอีกแท็บ: กดยืนยันโดยไม่ reload → /th/cart ไม่เกิด order (375x812) (1.9s)
+  ✓  33 [chromium] › e2e/core-52-checkout-guards.spec.ts:141:9 › viewport 375x812 › AC-147 เขต/อำเภอเป็นช่องว่างล้วน → error ไทย ไม่บันทึก select ประเทศคงค่า (375x812) (973ms)
+  ✓  32 [chromium] › e2e/thai-ui-shell.spec.ts:10:5 › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai (2.8s)
+  ✓  35 [chromium] › e2e/thai-ui-shell.spec.ts:61:5 › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย (329ms)
+  ✓  34 [chromium] › e2e/core-52-checkout-guards.spec.ts:177:9 › viewport 375x812 › AC-147 ใบเสร็จแยก: error แล้วแก้ส่งใหม่ → billing เป็นค่าที่กรอก (375x812) (1.5s)
+  ✓  37 [chromium] › e2e/core-52-checkout-guards.spec.ts:224:9 › viewport 375x812 › AC-147 cart digital-only: เขต/อำเภอเป็นช่องว่างล้วน → error ไทย billing select คงค่า (375x812) (2.2s)
+  ✓  36 [chromium] › e2e/ui-preset-font.spec.ts:9:5 › AC-3: body, h1, h2, p, button, input และ class txt-*/*-webs บนหน้าแรกใช้ Noto Sans Thai ก่อน Inter (2.6s)
+  ✓  38 [chromium] › e2e/core-52-checkout-guards.spec.ts:259:9 › viewport 375x812 › AC-147 order voucher ล้วนไม่มี section จัดส่ง, order สินค้าจัดส่งยังมี (375x812) (8.0s)
+  ✓  39 [chromium] › e2e/core-52-checkout-guards.spec.ts:299:7 › CORE-58 อักขระที่มองไม่เห็น 1280x800 › AC-157 เขต/อำเภอเป็น U+200B ล้วน → error ไทย ไม่บันทึกลง cart (1.9s)
+  ✓  40 [chromium] › e2e/core-52-checkout-guards.spec.ts:327:7 › CORE-58 อักขระที่มองไม่เห็น 1280x800 › AC-157 cart digital-only: เขต/อำเภอใบเสร็จเป็น U+200B ล้วน → error ไทย ไม่บันทึกลง cart (2.3s)
+  ✓  27 [chromium] › e2e/sfui-mobile-390.spec.ts:20:5 › AC-17: หน้าแรก, store, PDP, cart, checkout, account, orders ที่ 390px ไม่ล้นแนวนอน (35.4s)
+  3 failed
+  37 passed (1.0m)
+ล้ม 3 ตัวไม่ใช่ของ task นี้: core-38 :202/:247 ล้มเหมือนกันบน base 8afaceb5 (กล่องสรุปที่อยู่ของ 5c); core-50 :171 nav-menu-button ต่าง 1.265625px = ค่าเดิมของ macOS (เท่า base)
+
+================ รอบกฎ 21 ฉบับแก้ (4fefec37: txt-*medium* / <Text> ไม่ใส่ขนาด → text-sm leading-[1.4rem]) 2026-11-26 ================
+เติม leading-[1.4rem]: app/not-found (Text), interactive-link (Text), cart-totals (txt-medium 2 จุด), checkbox label (txt-medium!), line-item-options (Text + txt-medium)
+ไม่เปลี่ยน: input (txt-compact-medium[-plus] → compact = leading-5), filter-radio-group/footer (Text ที่มี txt-*small* อยู่แล้ว), nav (txt-xsmall-plus ไม่ใช่ medium/Text)
+base ของ branch: 6e3f203c (merge feat/SFUI-2-shadcn-base ที่มี 4fefec37)
+== lint: 0 errors (28 warnings เดิม) | typecheck: ผ่าน | build prod: ผ่าน
+== test:unit: Test Files 130 passed (130); Tests 2002 passed (2002)
+== test:e2e:unit: 192 passed
+== e2e prod build — sfui-mobile-390 รันก่อนบน DB สะอาด:
+  ✓  1 [chromium] › e2e/sfui-mobile-390.spec.ts:20:5 › AC-17: หน้าแรก, store, PDP, cart, checkout, account, orders ที่ 390px ไม่ล้นแนวนอน
+  1 passed (36.5s)
+== e2e prod build — core-38, core-50, thai-ui-shell, thai-ui-pages, sfui-5a-common, core-37, ui-preset-font:
+  ✓   2 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (375px)
+  ✓   1 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 320×640: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64
+  ✓   5 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 375×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64
+  ✓   6 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 639×812: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64
+  ✓   4 [chromium] › e2e/core-38-mobile-layout.spec.ts:94:7 › AC-132: label ของฟอร์ม register และ login ไม่ทับค่าที่กรอก (1280px)
+  ✓   7 [chromium] › e2e/core-50-nav-narrow.spec.ts:137:9 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1023×800: ไม่ทับกัน ห่าง ≥ 8px บรรทัดเดียว ชื่อร้านครบ header 64
+  ✓   3 [chromium] › e2e/core-37-copy-button.spec.ts:14:5 › AC-131: แถวรหัสของการ์ด voucher ไม่เยื้องที่ 1280 และข้อความคัดลอกล้มไม่ล้นจอที่ 375
+  ✘   9 [chromium] › e2e/core-50-nav-narrow.spec.ts:171:7 › AC-145: nav ที่ < 1024 ตั้งแต่ 320 › 1280×800: ชื่อร้านกึ่งกลาง nav-account-link แสดง ตำแหน่ง/ขนาดเท่า develop
+  ✓  10 [chromium] › e2e/sfui-5a-common.spec.ts:23:5 › label ลอยของช่องกรอก (common/components/input) มองเห็นได้ทั้งก่อนและหลังกรอก
+  ✓  11 [chromium] › e2e/sfui-5a-common.spec.ts:50:5 › 404: ลูกศรของลิงก์กลับหน้าแรกมองเห็นและใช้สีเดียวกับข้อความ (token ของ shadcn)
+  ✓  12 [chromium] › e2e/thai-ui-pages.spec.ts:13:5 › AC-48: หน้า store และ PDP เป็นภาษาไทย
+  ✓  14 [chromium] › e2e/thai-ui-pages.spec.ts:37:5 › AC-48: หน้า /search เป็นภาษาไทย
+  ✓  13 [chromium] › e2e/thai-ui-shell.spec.ts:10:5 › AC-46, AC-48, AC-50: หน้าแรกและ layout shell เป็นภาษาไทย ไม่มีตัวเลือกภาษา ใช้ Noto Sans Thai
+  ✓   8 [chromium] › e2e/core-38-mobile-layout.spec.ts:124:5 › AC-132: checkout — label ของฟอร์มที่อยู่ไม่ทับค่า, สรุปที่อยู่ 375 เรียงแนวตั้งและอีเมลยาวไม่ล้น, 1280 แถวเดียว
+  ✓  16 [chromium] › e2e/thai-ui-shell.spec.ts:61:5 › AC-48: หน้า not-found ของ (main) เป็นภาษาไทย
+  ✓  15 [chromium] › e2e/thai-ui-pages.spec.ts:53:5 › AC-48: หน้า category และ collection เป็นภาษาไทย
+  ✓  18 [chromium] › e2e/ui-preset-font.spec.ts:9:5 › AC-3: body, h1, h2, p, button, input และ class txt-*/*-webs บนหน้าแรกใช้ Noto Sans Thai ก่อน Inter
+  ✓  17 [chromium] › e2e/core-38-mobile-layout.spec.ts:202:5 › AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่าง + billing ต่างกัน → ข้อความอยู่ในกล่องของตัวเองที่ 375/640/1280
+  ✓  19 [chromium] › e2e/core-38-mobile-layout.spec.ts:247:5 › AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/เมืองยาวไม่มีช่องว่างอยู่ในกล่องของตัวเองที่ 375/640/1280
+  1 failed
+  18 passed (14.2s)
+ล้ม 1 ตัวไม่ใช่ของ task นี้: core-50 :171 nav-menu-button ต่าง 1.265625px = ค่าเดิมของ macOS (เท่า base); core-38 ผ่านครบทุกตัวแล้วบน base ใหม่
+
+================ re-review: padding ของตาราง skeleton ตามกฎ 21 ฉบับใหม่ 2026-11-26 ================
+skeleton-cart-item / skeleton-line-item: TableCell เติม p-4 (คง pl-0!/pr-0! เดิม); skeleton-cart-page: TableHead เติม px-4 (คง pl-0!/pr-0!)
+== lint: 0 errors (28 warnings เดิม) | typecheck: ผ่าน
+== test:unit: Test Files 130 passed (130); Tests 2002 passed (2002)
+== test:e2e:unit: 192 passed
+== build prod: ผ่าน (Compiled successfully)
+ไม่รัน e2e browser (skeleton = หน้า loading ตามที่ reviewer ระบุ)

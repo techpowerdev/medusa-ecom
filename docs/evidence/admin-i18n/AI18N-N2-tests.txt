@@ -1,0 +1,93 @@
+AI18N-N2 — ผล test ในเครื่อง (2026-11-27, node v24.12.0, base develop 1c30dc5e)
+
+## Red (ก่อนแก้ component) — jest src/admin/__tests__/i18n.unit.spec.ts
+Tests: 4 failed, 260 passed, 264 total
+- guard untranslatedPaginationLines: components/group-buy/{group-members,groups-section,product-picker}.tsx มี <DataTable.Pagination /> ไม่ส่ง translations
+- usePaginationTranslations: ENOENT components/common/use-pagination-translations.ts (ยังไม่มี hook)
+## Red — e2e admin-i18n-group-buy.spec.ts บน prod build ของ component เดิม (develop)
+1 failed (lng=th), 1 passed (lng=en)
+  Expected pattern: /\d+ ของ \d+ ผลลัพธ์/
+  Received (gb-product-picker): "...12 of 2 results1 of 1 pagesPrevNext"
+
+## Green
+### jest src/admin (TEST_TYPE=unit)
+Test Suites: 28 passed, 28 total
+Tests:       939 passed, 939 total
+### pnpm --filter backend test:unit
+Test Suites: 137 passed, 137 total
+Tests:       2701 passed, 2701 total
+### pnpm --filter storefront test:e2e:unit (project unit รวม evidence-budget)
+227 passed (1.7s)
+### pnpm lint && pnpm typecheck
+lint: 0 errors (warning เดิม: backend 4, storefront 27 — ไม่มีในไฟล์ที่แก้) · typecheck: backend + admin + storefront ผ่าน
+### NODE_ENV=production pnpm --filter backend build
+Backend build completed successfully · Frontend build completed successfully · assert-absent "Development Mode" OK
+
+## e2e (chromium) บน prod build — backend :9371, DB medusa_ai18nn2, Redis db 12 — ทุก spec ที่อ้างหน้า group buy ของ admin (11 ไฟล์)
+  ✓   2 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create partner — dialog มี accessible name และไม่มี console error DialogTitle (1.5s)
+  ✓   5 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create program — dialog มี accessible name และไม่มี console error DialogTitle (1.1s)
+  ✓   3 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้าง partner — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (2.8s)
+  ✓   6 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create payout — dialog มี accessible name และไม่มี console error DialogTitle (1.0s)
+  ✓   4 [chromium] › e2e/admin-create-double-submit.spec.ts:318:7 › AC-44: Create partner (backend จริง — ADM-B1) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (4.9s)
+  ✓   8 [chromium] › e2e/admin-dialog-title.spec.ts:60:7 › AC-36: ฟอร์ม Create campaign — dialog มี accessible name และไม่มี console error DialogTitle (1.2s)
+  ✓   7 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้างแคมเปญ — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (2.2s)
+  ✓  11 [chromium] › e2e/admin-form-discard-prompt.spec.ts:79:7 › AC-32: ฟอร์มสร้าง program — dirty + Escape ถามก่อน (ยกเลิกค่าคงอยู่ / ยืนยันปิดและเปิดใหม่ว่าง); ไม่ dirty ปิดทันที (1.8s)
+  ✓   1 [chromium] › e2e/admin-detail-loader.spec.ts:75:5 › AC-15: หน้ารายละเอียดใช้ผลของ loader (ไม่ GET ซ้ำ), คลิกจากรายการเร็วขึ้น และ breadcrumb E-vouchers (6.8s)
+  ✓  10 [chromium] › e2e/admin-i18n-group-buy.spec.ts:176:7 › lng=th › AC-9: group buy + flash sale เป็นไทย (ค่า th ของ ecom-group-buy) (3.0s)
+  ✓  13 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create partner — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด (1.3s)
+  ✓   9 [chromium] › e2e/admin-create-double-submit.spec.ts:318:7 › AC-44: Create program (backend จริง) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (4.1s)
+  ✓  15 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create program — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด (1.1s)
+  ✓  12 [chromium] › e2e/admin-form-discard-prompt.spec.ts:122:5 › AC-32: Drawer แก้ partner — กรอกแล้วคลิกปุ่ม close ของ Drawer → alertdialog; Escape 2 ครั้งติดกันที่ฟอร์มสร้าง → alertdialog ตัวเดียว; บันทึกสำเร็จไม่ถาม (3.1s)
+  ✓  17 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create payout — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด (1.3s)
+  ✓  14 [chromium] › e2e/admin-i18n-group-buy.spec.ts:184:7 › lng=en › AC-9: group buy + flash sale เป็นอังกฤษเดิม ไม่มีอักษรไทย (3.2s)
+  ✓  18 [chromium] › e2e/admin-form-discard-prompt.spec.ts:184:5 › AC-32: ฟอร์ม payout dirty + Combobox ขยาย → Escape ไม่มี alertdialog และ dialog ยังเปิด (กฎ 31d) (2.3s)
+  ✓  19 [chromium] › e2e/admin-modal-return-focus.spec.ts:91:7 › AC-39b: Create campaign — Escape (ไม่ dirty) ปิดแล้ว focus กลับปุ่มที่เปิด (1.8s)
+  ✓  20 [chromium] › e2e/group-buy-admin-dates.spec.ts:11:5 › AC-3: ends_at ของแคมเปญแสดง Feb 1, 2026 12:30 AM ตามเวลาไทยของ browser (1.9s)
+  ✓  16 [chromium] › e2e/admin-create-double-submit.spec.ts:318:7 › AC-44: Create payout (mock สำเร็จ — payout จริงต้องมี commission entry ใหม่ทุกครั้ง) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (5.0s)
+  ✓  22 [chromium] › e2e/admin-modal-return-focus.spec.ts:104:5 › AC-39b: Create pool (หน้า variant ที่ยังไม่มี pool) — Escape ปิดแล้ว focus กลับปุ่ม (2.4s)
+  ✓  23 [chromium] › e2e/group-buy-admin-detail.spec.ts:69:5 › AC-30: draft → activate ด้วยกล่องยืนยัน, ปุ่มตามสถานะ, ended ไม่มีปุ่ม (2.3s)
+  ✓  25 [chromium] › e2e/admin-modal-return-focus.spec.ts:139:5 › AC-39b: Create partner — บันทึกสำเร็จแล้ว focus กลับปุ่ม Create partner (1.3s)
+  ✓  26 [chromium] › e2e/group-buy-admin-detail.spec.ts:110:5 › AC-30: ลบ draft — ยกเลิกไม่มี request, ยืนยันแล้ว DELETE 1 ครั้งและกลับหน้ารายการ (2.3s)
+  ✓  27 [chromium] › e2e/admin-modal-return-focus.spec.ts:170:7 › AC-39b: Create partner — dirty + Escape → Leave แล้ว focus กลับปุ่มที่เปิด (1.7s)
+  ✓  21 [chromium] › e2e/admin-form-discard-prompt.spec.ts:231:5 › AC-32: ฟอร์มสร้าง partner — กด Save แล้ว Escape ทันที → ไม่มี alertdialog ระหว่างบันทึก และหลังบันทึกสำเร็จฟอร์มปิดโดยไม่มี prompt ค้าง (5.6s)
+  ✓  28 [chromium] › e2e/group-buy-admin-detail.spec.ts:151:5 › qa D-2: id ที่ไม่มีจริง → แสดง not found ไม่ค้าง Loading (1.3s)
+  ✓  29 [chromium] › e2e/admin-modal-return-focus.spec.ts:170:7 › AC-39b: Create program — dirty + Escape → Leave แล้ว focus กลับปุ่มที่เปิด (1.4s)
+  ✓  24 [chromium] › e2e/admin-create-double-submit.spec.ts:318:7 › AC-44: Create campaign (mock สำเร็จ — แคมเปญลบผ่าน API ไม่ได้) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (6.3s)
+  ✓  30 [chromium] › e2e/group-buy-admin-form.spec.ts:105:5 › AC-32 + AC-50: ไม่เลือกสินค้าไม่ส่ง, max_quantity < max_units_per_person ไม่ส่ง, ends_at อดีตเตือนแต่ส่งได้, dblclick ส่ง POST 1 ครั้ง (4.5s)
+  ✓  31 [chromium] › e2e/group-buy-admin-detail.spec.ts:161:5 › AC-31: ตารางกลุ่ม + dblclick สร้าง pool group ส่ง POST 1 ครั้ง; team/draft ไม่มีปุ่ม (4.7s)
+  ✓  32 [chromium] › e2e/group-buy-admin-members.spec.ts:89:5 › AC-35: แถวกลุ่มเปิดรายการ membership พร้อมลิงก์ order; dblclick succeed + ยืนยัน → POST 1 ครั้ง ปุ่มหาย (6.1s)
+  ✓  34 [chromium] › e2e/group-buy-admin-form.spec.ts:187:5 › AC-50: เลือก A แล้วเลือก B ใน gb-product-picker → เหลือ B ตัวเดียว และ target_rules = [B] (3.2s)
+  ✓  35 [chromium] › e2e/group-buy-admin-pages.spec.ts:55:5 › AC-9: breadcrumb เป็นชื่อแคมเปญ (loader), คลิกแถวไปหน้ารายละเอียด, หน้า 2 อยู่ใน URL (2.5s)
+  ✓  36 [chromium] › e2e/group-buy-admin-members.spec.ts:148:5 › AC-35: กลุ่มที่ไม่ใช่ open ไม่มีปุ่ม succeed/fail; fail ยกเลิกไม่มี request (2.0s)
+  ✓  33 [chromium] › e2e/admin-create-double-submit.spec.ts:318:7 › AC-44: Create pool บนหน้า variant (mock สำเร็จ — pool จริงสร้างได้ครั้งเดียวต่อ variant) — dblclick 100ms / ⌘+Enter ระหว่างปิด = POST 1 ครั้ง, 500 แล้วกดใหม่ได้, เปิดใหม่ Save ได้ (7.3s)
+  ✓  38 [chromium] › e2e/group-buy-admin-pages.spec.ts:128:7 › ADM-10: gb_offset ใน URL ที่ผิดรูป › AC-14: gb_offset ค่าว่าง / 25 / 99999 ถูก normalize/clamp (1.6s)
+  ✓  37 [chromium] › e2e/group-buy-admin-form.spec.ts:241:5 › AC-50: เลือกสินค้าหน้า 1 แล้วเลือกตัวหน้า 2 → หน้า 1 ไม่ติ๊กแล้ว และ target_rules = [ตัวหน้า 2] (3.8s)
+  ✓  40 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create partner (backend จริง — ADM-B1) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่ (1.8s)
+  ✓  39 [chromium] › e2e/group-buy-admin-members.spec.ts:181:7 › GB-6d › AC-41: fail ล้มเพราะกลุ่ม succeeded ไปแล้ว → GET กลุ่มใหม่ แถวเป็น succeeded ปุ่มหาย ไม่ต้อง reload (2.8s)
+  ✓  41 [chromium] › e2e/group-buy-admin-pages.spec.ts:186:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบ 500 → gb-campaigns-error แทน empty state, ปุ่ม Create campaign ยังเปิด modal ได้ (2.9s)
+  ✓  43 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create program (backend จริง) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่ (1.7s)
+  ✓  46 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create payout (mock สำเร็จ — payout จริงต้องมี commission entry ใหม่ทุกครั้ง) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่ (1.6s)
+  ✓  44 [chromium] › e2e/group-buy-admin-members.spec.ts:230:7 › GB-6d › AC-41: แถวที่เลือกมี highlight + ปุ่มปิด; เปลี่ยนหน้าไปหน้าที่ไม่มีแถวที่เลือก → ปิดตาราง membership (2.9s)
+  ✓  45 [chromium] › e2e/group-buy-admin-pages.spec.ts:205:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: network ล้ม (route.abort) → gb-campaigns-error และปุ่ม Create campaign ยังเปิด modal ได้ (2.4s)
+  ✓  48 [chromium] › e2e/group-buy-admin-members.spec.ts:291:7 › GB-N3 › AC-42: td แรกของแถวที่เลือกสีเดียวกับ td ที่สองและต่างจากแถวที่ไม่ถูกเลือก (1.4s)
+  ✓  47 [chromium] › e2e/admin-create-double-submit.spec.ts:426:7 › AC-53: Create pool บนหน้า variant (mock สำเร็จ — pool จริงสร้างได้ครั้งเดียวต่อ variant) — Enter ค้างบน Save (keydown 1 + repeat 5) = POST 1 ครั้ง และไม่เปิดฟอร์มใหม่ (2.0s)
+  ✓  49 [chromium] › e2e/group-buy-admin-pages.spec.ts:219:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบ 401 → ErrorBoundary พาไป /app/login (2.0s)
+  ✓  50 [chromium] › e2e/admin-create-double-submit.spec.ts:503:5 › AC-44: Create pool group (ปุ่มบนหน้าแคมเปญ ไม่มี modal) — ดับเบิลคลิกเว้น 100ms = POST 1 ครั้ง; 500 แล้วกดใหม่ได้; คลิกแยกครั้งใหม่สร้างได้ (1.2s)
+  ✓  51 [chromium] › e2e/group-buy-admin-pages.spec.ts:231:7 › ADM-20: สถานะ error ของรายการแคมเปญ › AC-24: ตอบสำเร็จแต่ไม่มีแคมเปญ → empty state เดิม ไม่มี gb-campaigns-error (775ms)
+  ✓  52 [chromium] › e2e/admin-create-double-submit.spec.ts:546:5 › AC-51 (b): Create pool group — กด Enter ค้าง (keydown repeat) = POST 1 ครั้ง; คลิกแยก 2 ครั้งหลัง response = 2 group (1.2s)
+  ✓  53 [chromium] › e2e/group-buy-admin-pages.spec.ts:300:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET groups ตอบ 500 → gb-groups-error แทน "No groups yet", gb-create-pool-group ยังอยู่ (2.2s)
+  ✓  55 [chromium] › e2e/group-buy-admin-pages.spec.ts:314:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET memberships ตอบ 500 หลังเลือกกลุ่ม → gb-memberships-error ไม่มี "No members yet" (2.4s)
+  ✓  54 [chromium] › e2e/admin-create-double-submit.spec.ts:593:5 › AC-44: Import codes (หน้า pool) — ดับเบิลคลิกเว้น 100ms = POST 1 ครั้ง; 500 แล้วกดใหม่ได้; เลือกไฟล์ใหม่ import ได้ (4.2s)
+  ✓  42 [chromium] › e2e/group-buy-admin-form.spec.ts:298:5 › AC-52: body มี idempotency_key รูป UUID, submit ซ้ำหลัง network error ส่ง key เดิม, เปิดฟอร์มใหม่ได้ key ใหม่ (12.4s)
+  ✓  56 [chromium] › e2e/group-buy-admin-pages.spec.ts:300:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET groups network ล้ม (route.abort) → gb-groups-error แทน "No groups yet", gb-create-pool-group ยังอยู่ (2.3s)
+  ✓  57 [chromium] › e2e/group-buy-admin-form.spec.ts:367:5 › AC-10: กรอก starts 2026-12-01 10:00 / ends 2026-12-31 23:30 (เวลาไทย) แล้ว Meta/Control+Enter → POST 1 ครั้ง body เป็น UTC (2.2s)
+  ✓  59 [chromium] › e2e/group-buy-admin-form.spec.ts:403:7 › ADM-13: หัวตารางรายการแคมเปญ › AC-17: heading และปุ่ม Create campaign อยู่แถวเดียวกันใน gb-campaigns-table และยังเห็นคำเตือน GBT- (754ms)
+  ✓  58 [chromium] › e2e/group-buy-admin-pages.spec.ts:314:9 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET memberships network ล้ม (route.abort) หลังเลือกกลุ่ม → gb-memberships-error ไม่มี "No members yet" (2.3s)
+  ✓  61 [chromium] › e2e/group-buy-admin-pages.spec.ts:334:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET groups ตอบ 401 → ErrorBoundary พาไป /app/login (2.0s)
+  ✓  62 [chromium] › e2e/group-buy-admin-pages.spec.ts:344:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: GET memberships ตอบ 401 → ErrorBoundary พาไป /app/login (1.9s)
+  ✓  63 [chromium] › e2e/group-buy-admin-pages.spec.ts:353:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › AC-26: groups / memberships ตอบรายการว่าง → empty state เดิม ไม่มี testid error (1.2s)
+  ✓  60 [chromium] › e2e/group-buy-admin-form.spec.ts:440:7 › ADM-15: ฟอร์มสร้างแคมเปญ — NumberInput และ focus › AC-19: "e" ใน Max total orders → error ใต้ช่องไม่ POST, ว่าง → null, dblclick เปิด dialog เดียว, Escape คืน focus, เปิดใหม่ได้ฟอร์มว่าง + key ใหม่ (8.5s)
+  ✓  64 [chromium] › e2e/group-buy-admin-pages.spec.ts:370:7 › ADM-21b: สถานะ error ของตาราง Groups / Members › กฎ 24d: Create pool group แล้ว refetch groups ล้ม → ตารางเดิมคงอยู่ ไม่มี gb-groups-error (3.8s)
+  ✓  65 [chromium] › e2e/group-buy-admin-form.spec.ts:529:7 › ADM-32: error ใต้ช่องตัวเลขของฟอร์มสร้างแคมเปญ › AC-37b: max_total_orders -1/1.5/0/2147483648/99999999999999999999, target_value -3, discount_value -10 → error ใต้ช่องไม่ POST; 2147483647 → POST 200 (3.0s)
+  ✓  66 [chromium] › e2e/group-buy-admin-form.spec.ts:597:7 › ADM-32: error ใต้ช่องตัวเลขของฟอร์มสร้างแคมเปญ › AC-37c: 400 ที่ schema ไม่ครอบ → toast ข้อความของ backend 1 ตัว ไม่มี error ใต้ช่อง และ modal ยังเปิด (2.1s)
+  66 passed (58.9s)

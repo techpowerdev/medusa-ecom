@@ -3,17 +3,12 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { Button, Drawer, Input, toast, usePrompt } from "@medusajs/ui"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { AdminAffiliate } from "../../lib/affiliate"
 import { PAYOUT_INFO_FIELDS, PayoutInfo, payoutInfoForm, payoutInfoSchema } from "../../lib/affiliate-account"
 import { createSingleFlight } from "../../lib/single-flight"
 import { useConfirmDiscard } from "../common/use-confirm-discard"
 import { useRestoreOpenerFocus } from "../common/use-restore-opener-focus"
-
-const LABELS: Record<keyof PayoutInfo, string> = {
-  bank_name: "Bank name",
-  account_name: "Account name",
-  account_number: "Account number",
-}
 
 type Props = {
   affiliate: AdminAffiliate
@@ -24,7 +19,9 @@ type Props = {
 
 // AF-12b (กฎ 37b): ฟอร์มข้อมูลรับเงิน 3 ช่อง (owner Q18) — Save ส่ง object, Clear ส่ง null; ค่าเต็มเห็นเฉพาะ admin (กฎ 8)
 // ADM-9 (spec 08 กฎ 8): Form + KeyboundForm + zod
+// spec 10 (AI18N-4): label ของช่อง = key `payoutInfo.fields.<key>` แปลตอน render
 export const PayoutInfoDrawer = ({ affiliate, onClose, save }: Props) => {
+  const { t } = useTranslation("ecom-affiliate")
   const prompt = usePrompt()
   const form = useForm<PayoutInfo>({
     resolver: zodResolver(payoutInfoSchema, undefined, { raw: true }),
@@ -40,10 +37,10 @@ export const PayoutInfoDrawer = ({ affiliate, onClose, save }: Props) => {
       if (
         payoutInfo === null &&
         !(await prompt({
-          title: `Clear payout info of ${affiliate.name}?`,
-          description: "Bank name, account name and account number are removed.",
-          confirmText: "Clear",
-          cancelText: "Cancel",
+          title: t("payoutInfo.clearPrompt.title", { name: affiliate.name }),
+          description: t("payoutInfo.clearPrompt.description"),
+          confirmText: t("payoutInfo.clearPrompt.confirm"),
+          cancelText: t("actions.cancel", { ns: "translation" }),
         }))
       ) {
         return
@@ -63,7 +60,7 @@ export const PayoutInfoDrawer = ({ affiliate, onClose, save }: Props) => {
     // resolver เป็น raw → parse อีกครั้งเพื่อได้ค่าที่ trim/normalize แล้ว (แบบ ADM-3/ADM-7)
     (values) => send(payoutInfoSchema.parse(values)),
     () => {
-      toast.error("Fill in all payout fields")
+      toast.error(t("payoutInfo.fillAll"))
     }
   )
 
@@ -78,7 +75,7 @@ export const PayoutInfoDrawer = ({ affiliate, onClose, save }: Props) => {
         <Form {...form}>
           <KeyboundForm noValidate onSubmit={submit} className="flex h-full flex-col overflow-hidden">
             <Drawer.Header>
-              <Drawer.Title>Payout info — {affiliate.name}</Drawer.Title>
+              <Drawer.Title>{t("payoutInfo.title", { name: affiliate.name })}</Drawer.Title>
             </Drawer.Header>
             <Drawer.Body className="flex flex-1 flex-col gap-y-4 overflow-auto p-4">
               {PAYOUT_INFO_FIELDS.map((key) => (
@@ -88,7 +85,7 @@ export const PayoutInfoDrawer = ({ affiliate, onClose, save }: Props) => {
                   name={key}
                   render={({ field }) => (
                     <Form.Item>
-                      <Form.Label>{LABELS[key]} *</Form.Label>
+                      <Form.Label>{t(`payoutInfo.fields.${key}`)} *</Form.Label>
                       <Form.Control>
                         <Input {...field} size="small" data-testid={`affiliate-payout-info-${key}`} />
                       </Form.Control>
@@ -107,7 +104,7 @@ export const PayoutInfoDrawer = ({ affiliate, onClose, save }: Props) => {
                 disabled={pending || !affiliate.payout_info}
                 onClick={() => send(null)}
               >
-                Clear
+                {t("payoutInfo.clear")}
               </Button>
               <Button
                 size="small"
@@ -116,7 +113,7 @@ export const PayoutInfoDrawer = ({ affiliate, onClose, save }: Props) => {
                 disabled={pending}
                 isLoading={pending}
               >
-                Save
+                {t("actions.save", { ns: "translation" })}
               </Button>
             </Drawer.Footer>
           </KeyboundForm>

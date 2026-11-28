@@ -35,14 +35,14 @@ vi.mock("@modules/checkout/components/payment-container", async () => {
       ]),
   }
 })
-// RadioGroup: `data-disabled` = prop disabled ของ group (headless ส่งต่อให้ทุกตัวเลือกเป็น aria-disabled); ปุ่ม pick-manual = onChange
-vi.mock("@headlessui/react", async () => {
+// RadioGroup: `data-disabled` = prop disabled ของ group (Radix ส่งต่อให้ทุกตัวเลือกเป็น disabled — ดู pay-16-payment-container); ปุ่ม pick-manual = onValueChange
+vi.mock("@/components/ui/radio-group", async () => {
   const { createElement: h } = await import("react")
   return {
-    RadioGroup: ({ children, disabled, onChange }: { children: unknown; disabled?: boolean; onChange: (v: string) => void }) =>
+    RadioGroup: ({ children, disabled, onValueChange }: { children: unknown; disabled?: boolean; onValueChange: (v: string) => void }) =>
       h("div", { "data-testid": "radio-group", "data-disabled": String(!!disabled) }, [
         h("div", { key: "c" }, children as never),
-        h("button", { key: "m", "data-testid": "pick-manual", onClick: () => onChange(MANUAL) }),
+        h("button", { key: "m", "data-testid": "pick-manual", onClick: () => onValueChange(MANUAL) }),
       ]),
   }
 })

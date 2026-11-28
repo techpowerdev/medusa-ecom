@@ -37,7 +37,7 @@ export default async function AffiliateProgramsPage({ params, searchParams }: Pr
 
   return (
     <div className="content-container py-8 flex flex-col gap-y-6" data-testid="affiliate-programs-page">
-      <h1 className="text-xl-semi">โปรแกรมค่าคอมมิชชัน</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">โปรแกรมค่าคอมมิชชัน</h1>
       {!result ? (
         <StatusNotice status={affiliate.status} />
       ) : result.programs.length ? (
@@ -45,21 +45,21 @@ export default async function AffiliateProgramsPage({ params, searchParams }: Pr
           {result.programs.map((p) => (
             <li
               key={p.id}
-              className="flex flex-col gap-y-1 border border-ui-border-base rounded-rounded p-4"
+              className="flex flex-col gap-y-1 border border-border rounded-rounded p-4"
               data-testid="affiliate-program-row"
               data-state={p.state}
             >
               <div className="flex flex-wrap items-center gap-x-3">
-                <span className="text-base-semi">{p.name}</span>
-                <span className="text-small-regular rounded-full bg-ui-bg-subtle px-2" data-testid="affiliate-program-state">
+                <span className="text-sm leading-6 font-semibold">{p.name}</span>
+                <span className="text-xs leading-5 font-normal rounded-full bg-muted px-2" data-testid="affiliate-program-state">
                   {STATE_LABEL[p.state]}
                 </span>
               </div>
               <p>ค่าคอมมิชชัน {p.commission_value}%</p>
-              <p className="text-small-regular text-ui-fg-subtle">
+              <p className="text-xs leading-5 font-normal text-muted-foreground">
                 {formatDate(p.starts_at)} – {formatDate(p.ends_at)}
               </p>
-              {p.announce_text && <p className="text-small-regular">{p.announce_text}</p>}
+              {p.announce_text && <p className="text-xs leading-5 font-normal">{p.announce_text}</p>}
             </li>
           ))}
         </ul>

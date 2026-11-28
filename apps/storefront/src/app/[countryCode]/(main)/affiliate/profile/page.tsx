@@ -19,16 +19,16 @@ export default async function AffiliateProfilePage({ params }: { params: Promise
 
   return (
     <div className="content-container py-8 flex flex-col gap-y-6" data-testid="affiliate-profile-page">
-      <h1 className="text-xl-semi">โปรไฟล์</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">โปรไฟล์</h1>
       {/* AF-18 (กฎ 42): minmax(0,1fr) + ตัดคำใน <dd> — ค่ายาวไม่มีช่องว่าง (อีเมล) ไม่ดันหน้าล้นที่ 375px */}
       <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-6 gap-y-2 [&>dd]:[overflow-wrap:anywhere]">
-        <dt className="text-ui-fg-subtle">ชื่อ</dt>
+        <dt className="text-muted-foreground">ชื่อ</dt>
         <dd>{affiliate.name}</dd>
-        <dt className="text-ui-fg-subtle">อีเมล</dt>
+        <dt className="text-muted-foreground">อีเมล</dt>
         <dd data-testid="affiliate-profile-email">{affiliate.email}</dd>
-        <dt className="text-ui-fg-subtle">รหัสแนะนำ</dt>
+        <dt className="text-muted-foreground">รหัสแนะนำ</dt>
         <dd>{affiliate.code}</dd>
-        <dt className="text-ui-fg-subtle">ข้อมูลรับเงิน</dt>
+        <dt className="text-muted-foreground">ข้อมูลรับเงิน</dt>
         <dd data-testid="affiliate-payout-info-status">
           {affiliate.has_payout_info
             ? "บันทึกข้อมูลรับเงินแล้ว"
@@ -36,7 +36,7 @@ export default async function AffiliateProfilePage({ params }: { params: Promise
         </dd>
       </dl>
       <div className="flex flex-col gap-y-2">
-        <p className="text-base-semi">ลิงก์แนะนำเริ่มต้น</p>
+        <p className="text-sm leading-6 font-semibold">ลิงก์แนะนำเริ่มต้น</p>
         <p className="break-all" data-testid="affiliate-default-link">
           {link}
         </p>

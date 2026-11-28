@@ -1,0 +1,18 @@
+# SFUI-20c — ผลทดสอบ (spec 09 กฎ 71–72, AC-64/68)
+สภาพแวดล้อม: stack บน feat/SFUI-20b-hide-country (2d79d454), node 24, prod build — backend :9481 (NODE_ENV=production,
+start จาก .medusa/server, DB medusa_sfui20c, Redis db 12), storefront :8481
+
+## Red
+- vitest address-lines.test + side-menu/index.test.tsx (ใหม่, render จริง) ก่อนแก้: 5 failed / 8 — addressLines ยังคืนบรรทัด "TH"/`["",""]`,
+  เมนูข้างประเทศเดียว/ไม่มี region ยังมี country-select-button หรือ country-select-arrow (กรณี 2 ประเทศผ่าน = control)
+- e2e บน build ที่ src = 20b: sfui-20-address AC-64, sfui-3b-sheet AC-10 + AC-64, sfui-3c-select กฎ 72 — 3 failed / 3
+  (shipping-address-summary มี "TH", เมนูข้างมี country-select-button)
+
+## Green
+- vitest (apps/storefront): 139 files / 2089 tests passed
+- playwright project unit (รวม sfui-baseline, evidence-budget): 257 passed
+- e2e ที่แก้: sfui-20-address (5) + sfui-3b-sheet + sfui-3c-select — 12 passed
+- e2e ที่อ้างสรุปที่อยู่/การ์ดที่อยู่/current-info/เมนูข้าง/address-select (30 ไฟล์ + group-buy-join, --workers=1): 102 passed / 1 failed (7.3m)
+  - core-50-nav-narrow "1280×800" nav-menu-button width ต่าง baseline 1.27px (เกณฑ์ ≤ 1) — ล้มเท่ากันบน build ที่ src = 20b
+    (ไม่เกี่ยวกับ 20c; ค่า baseline ของ nav วัดบน CI — ฟอนต์ในเครื่องต่าง) → รอ CI
+- pnpm lint && pnpm typecheck: ผ่าน (0 error); pnpm --filter storefront build: ผ่าน

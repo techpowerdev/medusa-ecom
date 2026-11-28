@@ -1,12 +1,15 @@
 "use client"
 
-import { Badge, Heading, Input, Label, Text } from "@modules/common/components/ui"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
 import React from "react"
 
 import { applyPromotions } from "@lib/data/cart"
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
+import Input from "@modules/common/components/input"
 import Trash from "@modules/common/icons/trash"
 import ErrorMessage from "../error-message"
 import { SubmitButton } from "../submit-button"
@@ -47,6 +50,7 @@ type DiscountCodeProps = {
 const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
   const [isOpen, setIsOpen] = React.useState(false)
   const [errorMessage, setErrorMessage] = React.useState("")
+  const errorId = React.useId()
   // CORE-36 (กฎข้อ 94): โค้ดที่กำลังลบ (แสดงสถานะ) + ref กันคลิกซ้อนใน tick เดียว ก่อน state re-render (แบบ CORE-27)
   // CORE-40 (กฎข้อ 98a): ref/สถานะเดียวกันกันทั้งการใส่และการลบ — action โค้ดค้างได้ทีละหนึ่ง
   const [removingCode, setRemovingCode] = React.useState<string | null>(null)
@@ -129,35 +133,43 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
 
   return (
     <div className="w-full bg-white flex flex-col">
-      <div className="txt-medium">
+      <div className="text-sm leading-[1.4rem]">
         <form action={(a) => addPromotionCode(a)} className="w-full mb-5">
           <Label className="flex gap-x-1 my-2 items-center">
-            <button
+            {/* SFUI-23 (spec 09 กฎ 84): -ml-4 ให้ข้อความชิดซ้าย <form> (padding/พื้นที่กดคงตาม default) */}
+            <Button
+              variant="link"
+              className="-ml-4"
               onClick={() => setIsOpen(!isOpen)}
               type="button"
-              className="txt-medium text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
               data-testid="add-discount-button"
             >
               เพิ่มโค้ดส่วนลด
-            </button>
+            </Button>
 
             {/* <Tooltip content="You can add multiple promotion codes">
-              <InformationCircleSolid color="var(--fg-muted)" />
+              <InformationCircleSolid className="text-muted-foreground" />
             </Tooltip> */}
           </Label>
 
           {isOpen && (
-            <div className="flex w-full gap-x-2">
-              <Input
-                className="size-full"
-                id="promotion-input"
-                name="code"
-                type="text"
-                autoFocus={false}
-                data-testid="discount-input"
-              />
+            // SFUI-12b (spec 09 กฎ 28, 32d): ช่องของ common/components/input (label "โค้ดส่วนลด" เหนือช่อง) — items-end ให้ปุ่มชิดแนวล่างเดียวกับช่อง
+            // promotion-error คงเป็นระดับฟอร์ม (CORE-28) แต่ช่องอ้างด้วย aria-describedby เมื่อมีข้อความ
+            <div className="flex w-full items-end gap-4">
+              {/* SFUI-5c: คง div ห่อเดิมของ Input ใน shim (ความกว้างช่อง/ปุ่มเท่าเดิม) */}
+              <div className="flex flex-col gap-1">
+                <Input
+                  label="โค้ดส่วนลด"
+                  id="promotion-input"
+                  name="code"
+                  type="text"
+                  autoFocus={false}
+                  aria-describedby={errorMessage ? errorId : undefined}
+                  data-testid="discount-input"
+                />
+              </div>
               <SubmitButton
-                variant="secondary"
+                variant="outline"
                 disabled={busy}
                 data-testid="discount-apply-button"
               >
@@ -167,15 +179,15 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
           )}
 
           {/* CORE-28 (กฎข้อ 85): error ของการใส่/ลบโค้ดต้องเห็นแม้ช่องใส่โค้ดปิด */}
-          <ErrorMessage error={errorMessage} data-testid="promotion-error" />
+          <ErrorMessage id={errorId} error={errorMessage} data-testid="promotion-error" />
         </form>
 
         {promotions.length > 0 && (
           <div className="w-full flex items-center">
             <div className="flex flex-col w-full">
-              <Heading className="txt-medium mb-2">
+              <h2 className="font-semibold text-2xl mb-2">
                 โค้ดส่วนลดที่ใช้:
-              </Heading>
+              </h2>
 
               {promotions.map((promotion) => {
                 return (
@@ -184,10 +196,13 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                     className="flex items-center justify-between w-full max-w-full mb-2"
                     data-testid="discount-row"
                   >
-                    <Text className="flex gap-x-1 items-baseline txt-small-plus w-4/5 pr-1">
+                    <p className="flex gap-x-1 items-baseline text-sm font-medium w-4/5 pr-1">
                       <span className="truncate" data-testid="discount-code">
                         <Badge
-                          color={promotion.is_automatic ? "green" : "grey"}
+                          variant={promotion.is_automatic ? "outline" : "secondary"}
+                          className={
+                            promotion.is_automatic ? "bg-green-100 text-green-700" : undefined
+                          }
                         >
                           {promotion.code}
                         </Badge>{" "}
@@ -214,10 +229,12 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                           </Tooltip>
                         )} */}
                       </span>
-                    </Text>
+                    </p>
                     {!promotion.is_automatic && (
-                      <button
-                        className="flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="ลบโค้ดส่วนลดออกจากคำสั่งซื้อ"
                         disabled={busy}
                         aria-busy={removingCode === promotion.code}
                         onClick={() => {
@@ -229,11 +246,8 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                         }}
                         data-testid="remove-discount-button"
                       >
-                        <Trash size={14} />
-                        <span className="sr-only">
-                          ลบโค้ดส่วนลดออกจากคำสั่งซื้อ
-                        </span>
-                      </button>
+                        <Trash />
+                      </Button>
                     )}
                   </div>
                 )

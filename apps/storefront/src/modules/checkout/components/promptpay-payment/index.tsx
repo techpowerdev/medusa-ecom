@@ -24,7 +24,7 @@ import {
   secondsLeft,
 } from "@lib/util/payment-session"
 import { HttpTypes } from "@medusajs/types"
-import { Button, Text } from "@modules/common/components/ui"
+import { Button } from "@/components/button"
 import { useStripe } from "@stripe/react-stripe-js"
 import { useParams, useRouter } from "next/navigation"
 import { useCallback, useContext, useEffect, useRef, useState } from "react"
@@ -70,7 +70,7 @@ const PromptPayPaymentButton = (props: Props) => {
   if (!stripeReady) {
     return (
       <>
-        <Button disabled size="large" data-testid={props["data-testid"]}>
+        <Button disabled data-testid={props["data-testid"]}>
           {PAY_WITH_PROMPTPAY}
         </Button>
         <ErrorMessage
@@ -265,9 +265,9 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
   if (awaitingOrder) {
     return (
       <div className="flex flex-col items-start gap-y-2" data-testid="promptpay-awaiting-order">
-        <Text className="txt-medium-plus text-ui-fg-base" aria-live="polite">
+        <p className="text-sm leading-[1.4rem] font-medium text-foreground" aria-live="polite">
           ได้รับชำระเงินแล้ว กำลังสร้างคำสั่งซื้อ…
-        </Text>
+        </p>
         <ErrorMessage error={error} data-testid="promptpay-payment-error-message" />
       </div>
     )
@@ -283,9 +283,9 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
   }
 
   const refundedNotice = refunded && (
-    <Text className="txt-medium text-ui-fg-subtle mb-2" data-testid="promptpay-refunded">
+    <p className="text-sm leading-[1.4rem] text-muted-foreground mb-2" data-testid="promptpay-refunded">
       {refunded.text}
-    </Text>
+    </p>
   )
 
   // PAY-15 (กฎข้อ 17): เหตุที่รู้ยังอยู่ในตะกร้าเดิม → ไม่มีปุ่มเริ่มชำระใหม่ ให้ไปปรับตะกร้าแทน
@@ -297,14 +297,13 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
     <>
       {refundedNotice}
       {expired && (
-        <Text className="txt-medium text-ui-fg-subtle mb-2" data-testid="promptpay-expired">
+        <p className="text-sm leading-[1.4rem] text-muted-foreground mb-2" data-testid="promptpay-expired">
           คิวอาร์โค้ดพร้อมเพย์หมดอายุแล้ว ตะกร้าของคุณยังอยู่ กดลองอีกครั้งเพื่อรับคิวอาร์โค้ดใหม่
-        </Text>
+        </p>
       )}
       <Button
         disabled={notReady || (!alreadyAuthorized && (!stripe || !clientSecret))}
         onClick={showQr}
-        size="large"
         isLoading={submitting}
         data-testid={expired || refunded ? "promptpay-retry-button" : dataTestId}
       >

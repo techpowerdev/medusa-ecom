@@ -92,9 +92,8 @@ function labelAndValueBoxes(testIds: string[]) {
     const field = document.querySelector<HTMLInputElement>(
       `[data-testid="${id}"]`
     )!
-    const label = field
-      .parentElement!.querySelector("label")!
-      .getBoundingClientRect()
+    // SFUI-11a: label ของช่องหาด้วย labels[0] (label เหนือช่องของ field ไม่ใช่พี่น้องของ input แล้ว)
+    const label = field.labels![0].getBoundingClientRect()
     const rect = field.getBoundingClientRect()
     const holder = document.createElement("div")
     holder.style.cssText =
@@ -162,6 +161,7 @@ test("AC-91: ขั้นที่อยู่ของ checkout — placeholder
           first_name: "สมชาย",
           last_name: "ใจดี",
           address_1: "99 ถนนสุขุมวิท",
+          address_2: "คลองเตยเหนือ",
           postal_code: "10110",
           city: "วัฒนา",
           province: "กรุงเทพมหานคร",
@@ -189,17 +189,13 @@ test("AC-91: ขั้นที่อยู่ของ checkout — placeholder
     )
 
     await step(
-      "ขั้นที่อยู่: placeholder ของ CountrySelect เป็นไทย และ popup ทักทายมี test id",
+      "ขั้นที่อยู่: popup ทักทายมี test id (SFUI-20b: ไม่มี CountrySelect แล้ว — กฎ 70)",
       async () => {
         await page.goto(`/${CC}/cart`)
         await page.getByTestId("checkout-button").click()
         await expect(
           page.getByTestId("shipping-first-name-input")
         ).toBeVisible()
-        const placeholder = page
-          .getByTestId("shipping-country-select")
-          .locator('option[value=""]')
-        await expect(placeholder).toHaveText(THAI)
         await expect(page.getByTestId("saved-address-greeting")).toBeVisible()
         await expect(page.getByTestId("saved-address-greeting")).toHaveText(
           THAI

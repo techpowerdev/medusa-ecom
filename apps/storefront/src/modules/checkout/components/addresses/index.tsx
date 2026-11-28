@@ -1,20 +1,21 @@
 "use client"
 import { setAddresses } from "@lib/data/cart"
 import useToggleState from "@lib/hooks/use-toggle-state"
+import { addressLines } from "@lib/util/address-lines"
 import compareAddresses from "@lib/util/compare-addresses"
 import { isDigitalOnlyCart } from "@lib/util/digital-checkout"
-import { CheckCircleSolid } from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
 import Divider from "@modules/common/components/divider"
 import Input from "@modules/common/components/input"
-import { Heading, Text } from "@modules/common/components/ui"
 import Spinner from "@modules/common/icons/spinner"
+import { CircleCheck } from "lucide-react"
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useActionState, type FormEvent } from "react"
 import BillingAddress from "../billing_address"
 import ErrorMessage from "../error-message"
 import ShippingAddress from "../shipping-address"
 import { SubmitButton } from "../submit-button"
+import { Button } from "@/components/ui/button"
 
 const Addresses = ({
   cart,
@@ -52,24 +53,20 @@ const Addresses = ({
   return (
     <div className="bg-white" data-testid="addresses-section">
       <div className="flex flex-row items-center justify-between mb-6">
-        <Heading
-          level="h2"
-          className="flex flex-row text-3xl-regular gap-x-2 items-baseline"
+        <h2
+          className="text-2xl font-semibold flex flex-row gap-x-2 items-baseline"
           data-testid="addresses-heading"
         >
           {digitalOnly ? "ที่อยู่สำหรับออกใบเสร็จ/ใบกำกับภาษี" : "ที่อยู่จัดส่ง"}
-          {!isOpen && <CheckCircleSolid />}
-        </Heading>
+          {!isOpen && <CircleCheck className="size-4" />}
+        </h2>
         {!isOpen && cart?.shipping_address && (
-          <Text>
-            <button
-              onClick={handleEdit}
-              className="text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
-              data-testid="edit-address-button"
-            >
+          <p className="text-sm leading-[1.4rem]">
+            {/* SFUI-23 (spec 09 กฎ 84): -mr-4 ให้ข้อความชิดขวาแถวหัวข้อ (padding/พื้นที่กดคงตาม default) */}
+            <Button variant="link" className="-mr-4" onClick={handleEdit} data-testid="edit-address-button">
               แก้ไข
-            </button>
-          </Text>
+            </Button>
+          </p>
         )}
       </div>
       {isOpen && digitalOnly ? (
@@ -77,7 +74,8 @@ const Addresses = ({
           <div className="pb-8">
             <input type="hidden" name="checkout_country_code" value={countryCode as string} />
             <BillingAddress cart={cart} />
-            <div className="grid grid-cols-2 gap-4 mt-4">
+            {/* SFUI-12b (spec 09 กฎ 37b): อีเมลไม่มีคู่ — < 768px เต็มแถว, ≥ md ครึ่งแถวตามเดิม */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <Input
                 label="อีเมล"
                 name="email"
@@ -108,12 +106,9 @@ const Addresses = ({
 
             {!sameAsBilling && (
               <div>
-                <Heading
-                  level="h2"
-                  className="text-3xl-regular gap-x-4 pb-6 pt-8"
-                >
+                <h2 className="text-2xl font-semibold gap-x-4 pb-6 pt-8">
                   ที่อยู่สำหรับออกใบเสร็จ
-                </Heading>
+                </h2>
 
                 <BillingAddress cart={cart} />
               </div>
@@ -128,33 +123,30 @@ const Addresses = ({
         <div>
           {/* CORE-38 (กฎข้อ 96): overflow-wrap สืบทอดถึงทุกข้อความในกล่องสรุป (ชื่อ/ที่อยู่/เมือง/อีเมลยาวไม่มีช่องว่าง)
               ตัดบรรทัดในคอลัมน์ของตัวเอง; คอลัมน์ต้องมี min-w-0 */}
-          <div className="text-small-regular [overflow-wrap:anywhere]">
+          <div className="text-xs leading-5 font-normal [overflow-wrap:anywhere]">
             {cart && cart.billing_address && digitalOnly ? (
               // CORE-38: < 640px เรียงแนวตั้ง, ≥ sm แถวเดียว
               <div className="flex flex-col gap-y-4 w-full sm:flex-row sm:items-start sm:gap-x-1">
                 <div className="flex flex-col min-w-0 sm:w-1/2" data-testid="billing-address-summary">
-                  <Text className="txt-medium-plus text-ui-fg-base mb-1">
+                  <p className="text-sm leading-[1.4rem] font-medium text-foreground mb-1">
                     ที่อยู่สำหรับออกใบเสร็จ/ใบกำกับภาษี
-                  </Text>
-                  <Text className="txt-medium text-ui-fg-subtle">
+                  </p>
+                  <p className="text-sm leading-[1.4rem] text-muted-foreground">
                     {cart.billing_address.first_name} {cart.billing_address.last_name}
-                  </Text>
-                  <Text className="txt-medium text-ui-fg-subtle">
-                    {cart.billing_address.address_1}
-                  </Text>
-                  <Text className="txt-medium text-ui-fg-subtle">
-                    {cart.billing_address.postal_code}, {cart.billing_address.city}
-                  </Text>
-                  <Text className="txt-medium text-ui-fg-subtle">
-                    {cart.billing_address.country_code?.toUpperCase()}
-                  </Text>
+                  </p>
+                  {/* SFUI-18a (spec 09 กฎ 57): ที่อยู่ตามลำดับไทย; SFUI-20c (กฎ 71): ไม่มีบรรทัดประเทศ */}
+                  {addressLines(cart.billing_address).map((line, i) => (
+                    <p key={i} className="text-sm leading-[1.4rem] text-muted-foreground">
+                      {line}
+                    </p>
+                  ))}
                 </div>
                 <div className="flex flex-col min-w-0 sm:w-1/2" data-testid="billing-contact-summary">
-                  <Text className="txt-medium-plus text-ui-fg-base mb-1">ข้อมูลติดต่อ</Text>
-                  <Text className="txt-medium text-ui-fg-subtle">
+                  <p className="text-sm leading-[1.4rem] font-medium text-foreground mb-1">ข้อมูลติดต่อ</p>
+                  <p className="text-sm leading-[1.4rem] text-muted-foreground">
                     {cart.billing_address.phone}
-                  </Text>
-                  <Text className="txt-medium text-ui-fg-subtle">{cart.email}</Text>
+                  </p>
+                  <p className="text-sm leading-[1.4rem] text-muted-foreground">{cart.email}</p>
                 </div>
               </div>
             ) : cart && cart.shipping_address ? (
@@ -165,73 +157,61 @@ const Addresses = ({
                     className="flex flex-col min-w-0 sm:w-1/3"
                     data-testid="shipping-address-summary"
                   >
-                    <Text className="txt-medium-plus text-ui-fg-base mb-1">
+                    <p className="text-sm leading-[1.4rem] font-medium text-foreground mb-1">
                       ที่อยู่จัดส่ง
-                    </Text>
-                    <Text className="txt-medium text-ui-fg-subtle">
+                    </p>
+                    <p className="text-sm leading-[1.4rem] text-muted-foreground">
                       {cart.shipping_address.first_name}{" "}
                       {cart.shipping_address.last_name}
-                    </Text>
-                    <Text className="txt-medium text-ui-fg-subtle">
-                      {cart.shipping_address.address_1}{" "}
-                      {cart.shipping_address.address_2}
-                    </Text>
-                    <Text className="txt-medium text-ui-fg-subtle">
-                      {cart.shipping_address.postal_code},{" "}
-                      {cart.shipping_address.city}
-                    </Text>
-                    <Text className="txt-medium text-ui-fg-subtle">
-                      {cart.shipping_address.country_code?.toUpperCase()}
-                    </Text>
+                    </p>
+                    {addressLines(cart.shipping_address).map((line, i) => (
+                      <p key={i} className="text-sm leading-[1.4rem] text-muted-foreground">
+                        {line}
+                      </p>
+                    ))}
                   </div>
 
                   <div
                     className="flex flex-col min-w-0 sm:w-1/3"
                     data-testid="shipping-contact-summary"
                   >
-                    <Text className="txt-medium-plus text-ui-fg-base mb-1">
+                    <p className="text-sm leading-[1.4rem] font-medium text-foreground mb-1">
                       ข้อมูลติดต่อ
-                    </Text>
-                    <Text className="txt-medium text-ui-fg-subtle">
+                    </p>
+                    <p className="text-sm leading-[1.4rem] text-muted-foreground">
                       {cart.shipping_address.phone}
-                    </Text>
-                    <Text
-                      className="txt-medium text-ui-fg-subtle"
+                    </p>
+                    <p
+                      className="text-sm leading-[1.4rem] text-muted-foreground"
                       data-testid="shipping-contact-email"
                     >
                       {cart.email}
-                    </Text>
+                    </p>
                   </div>
 
                   <div
                     className="flex flex-col min-w-0 sm:w-1/3"
                     data-testid="billing-address-summary"
                   >
-                    <Text className="txt-medium-plus text-ui-fg-base mb-1">
+                    <p className="text-sm leading-[1.4rem] font-medium text-foreground mb-1">
                       ที่อยู่สำหรับออกใบเสร็จ
-                    </Text>
+                    </p>
 
                     {sameAsBilling ? (
-                      <Text className="txt-medium text-ui-fg-subtle">
+                      <p className="text-sm leading-[1.4rem] text-muted-foreground">
                         ใช้ที่อยู่เดียวกับที่อยู่จัดส่ง
-                      </Text>
+                      </p>
                     ) : (
                       <>
-                        <Text className="txt-medium text-ui-fg-subtle">
+                        <p className="text-sm leading-[1.4rem] text-muted-foreground">
                           {cart.billing_address?.first_name}{" "}
                           {cart.billing_address?.last_name}
-                        </Text>
-                        <Text className="txt-medium text-ui-fg-subtle">
-                          {cart.billing_address?.address_1}{" "}
-                          {cart.billing_address?.address_2}
-                        </Text>
-                        <Text className="txt-medium text-ui-fg-subtle">
-                          {cart.billing_address?.postal_code},{" "}
-                          {cart.billing_address?.city}
-                        </Text>
-                        <Text className="txt-medium text-ui-fg-subtle">
-                          {cart.billing_address?.country_code?.toUpperCase()}
-                        </Text>
+                        </p>
+                        {addressLines(cart.billing_address).map((line, i) => (
+                          <p key={i} className="text-sm leading-[1.4rem] text-muted-foreground">
+                            {line}
+                          </p>
+                        ))}
                       </>
                     )}
                   </div>

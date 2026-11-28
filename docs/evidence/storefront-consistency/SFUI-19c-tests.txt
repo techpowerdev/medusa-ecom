@@ -1,0 +1,33 @@
+# SFUI-19c — ผลทดสอบ (spec 09 กฎ 64–66, AC-60/68; ADR-034 D4)
+สภาพแวดล้อม: ฐาน feat/SFUI-19b-raw-buttons-to-shadcn (40579545 — rebase จาก 19a 92ee3019 ที่ใช้รันผล; ไฟล์ของ 19b ไม่ซ้ำกับ 19c), stack บน develop c0310565, node 24, prod build — backend :9491
+(NODE_ENV=production, start จาก .medusa/server, DB medusa_sfui19c, Redis db 13), storefront :8491 (next build + start); ไม่มี Stripe key
+
+## shadcn CLI (กฎ 64)
+- `pnpm dlx shadcn@4.23.1 add pagination` → สร้าง src/components/ui/pagination.tsx, button.tsx skip (identical); dependency ที่ CLI
+  ระบุ (`cn`, `radix-ui`) มีอยู่แล้ว — package.json/lockfile ไม่เปลี่ยน
+- `pnpm dlx shadcn@4.23.1 add pagination button --dry-run --diff` → button.tsx "No changes.", pagination.tsx "No changes."
+- hash ของ pagination.tsx เพิ่มใน e2e/support/shadcn-ui.json (AC-19)
+
+## Red (ก่อนแก้ src)
+- vitest core-92-overview-pagination.test.ts: 1 failed / 6 passed — SearchPagination ไม่มี data-slot="pagination" (ยังเป็น <button>)
+- playwright unit sfui-13-form-guard (กฎ 65d): 2 failed — `<input type="search">` ของ search-form/store-search-box อยู่นอก allow-list,
+  search-form ยังไม่ import { Input } จาก @/components/ui/input; sfui-7-ui-pristine AC-19: 1 failed (pagination.tsx ยังไม่มี hash)
+- e2e sfui-19c-search-pagination.spec.ts บน build ที่ src = 19a: 4 failed / 1 passed — search-query-input/store-search-input ไม่มี
+  data-slot ของ shadcn, product-pagination/orders-pagination ไม่มี data-slot="pagination"; (ผ่าน: GET form เมื่อปิด JS — พฤติกรรมเดิม)
+
+## Green
+- vitest (apps/storefront): 138 files / 2073 tests passed
+- playwright project unit (รวม evidence-budget, sfui-7-ui-pristine AC-19, sfui-13-form-guard, sfui-19-button-size.unit): 255 passed
+- pnpm lint && pnpm typecheck: ผ่าน (0 error); pnpm --filter storefront build: ผ่าน
+- e2e (prod build, --workers=2) 11 ไฟล์ที่อ้างหน้า/testid ที่แตะ: 29 passed, 2 skipped (AC-57 Stripe ของ sfui-19-button-size — ไม่มี key)
+  sfui-19c-search-pagination (5), sfui-5b-catalog, core-15-store-search-error, core-68-orders-pagination, core-70-unified-search,
+  core-75-thai-substring-search, core-78-orders-page-cleanup, core-92-overview-pagination, thai-ui-pages, flash-sale-fs14, sfui-19-button-size
+
+## ค่าที่วัดบน build ของ branch (กฎ 58)
+- search-query-input (ui/input) 36px, search-submit (Button default) 36px; input-group ของ store-search-input 36px;
+  store-search-clear data-size="icon-xs" ใน input-group-addon; ลิงก์เลขหน้า (PaginationLink size icon) 36×36
+- store-search-input font 14px/20px (เดิม 14px/22.4px), icon ค้นหาใน addon 16px (เดิม 15px) → แก้ค่าที่คาดใน sfui-5b-catalog ตามกฎ 78 (i)
+
+## e2e เดิมที่แก้ (กฎ 78)
+- core-68, core-78, core-92 (.spec.ts): เลขหน้าเปลี่ยนจาก <button> เป็นลิงก์ → getByRole("button") → getByRole("link") (78 (iv)) assertion เดิมคงอยู่
+- sfui-5b-catalog: ค่าที่คาดของฟอนต์/ขนาด icon ของ store-search-input (78 (i))

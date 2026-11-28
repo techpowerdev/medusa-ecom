@@ -1,0 +1,387 @@
+// OPS-40 classifier: ทุกกรณีที่ PR แย่กว่า develop (PII หลุดเพิ่ม / id-amount-key หายเพิ่ม) → จำแนกว่าเข้าเงื่อนไข "develop ปิดค่า PII ผิดที่" หรือไม่
+// usage: node cls-OPS40.mts A <seed0> <N> <keyset> <KM 0|1>   (generator ของ fuzz.mts/fz_nokm.mts)
+//        node cls-OPS40.mts B <seed0> <seed1>                  (generator object ซ้อนของ builder ops40-fuzz4.ts, 500 object/seed)
+//        node cls-OPS40.mts K <seed0> <N>                      (generator ของ keyq-OPS40.mts) — สำเนาของ builder: group ค่า 18 + หมวด EXEMPT4
+import * as P from "./prx.ts"; import * as D from "./devx.ts"; import { inspect } from "node:util"; import { appendFileSync } from "node:fs";
+const [gen, a1, a2, a3, a4] = process.argv.slice(2);
+const prng = (seed: number) => () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296 };
+const RED = "[REDACTED]";
+const PRV = new RegExp(P.KEY_VALUE.source, "gid"), PRO = new RegExp((P as any).PII_ONLY_X.source, "gid"), DV = new RegExp(D.KEY_VALUE.source, "gid");
+type Sp = [number, number];
+// ช่วงค่า (ไม่รวม prefix key) ที่ถูกแทนด้วย q[REDACTED]q — ตรงกับ replacer ของแต่ละฝั่ง
+const piiSpans = (re: RegExp, s: string, off: number, out: Sp[]) => { re.lastIndex = 0; for (const m of s.matchAll(re)) { const st = m.index! + m[1].length; out.push([off + st, off + m.index! + m[0].length]) } };
+const devSpans = (t: string) => { const o: Sp[] = []; piiSpans(DV, t, 0, o); return o };
+const prSpans = (t: string) => { const o: Sp[] = []; for (const m of t.matchAll(PRV)) { const ix = (m as any).indices; if (m[11] === undefined) { o.push([m.index! + m[1].length, m.index! + m[0].length]) } else { piiSpans(PRO, m[11], ix[11][0], o); if (m[18] !== undefined) piiSpans(PRO, m[18], ix[18][0], o) } } return o };
+const esc1 = (s: string) => JSON.stringify(s).slice(1, -1);
+const mapUp = (t0: string, sp: Sp, lv: number): Sp => { let t = t0, [a, b] = sp; for (let i = 0; i < lv; i++) { a = 1 + esc1(t.slice(0, a)).length; b = 1 + esc1(t.slice(0, b)).length; t = JSON.stringify(t) } return [a, b] };
+type Form = { name: string, f: (o: object) => string, iso: (k: string, v: unknown) => string, kp: (k: string) => string[] };
+const isoInsp = (opts: object) => (k: string, v: unknown) => { const R = inspect({ [k]: v }, opts); for (const pre of [`{ ${k}: `, `{\n  ${k}: `]) if (R.startsWith(pre)) return R.slice(pre.length, R.length - (pre[1] === " " ? 2 : 2)); throw new Error("iso " + R) };
+const FORMS_A: Form[] = [
+  { name: "insp", f: o => inspect(o, { depth: 5 }), iso: isoInsp({ depth: 5 }), kp: k => [`${k}: `] },
+  { name: "insp1", f: o => inspect(o, { depth: 5, breakLength: 1 }), iso: isoInsp({ depth: 5, breakLength: 1 }), kp: k => [`${k}: `] },
+  { name: "inspInf", f: o => inspect(o, { depth: 5, breakLength: Infinity }), iso: isoInsp({ depth: 5, breakLength: Infinity }), kp: k => [`${k}: `] },
+  { name: "json", f: o => JSON.stringify(o), iso: (k, v) => JSON.stringify(v), kp: k => [`"${k}":`] },
+  { name: "jsonp", f: o => JSON.stringify(o, null, 2), iso: (k, v) => { const R = JSON.stringify({ [k]: v }, null, 2); return R.slice(`{\n  "${k}": `.length, -2) }, kp: k => [`"${k}": `] },
+  { name: "invalid", f: o => "Invalid string: " + inspect(o, { depth: 5 }), iso: isoInsp({ depth: 5 }), kp: k => [`${k}: `] },
+];
+const FORMS_B: Form[] = [
+  { name: "inspect", f: o => inspect(o, { depth: 6 }), iso: isoInsp({ depth: 6 }), kp: k => [`${k}: `] },
+  { name: "inspect_bl1", f: o => inspect(o, { depth: 6, breakLength: 1 }), iso: isoInsp({ depth: 6, breakLength: 1 }), kp: k => [`${k}: `] },
+  { name: "inspect_inf", f: o => inspect(o, { depth: 6, breakLength: Infinity }), iso: isoInsp({ depth: 6, breakLength: Infinity }), kp: k => [`${k}: `] },
+  { name: "json", f: o => JSON.stringify(o), iso: (k, v) => JSON.stringify(v), kp: k => [`"${k}":`] },
+  { name: "json2", f: o => JSON.stringify(o, null, 2), iso: (k, v) => { const R = JSON.stringify({ [k]: v }, null, 2); return R.slice(`{\n  "${k}": `.length, -2) }, kp: k => [`"${k}": `] },
+];
+// ตำแหน่งจริงของค่า PII ของ key k ในข้อความชั้น lv (null = หาไม่ได้แบบไม่กำกวม)
+const trueSpan = (form: Form, obj: Record<string, unknown>, k: string, lv: number): Sp | null => {
+  const T0 = form.f(obj); const E0 = form.iso(k, obj[k]); let hit = -1, n = 0;
+  for (const kp of form.kp(k)) { let i = -1; while ((i = T0.indexOf(kp + E0, i + 1)) >= 0) { const pre = T0[i - 1]; if (i === 0 || /[\s{,"]/.test(pre)) { if (pre === '"' && !kp.startsWith('"')) continue; hit = i + kp.length; n++ } } }
+  if (n !== 1) return null; return mapUp(T0, [hit, hit + E0.length], lv);
+};
+
+// ช่วงของ field ระดับบนสุด (key + ค่า) ในข้อความชั้น lv — render เดี่ยวแล้วหาในข้อความเต็ม (ค่าของ field ระดับบนสุดไม่ขึ้นกับ field ข้างเคียง)
+const fieldSpan = (form: Form, obj: Record<string, unknown>, k: string, lv: number): Sp | null => {
+  let E: string;
+  if (form.name === "json") E = JSON.stringify({ [k]: obj[k] }).slice(1, -1);
+  else if (form.name === "jsonp" || form.name === "json2") { const R = JSON.stringify({ [k]: obj[k] }, null, 2); E = R.slice(4, -2) }
+  else { const R = form.f({ [k]: obj[k] }).replace(/^Invalid string: /, ""); E = R.startsWith("{ ") && R.endsWith(" }") ? R.slice(2, -2) : R.slice(4, -2) }
+  if (!E) return null; const T0 = form.f(obj); let hit = -1, n = 0, i = -1;
+  while ((i = T0.indexOf(E, i + 1)) >= 0) { const pre = T0[i - 1]; const post = T0[i + E.length]; if (/[\s{,]/.test(pre ?? " ") && /[\s,}]/.test(post ?? " ")) { hit = i; n++ } }
+  if (n !== 1) return null; return mapUp(T0, [hit, hit + E.length], lv);
+};
+const outerSpans = (t: string): Sp[] => { const o: Sp[] = []; for (const m of t.matchAll(PRV)) o.push([m.index!, m.index! + m[0].length]); return o };
+type Case = { obj: Record<string, unknown>, piiFields: { k: string, mark: string }[], kept: { item: string, key: string }[] };
+const ren = (form: Form, o: object, lv: number) => { let t = form.f(o); for (let i = 0; i < lv; i++) t = JSON.stringify(t); return t };
+const covered = (sp: Sp[], pos: number, len: number) => sp.some(([a, b]) => a <= pos && pos + len <= b);
+const markPos = (t: string, fieldSp: Sp | null, mark: string) => { if (fieldSp) { const i = t.indexOf(mark, fieldSp[0]); if (i >= 0 && i < fieldSp[1]) return i } return t.indexOf(mark) };
+// ผลต่อ field: หลุดไหม (ตามตำแหน่ง marker ในช่วงค่าของ field นั้น)
+const analyse = (form: Form, c: Case, lv: number) => {
+  const t = ren(form, c.obj, lv), p = P.redactPii(t), d = D.redactPii(t);
+  const ps = prSpans(t), ds = devSpans(t);
+  const fields = c.piiFields.map(({ k, mark }) => { const sp = trueSpan(form, c.obj, k, lv); const pos = markPos(t, sp, mark); return { k, mark, sp, pos, leakP: pos >= 0 && !covered(ps, pos, mark.length), leakD: pos >= 0 && !covered(ds, pos, mark.length) } });
+  const lost = c.kept.filter(x => t.includes(x.item) && !p.includes(x.item) && d.includes(x.item));
+  return { t, p, d, ps, ds, fields, lost };
+};
+// การปิดค่าของ field G ของฝั่งหนึ่ง: exact = มีช่วง redact เท่ากับค่าจริงพอดี
+const closeKind = (spans: Sp[], sp: Sp | null) => {
+  if (!sp) return "nospan";
+  const [s, e] = sp; const inter = spans.filter(([a, b]) => a < e && b > s);
+  if (inter.length === 1 && inter[0][0] === s && inter[0][1] === e) return "exact";
+  if (!inter.length) return "none";
+  const st = inter.find(([a]) => a === s);
+  if (st) return st[1] < e ? "early" : "late"; // เริ่มถูกที่ ปิดก่อน/หลังจุดจบจริง
+  return inter.some(([a, b]) => a < s && b > s) ? "swallowed-from-before" : "partial-inside";
+};
+const neutral = (v: unknown, mark: string): unknown => typeof v === "string" ? v.split(mark).map(x => x.replace(/./gsu, "a")).join(mark) : Array.isArray(v) ? v.map(x => neutral(x, mark)) : v;
+const stats: Record<string, number> = {}; const inc = (k: string) => stats[k] = (stats[k] ?? 0) + 1;
+const OUT = process.env.OUT ?? `cls5_${gen}_${a1}_${a3 ?? ""}_${a4 ?? ""}.jsonl`;
+function classify(form: Form, c: Case, lv: number, genuineFilter: (m: string, k: string) => boolean) {
+  const A = analyse(form, c, lv);
+  // กรณีที่ PR แย่กว่า: field หลุดใน PR ไม่หลุดใน develop (+ ตัวกรอง genuine ของ fuzz เดิม), และของที่ PR ทำหายแต่ develop ไม่หาย
+  const bads: { kind: "leak" | "lost", what: string, pos: number }[] = [];
+  for (const f of A.fields) if (f.leakP && !f.leakD && genuineFilter(f.mark, f.k)) bads.push({ kind: "leak", what: f.mark, pos: f.pos });
+  for (const x of A.lost) { const kp = A.t.indexOf(x.key); bads.push({ kind: "lost", what: x.item, pos: kp }) }
+  // ตรวจความสอดคล้องกับการตรวจแบบ includes
+  if (new Set(c.piiFields.map(x => x.mark)).size === c.piiFields.length) for (const f of A.fields) { if (!f.sp) inc("note_nospan"); const ip = A.t.includes(f.mark) && A.p.includes(f.mark), id = A.t.includes(f.mark) && A.d.includes(f.mark); if (ip !== f.leakP) inc("WARN_leak_mismatch_pr"); if (id !== f.leakD) inc("WARN_leak_mismatch_dev") }
+  if (!bads.length) return;
+  for (const b of bads) {
+    inc(`bad_${b.kind}`);
+    // เงื่อนไข: field PII G (อยู่ก่อนจุดที่เสียหาย) ที่ develop ปิดค่าผิดที่ "จากเนื้อหาของค่าเอง" — render {G: v, id} เดี่ยว (serializer/ชั้นเดียวกัน)
+    // แล้วช่วงที่ develop redact ไม่ตรงช่วงค่าจริง (จบก่อน/หลัง/เหลือชิ้นส่วน) — ไม่ขึ้นกับ key/ค่าอื่นในบรรทัด
+    const intrinsic = (k: string) => { const o1 = { [k]: c.obj[k], id: "c" }; const t1 = ren(form, o1, lv); const sp1 = trueSpan(form, o1, k, lv); return { dk: closeKind(devSpans(t1), sp1), pk: closeKind(prSpans(t1), sp1) } };
+    const misDev = A.fields.filter(g => g.sp && g.sp[0] < b.pos).map(g => ({ g, ...intrinsic(g.k), ctx: closeKind(A.ds, g.sp) })).filter(x => x.dk === "early" || x.dk === "late" || x.dk === "partial-inside");
+    const looseD1 = A.fields.some(g => g.sp && g.sp[0] < b.pos && !["exact","early","late","partial-inside"].includes(intrinsic(g.k).dk)); if (looseD1) inc("info_dev_iso_none_or_nospan");
+    const ctxOnly = A.fields.filter(g => g.sp && g.sp[0] < b.pos && closeKind(A.ds, g.sp) !== "exact" && !misDev.some(x => x.g.k === g.k)); if (ctxOnly.length) inc("info_dev_ctx_misclose_not_intrinsic");
+    let cls: string;
+    if (A.fields.some(g => !g.sp && g.pos < b.pos)) inc("note_unlocated_field");
+    if (!misDev.length) cls = "NOT_EXEMPT_no_dev_misclose";
+    else {
+      // counterfactual: ทำค่าของ G ทุกตัวที่ develop ปิดผิดที่ให้เป็นตัวอักษรธรรมดา (คง marker/ความยาว) แล้วดูว่า PR ยังแย่กว่าหรือไม่
+      const still = (gs: string[]) => { const o2: Record<string, unknown> = { ...c.obj }; for (const k of gs) { const m = c.piiFields.find(x => x.k === k)!.mark; o2[k] = neutral(o2[k], m) } const B = analyse(form, { ...c, obj: o2 }, lv); return b.kind === "leak" ? B.fields.some(f => f.mark === b.what && f.leakP && !f.leakD) : B.lost.some(x => x.item === b.what) };
+      const allK = misDev.map(x => x.g.k);
+      const fK = b.kind === "leak" ? c.piiFields.find(x => x.mark === b.what)!.k : null;
+      const others = allK.filter(k => k !== fK);
+      if (still(allK)) cls = "NOT_EXEMPT_cf_persists";
+      else if (others.length && !still(others)) cls = "EXEMPT_other_field";
+      else cls = "EXEMPT_self_or_combo";
+      inc(`dk_${misDev.map(x => x.dk).join("+")}`); inc(`pk_${misDev.map(x => x.pk).join("+")}`);
+    }
+    // ข้อยกเว้นข้อ 4 (owner 2026-11-25 ครั้งที่ 2): ชื่อ key ใน ' บนบรรทัดเดียวกับสมาชิกก่อนหน้า (หลัง `{ `/`, `) ที่มี backslash หน้า quote ในชื่อ key
+    // counterfactual: แทน \ ' " ` ในชื่อ key เหล่านั้น (ทุกระดับของ object/Map) ด้วย a คงความยาว แล้ว PR ต้องไม่แย่กว่า develop ที่ X อีก — หมวดแยก
+    // (d2) แบบเข้มของ reviewer: key ใน ' ที่อยู่ inline (หลัง `{ ` / `, ` ไม่มี newline นำ) ใน render ชั้น 0, ชื่อ key ที่ render แล้วมี backslash
+    // ติดหน้า quote (รวม quote ปิด), อยู่ก่อน X และ counterfactual แทน \ ' " ` เฉพาะใน key เหล่านั้นด้วย a แล้ว PR ไม่แย่กว่า develop ที่ X อีก
+    const builderD2 = (() => { if (!cls.startsWith("NOT")) return null;
+      const t0 = form.f(c.obj);
+      const inlineBsKey = (k: string) => { if (!/\\/.test(k) && !(/'/.test(k) && /"/.test(k) && /`/.test(k))) return false; const R = inspect({ [k]: 1 }); if (!R.startsWith("{ '")) return false; const repr = R.slice(2, R.lastIndexOf(": 1 }")); return t0.includes("{ " + repr + ":") || t0.includes(", " + repr + ":") || t0.includes("{ " + repr + " =>") || t0.includes(", " + repr + " =>") };
+      let changed = 0;
+      const ren2 = (v: unknown): unknown => {
+        const nk = (k: string) => { if (inlineBsKey(k)) { changed++; return k.replace(/[\\'"`]/g, "a") } return k };
+        if (Array.isArray(v)) return v.map(ren2);
+        if (v instanceof Map) return new Map([...v].map(([k, x]) => [typeof k === "string" ? nk(k) : k, ren2(x)]));
+        if (v && typeof v === "object" && (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null)) { const o = Object.create(Object.getPrototypeOf(v)); for (const [k, x] of Object.entries(v)) o[nk(k)] = ren2(x); return o }
+        return v;
+      };
+      const o3 = ren2(c.obj) as Record<string, unknown>;
+      if (!changed) return false; const B = analyse(form, { ...c, obj: o3 }, lv); const st = b.kind === "leak" ? B.fields.some(f => f.mark === b.what && f.leakP && !f.leakD) : B.lost.some(x => x.item === b.what); return !st })();
+    if (cls.startsWith("NOT")) {
+      const t0 = form.f(c.obj);
+      let xPos0: number;
+      if (b.kind === "leak") { const fk = A.fields.find(f => f.mark === b.what && f.pos === b.pos) ?? A.fields.find(f => f.mark === b.what)!; const sp0 = trueSpan(form, c.obj, fk.k, 0); xPos0 = sp0 ? sp0[0] : t0.length } else xPos0 = t0.indexOf(c.kept.find(x => x.item === b.what)!.key);
+      const isD2Key = (k: string) => { const R = inspect({ [k]: 1 }); if (!R.startsWith("{ '") && !R.startsWith("{ `")) return false; const repr = R.slice(2, R.lastIndexOf(": 1 }")); if (!/\\['"`]/.test(repr.slice(1))) return false;
+        for (const pre of ["{ ", ", "]) for (const post of [":", " =>"]) { let i = -1; while ((i = t0.indexOf(pre + repr + post, i + 1)) >= 0) if (i < xPos0) return true } return false };
+      let changed = 0;
+      const ren3 = (v: unknown): unknown => {
+        const nk = (k: string) => { if (isD2Key(k)) { changed++; return k.replace(/[\\'"`]/g, "a") } return k };
+        if (Array.isArray(v)) return v.map(ren3);
+        if (v instanceof Map) return new Map([...v].map(([k, x]) => [typeof k === "string" ? nk(k) : k, ren3(x)]));
+        if (v && typeof v === "object" && (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null)) { const o = Object.create(Object.getPrototypeOf(v)); for (const [k, x] of Object.entries(v)) o[nk(k)] = ren3(x); return o }
+        return v;
+      };
+      const o3 = ren3(c.obj) as Record<string, unknown>;
+      if (changed) { const B = analyse(form, { ...c, obj: o3 }, lv); const st = b.kind === "leak" ? B.fields.some(f => f.mark === b.what && f.leakP && !f.leakD) : B.lost.some(x => x.item === b.what); if (!st) cls = "EXEMPT_d2_strict" }
+    }
+    // (d3) การสแกนเลื่อนเพราะ key/สตริงของ field ที่ไม่ใช่ PII ที่ regex อ่านโครงสร้างไม่ได้ — ต้องเป็น field เดียว F (ระดับบนสุด, ไม่ใช่ key PII, อยู่ก่อน field ของ X):
+    //  ① key หรือสตริงใดใน F (รวม key/ค่าซ้อน, Map key, สมาชิก array) มีอักขระโครงสร้าง  \n \r { } [ ] : , ' " ` \ +
+    //  ② ต้นเหตุอยู่ใน F: ไม่มี match ของ PR คร่อมจุดเริ่มของ F และมี match ที่เริ่มใน F แล้วจบเลยจุดจบของ F
+    //  ③ แทนอักขระโครงสร้างในข้อความของ F ด้วย a (คงความยาว ไม่แตะ field PII/marker) ใน object เต็ม แล้ว PR ไม่แย่กว่า develop ที่ X
+    if (cls.startsWith("NOT")) {
+      const STRUCT = /[\n\r{}\[\]:,'"`\\+]/g; const hasS = (x: string) => /[\n\r{}\[\]:,'"`\\+]/.test(x);
+      const PIIK = new Set(["email","phone","name","first_name","last_name","company","address_1","address_2","line1","line2","city","province","state","postal_code"]);
+      const anyS = (v: unknown, depth = 0): boolean => typeof v === "string" ? hasS(v) : depth > 8 || v === null || typeof v !== "object" ? false : Array.isArray(v) ? v.some(x => anyS(x, depth + 1)) : v instanceof Map ? [...v].some(([k, x]) => (typeof k === "string" && hasS(k)) || anyS(x, depth + 1)) : (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null) ? Object.entries(v).some(([k, x]) => hasS(k) || anyS(x, depth + 1)) : false;
+      const neu = (v: unknown, depth = 0): unknown => typeof v === "string" ? v.replace(STRUCT, "a") : depth > 8 || v === null || typeof v !== "object" ? v : Array.isArray(v) ? v.map(x => neu(x, depth + 1)) : v instanceof Map ? new Map([...v].map(([k, x]) => [typeof k === "string" ? k.replace(STRUCT, "a") : k, neu(x, depth + 1)])) : (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null) ? (() => { const o = Object.create(Object.getPrototypeOf(v)); for (const [k, x] of Object.entries(v)) o[k.replace(STRUCT, "a")] = neu(x, depth + 1); return o })() : v;
+      const keys = Object.keys(c.obj);
+      const xKey = b.kind === "leak" ? (A.fields.find(f => f.mark === b.what && f.pos === b.pos) ?? A.fields.find(f => f.mark === b.what)!).k : c.kept.find(x => x.item === b.what)!.key;
+      const xi = keys.indexOf(xKey);
+      const worseAt = (o: Record<string, unknown>, pf: typeof c.piiFields, kept: typeof c.kept) => { const B = analyse(form, { obj: o, piiFields: pf, kept }, lv); return b.kind === "leak" ? B.fields.some(f => f.mark === b.what && f.leakP && !f.leakD) : B.lost.some(x => x.item === b.what) };
+      let d3 = false, d3full = 0, d3iso = 0;
+      if (xi > 0) for (const fk of keys.slice(0, xi)) {
+        if (PIIK.has(fk.toLowerCase()) || !(hasS(fk) || anyS(c.obj[fk]))) continue;
+        const nk = fk.replace(STRUCT, "a"), nv = neu(c.obj[fk]);
+        // ③ object เต็ม
+        const full: Record<string, unknown> = {}; for (const k of keys) { if (k === fk) full[nk] = nv; else full[k] = c.obj[k] }
+        if (worseAt(full, c.piiFields, c.kept)) continue; d3full++;
+        // ② F เดี่ยว + field ของ X
+        // ② ต้นเหตุอยู่ใน F: ไม่มี match ของ PR (KEY_VALUE ระดับนอก) ที่คร่อมจุดเริ่มของ F (การสแกนเข้า F ตรงที่)
+        //    และมี match ที่เริ่มภายใน F แล้วจบเลยจุดจบของ F (การสแกนออกจาก F แบบเลื่อน)
+        const sp = fieldSpan(form, c.obj, fk, lv); if (!sp) { inc("info_d3_nospan"); continue }
+        const ms = outerSpans(A.t);
+        if (ms.some(([s0, e0]) => s0 < sp[0] && e0 > sp[0])) continue;
+        if (!ms.some(([s0, e0]) => s0 >= sp[0] && s0 < sp[1] && e0 > sp[1])) continue; d3iso++;
+        d3 = true; break;
+      }
+      if (d3) cls = "EXEMPT_d3"; else if (d3full) inc(`info_d3_cf_full_only`);
+    }
+    if (builderD2 !== null) inc(`cmp_builderD2_${builderD2}_mine_${cls === "EXEMPT_d2_strict"}`);
+    inc(`${b.kind}_${cls}`);
+    if (cls.startsWith("NOT") || process.env.ALL) appendFileSync(OUT, JSON.stringify({ cls, kind: b.kind, what: b.what, form: form.name, lv, misDev: misDev.map(x => [x.g.k, x.dk, x.pk, x.ctx]), ctxOnly: ctxOnly.map(g => [g.k, closeKind(A.ds, g.sp), closeKind(A.ps, g.sp)]), t: A.t, p: A.p, d: A.d }) + "\n");
+  }
+}
+if (gen === "A") {
+  const seed0 = +a1, N = +a2, keyset = a3, KM = a4 === "1";
+  const PII = ["name","first_name","last_name","email","phone","city","address_1","postal_code","company","state","Name","CITY"];
+  const KS: Record<string,string[]> = {
+    id: ["note","message","description","reason","xreq","detail","error","msg","n"],
+    ext: ["note","x-req","user-agent","ชื่อเล่น","a:b","x.y","my note","0n","😀k"],
+    q: ["it's",'say "hi"',"a\\b","a\nb","tab\tkey","\ud83d","customer's note","a':\"b","a': b","x`:y","`k`","a\\'","a\\","k'","'","\"",":","a': 'b', name","x': '", "it's: name: '"],
+    long: ["k".repeat(127),"k".repeat(128),"k".repeat(129),"'"+"k".repeat(127),"x-"+"a".repeat(130),"it's"+"a".repeat(126)],
+  };
+  const NONPII = keyset === "all" ? [...KS.id, ...KS.ext, ...KS.q, ...KS.long] : KS[keyset];
+  const TOK = ["'",'"',"`","\\","\\\\","\n","\r\n","[","]",",",":"," ","{","}","+","=>","a","Z","ไทย","สมชาย","😀","\ud83d","\t","name: '",'name: "',"phone: ","Name: ",'"name":"',"city: ","city:[","name: [","', total: '",'","x":"',", amount: ","\n  total: ","\\n  amount: ",'\\"name\\":\\"',"'name': '","email: `","postal_code: ","... 3 more items","null","1999.50",", ","\\'",'\\"',"\\n","$","-","0","'+'","' + '",", b: ","'x-a': ",'"user-agent": ',"\\n  'x-y': ","':","`:","\":", "', 'k': '"];
+  const PSTART = ["", "", "สมชาย ", " ", "-", "(", "😀", "\\", "'", '"', ",", "+", "]", "}", "\n", ":"];
+  for (let s = seed0; s < seed0 + N; s++) {
+    const r = prng(s); const int = (n: number) => Math.floor(r()*n); const pick = <T,>(a: T[]) => a[int(a.length)];
+    const txt = (n: number) => Array.from({length:n},()=>pick(TOK)).join("");
+    const obj: Record<string, unknown> = {}; const marks: string[] = []; const kept: string[] = []; const piiOf: Record<string,string> = {};
+    const keptK: { item: string, key: string }[] = [];
+    for (let f = 0, nf = 1 + int(4); f < nf; f++) {
+      const nk0 = pick(NONPII) + (f||"");
+      const kinds = () => { const np = Object.create(null); np[txt(int(3))||"k"] = txt(int(3)); return pick<unknown>([txt(int(6)), txt(int(6)), Array.from({length:int(4)},()=>txt(int(4))), {inner: txt(int(4))}, {[txt(int(3))]: txt(int(3))}, null, 12, -5.5, true, undefined, () => 1, function named() {}, np, [[txt(2)], [txt(2)]], new Map([[txt(2), txt(2)]]), [ {a: txt(2)} ], txt(30)+"\n"+txt(30), new Date(0), Symbol("s")]) };
+      if (r() < 0.15 && KM) { const km = `KEYMARK${f}Q`; marks.push(km); piiOf[km] = "__key__"; obj[`${txt(int(3))}${pick(PII)}: ${pick(["'", '"', "", "`"])}${km}${txt(int(2))}`] = kinds() } else obj[nk0] = kinds();
+      const pk = pick(PII); if (pk in obj) continue; const m = `PIIMARK${f}Q`; marks.push(m); piiOf[m] = pk;
+      const pt = () => { const t = txt(int(5)); const at = int(t.length+1); return pick(PSTART) + t.slice(0,at)+m+t.slice(at) };
+      obj[pk] = r() < 0.85 ? pt() : [pt(), txt(int(3))];
+      if (r()<0.7) { obj[`total${f}`] = "1999.5"+f; kept.push(`total${f}`, "1999.5"+f); keptK.push({item:`total${f}`,key:`total${f}`},{item:"1999.5"+f,key:`total${f}`}) }
+      if (r()<0.5) { obj[`display_id${f}`] = 1040+f; kept.push(`display_id${f}`, String(1040+f)); keptK.push({item:`display_id${f}`,key:`display_id${f}`},{item:String(1040+f),key:`display_id${f}`}) }
+      if (r()<0.5) { obj[`request_id${f}`] = `req_01K${f}X`; kept.push(`request_id${f}`, `req_01K${f}X`); keptK.push({item:`request_id${f}`,key:`request_id${f}`},{item:`req_01K${f}X`,key:`request_id${f}`}) }
+    }
+    obj.id = `cart_${s.toString(36)}FZ`; keptK.push({ item: obj.id as string, key: obj.id as string });
+    const piiFields = Object.entries(piiOf).filter(([, k]) => k !== "__key__").map(([mark, k]) => ({ k, mark }));
+    // KEYMARK (ข้อความรูป PII ใน "ชื่อ key") นับแยก — ไม่ใช่ค่า PII
+    const keyMarks = marks.filter(m => piiOf[m] === "__key__");
+    for (const form of FORMS_A) for (const lv of [0,1,2,3]) {
+      inc("total");
+      const genuine = (m: string, k: string) => { const t = ren(form, { [k]: obj[k], id: "c" }, lv); return !D.redactPii(t).includes(m) };
+      classify(form, { obj, piiFields, kept: keptK }, lv, genuine);
+      if (keyMarks.length) { const t = ren(form, obj, lv), p = P.redactPii(t), d = D.redactPii(t); if (keyMarks.some(m => t.includes(m) && p.includes(m) && !d.includes(m))) inc("keymark_newleak_excluded") }
+    }
+  }
+} else if (gen === "M") {
+  // reviewer: ชั้น escape ปนกันในบรรทัดเดียว — ค่าของ field ที่ไม่ใช่ PII เป็นสตริงผล JSON.stringify/inspect (ซ้อน 0–2 ชั้น) ของ object ย่อยที่มี key PII/key แปลก
+  // แล้วทั้ง object ผ่าน serializer 6 แบบ × ห่อ JSON 0–3 ชั้น; marker เฉพาะ field PII ระดับบนสุด
+  const s0 = +a1, N = +a2;
+  const PII = ["name","first_name","last_name","email","phone","city","address_1","postal_code","company","state"];
+  const TOK = ["'",'"',"`","\\","\\\\","\n","[","]",",",":"," ","{","}","+","a","ไทย","name: '",'name: "',"phone: ",'"name":"',"city: ","', total: '",'","x":"',"\\'",'\\"',"\\n","\n  'x-y': ","':","`:","\":","=>","... 3 more items","1999.50"];
+  const KEYS = ["note","msg","x-a","it's",'say "hi"',"a\\b","a`\"'b","k\\","ชื่อ","", "x': ", "`\"'"];
+  for (let s = s0; s < s0 + N; s++) {
+    const r = prng(s); const int = (n: number) => Math.floor(r()*n); const pick = <T,>(a: T[]) => a[int(a.length)];
+    const txt = (n: number) => Array.from({length:n},()=>pick(TOK)).join("");
+    const sub = (d: number): unknown => { const o: Record<string, unknown> = {}; for (let i = 0, n = 1 + int(3); i < n; i++) o[r() < 0.4 ? pick(PII) : pick(KEYS)] = d > 0 && r() < 0.3 ? sub(d - 1) : txt(int(4)); return o };
+    const enc = (v: unknown): string => { let t = pick([(x: unknown) => JSON.stringify(x), (x: unknown) => inspect(x), (x: unknown) => inspect(x, { breakLength: Infinity }), (x: unknown) => JSON.stringify(x, null, 2)])(v); for (let i = 0, n = int(3); i < n; i++) t = JSON.stringify(t); return t };
+    const obj: Record<string, unknown> = {}; const piiOf: Record<string, string> = {}; const keptK: { item: string, key: string }[] = [];
+    for (let f = 0, nf = 1 + int(3); f < nf; f++) {
+      const nk = pick(KEYS) + f; obj[nk] = pick<unknown>([enc(sub(2)), txt(int(4)) + enc(sub(1)), [enc(sub(1)), txt(2)], { inner: enc(sub(1)) }, new Map([[pick(KEYS), enc(sub(1))]])]);
+      const pk = pick(PII); if (pk in obj) continue; const m = `PIIMARK${f}Q`; piiOf[m] = pk;
+      obj[pk] = txt(int(3)) + m + txt(int(3));
+      if (r()<0.7) { obj[`total${f}`] = "1999.5"+f; keptK.push({item:`total${f}`,key:`total${f}`},{item:"1999.5"+f,key:`total${f}`}) }
+      if (r()<0.5) { obj[`request_id${f}`] = `req_01K${f}X`; keptK.push({item:`request_id${f}`,key:`request_id${f}`},{item:`req_01K${f}X`,key:`request_id${f}`}) }
+    }
+    obj.id = `cart_${s.toString(36)}FZ`; keptK.push({ item: obj.id as string, key: obj.id as string });
+    const piiFields = Object.entries(piiOf).map(([mark, k]) => ({ k, mark }));
+    for (const form of FORMS_A) for (const lv of [0,1,2,3]) {
+      inc("total");
+      const genuine = (m: string, k: string) => { const t = ren(form, { [k]: obj[k], id: "c" }, lv); return !D.redactPii(t).includes(m) };
+      classify(form, { obj, piiFields, kept: keptK }, lv, genuine);
+    }
+  }
+} else if (gen === "S") {
+  // reviewer รอบ 7: เจาะ ` +` / การต่อสตริงของ inspect / key หลายท่อน (Map key ที่มี \n) / key ข้ามบรรทัด
+  const s0 = +a1, N = +a2;
+  const PII = ["name","first_name","last_name","email","phone","city","address_1","postal_code","company","state"];
+  const TOK = ["'",'"',"`","\\","\n","\n  ","+"," + ","' + '","\" + \"","` + `","'+'",":",", ","[","]","{","}","a","ไทย","name: '",'name: "',"city: ","'name': '",'"name":"',"\\'","\\n","', total: '","=>"];
+  for (let s = s0; s < s0 + N; s++) {
+    const r = prng(s); const int = (n: number) => Math.floor(r()*n); const pick = <T,>(a: T[]) => a[int(a.length)];
+    const txt = (n: number) => Array.from({length:n},()=>pick(TOK)).join("");
+    const long = () => Array.from({length: 1 + int(4)}, () => txt(int(4)) + "x".repeat(int(20))).join("\n");
+    const key = () => pick([txt(1 + int(4)), long(), "' + '" + txt(int(3)), txt(int(2)) + " +", "a\n" + txt(int(3)), pick(PII) + "\n" + txt(int(2))]);
+    const val = (): unknown => pick<unknown>([long(), [long(), txt(int(3))], new Map([[key(), long()]]), { [key()]: long() }, txt(int(5)), [[long()]], 7]);
+    const obj: Record<string, unknown> = {}; const piiOf: Record<string, string> = {}; const keptK: { item: string, key: string }[] = [];
+    for (let f = 0, nf = 1 + int(3); f < nf; f++) {
+      obj[r() < 0.5 ? key() + f : "note" + f] = val();
+      const pk = pick(PII); if (pk in obj) continue; const m = `PIIMARK${f}Q`; piiOf[m] = pk;
+      obj[pk] = r() < 0.5 ? txt(int(3)) + m + txt(int(3)) : long() + m + "\n" + txt(int(3));
+      if (r()<0.7) { obj[`total${f}`] = "1999.5"+f; keptK.push({item:`total${f}`,key:`total${f}`},{item:"1999.5"+f,key:`total${f}`}) }
+      if (r()<0.5) { obj[`request_id${f}`] = `req_01K${f}X`; keptK.push({item:`request_id${f}`,key:`request_id${f}`},{item:`req_01K${f}X`,key:`request_id${f}`}) }
+    }
+    obj.id = `cart_${s.toString(36)}FZ`; keptK.push({ item: obj.id as string, key: obj.id as string });
+    const piiFields = Object.entries(piiOf).map(([mark, k]) => ({ k, mark }));
+    for (const form of FORMS_A) for (const lv of [0,1,2,3]) {
+      inc("total");
+      const genuine = (m: string, k: string) => { const t = ren(form, { [k]: obj[k], id: "c" }, lv); return !D.redactPii(t).includes(m) };
+      classify(form, { obj, piiFields, kept: keptK }, lv, genuine);
+    }
+  }
+} else if (gen === "N1" || gen === "N2") {
+  // sanity (d3): object ปกติ — key เป็น identifier, ค่าที่ไม่ใช่ PII ไม่มีอักขระโครงสร้าง (N1: ค่า PII ก็ไม่มี, N2: ค่า PII สุ่มจากอักขระโครงสร้าง)
+  const s0 = +a1, N = +a2;
+  const PII = ["name","first_name","last_name","email","phone","city","address_1","postal_code","company","state"];
+  const SAFE = ["a","Z","ไทย","สมชาย"," ","1999.50","-","_",".","x","ok","note","0","😀","\t","=>"];
+  const TOK = ["'",'"',"`","\\","\n","[","]",",",":"," ","{","}","+","a","ไทย","name: '",'name: "',"phone: ",'"name":"',"city: ","', total: '",'","x":"',"\\'","\\n","=>"];
+  const KEYS = ["note","message","reason","items","detail","meta","x_a","$k","_n","customer_note"];
+  for (let s = s0; s < s0 + N; s++) {
+    const r = prng(s); const int = (n: number) => Math.floor(r()*n); const pick = <T,>(a: T[]) => a[int(a.length)];
+    const safe = (n: number) => Array.from({length:n},()=>pick(SAFE)).join("").replace(/=>/g, "=");
+    const txt = (n: number) => Array.from({length:n},()=>pick(TOK)).join("");
+    const val = (d: number): unknown => { const x = int(d > 0 ? 7 : 4); return x === 0 ? safe(int(8)) : x === 1 ? 42 : x === 2 ? null : x === 3 ? safe(20) + safe(int(30)) : x === 4 ? Array.from({length: int(4)}, () => val(d - 1)) : x === 5 ? Object.fromEntries(Array.from({length: 1 + int(2)}, () => [pick(KEYS), val(d - 1)])) : new Map([[pick(KEYS), val(d - 1)]]) };
+    const obj: Record<string, unknown> = {}; const piiOf: Record<string, string> = {}; const keptK: { item: string, key: string }[] = [];
+    for (let f = 0, nf = 1 + int(4); f < nf; f++) {
+      obj[pick(KEYS) + f] = val(2);
+      const pk = pick(PII); if (pk in obj) continue; const m = `PIIMARK${f}Q`; piiOf[m] = pk;
+      obj[pk] = gen === "N1" ? safe(int(4)) + m + safe(int(4)) : txt(int(4)) + m + txt(int(4));
+      if (r()<0.7) { obj[`total${f}`] = "1999.5"+f; keptK.push({item:`total${f}`,key:`total${f}`},{item:"1999.5"+f,key:`total${f}`}) }
+      if (r()<0.5) { obj[`request_id${f}`] = `req_01K${f}X`; keptK.push({item:`request_id${f}`,key:`request_id${f}`},{item:`req_01K${f}X`,key:`request_id${f}`}) }
+    }
+    obj.id = `cart_${s.toString(36)}FZ`; keptK.push({ item: obj.id as string, key: obj.id as string });
+    const piiFields = Object.entries(piiOf).map(([mark, k]) => ({ k, mark }));
+    for (const form of FORMS_A) for (const lv of [0,1,2,3]) {
+      inc("total");
+      const genuine = (m: string, k: string) => { const t = ren(form, { [k]: obj[k], id: "c" }, lv); return !D.redactPii(t).includes(m) };
+      classify(form, { obj, piiFields, kept: keptK }, lv, genuine);
+    }
+  }
+} else if (gen === "K") {
+  // generator ของ keyq-OPS40.mts (key ที่ไม่ใช่ PII มี ' " ` ครบ) — inspect 3 แบบ × ชั้น 0–3
+  const s0 = +a1, N = +a2;
+  const KC = ["'", '"', "`", ":", " ", "a", ",", "[", "{", "\\", "x': ", "': ", "\n"];
+  const VC = ["'", '"', "`", ":", " ", "a", ",", "[", "]", "{", "}", "\\", "+", "\n", "ไทย"];
+  const PK = ["name", "city", "phone", "first_name", "email"];
+  const FK = FORMS_A.filter(f => ["insp", "inspInf", "insp1"].includes(f.name)).sort((a, b) => ["insp", "inspInf", "insp1"].indexOf(a.name) - ["insp", "inspInf", "insp1"].indexOf(b.name));
+  for (let s = s0; s < s0 + N; s++) {
+    const r = prng(s); const int = (n: number) => Math.floor(r() * n); const pick = <T,>(a: T[]) => a[int(a.length)];
+    const str = (A: string[], n: number) => Array.from({ length: n }, () => pick(A)).join("");
+    const key = "'\"`".split("").sort(() => r() - 0.5).join("") + str(KC, 1 + int(5));
+    const o: Record<string, unknown> = { [key]: pick<unknown>([str(VC, int(8)), [str(VC, int(4))], { a: str(VC, int(4)) }, 5]) };
+    const pk = pick(PK); o[pk] = str(VC, int(4)) + "PIIMARK" + str(VC, int(4)); o.total = "1999.50"; o.request_id = "req_01X"; o.id = "cart_" + s;
+    const keptK = [["total", "total"], ["1999.50", "total"], ["request_id", "request_id"], ["req_01X", "request_id"], ["cart_" + s, "cart_" + s]].map(([item, key]) => ({ item, key }));
+    for (const form of FK) for (let lv = 0; lv < 4; lv++) {
+      inc("total");
+      const genuine = (m: string, k: string) => { const t = ren(form, { [k]: o[k], id: "c" }, lv); return !D.redactPii(t).includes(m) };
+      classify(form, { obj: o, piiFields: [{ k: pk, mark: "PIIMARK" }], kept: keptK }, lv, genuine);
+    }
+  }
+} else if (gen === "F") {
+  // generator ของ ops40-fuzz3.ts (builder รอบ 3: key ที่มี quote/backslash/newline, ค่า PII ขึ้นต้นด้วยเครื่องหมาย, array 22f) — 500 object/seed
+  const s0 = +a1, s1 = +a2; const MARK = "PIIMARK";
+  const OPEN = ["name: '", 'name: "', "phone: ", "Name: ", '"name":"', '\\"name\\":\\"', "city: '", "'name': '", '"name"=>"', "postal_code: ", "a, b: ", "Missing fields, reason:", "call me, tel:", "a\n  b: ", ", rv: ", "\n  t:", ',"a":"', "x: [", "name: [", "{ a: '", "k: ", "1, "]
+  const PREFIX = ["", "", ", ", "{ ", "\n  ", "\\n  ", "x ", "[", "'", '"', "`", "\\"]
+  const NOTE_KEYS = ["customer's note", "say \"hi\"", "a\\b", "a\nb", "tab\tkey", "\ud83d", "x\\", "it's \"q\" `b`", "k\\\"", "note", "message", "reason", "x-note", "user-agent", "note.text", "my note", "0note", "ชื่อ", "a b-c", "$x", "_n"]
+  const PII_KEYS = ["name", "first_name", "address_1", "city", "email", "postal_code", "phone", "Name", "CITY"]
+  const CH = ["'", '"', "`", "\\", "\n", "[", "]", ",", ":", " ", "a", "Z", "x", "{", "}", "+", "ส", "ม", "-", "(", "t"]
+  const START = ["+66 ", ",", "]", "}", "\n", "สม", " ", "-", "(", "", "", "a", "\n", "ก "]
+  const KNOWN: [string, unknown][] = [["total", "1999.50"], ["amount", 250], ["display_id", 1042], ["request_id", "req_01ABC"], ["currency_code", "thb"]]
+  const FF = FORMS_B.filter(f => ["inspect", "inspect_bl1", "json", "json2"].includes(f.name)).map(f => f.name === "inspect" ? { ...f, f: (o: object) => inspect(o, { depth: 5 }), iso: isoInsp({ depth: 5 }) } : f.name === "inspect_bl1" ? { ...f, f: (o: object) => inspect(o, { depth: 5, breakLength: 1 }), iso: isoInsp({ depth: 5, breakLength: 1 }) } : f);
+  for (let seed = s0; seed <= s1; seed++) {
+    const r = prng(seed); const int = (n: number) => Math.floor(r() * n); const pick = <T,>(a: T[]) => a[int(a.length)];
+    const rs = (n: number) => { let t = ""; for (let i = 0; i < n; i++) t += pick(CH); return t };
+    const opener = () => { let t = ""; for (let j = 0; j < 1 + int(2); j++) t += pick(PREFIX) + rs(int(4)) + pick(OPEN); return t };
+    const piiValue = () => { const t = rs(int(10)); const at = int(t.length + 1); return pick(START) + t.slice(0, at) + MARK + t.slice(at) };
+    for (let i = 0; i < 500; i++) {
+      const o: Record<string, unknown> = {}; const keptK: { item: string, key: string }[] = [];
+      for (let n = 0; n < 1 + int(2); n++) {
+        const nk = pick(NOTE_KEYS) + (n || "");
+        const v = r() < 0.7 ? opener() : [...Array.from({ length: int(3) }, () => rs(int(5))), opener()];
+        if (r() < 0.15) o.headers = { [nk]: v }; else o[nk] = v;
+        if (r() < 0.25) { o[pick(PII_KEYS) + "_arr" + n] = [opener()] }
+        if (r() < 0.25) { o[pick(["city", "name", "phone"])] = [pick(["\n  t:", ',"a":"', "x, b: "]) + rs(int(3))] }
+        o[pick(PII_KEYS)] = piiValue();
+        for (const [k, val] of KNOWN) if (r() < 0.5) { o[k + (n || "")] = val; keptK.push({ item: k + (n || ""), key: k + (n || "") }, { item: String(val), key: k + (n || "") }) }
+        if (r() < 0.3) o[pick(PII_KEYS)] = piiValue();
+      }
+      const id = `cart_${seed}x${i}`; o.id = id; keptK.push({ item: id, key: id });
+      const piiFields = Object.keys(o).filter(k => typeof o[k] === "string" && (o[k] as string).includes(MARK)).map(k => ({ k, mark: MARK }));
+      for (const form of FF) for (let k = 0; k <= 3; k++) { inc("total"); classify(form, { obj: o, piiFields, kept: keptK }, k, () => true) }
+    }
+  }
+} else {
+  const s0 = +a1, s1 = +a2; const MARK = "PIIMARK";
+  const OPEN = ["a, b:", ", ", "name: '", 'name: "', "phone: ", '"name":"', "\n  t:", "x: [", "{ a: '", "k: ", ", rv: ", "]", "[", "'", '"', "`", "\\", "+"];
+  const KEYS = ["", "note", "x-a", "it's", 'say "hi"', "a\\b", "a\nb", "ชื่อ", "0", "items", "k".repeat(140)];
+  const PII_KEYS = ["name", "first_name", "address_1", "city", "email", "postal_code", "phone"];
+  const CH = ["'", '"', "`", "\\", "\n", "[", "]", ",", ":", " ", "a", "{", "}", "+", "ส", "-", "\t"];
+  const START = ["+66 ", ",", "]", "}", "\n", "สม", " ", ":\t", "(", ""];
+  const KNOWN: [string, unknown][] = [["total", "1999.50"], ["amount", 250], ["display_id", 1042], ["request_id", "req_01ABC"], ["currency_code", "thb"]];
+  for (let seed = s0; seed <= s1; seed++) {
+    const r = prng(seed); const int = (n: number) => Math.floor(r() * n); const pick = <T,>(a: T[]) => a[int(a.length)];
+    const rs = (n: number) => { let t = ""; for (let i = 0; i < n; i++) t += pick(CH); return t };
+    const leaf = () => rs(int(3)) + pick(OPEN);
+    const nested = (d: number): unknown => {
+      if (d === 0 || r() < 0.25) return leaf();
+      const x = int(5);
+      if (x === 0) return Array.from({ length: 1 + int(3) }, () => nested(d - 1));
+      if (x === 1) return [Object.fromEntries([[pick(KEYS), nested(d - 1)]])];
+      if (x === 2) return new Map([[pick(KEYS), nested(d - 1)]]);
+      if (x === 3) { const o = Object.create(null); o[pick(KEYS)] = nested(d - 1); return o }
+      return Object.fromEntries(Array.from({ length: 1 + int(2) }, () => [pick(KEYS), nested(d - 1)]));
+    };
+    for (let i = 0; i < 500; i++) {
+      const o: Record<string, unknown> = {}; const keptK: { item: string, key: string }[] = [];
+      for (let n = 0; n < 1 + int(2); n++) {
+        o[pick(["note", "d", "m", "x-a", "items"]) + n] = nested(1 + int(3));
+        o[pick(PII_KEYS)] = pick(START) + rs(int(4)) + MARK + rs(int(4));
+        for (const [k, v] of KNOWN) if (r() < 0.5) { o[k + n] = v; keptK.push({ item: k + n, key: k + n }, { item: String(v), key: k + n }) }
+      }
+      const id = `cart_${seed}x${i}`; o.id = id; keptK.push({ item: id, key: id });
+      const piiFields = PII_KEYS.filter(k => k in o).map(k => ({ k, mark: MARK }));
+      for (const form of FORMS_B) for (let k = 0; k <= 3; k++) { inc("total"); classify(form, { obj: o, piiFields, kept: keptK }, k, () => true) }
+    }
+  }
+}
+console.log(JSON.stringify({ gen, a1, a2, a3, a4, ...stats }));

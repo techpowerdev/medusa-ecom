@@ -1,0 +1,29 @@
+# SFUI-19d — ผลทดสอบ (spec 09 กฎ 64, 67–68, AC-61/68; ADR-034 D4)
+สภาพแวดล้อม: ฐาน 12a2be4d (19c บน 19b บน 19a), node 24, prod build — backend :9491 (NODE_ENV=production, start จาก .medusa/server,
+DB medusa_sfui19d, Redis db 13), storefront :8491 (next build + start); ไม่มี Stripe key
+
+## shadcn CLI (กฎ 64)
+- `pnpm dlx shadcn@4.23.1 add toggle-group` → สร้าง toggle.tsx + toggle-group.tsx; dependency ที่ CLI ระบุ (`cn`, `radix-ui`) มีอยู่แล้ว
+  — package.json/lockfile ไม่เปลี่ยน; hash ของสองไฟล์เพิ่มใน e2e/support/shadcn-ui.json (AC-19)
+- `--dry-run --diff` ของ toggle-group, toggle, checkbox, field, label, separator, accordion, button → "No changes." ทุกไฟล์
+
+## Red (ก่อนแก้ src)
+- playwright unit sfui-13-form-guard: 3 failed — `<input type="checkbox">` ของ on-sale-toggle/refinement-group อยู่นอก allow-list (กฎ 26),
+  สองไฟล์ยังไม่ render ui/checkbox (AC-61 (1)), AccordionTrigger มี `py-3` และ `px-1 py-1.5 font-normal` (กฎ 68)
+- e2e sfui-19d-refinements.spec.ts บน build ที่ src = 12a2be4d: 1 failed — `refinement-labels` ไม่ใช่ `[data-slot=field]` > `role=checkbox`
+  (ขั้นเตรียมข้อมูล/รอ index ผ่าน)
+
+## Green
+- vitest (apps/storefront): 138 files / 2075 tests passed (รวม core-87-facet-heading, core-93-options-picker-heading ที่ render ตัวกรองจริง)
+- playwright project unit: 257 passed (รวม evidence-budget, sfui-7-ui-pristine AC-19, sfui-13-form-guard, sfui-legacy AC-16, sfui-19-button-size.unit)
+- pnpm lint && pnpm typecheck: ผ่าน (0 error); pnpm --filter storefront build: ผ่าน
+- e2e (prod build, --workers=2) 15 ไฟล์: 38 passed, 2 skipped (AC-57 Stripe ของ sfui-19-button-size — ไม่มี key)
+  sfui-19d-refinements, core-15, core-87, core-93, flash-sale-fs13/fs14/fs16/fs19, sfui-4-store, sfui-9b-font, thai-ui-pages, thai-ui-shell,
+  sfui-5b-catalog, sfui-19-button-size, sfui-19c-search-pagination
+
+## ค่าที่วัดบน build ของ branch (กฎ 58)
+- option-refinement (toggle-group-item) 36px; refinement-labels/on-sale-toggle (ui/checkbox) 16×16; remove-refinement (outline) และ
+  clear-refinements (link) 36px; padding ของ AccordionTrigger กลุ่มตัวเลือกใน store = แท็บ PDP (default `py-4`)
+
+## guard ร่วมที่แก้นอกแถว 19d
+- e2e/sfui-legacy.unit.spec.ts (AC-16): ตัวแปร CSS ที่ไฟล์ตั้งเองใน inline style (`"--gap"` ของ ui/toggle-group จาก CLI) นับว่ามีนิยาม

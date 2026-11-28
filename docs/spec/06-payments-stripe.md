@@ -607,6 +607,8 @@ Out of scope: จำเหตุของการคืนเงินข้า
 | PAY-24 | ☑ #556 — (v0.3.1 ก่อน go-live; เงิน) ย้ายผู้ส่ง `OPS_ALERT_EMAIL` 3 ที่มาใช้ `sendOpsAlert` (กฎข้อ 27) | ไฟล์ในกฎข้อ 27, test | ~−30 LOC + ~80 LOC test | AC-37 | PR เอกสารปิดรอบ 42 | `membership-payment.ts` (GB-33 แตะเฉพาะ test — ไม่ชน) |
 | PAY-25 | (หลัง go-live) ข้อความไทยของ error Stripe ตอนเปิด QR และหน้าจ่าย order (กฎข้อ 28); qa | ไฟล์ในกฎข้อ 28 (+ test) | ~10 LOC + ~60 LOC test | AC-38 | PR เอกสารปิดรอบ 42 | — |
 
+- **PAY-26 (รอบ 51)** — Stripe customer เดียวต่อลูกค้าข้าม provider (แก้พร้อมเพย์ 500 หลังจ่ายบัตร) — กฎ/AC อยู่ใน spec 01 กฎข้อ 157, AC-198–199 และ ADR-035
+
 ลำดับ: ทั้งสี่ตัวขนานกันได้ (∥) — v0.3.1 ก่อน go-live: PAY-23 ∥ PAY-24 (owner สั่งแล้ว 2026-11-25); PAY-22, PAY-25 หลัง go-live (☐ รอ owner สั่ง)
 ### Open questions (รอบ 43)
 - ~~**Q-P21**~~ **ตัดสินแล้ว (owner 2026-11-25) = (ก)** notice `payment_received` เฉพาะ `redirect_status=succeeded` → PAY-22 กฎข้อ 25c — คำถามเดิม: (CORE-95 #546) กลับจาก Stripe redirect (`/api/payment-return`) แล้ว session หมด (401/403) ลูกค้าเห็นหน้า login เปล่า ไม่มี notice "ได้รับชำระเงินแล้ว" แบบ CORE-95:

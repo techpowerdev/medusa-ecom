@@ -1,4 +1,4 @@
-import { clx } from "@modules/common/components/ui"
+import { cn } from "@/lib/utils"
 
 import { getProductPrice } from "@lib/util/get-product-price"
 import { HttpTypes } from "@medusajs/types"
@@ -25,15 +25,15 @@ export default function ProductPrice({
   }
 
   return (
-    <div className="flex flex-col text-ui-fg-base">
+    <div className="flex flex-col text-foreground">
       <span
-        className={clx("text-xl-semi", {
-          "text-ui-fg-interactive": selectedPrice.price_type === "sale",
+        className={cn("text-2xl leading-[36px] font-semibold", {
+          "text-primary": selectedPrice.price_type === "sale",
         })}
       >
         {!variant && "เริ่มต้น "}
         <span
-          className={clx({ "line-through text-ui-fg-subtle": struck })}
+          className={cn({ "line-through text-muted-foreground": struck })}
           data-testid="product-price"
           data-value={selectedPrice.calculated_price_number}
         >
@@ -43,7 +43,7 @@ export default function ProductPrice({
       {selectedPrice.price_type === "sale" && (
         <>
           <p>
-            <span className="text-ui-fg-subtle">ราคาปกติ: </span>
+            <span className="text-muted-foreground">ราคาปกติ: </span>
             <span
               className="line-through"
               data-testid="original-product-price"
@@ -52,7 +52,7 @@ export default function ProductPrice({
               {selectedPrice.original_price}
             </span>
           </p>
-          <span className="text-ui-fg-interactive">
+          <span className="text-primary">
             -{selectedPrice.percentage_diff}%
           </span>
         </>

@@ -11,13 +11,13 @@ export default function NotFound() {
   return (
     <div className="flex flex-col gap-4 items-center justify-center min-h-[calc(100vh-64px)]">
       <h1
-        className="text-2xl-semi text-ui-fg-base"
+        className="text-3xl font-semibold tracking-tight text-foreground"
         data-testid="not-found-title"
       >
         ไม่พบหน้านี้
       </h1>
       <p
-        className="text-small-regular text-ui-fg-base"
+        className="text-xs leading-5 font-normal text-foreground"
         data-testid="not-found-description"
       >
         หน้าที่คุณพยายามเข้าถึงไม่มีอยู่

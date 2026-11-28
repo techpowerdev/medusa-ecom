@@ -3,7 +3,7 @@
 export default function PortalError() {
   return (
     <div className="content-container py-12" data-testid="affiliate-portal-error">
-      <p className="rounded-rounded border border-ui-border-base bg-ui-bg-subtle p-4">
+      <p className="rounded-rounded border border-border bg-muted p-4">
         ระบบแอฟฟิลิเอตไม่พร้อมใช้งานชั่วคราว กรุณาลองใหม่อีกครั้งในอีกสักครู่{" "}
         <a href="" className="underline" data-testid="affiliate-portal-retry">
           ลองใหม่

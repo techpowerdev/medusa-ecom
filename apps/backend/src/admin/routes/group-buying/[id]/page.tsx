@@ -5,36 +5,21 @@ import { Badge, Text, toast, usePrompt } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { FetchError } from "@medusajs/js-sdk"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Link, LoaderFunctionArgs, UIMatch, useLoaderData, useNavigate, useParams } from "react-router-dom"
 import { Container } from "../../../components/common/container"
 import { Header } from "../../../components/common/header"
 import { GroupsSection } from "../../../components/group-buy/groups-section"
+import { t as tNs } from "../../../i18n/t"
 import { campaignActions } from "../../../lib/group-buy-campaign"
 import { CAMPAIGN_STATUS_COLOR, groupBuyApi, groupBuyKeys } from "../../../lib/group-buy"
 import { createSingleFlight } from "../../../lib/single-flight"
 
 type Action = "activate" | "end" | "remove"
 
-const PROMPTS: Record<Action, { title: string; description: string; confirmText: string }> = {
-  activate: {
-    title: "Activate campaign?",
-    description: "Customers can join groups once the campaign is active.",
-    confirmText: "Activate",
-  },
-  end: {
-    title: "End campaign?",
-    description: "No new groups or joins after the campaign ends. This cannot be undone.",
-    confirmText: "End",
-  },
-  remove: {
-    title: "Delete draft campaign?",
-    description: "The campaign, its template promotion and its Medusa campaign are deleted.",
-    confirmText: "Delete",
-  },
-}
-
 // GB-6b (spec 04 Admin UI, AC-30): รายละเอียดแคมเปญ — เปลี่ยนสถานะ / ลบ draft / ตารางกลุ่ม
 const GroupBuyCampaignPage = () => {
+  const { t } = useTranslation("ecom-group-buy")
   const { id } = useParams() as { id: string }
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -66,19 +51,38 @@ const GroupBuyCampaignPage = () => {
       // cache ที่ค้างหมดอายุเองตาม gcTime; ถ้าเปิด id นี้อีกจะ refetch ได้ 404 แล้วแสดง not found
       queryClient.invalidateQueries({ queryKey: groupBuyKeys.campaigns, predicate: (q) => q.queryKey[2] !== id })
       if (action === "remove") {
-        toast.success("Campaign deleted")
+        toast.success(t("detail.toast.deleted"))
         navigate("/group-buying")
       } else {
         queryClient.setQueryData(groupBuyKeys.campaign(id), result)
-        toast.success(action === "activate" ? "Campaign activated" : "Campaign ended")
+        toast.success(action === "activate" ? t("detail.toast.activated") : t("detail.toast.ended"))
       }
     },
     onError: (e: Error) => toast.error(e.message),
   })
 
+  // spec 10 กฎ 4e (AI18N-2): ข้อความ prompt ย้ายจากค่าคงที่ระดับ module เข้า component เพื่อเรียก t ตอน render
+  const prompts: Record<Action, { title: string; description: string; confirmText: string }> = {
+    activate: {
+      title: t("detail.prompts.activate.title"),
+      description: t("detail.prompts.activate.description"),
+      confirmText: t("detail.prompts.activate.confirm"),
+    },
+    end: {
+      title: t("detail.prompts.end.title"),
+      description: t("detail.prompts.end.description"),
+      confirmText: t("detail.prompts.end.confirm"),
+    },
+    remove: {
+      title: t("detail.prompts.remove.title"),
+      description: t("detail.prompts.remove.description"),
+      confirmText: t("actions.delete", { ns: "translation" }),
+    },
+  }
+
   const onAction = (action: Action) =>
     actionOnce(async () => {
-      if (await prompt({ ...PROMPTS[action], cancelText: "Cancel" })) {
+      if (await prompt({ ...prompts[action], cancelText: t("actions.cancel", { ns: "translation" }) })) {
         await run.mutateAsync(action).catch(() => undefined)
       }
     })
@@ -88,9 +92,9 @@ const GroupBuyCampaignPage = () => {
     return (
       <Container data-testid={notFound ? "gb-campaign-not-found" : undefined}>
         <NoRecords
-          title={notFound ? "Campaign not found" : "Could not load the campaign"}
-          message={notFound ? "It may have been deleted." : error.message}
-          action={{ to: "/group-buying", label: "Back to group-buy campaigns" }}
+          title={notFound ? t("detail.notFound") : t("detail.loadError")}
+          message={notFound ? t("detail.notFoundMessage") : error.message}
+          action={{ to: "/group-buying", label: t("detail.back") }}
         />
       </Container>
     )
@@ -99,7 +103,7 @@ const GroupBuyCampaignPage = () => {
   if (isLoading || !data) {
     return (
       <Container>
-        <NoRecords icon={<Spinner className="text-ui-fg-subtle animate-spin" />} title="Loading..." message="" />
+        <NoRecords icon={<Spinner className="text-ui-fg-subtle animate-spin" />} title={t("loading")} message="" />
       </Container>
     )
   }
@@ -107,16 +111,23 @@ const GroupBuyCampaignPage = () => {
   const campaign = data.campaign
   const actions = campaignActions(campaign)
   const buttons: { action: Action; testId: string; label: string; danger?: boolean }[] = [
-    { action: "activate", testId: "gb-campaign-activate", label: "Activate" },
-    { action: "end", testId: "gb-campaign-end", label: "End campaign" },
-    { action: "remove", testId: "gb-campaign-delete", label: "Delete", danger: true },
+    { action: "activate", testId: "gb-campaign-activate", label: t("detail.activate") },
+    { action: "end", testId: "gb-campaign-end", label: t("detail.end") },
+    { action: "remove", testId: "gb-campaign-delete", label: t("actions.delete", { ns: "translation" }), danger: true },
   ]
   const fullDate = (value: string | null | undefined) => (value ? getFullDate({ date: value, includeTime: true }) : "-")
   const fields: [string, string, string][] = [
-    ["target", "Target", `${campaign.target_value} ${campaign.target_type}`],
-    ["group_mode", "Group mode", campaign.group_mode],
-    ["starts_at", "Starts (ICT)", fullDate(campaign.campaign?.starts_at)],
-    ["ends_at", "Ends (ICT)", fullDate(campaign.campaign?.ends_at)],
+    [
+      "target",
+      t("detail.fields.target"),
+      t(`targetValue.${campaign.target_type}`, {
+        value: campaign.target_value,
+        defaultValue: `${campaign.target_value} ${campaign.target_type}`,
+      }),
+    ],
+    ["group_mode", t("detail.fields.groupMode"), t(`groupMode.${campaign.group_mode}`, { defaultValue: campaign.group_mode })],
+    ["starts_at", t("detail.fields.startsAt"), fullDate(campaign.campaign?.starts_at)],
+    ["ends_at", t("detail.fields.endsAt"), fullDate(campaign.campaign?.ends_at)],
   ]
 
   return (
@@ -136,7 +147,7 @@ const GroupBuyCampaignPage = () => {
                       type: "custom",
                       children: (
                         <Badge size="2xsmall" color={CAMPAIGN_STATUS_COLOR[campaign.status]} data-testid="gb-campaign-status">
-                          {campaign.status}
+                          {t(`status.${campaign.status}`, { defaultValue: campaign.status })}
                         </Badge>
                       ),
                     },
@@ -162,11 +173,11 @@ const GroupBuyCampaignPage = () => {
                 ))}
                 {campaign.template_promotion_id && (
                   <SectionRow
-                    title="Template promotion"
+                    title={t("detail.fields.templatePromotion")}
                     value={
                       <Link to={`/promotions/${campaign.template_promotion_id}`}>
                         <Text size="small" leading="compact" className="text-ui-fg-interactive">
-                          {campaign.promotion?.code ?? "Open"}
+                          {campaign.promotion?.code ?? t("list.openPromotion")}
                         </Text>
                       </Link>
                     }
@@ -192,7 +203,9 @@ export const loader = async ({ params }: LoaderFunctionArgs): Promise<CampaignLo
   groupBuyApi.getCampaign(params.id!).catch(() => null)
 
 export const handle = {
-  breadcrumb: ({ loaderData }: UIMatch<CampaignLoaderData>) => loaderData?.campaign.name ?? "Campaign",
+  // spec 10 กฎ 4b, 9: ชื่อแคมเปญจาก loader คงเดิม; fallback แปลด้วย helper t (alias tNs — AI18N-N1) ตอนรัน
+  breadcrumb: ({ loaderData }: UIMatch<CampaignLoaderData>) =>
+    loaderData?.campaign.name ?? tNs("ecom-group-buy", "breadcrumb.campaign"),
 }
 
 export default GroupBuyCampaignPage

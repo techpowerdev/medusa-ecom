@@ -13,11 +13,11 @@ export const PolicyPage = ({
   children: React.ReactNode
 }) => (
   <div className="content-container py-12 max-w-3xl" data-testid="policy-page">
-    <h1 className="text-2xl-semi mb-8" data-testid="policy-title">
+    <h1 className="text-3xl font-semibold tracking-tight mb-8" data-testid="policy-title">
       {title}
     </h1>
     <div
-      className="flex flex-col gap-6 text-base-regular text-ui-fg-base"
+      className="flex flex-col gap-6 text-sm leading-6 font-normal text-foreground"
       data-testid="policy-content"
     >
       {children}
@@ -26,7 +26,7 @@ export const PolicyPage = ({
 )
 
 export const PoliciesUnavailable = () => (
-  <p className="text-ui-fg-subtle">
+  <p className="text-muted-foreground">
     ยังไม่ได้เผยแพร่รายละเอียดนโยบายสำหรับภูมิภาคนี้
   </p>
 )
@@ -39,17 +39,17 @@ export const ShippingSummary = ({
   currencyCode: string
 }) => (
   <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2">
-    <dt className="text-ui-fg-subtle">ค่าจัดส่ง</dt>
+    <dt className="text-muted-foreground">ค่าจัดส่ง</dt>
     <dd>{formatShippingRate(policies.shippingRate, currencyCode)}</dd>
-    <dt className="text-ui-fg-subtle">ระยะเวลาเตรียมสินค้า</dt>
+    <dt className="text-muted-foreground">ระยะเวลาเตรียมสินค้า</dt>
     <dd>{formatDayRange(policies.handlingDays)} วันทำการ</dd>
-    <dt className="text-ui-fg-subtle">ระยะเวลาขนส่ง</dt>
+    <dt className="text-muted-foreground">ระยะเวลาขนส่ง</dt>
     <dd>{formatDayRange(policies.transitDays)} วันทำการหลังส่งออก</dd>
   </dl>
 )
 
 export const PlaceholderNotice = () => (
-  <p className="text-ui-fg-subtle" data-testid="policy-placeholder">
+  <p className="text-muted-foreground" data-testid="policy-placeholder">
     {STORE_CONTENT.policyPlaceholderNotice}
   </p>
 )

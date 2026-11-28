@@ -27,7 +27,7 @@ export default async function ShippingPage(props: {
         <>
           <p>อัตราค่าจัดส่งและระยะเวลาจัดส่งของคำสั่งซื้อในภูมิภาคนี้มีดังนี้</p>
           <ShippingSummary policies={current} currencyCode={currencyCode} />
-          <p className="text-ui-fg-subtle">
+          <p className="text-muted-foreground">
             วิธีจัดส่งที่เลือกได้และค่าจัดส่งสุดท้ายจะแสดงในขั้นตอนชำระเงิน
           </p>
         </>

@@ -83,7 +83,6 @@ describe("ESLint rule ข้อความไทย (AC-47)", () => {
     "src/modules/cart/templates/index.tsx",
     "src/modules/order/templates/order-details-template.tsx",
     "src/modules/policies/templates/index.tsx",
-    "src/modules/common/components/native-select/index.tsx",
     "src/modules/common/components/filter-radio-group/index.tsx",
     "src/modules/skeletons/templates/skeleton-cart-page/index.tsx",
     // CORE-4d (checkout ทุกขั้น, shipping nudge, ชื่อวิธีชำระเงิน)

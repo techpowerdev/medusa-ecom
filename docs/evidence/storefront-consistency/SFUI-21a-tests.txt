@@ -1,0 +1,15 @@
+# SFUI-21a — ผลทดสอบ (spec 09 กฎ 73, 75, 76; AC-66/68)
+สภาพแวดล้อม: stack บน feat/SFUI-21b-heading-size (9de96f91), node 24, prod build — backend :9481 (NODE_ENV=production,
+start จาก .medusa/server, DB medusa_sfui21a, Redis db 12), storefront :8481
+
+## Red
+- static sfui-21-consistency.unit (เพิ่ม AC-66 (1)) ก่อนแก้: 2 failed / 5 — gap 17 จุดใน 8 ไฟล์ของข้อ 32 (gap-2, gap-y-2,
+  gap-x-4 gap-y-2, gap-x-2) และปุ่มปิด 5 ตัวของข้อ 35 ไม่ใช่ Close asChild → Button ghost icon; SelectTrigger (กฎ 75) ผ่านแล้วจาก 20b/20c
+- e2e ใหม่ sfui-21-forms บน build ที่ src = 21b: 2 failed / 2 (row-gap/column-gap 8px ในฟอร์มบัญชี/modal ที่อยู่/login/register ฯลฯ)
+
+## Green
+- e2e sfui-21-forms (1280 + 390): 2 passed — row-gap/column-gap 16px ทุกฟอร์ม, shipping-address-select 36px,
+  ปุ่มปิด close-modal-button (add/edit address, mobile actions), close-menu-button, close-search-drawer 36×36 + aria-label ไทย + Escape + focus กลับ trigger
+- e2e ที่อ้างฟอร์ม/overlay ที่แตะ (54 ไฟล์, --workers=1): 174 passed / 174 (12.4m)
+- playwright project unit: 262 passed; vitest (apps/storefront): 139 files / 2089 tests passed
+- pnpm lint && pnpm typecheck: ผ่าน (0 error); pnpm --filter storefront build: ผ่าน

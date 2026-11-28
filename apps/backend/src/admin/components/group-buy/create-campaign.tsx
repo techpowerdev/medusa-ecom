@@ -4,6 +4,7 @@ import { Button, DatePicker, FocusModal, Heading, Input, Select, Switch, Text, t
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { groupBuyApi, groupBuyKeys } from "../../lib/group-buy"
 import {
   CAMPAIGN_PARSE_OPTIONS,
@@ -25,40 +26,15 @@ type TextKey = {
   [K in keyof CampaignForm]: CampaignForm[K] extends string ? K : never
 }[keyof CampaignForm]
 
-const SELECTS: { key: "target_type" | "group_mode" | "discount_type"; label: string; options: string[] }[] = [
-  { key: "target_type", label: "Target type *", options: ["orders", "units", "people"] },
-  { key: "group_mode", label: "Group mode *", options: ["pool", "team", "both"] },
-  { key: "discount_type", label: "Discount type *", options: ["percentage", "fixed"] },
-]
-
 // ADM-15 (spec 08 กฎ 19a): numeric = ช่องตัวเลขผ่าน NumberInput ของกลาง (กฎ 15)
 type TextField = { key: TextKey; label: string; numeric?: boolean; hint?: string }
 
-const NAME_AND_TARGET: TextField[] = [
-  { key: "name", label: "Name *" },
-  { key: "target_value", label: "Target value *", numeric: true },
-]
-
-// spec 08 กฎ 5: กรอกตาม timezone ของเครื่องแอดมิน (ต้องตั้งเป็นเวลาไทย) — ส่ง Date เข้า API ตรงๆ
-const DATES: { key: "starts_at" | "ends_at"; label: string }[] = [
-  { key: "starts_at", label: "Starts at" },
-  { key: "ends_at", label: "Ends at *" },
-]
-
-const INPUTS: TextField[] = [
-  { key: "discount_value", label: "Discount value *", numeric: true, hint: "Percent, or THB for fixed" },
-  {
-    key: "max_quantity",
-    label: "Max discounted quantity per order *",
-    numeric: true,
-    hint: "Must be at least max units per person, or members join with units the discount does not cover",
-  },
-  { key: "team_duration_hours", label: "Team duration (hours)", numeric: true, hint: "Required for team/both" },
-  { key: "max_total_orders", label: "Max total orders", numeric: true },
-  { key: "max_units_per_person", label: "Max units per person", numeric: true },
-  { key: "max_people_per_group", label: "Max people per group", numeric: true },
-  { key: "pay_within_hours", label: "Pay within (hours) *", numeric: true },
-]
+// ตัวเลือกของ select (ค่าที่ส่ง API) — ข้อความที่แสดงแปลด้วย key `<optionPrefix>.<ค่า>` (spec 10 กฎ 7)
+const SELECT_OPTIONS = {
+  target_type: { optionPrefix: "targetType", options: ["orders", "units", "people"] },
+  group_mode: { optionPrefix: "groupMode", options: ["pool", "team", "both"] },
+  discount_type: { optionPrefix: "discountType", options: ["percentage", "fixed"] },
+} as const
 
 // testid ของ error ใต้ช่องที่ e2e ใช้อยู่ (GB-6b2 / GB-6e)
 const ERROR_TESTIDS: Partial<Record<keyof CampaignForm, string>> = {
@@ -84,6 +60,36 @@ export const CreateCampaign = ({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) => {
+  const { t } = useTranslation("ecom-group-buy")
+  // spec 10 กฎ 4e (AI18N-2): label/hint ของช่องย้ายจากค่าคงที่ระดับ module เข้า component เพื่อเรียก t ตอน render (ลำดับช่องเดิม)
+  const selects: { key: keyof typeof SELECT_OPTIONS; label: string }[] = [
+    { key: "target_type", label: t("form.labels.targetType") },
+    { key: "group_mode", label: t("form.labels.groupMode") },
+    { key: "discount_type", label: t("form.labels.discountType") },
+  ]
+  const nameAndTarget: TextField[] = [
+    { key: "name", label: t("form.labels.name") },
+    { key: "target_value", label: t("form.labels.targetValue"), numeric: true },
+  ]
+  // spec 08 กฎ 5: กรอกตาม timezone ของเครื่องแอดมิน (ต้องตั้งเป็นเวลาไทย) — ส่ง Date เข้า API ตรงๆ
+  const dates: { key: "starts_at" | "ends_at"; label: string }[] = [
+    { key: "starts_at", label: t("form.labels.startsAt") },
+    { key: "ends_at", label: t("form.labels.endsAt") },
+  ]
+  const inputs: TextField[] = [
+    { key: "discount_value", label: t("form.labels.discountValue"), numeric: true, hint: t("form.hints.discountValue") },
+    {
+      key: "max_quantity",
+      label: t("form.labels.maxQuantity"),
+      numeric: true,
+      hint: t("form.hints.maxQuantity"),
+    },
+    { key: "team_duration_hours", label: t("form.labels.teamDuration"), numeric: true, hint: t("form.hints.teamDuration") },
+    { key: "max_total_orders", label: t("form.labels.maxTotalOrders"), numeric: true },
+    { key: "max_units_per_person", label: t("form.labels.maxUnitsPerPerson"), numeric: true },
+    { key: "max_people_per_group", label: t("form.labels.maxPeoplePerGroup"), numeric: true },
+    { key: "pay_within_hours", label: t("form.labels.payWithin"), numeric: true },
+  ]
   const queryClient = useQueryClient()
   // Form.Field ของ dashboard รับ control ที่ค่าก่อน/หลัง submit เป็น type เดียวกัน จึงให้ resolver คืนค่าดิบ (raw)
   // แล้ว parse ด้วย schema เดียวกันตอน submit (แบบ ADM-3)
@@ -111,7 +117,7 @@ export const CreateCampaign = ({
     mutationFn: groupBuyApi.createCampaign,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupBuyKeys.campaigns })
-      toast.success("Campaign created as draft")
+      toast.success(t("form.created"))
       onOpenChange(false)
     },
     onError: (e: Error) => toast.error(e.message),
@@ -183,19 +189,19 @@ export const CreateCampaign = ({
                   disabled={submitLocked}
                   data-testid="gb-campaign-create-submit"
                 >
-                  Create
+                  {t("actions.create", { ns: "translation" })}
                 </Button>
               </div>
             </FocusModal.Header>
             <FocusModal.Body className="flex justify-center overflow-auto py-16">
               <div className="flex w-full max-w-lg flex-col gap-y-4">
                 <FocusModal.Title asChild>
-                  <Heading>Create group-buy campaign</Heading>
+                  <Heading>{t("form.title")}</Heading>
                 </FocusModal.Title>
                 <Text size="small" className="text-ui-fg-subtle">
-                  The campaign starts as draft. Activate it from the campaign page when ready.
+                  {t("form.description")}
                 </Text>
-                {SELECTS.map(({ key, label, options }) => (
+                {selects.map(({ key, label }) => (
                   <Form.Field
                     key={key}
                     control={form.control}
@@ -209,9 +215,9 @@ export const CreateCampaign = ({
                               <Select.Value />
                             </Select.Trigger>
                             <Select.Content>
-                              {options.map((o) => (
+                              {SELECT_OPTIONS[key].options.map((o) => (
                                 <Select.Item key={o} value={o}>
-                                  {o}
+                                  {t(`${SELECT_OPTIONS[key].optionPrefix}.${o}`, { defaultValue: o })}
                                 </Select.Item>
                               ))}
                             </Select.Content>
@@ -221,8 +227,8 @@ export const CreateCampaign = ({
                     )}
                   />
                 ))}
-                {NAME_AND_TARGET.map(textField)}
-                {DATES.map(({ key, label }) => (
+                {nameAndTarget.map(textField)}
+                {dates.map(({ key, label }) => (
                   <Form.Field
                     key={key}
                     control={form.control}
@@ -240,15 +246,14 @@ export const CreateCampaign = ({
                         {/* กฎข้อ 16: เตือนแต่ยังส่งได้ — activate จะถูก backend ปฏิเสธจนกว่าจะแก้ ends_at */}
                         {key === "ends_at" && isEndsAtPast(endsAt) && (
                           <Text size="xsmall" className="text-ui-tag-orange-text" data-testid="gb-ends-at-warning">
-                            This end time has already passed. The campaign will be created as draft but cannot be
-                            activated until the end time is in the future.
+                            {t("form.endsAtPast")}
                           </Text>
                         )}
                       </Form.Item>
                     )}
                   />
                 ))}
-                {INPUTS.map(textField)}
+                {inputs.map(textField)}
                 <Form.Field
                   control={form.control}
                   name="product_id"
@@ -268,7 +273,7 @@ export const CreateCampaign = ({
                       <Form.Control>
                         <Switch {...field} checked={value} onCheckedChange={onChange} />
                       </Form.Control>
-                      <Form.Label>Discount is tax inclusive (THB prices include VAT)</Form.Label>
+                      <Form.Label>{t("form.labels.taxInclusive")}</Form.Label>
                     </Form.Item>
                   )}
                 />

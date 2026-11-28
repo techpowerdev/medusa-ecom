@@ -1,8 +1,18 @@
-import { Dialog, Transition } from "@headlessui/react"
-import { Button, clx } from "@modules/common/components/ui"
-import React, { Fragment, useMemo } from "react"
+import React, { useMemo } from "react"
+
+import { Button } from "@/components/button"
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
+import { cn } from "@/lib/utils"
 
 import useToggleState from "@lib/hooks/use-toggle-state"
+import ErrorMessage from "@modules/checkout/components/error-message"
 import ChevronDown from "@modules/common/icons/chevron-down"
 import X from "@modules/common/icons/x"
 
@@ -70,63 +80,56 @@ const MobileActions: React.FC<MobileActionsProps> = ({
   const isSimple = isSimpleProduct(product)
 
   return (
-    <>
+    <Sheet open={state} onOpenChange={(next) => (next ? open() : close())}>
       <div
-        className={clx("lg:hidden inset-x-0 bottom-0 fixed z-50", {
+        className={cn("lg:hidden inset-x-0 bottom-0 fixed z-50", {
           "pointer-events-none": !show,
         })}
       >
         {/* FS-19 (กฎข้อ 24b): จางเฉพาะตอนแสดง — ซ่อนด้วยการ unmount ทันที ไม่มี leave transition ที่จางทับปุ่มหลัก */}
+        {/* SFUI-3b (spec 09 กฎ 4c): `Transition appear` → `animate-in fade-in duration-300` ของ tw-animate-css (จบที่ opacity 1) */}
         {show && (
-          <Transition
-            as={Fragment}
-            appear
-            show
-            enter="ease-in-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
+          <div
+            className="animate-in fade-in duration-300 bg-white flex flex-col gap-y-3 justify-center items-center text-base leading-6 font-normal p-4 h-full w-full border-t border-gray-200"
+            data-testid="mobile-actions"
           >
+            <div className="flex items-center gap-x-2">
+              <span data-testid="mobile-title">{product.title}</span>
+              <span>—</span>
+              {flashOffer && !flashOffer.sale.sold_out ? (
+                <FlashPrice price={flashOffer.price} />
+              ) : selectedPrice ? (
+                <div className="flex items-end gap-x-2 text-foreground">
+                  {selectedPrice.price_type === "sale" && (
+                    <p>
+                      <span className="line-through text-xs leading-5 font-normal">
+                        {selectedPrice.original_price}
+                      </span>
+                    </p>
+                  )}
+                  <span
+                    className={cn({
+                      "text-primary underline-offset-4":
+                        selectedPrice.price_type === "sale",
+                    })}
+                  >
+                    {selectedPrice.calculated_price}
+                  </span>
+                </div>
+              ) : (
+                <div></div>
+              )}
+            </div>
             <div
-              className="bg-white flex flex-col gap-y-3 justify-center items-center text-large-regular p-4 h-full w-full border-t border-gray-200"
-              data-testid="mobile-actions"
+              className={cn("grid grid-cols-2 w-full gap-x-4", {
+                "grid-cols-1!": isSimple,
+              })}
             >
-              <div className="flex items-center gap-x-2">
-                <span data-testid="mobile-title">{product.title}</span>
-                <span>—</span>
-                {flashOffer && !flashOffer.sale.sold_out ? (
-                  <FlashPrice price={flashOffer.price} />
-                ) : selectedPrice ? (
-                  <div className="flex items-end gap-x-2 text-ui-fg-base">
-                    {selectedPrice.price_type === "sale" && (
-                      <p>
-                        <span className="line-through text-small-regular">
-                          {selectedPrice.original_price}
-                        </span>
-                      </p>
-                    )}
-                    <span
-                      className={clx({
-                        "text-ui-fg-interactive":
-                          selectedPrice.price_type === "sale",
-                      })}
-                    >
-                      {selectedPrice.calculated_price}
-                    </span>
-                  </div>
-                ) : (
-                  <div></div>
-                )}
-              </div>
-              <div
-                className={clx("grid grid-cols-2 w-full gap-x-4", {
-                  "!grid-cols-1": isSimple,
-                })}
-              >
-                {!isSimple && (
+              {!isSimple && (
+                <SheetTrigger asChild>
                   <Button
                     type="button"
-                    onClick={open}
-                    variant="secondary"
+                    variant="outline"
                     className="w-full"
                     data-testid="mobile-actions-button"
                   >
@@ -139,112 +142,80 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                       <ChevronDown />
                     </div>
                   </Button>
-                )}
-                <Button
-                  type="button"
-                  onClick={handleAddToCart}
-                  // CORE-27 (กฎข้อ 83c): เงื่อนไขชุดเดียวกับ `add-product-button`
-                  disabled={
-                    !inStock ||
-                    !variant ||
-                    !isValidVariant ||
-                    // = `!!disabled || isAdding` ของ ProductActions
-                    optionsDisabled ||
-                    !!isAdding ||
-                    !!qtyExceeded ||
-                    !!flashLoading
-                  }
-                  aria-busy={flashLoading}
-                  className="w-full"
-                  isLoading={isAdding}
-                  data-testid="mobile-cart-button"
-                >
-                  {!variant
-                    ? "เลือกตัวเลือกสินค้า"
-                    : !inStock
-                    ? "สินค้าหมด"
-                    : "เพิ่มลงตะกร้า"}
-                </Button>
-              </div>
-              {error && (
-                <p
-                  className="text-small-regular text-ui-fg-error"
-                  role="alert"
-                  data-testid="mobile-add-to-cart-error"
-                >
-                  {error}
-                </p>
+                </SheetTrigger>
               )}
+              <Button
+                type="button"
+                onClick={handleAddToCart}
+                // CORE-27 (กฎข้อ 83c): เงื่อนไขชุดเดียวกับ `add-product-button`
+                disabled={
+                  !inStock ||
+                  !variant ||
+                  !isValidVariant ||
+                  // = `!!disabled || isAdding` ของ ProductActions
+                  optionsDisabled ||
+                  !!isAdding ||
+                  !!qtyExceeded ||
+                  !!flashLoading
+                }
+                aria-busy={flashLoading}
+                className="w-full"
+                isLoading={isAdding}
+                data-testid="mobile-cart-button"
+              >
+                {!variant
+                  ? "เลือกตัวเลือกสินค้า"
+                  : !inStock
+                  ? "สินค้าหมด"
+                  : "เพิ่มลงตะกร้า"}
+              </Button>
             </div>
-          </Transition>
+            {/* SFUI-21e (spec 09 กฎ 74 (a)): error ของการกระทำ "เพิ่มลงตะกร้า" = Alert ผ่าน ErrorMessage */}
+            <ErrorMessage error={error} data-testid="mobile-add-to-cart-error" />
+          </div>
         )}
       </div>
-      <Transition appear show={state} as={Fragment}>
-        <Dialog as="div" className="relative z-[75]" onClose={close}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-gray-700 bg-opacity-75 backdrop-blur-sm" />
-          </Transition.Child>
-
-          <div className="fixed bottom-0 inset-x-0">
-            <div className="flex min-h-full h-full items-center justify-center text-center">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0"
-                enterTo="opacity-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100"
-                leaveTo="opacity-0"
-              >
-                <Dialog.Panel
-                  className="w-full h-full transform overflow-hidden text-left flex flex-col gap-y-3"
-                  data-testid="mobile-actions-modal"
-                >
-                  <div className="w-full flex justify-end pr-6">
-                    <button
-                      onClick={close}
-                      className="bg-white w-12 h-12 rounded-full text-ui-fg-base flex justify-center items-center"
-                      data-testid="close-modal-button"
-                      aria-label="ปิด"
-                    >
-                      <X />
-                    </button>
+      {/* SFUI-3b (spec 09 กฎ 4c): Sheet แทนเฉพาะ Dialog ของ `mobile-actions-modal` — ไม่ใช่แถบ `mobile-actions` */}
+      <SheetContent
+        side="bottom"
+        showCloseButton={false}
+        className="gap-y-3 text-left"
+        data-testid="mobile-actions-modal"
+      >
+        <div className="w-full flex items-center justify-between px-6 pt-6">
+          <SheetTitle>ตัวเลือกสินค้า</SheetTitle>
+          {/* SFUI-21a (spec 09 กฎ 76): ปุ่มปิด = Close asChild → Button ghost icon ขนาด default ของ shadcn (icon X size-4) */}
+          <SheetClose asChild>
+            <Button variant="ghost" size="icon" aria-label="ปิด" data-testid="close-modal-button">
+              <X />
+            </Button>
+          </SheetClose>
+        </div>
+        <SheetDescription className="sr-only">
+          เลือกตัวเลือกของ {product.title} ก่อนเพิ่มลงตะกร้า
+        </SheetDescription>
+        <div className="px-6 pb-12">
+          {(product.variants?.length ?? 0) > 1 && (
+            <div className="flex flex-col gap-y-6">
+              {(product.options || []).map((option) => {
+                return (
+                  <div key={option.id}>
+                    <OptionSelect
+                      option={option}
+                      current={options[option.id]}
+                      updateOption={updateOptions}
+                      title={option.title ?? ""}
+                      name={`mobile-options[${option.id}]`}
+                      disabled={optionsDisabled}
+                    />
                   </div>
-                  <div className="bg-white px-6 py-12">
-                    {(product.variants?.length ?? 0) > 1 && (
-                      <div className="flex flex-col gap-y-6">
-                        {(product.options || []).map((option) => {
-                          return (
-                            <div key={option.id}>
-                              <OptionSelect
-                                option={option}
-                                current={options[option.id]}
-                                updateOption={updateOptions}
-                                title={option.title ?? ""}
-                                name={`mobile-options[${option.id}]`}
-                                disabled={optionsDisabled}
-                              />
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </Dialog.Panel>
-              </Transition.Child>
+                )
+              })}
             </div>
-          </div>
-        </Dialog>
-      </Transition>
-    </>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
   )
 }
 
