@@ -4,7 +4,8 @@ Status: accepted (owner 2026-11-26: ADR-030 accepted, Q1 = ยอมรับ, Q
 (task ขนานแตกจาก SFUI-2 ตัวเดียวกัน; SFUI-6 แตกจาก branch ที่รวม 3a..5e แล้ว) โดยไม่ต้องรอ PR merge → เปิด PR ทั้งชุดพร้อมกันตอนท้าย (base = `develop`) แล้ว merge ตามลำดับในตาราง Tasks
 · SFUI-1a..7 ☑ (#565–#581); รอบ 45 เก็บกวาด (SFUI-8, 9a–9e, 10) ดูหัวข้อ "ส่วนเก็บกวาดหลัง SFUI-7" (owner 2026-11-26 "เก็บต่อเลย");
 รอบ 48 ฟอร์ม (SFUI-11a..13, ADR-032 accepted 2026-11-27) ☑ (#605–#610; เอกสาร #604) ดูหัวข้อ "ส่วนฟอร์ม (รอบ 48)";
-รอบ 49 select เป็น Radix + ช่องตำบล/ที่อยู่ไทย (SFUI-15..18c, ADR-033 accepted 2026-11-28) ☑ (#614–#622) + SFUI-14 ☑ #612 ดูหัวข้อ "ส่วน select + ที่อยู่ไทย (รอบ 49)"
+รอบ 49 select เป็น Radix + ช่องตำบล/ที่อยู่ไทย (SFUI-15..18c, ADR-033 accepted 2026-11-28) ☑ (#614–#622) + SFUI-14 ☑ #612 ดูหัวข้อ "ส่วน select + ที่อยู่ไทย (รอบ 49)";
+รอบ 50 ปุ่มขนาดเดียว/ซ่อนประเทศ/จังหวัดบังคับ/consistency (SFUI-19a..22, ADR-034 accepted 2026-11-28) ☐ ดูหัวข้อ "ส่วน consistency + ที่อยู่ (รอบ 50)"
 Goal (owner's words, 2026-11-26): เปลี่ยน storefront (`apps/storefront`) จาก UI ของ Medusa เป็น shadcn/ui (Radix) — แทนทั้ง 4 ชั้น (shim `common/components/ui`,
 `@medusajs/ui-preset` + `thai-ui-preset.js` + class `txt-*`/`h*-webs`, `@medusajs/icons` → `lucide-react`, `@headlessui/react` → Radix ผ่าน shadcn) และถอด `tailwindcss-radix`;
 อัป Tailwind v3 → v4 ก่อนแล้วใช้ shadcn CLI รุ่นล่าสุด; ยอมให้หน้าตาเปลี่ยนเป็นสไตล์ shadcn แต่ยังใช้สี brand ตาม ADR-008
@@ -111,7 +112,8 @@ none
     `e2e/core-55-return-receive.spec.ts`, `e2e/pay-10-refund-blocked-widget.spec.ts`, `e2e/payments-refund.spec.ts` (รายการนี้ = ไฟล์ใน `e2e/` ที่อ้าง `/app` ณ 2026-11-26)
 19. e2e storefront ที่มีอยู่ผ่าน **โดยไม่แก้ locator/assertion** ยกเว้น: `e2e/ui-preset-font.spec.ts` (เขียนใหม่ใน SFUI-1a — AC-3) — assertion CSS ที่มีอยู่ต้องผ่านตามเดิม
     (`line-through` ของ `flash-original-price`/`product-price`/`s`, `opacity: 1` ของ `mobile-actions` และ error ใน `core-23c`, `[aria-checked="true"], [checked]` = 0 ใน `core-32`)
-20. ตาราง map ของ shim (SFUI-5x, 3x): `Text` → `<p className="text-sm">` (หรือ `<span>`/`<div>` ตาม `as`); `Heading` h1/h2/h3 → `<hN className="text-3xl|text-2xl|text-xl font-semibold">`;
+20. **(ท่อน `Button` `small|medium|large` → `sm|default|lg` + "`large` → `lg` + `h-12` คงความสูง 48px" แทนด้วยรอบ 50 — ADR-034, กฎ 59–61, 63a: ทุกปุ่ม size `default`/`icon` 36px รวมปุ่มจ่ายเงิน; มีผลเมื่อ SFUI-19a merge; ถ้อยคำเดิมคงไว้เป็นประวัติ)**
+    ตาราง map ของ shim (SFUI-5x, 3x): `Text` → `<p className="text-sm">` (หรือ `<span>`/`<div>` ตาม `as`); `Heading` h1/h2/h3 → `<hN className="text-3xl|text-2xl|text-xl font-semibold">`;
     `Container` → `<div className="rounded-lg bg-card p-4">` (บน develop `.bg-white`/`.p-4` ของ shim อยู่หลัง `bg-*`/`p-*` ส่วนใหญ่ของผู้เรียกใน CSS v3 จึงชนะ → คง `bg-card p-4` แม้ผู้เรียกส่ง `bg-ui-bg-subtle`/`bg-gray-*`/`p-2` — ตรวจด้วยการ compile v3 ของ develop; ตัดสิน 2026-11-26 จาก review SFUI-5d); `Badge color` → shadcn `Badge` (`grey`→`secondary`, `red`→`destructive`, อื่น → `outline` + `bg-<สี>-100 text-<สี>-700`);
     `IconBadge` → `Badge variant="secondary"`; `IconButton` → `Button variant="ghost" size="icon"`; `Button` `primary|secondary|transparent` → `default|outline|ghost`,
     `small|medium|large` → `sm|default|lg` (`large` → `lg` + `h-12` คงความสูง 48px ของ develop — D-1 จาก qa: `lg` ของ shadcn สูง 40px ทำให้คลิก `submit-payment-button` หลังกรอกบัตรตกใน iframe ของ Stripe แล้วค้างที่ `step=payment`; shim ใส่ให้ เมื่อย้ายไปใช้ shadcn ตรงต้องใส่ `h-12` เอง — กฎ 19 ชนะกฎ 20); `buttonClassName(o, c)` → `cn(buttonVariants(o), c)`; `clx` → `cn`; `Label`/`Input`/`Table.*` → shadcn ชื่อเดียวกัน (`TableCell`/`TableHead` ของ shadcn มี `whitespace-nowrap` และ `TableHead` สูง `h-10` ซึ่ง `Table.Cell`/`.HeaderCell` เดิมไม่มี/สูง `h-12` → ผู้ใช้ใส่ `whitespace-normal` และหัวตาราง `h-12` เอง — review SFUI-5d/SFUI-6; shim ส่ง `px-4` ให้ `TableHead` และ `p-4` ให้ `TableCell` และ `Text` ค่าเริ่มต้น `text-sm leading-[1.4rem]` ที่ไม่ทับ `txt-*`/`h*-webs` ของผู้เรียก)
@@ -488,7 +490,7 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
   When อ่านทุกช่องของสามฟอร์มนี้ในตาราง inventory Then `<t>-label` มองเห็น, `label.bottom <= box.top + 0.5`, `|label.left - box.left| <= 1` (`box` = กล่องของ control; ช่องรหัสผ่านใช้กล่อง
   `[data-slot="input-group"]` ที่ครอบ `<t>` แทน `<input>` — กฎ 28; checkbox ใช้เกณฑ์ horizontal ด้านล่างแทน), `control.labels[0]` = `<t>-label` (ประเมินใน browser),
   ข้อความ label ผ่าน `expectThai`; ช่อง `*` ในตารางมี `required` และ `[aria-hidden="true"]` ภายใน label มีข้อความ `*`; ช่องไม่บังคับไม่มี; `billing-address-checkbox`: `label.left >= checkbox.right`;
-  `getComputedStyle(control).height` ของ `email-input` = ค่าที่วัดบน build (คาด `36px`) และ `shipping-country-select` สูงเท่า `shipping-city-input` (±1px); ไม่มี label ที่ `translate` ≠ `none`; หน้า 390px ไม่ล้นแนวนอน (AC-17)
+  `getComputedStyle(control).height` ของ `email-input` = ค่าที่วัดบน build (คาด `36px`) และ `shipping-country-select` สูงเท่า `shipping-city-input` (±1px) (**ท่อนประเทศแทนด้วยรอบ 50 — AC-63; SFUI-20b ลบขั้นนี้**); ไม่มี label ที่ `translate` ≠ `none`; หน้า 390px ไม่ล้นแนวนอน (AC-17)
 - AC-29 (SFUI-11a, กฎ 27a) ☑ #605, #609 e2e เดิมที่ยึด floating label แก้ได้เฉพาะ: `sfui-8-floating-label.spec.ts` (ลบ AC-23 (1); (2)(3) คงไว้), `sfui-8-floating-label.unit.spec.ts` (test ที่ 3 → ไม่มี `peer` ใน `common/components/input`),
   `sfui-5a-common.spec.ts` (test "label ลอย" → label เหนือช่องและมองเห็น), `core-38-mobile-layout.spec.ts` + `core-4e-checkout-polish.spec.ts` (หา label ด้วย `input.labels[0]` แทน `parentElement.querySelector("label")`;
   เกณฑ์ "label ไม่ทับค่า" คงไว้), `sfui-9a-font.spec.ts` (ขั้น NativeSelect ของที่อยู่ใบเสร็จ → ค่าที่วัดบน build ใหม่); 12c แก้ `sfui-9e-font.spec.ts` (label ของ `group-quantity`) และขั้น group buy ของ `sfui-8-floating-label.spec.ts` —
@@ -500,7 +502,7 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
 - AC-32 (SFUI-11b, กฎ 32) ☑ #606 e2e ใหม่ `e2e/sfui-11b-field-errors.spec.ts`: Given ฟอร์ม login When กด `sign-in-button` โดยช่องว่าง Then `email-input-error` และ `password-input-error` มองเห็นและเป็นไทย, ข้อความเท่ากับ
   `fieldErrorMessage` ที่คำนวณจาก label จริงใน DOM (ไม่ hard-code), `email-input` focus และมี `aria-invalid="true"` + `aria-describedby` ที่อ้าง id ของ `email-input-error`, URL ไม่เปลี่ยนและ `login-error-message` = 0;
   When กรอก `abc` ในอีเมลแล้วส่ง Then `email-input-error` = ค่า attribute `title` ของ `email-input`; When กรอกอีเมลถูก Then `email-input-error` = 0 และไม่มี `aria-invalid`;
-  Given checkout `step=address` ช่องว่าง When กด `submit-address-button` Then `shipping-first-name-input-error` และ `shipping-country-select-error` (`กรุณาเลือกประเทศ`) มองเห็น และ focus อยู่ที่ช่องแรกที่ผิด;
+  Given checkout `step=address` ช่องว่าง When กด `submit-address-button` Then `shipping-first-name-input-error` และ `shipping-country-select-error` (`กรุณาเลือกประเทศ` — **แทนด้วยรอบ 50 AC-63: ไม่มีช่องประเทศ**) มองเห็น และ focus อยู่ที่ช่องแรกที่ผิด;
   When เลือกที่อยู่ที่บันทึกไว้ (`shipping-address-select`) Then error ของช่องที่ถูกเติมหาย (กฎ 32d); `affiliate-register-code` ที่ผิด `pattern` → error = `title` ของช่อง
 - AC-33 (SFUI-11b, 12x, กฎ 32e–f, 33a) ☑ #606–#609 e2e เดิมของ error ระดับฟอร์มและการคงค่าหลัง error ผ่านโดยไม่แก้: `core-4f-auth-errors`, `core-4h-auth-reason`, `core-20d-return-window`, `core-23c-account-forms`, `core-52-checkout-guards`,
   `core-73-register-existing-email`, `core-79-login-link-mobile`, `core-40-discount-action-race`, `affiliate-portal*.spec.ts` และทุก spec ที่ grep พบ testid ในกฎ 32e
@@ -508,7 +510,7 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
   Then ทุกช่องผ่านเกณฑ์เดียวกับ AC-28 และ placeholder = ค่าในตาราง (`toHaveAttribute`) หรือไม่มี attribute; 12a: ช่องเบอร์โทรของ `profile-phone`/`add-address`/`edit-address-modal`/`profile-billing-address` มี `type="tel"` และ `autocomplete="tel"`;
   12b: เมื่อกด `add-discount-button` → `discount-input-label` อยู่เหนือ `discount-input` และเมื่อ `promotion-error` แสดงขณะช่องเปิด `discount-input` มี `aria-describedby` ที่อ้าง id ของ `promotion-error`;
   12c: `return-item-quantity`/`return-item-reason` ทุกแถวมี label ของตัวเองที่ `labels[0]` ชี้ถูกแถว (id ไม่ซ้ำ), `group-quantity`/`group-address-select`/`group-shipping-option` มี label เหนือช่อง;
-  ทุก `<select>` ของ task (12a `billing-country-code-select`, `country-select`; 12b `shipping-country-select`, `billing-country-select`; 12c ทุกตัวข้างต้น) มีรายการ `[value, ข้อความ, disabled]` ของ option
+  ทุก `<select>` ของ task (12a `billing-country-code-select`, `country-select`; 12b `shipping-country-select`, `billing-country-select` — **select ประเทศแทนด้วยรอบ 50 AC-63**; 12c ทุกตัวข้างต้น) มีรายการ `[value, ข้อความ, disabled]` ของ option
   เท่ากับที่วัดบน commit ฐาน (spec ผ่านบน commit ฐานด้วย — กฎ 31a; `group-shipping-option` มี option ว่าง disabled ตัวเดียว, `group-quantity`/`group-address-select` ไม่มี)
 - AC-35 (SFUI-13, กฎ 26, 28) ☑ #610 static `e2e/sfui-13-form-guard.unit.spec.ts`: ทุก JSX `<input` (ยกเว้น `type="hidden"`), `<select`, `<textarea`, `<Input` ของ `@/components/ui/input` ใน `src/modules/**`, `src/app/**` (ไม่ใช่ test)
   อยู่ใน `common/components/{input,native-select,checkbox}` หรือตรงคู่ "ไฟล์ + element" ในตาราง allow-list ของกฎ 26 (test เก็บตารางเดียวกันเป็นค่าคงที่ — ระบุ testid/`type`/`name` ต่อไฟล์;
@@ -616,19 +618,20 @@ Data model / Workflows / API routes: none · Admin UI: none (dashboard ของ
         (คืนสินค้า `quantity:`/`reason:`, `billing-country-code-select`, `country-select` ใน add/edit address) เก็บค่าปัจจุบันใน state จาก `onValueChange` (เริ่มจาก `defaultValue`;
         ยังส่ง `defaultValue` + `name` ให้ `Select` ตามเดิม) แล้วคำนวณ children และ `data-value` ของ trigger จาก state นั้น — ข้อความบน trigger ต้องตรงค่าใน `FormData` เสมอ;
         `FieldError` (กฎ 43); `id` จาก `useId()`; ไม่มี label ที่มองเห็น → ไม่มี `Field` และ `SelectTrigger aria-label` ไทย; className ที่ส่งเข้า part ของ `ui/` เป็น layout เท่านั้น (`w-full`/`w-auto`) — กฎ 28
-    (c) **ส่วนที่เขียนเองได้ — เท่านี้** (ADR-033 ข้อ 2): (1) error ระดับช่อง = ขยาย `useFieldError` เดิมใน `common/components/input/index.tsx` (กฎ 43); (2) กัน form reset ทับค่า controlled
+    (c) **(ข้อ (2) และ (3) — `CountrySelect` + กัน reset ทับค่าประเทศ — แทนด้วยรอบ 50 กฎ 70: ลบพร้อมช่องประเทศใน SFUI-20b; (1) และ (4) ยังมีผล)**
+        **ส่วนที่เขียนเองได้ — เท่านี้** (ADR-033 ข้อ 2): (1) error ระดับช่อง = ขยาย `useFieldError` เดิมใน `common/components/input/index.tsx` (กฎ 43); (2) กัน form reset ทับค่า controlled
         ใน `checkout/components/country-select` (กฎ 42 — ผู้ใช้เดียว ไม่แยก hook); (3) `CountrySelect` คงไว้เป็น component ของโดเมน (แปลง `region.countries` เป็น `SelectItem`, ผู้ใช้ 4 ฟอร์ม);
         (4) helper e2e (กฎ 48) — ห้ามมี helper/hook/component อื่นสำหรับ select (reviewer ตรวจ; แยกเป็น helper ได้เมื่อมีผู้ใช้จริง ≥ 2 และระบุเหตุผลใน PR)
-41. (D2) ค่า `""` = ยังไม่เลือก แสดง placeholder (trigger มี `data-placeholder`); item = option เดิมที่ value ไม่ว่าง ลำดับ/ข้อความ/disabled เดิม; placeholder เดิมคงข้อความ
+41. **(ส่วนประเทศ — placeholder `เลือกประเทศ`, option ของ `billing-country-code-select` — แทนด้วยรอบ 50 กฎ 70 เมื่อ SFUI-20b merge)** (D2) ค่า `""` = ยังไม่เลือก แสดง placeholder (trigger มี `data-placeholder`); item = option เดิมที่ value ไม่ว่าง ลำดับ/ข้อความ/disabled เดิม; placeholder เดิมคงข้อความ
     (`เลือก...`, `เลือกประเทศ`, `จำนวน`, `เลือกเหตุผล`, `เลือกวิธีจัดส่ง`); `<option value="">-</option>` ของ `billing-country-code-select` ตัดออก; `placeholder={false}` เลิกใช้ (ช่องที่ไม่เคยมี option ว่างมีค่าเสมอ)
-42. (D4) ใน `<form>`: `FormData` ชื่อ/ค่าเดิม (กฎ 13/33a) ผ่าน select ซ่อนของ Radix (`name`, `required`, `disabled`, `autoComplete`); uncontrolled ใช้ `defaultValue`;
+42. **(ท่อน "controlled คงค่าปัจจุบันเมื่อฟอร์ม reset … กันใน `CountrySelect`" แทนด้วยรอบ 50 กฎ 70 — ไม่มี select ประเทศแล้ว (SFUI-20b); ส่วนอื่นยังมีผล)** (D4) ใน `<form>`: `FormData` ชื่อ/ค่าเดิม (กฎ 13/33a) ผ่าน select ซ่อนของ Radix (`name`, `required`, `disabled`, `autoComplete`); uncontrolled ใช้ `defaultValue`;
     **controlled คงค่าปัจจุบันเมื่อฟอร์ม reset** (React 19 reset หลัง action — spec 01 กฎ 110d): `onValueChange` ของผู้เรียกไม่ถูกเรียกจาก reset — กันใน `CountrySelect` (controlled ในฟอร์มมีเฉพาะ
     ประเทศของ checkout); เลิก hack `defaultSelected`; `onValueChange(value: string)` แทน `onChange` แบบ event (ผู้เรียกปรับเอง)
 43. (D3 — แทนกฎ 32 ส่วน `<select>`) `useFieldError` (export เดิม) ขยายให้รับ select: `invalid` ของ select ซ่อน (listener แบบ capture บน element ของ `Field`) → `preventDefault()`,
     `<t>-error` (`FieldError`) = `fieldErrorMessage(validity, { label, control: "select" })` (`กรุณาเลือก<label>`), `Field data-invalid` + `SelectTrigger aria-invalid="true"` (ตาม docs) + `aria-describedby` อ้าง id ของ error,
     focus trigger ของช่องแรกที่ผิดตามลำดับ DOM (กฎ 32c); ค่าเปลี่ยนจน valid → error/`aria-invalid` หาย; prop/ค่า `error` ของผู้เรียกแสดงแบบเดียวกัน; ไม่เขียน logic ข้อความซ้ำ
-    (ใช้กับ select ที่ `required` ทุกตัว: ประเทศ 4 ฟอร์ม + `billing-country-code-select`)
-44. a11y: trigger `role="combobox"` ชื่อที่เข้าถึงได้ = ข้อความ label (ไม่มี `*`) หรือ `aria-label`; `aria-required="true"` เมื่อ `required`; คีย์บอร์ดตามกฎ 12; disabled → trigger `disabled`
+    (ใช้กับ select ที่ `required` ทุกตัว: ประเทศ 4 ฟอร์ม + `billing-country-code-select` — **รายการนี้แทนด้วยรอบ 50 กฎ 70** (select ประเทศถูกลบใน SFUI-20b); `useFieldError` สำหรับ select ยังมีผลกับ select `required` ที่เหลือ/ที่เพิ่มในอนาคต)
+44. (ยังมีผลกับ select ที่เหลือ — ตัวอย่างช่องประเทศไม่มีแล้วหลังรอบ 50 กฎ 70) a11y: trigger `role="combobox"` ชื่อที่เข้าถึงได้ = ข้อความ label (ไม่มี `*`) หรือ `aria-label`; `aria-required="true"` เมื่อ `required`; คีย์บอร์ดตามกฎ 12; disabled → trigger `disabled`
 45. หน้าตา (ADR-033 ข้อ 3): trigger/กล่องรายการ = default ของ shadcn (`h-9` = 36px, `SelectContent` `item-aligned`) — **ยกเว้นกฎ 19/27** เฉพาะ trigger/กล่องรายการ/label ของ control ในตาราง inventory;
     ช่องในแถวเดียวกันสูงเท่ากัน (กฎ 35); PDP: label `จำนวน` เหนือ trigger (`Field` vertical เหมือน `group-quantity`); ตะกร้า: ไม่มี label ที่มองเห็น — `aria-label="จำนวน"`; การ์ดตะกร้า 375px ไม่ล้น (core-47)
 46. มือถือ (Q-R49-1 = ก, owner 2026-11-28): popover ของ Radix ทุกอุปกรณ์; แตะ trigger แล้ว `<t>-options` อยู่ในจอทั้งกล่อง เลือกได้ และหน้าไม่ล้นแนวนอน (AC-17)
@@ -652,21 +655,21 @@ Data model / Workflows / API routes: none · Admin UI: none (dashboard ของ
 ### Business rules — ที่อยู่ไทย (owner 2026-11-28)
 52. ตำบล/แขวง = `address_2` ของ Medusa ทุกที่ (cart shipping/billing, ที่อยู่ของลูกค้า, ที่อยู่ใบเสร็จในโปรไฟล์ = ที่อยู่ของลูกค้า); ช่องใหม่ใน checkout: `name` `shipping_address.address_2` testid `shipping-address-2-input`,
     `billing_address.address_2` testid `billing-address-2-input` (testid เดียวกับช่องของ `profile-billing-address` — คนละหน้า); ช่องบัญชีเดิม (`address-2-input`, `billing-address-2-input`) เปลี่ยน label เป็นตำบล
-53. label/ลำดับ DOM ในทั้ง 5 ฟอร์ม (checkout `shipping-address`, `billing_address`, บัญชี `add-address`, `edit-address-modal`, `profile-billing-address`):
+53. **(ช่อง "ประเทศ" ในลำดับ DOM แทนด้วยรอบ 50 กฎ 70 — เป็น hidden `th` ไม่ render (SFUI-20b); จังหวัดบังคับตามกฎ 69)** label/ลำดับ DOM ในทั้ง 5 ฟอร์ม (checkout `shipping-address`, `billing_address`, บัญชี `add-address`, `edit-address-modal`, `profile-billing-address`):
     ชื่อ → นามสกุล → บริษัท → **`บ้านเลขที่ หมู่ ซอย ถนน`** (`address_1`, placeholder `เช่น 99/1 หมู่ 2 ซ.สุขุมวิท 3 ถ.สุขุมวิท`, `autoComplete="address-line1"`) →
     **`ตำบล/แขวง`** (`address_2`, `autoComplete="address-level3"`) → `เขต/อำเภอ` (`city` — ข้อความเดิม) → `จังหวัด` → `รหัสไปรษณีย์` → ประเทศ → (อีเมล/เบอร์โทรศัพท์ตามฟอร์มเดิม);
     label เดิม `ที่อยู่` (ช่อง `address_1`) และ `อาคาร ห้อง ฯลฯ` เลิกใช้ — `e2e/support/sfui-baseline.json` แก้ได้**เฉพาะ** 3 ข้อความ: `ที่อยู่` (ลบเมื่อ AC-5 ไม่พบแล้ว), `อาคาร ห้อง ฯลฯ` (ลบ),
     `MISSING_ADDRESS_MESSAGE` (ค่าใหม่ตามกฎ 55) + เพิ่ม testid `shipping-address-2-input` (รายการเดียวกับ AC-54)
-54. การจัดวาง (แทนแถวที่อยู่ของตารางกฎ 37b): ≥ 768px คู่ **ชื่อ–นามสกุล, ตำบล/แขวง–เขต/อำเภอ, จังหวัด–รหัสไปรษณีย์** (`md:grid-cols-2`; เลิก `md:grid-cols-[144px_1fr]`)
+54. **(แถว "ประเทศ" แทนด้วยรอบ 50 กฎ 70 — ไม่มีช่องแล้ว; gap ระหว่างช่องเป็น `gap-4` ตามกฎ 73)** การจัดวาง (แทนแถวที่อยู่ของตารางกฎ 37b): ≥ 768px คู่ **ชื่อ–นามสกุล, ตำบล/แขวง–เขต/อำเภอ, จังหวัด–รหัสไปรษณีย์** (`md:grid-cols-2`; เลิก `md:grid-cols-[144px_1fr]`)
     + checkout `shipping-address` อีเมล–เบอร์โทรศัพท์ (เดิม); บริษัท, บ้านเลขที่…, ประเทศ, เบอร์โทรศัพท์ (billing/บัญชี) แถวละช่อง; < 768px แถวละช่อง (กฎ 37a) — คู่ ที่อยู่–บริษัท, ประเทศ–จังหวัด,
     รหัสไปรษณีย์–เขต/อำเภอ, จังหวัด–ประเทศ ของรอบ 48 ยกเลิก
-55. บังคับกรอก (Q-R49-4 — owner 2026-11-28: บังคับ): ช่องตำบล `required` ทั้ง 5 ฟอร์ม และ `REQUIRED_ADDRESS_FIELDS` เพิ่ม `address_2` (ช่องว่างล้วนถือว่าไม่กรอก — spec 01 กฎ 110b);
+55. **(`REQUIRED_ADDRESS_FIELDS` และ `MISSING_ADDRESS_MESSAGE` แทนด้วยรอบ 50 กฎ 69 — เพิ่ม `province` + ข้อความใหม่ เมื่อ SFUI-20a merge; ส่วน "ข้อมูลเดิมยังใช้ได้" ยังมีผล)** บังคับกรอก (Q-R49-4 — owner 2026-11-28: บังคับ): ช่องตำบล `required` ทั้ง 5 ฟอร์ม และ `REQUIRED_ADDRESS_FIELDS` เพิ่ม `address_2` (ช่องว่างล้วนถือว่าไม่กรอก — spec 01 กฎ 110b);
     `MISSING_ADDRESS_MESSAGE` = `กรุณากรอกชื่อ นามสกุล ที่อยู่ ตำบล/แขวง เขต/อำเภอ และรหัสไปรษณีย์ให้ครบ (ช่องที่มีแต่ช่องว่างถือว่ายังไม่ได้กรอก)`;
     **ข้อมูลเดิมที่ไม่มี `address_2` ยังใช้ได้**: order/ที่อยู่เดิมแสดงผลได้ (กฎ 57), group join ด้วยที่อยู่ที่บันทึกไว้ไม่ตรวจเพิ่ม, เลือกที่อยู่เดิมใน checkout → ช่องตำบลว่างแสดง error ระดับช่อง (กฎ 32) จนกรอก
 56. การไหลของข้อมูล: `lib/data/cart.ts` `addressFrom` อ่าน `<prefix>.address_2` (ตัดช่องว่าง/zero-width เหมือนช่องอื่น) แทน `""`; `lib/util/compare-addresses.ts` และ
     `checkout/components/shipping-address` (`SAVED_ADDRESS_FIELDS`, state เริ่มต้น, `setFormAddress`) + `billing_address` (state) มี `address_2`; `lib/data/customer.ts`, `lib/data/group-join.ts`,
     backend `join-group.ts` และ `payment-button` (`line2`) มี `address_2` อยู่แล้ว — ไม่แก้
-57. แสดงผลตามลำดับไทย: helper pure `src/lib/util/address-lines.ts` (ผู้ใช้ ≥ 2) คืน `[ "<address_1> <address_2> <city> <province> <postal_code>" (ข้ามช่องว่าง), "<COUNTRY>" ]`
+57. **(บรรทัด `"<COUNTRY>"` และ "บรรทัดประเทศของ `profile-billing-address`" แทนด้วยรอบ 50 กฎ 71 — ไม่แสดงประเทศ เมื่อ SFUI-20c merge; ลำดับบรรทัดที่อยู่ยังมีผล)** แสดงผลตามลำดับไทย: helper pure `src/lib/util/address-lines.ts` (ผู้ใช้ ≥ 2) คืน `[ "<address_1> <address_2> <city> <province> <postal_code>" (ข้ามช่องว่าง), "<COUNTRY>" ]`
     ใช้ที่ `checkout/components/addresses` (สรุปจัดส่ง/ใบเสร็จ 3 กล่อง), `checkout/components/shipping` (ข้อความที่อยู่), `order/components/shipping-details`, `checkout/components/address-select` (รายการ),
     การ์ด `edit-address-modal`, สรุป `profile-billing-address`, `group-join` (`addressLabel` = ชื่อ + บรรทัดแรก); ไม่มีจุลภาค/ช่องว่างซ้อนเมื่อช่องใดว่าง
     · บรรทัดประเทศของสรุปที่อยู่ใบเสร็จใน `profile-billing-address` คงแสดงชื่อเต็มของประเทศได้ (พฤติกรรมเดิม — reviewer SFUI-18a รับ; จุดอื่นแสดงรหัสประเทศตัวใหญ่)
@@ -685,7 +688,7 @@ Data model / Workflows / API routes: none · Admin UI: none (dashboard ของ
   `sfui-12c-feature-forms`, `sfui-8-floating-label`, `sfui-9e-font` ผ่านโดยแก้ตามกฎ 49 เท่านั้น; ใหม่ `e2e/sfui-16-select.spec.ts` (ส่วน 16a): `return-item-quantity` เปิดด้วย `Enter`, `ArrowDown` + `Enter` เปลี่ยนค่า, `Escape` ไม่เปลี่ยน;
   เลือก `return-item-reason` แล้วข้อความบน trigger = ข้อความของ item ที่เลือก (กฎ 40b);
   trigger สูง 36px; `selectOptions` ของ `group-shipping-option` มี placeholder `เลือกวิธีจัดส่ง` และไม่มี item value ว่าง
-- AC-44 (SFUI-16b) ☑ #616 e2e: checkout/บัญชีผ่านโดยแก้ตามกฎ 49 (`core-store`, `core-38`, `core-52`, `core-63`, `core-23c`, `ev-7c`, `ev-7d`, `thai-ui-checkout`, `affiliate-last-click`, `support/stripe.ts` (~บรรทัด 116 `shipping-country-select` — ไม่ใช่ `fillCard`),
+- AC-44 (SFUI-16b) ☑ #616 (**ส่วนประเทศแทนด้วยรอบ 50 — AC-63; SFUI-20b ลบขั้นที่เลือก/ตรวจประเทศ**) e2e: checkout/บัญชีผ่านโดยแก้ตามกฎ 49 (`core-store`, `core-38`, `core-52`, `core-63`, `core-23c`, `ev-7c`, `ev-7d`, `thai-ui-checkout`, `affiliate-last-click`, `support/stripe.ts` (~บรรทัด 116 `shipping-country-select` — ไม่ใช่ `fillCard`),
   `sfui-11-form-field`, `sfui-11b-field-errors`, `sfui-12a/12b`, `core-4e/4g/4j`, `sfui-9a`) — โดยเฉพาะ: core-52 ค่าประเทศคงหลัง error ของ server (`expectSelected`), sfui-11b `shipping-country-select-error` = `กรุณาเลือกประเทศ`
   และ focus อยู่ที่ trigger, `billing-country-code-select` ไม่มี item `-` (กฎ 41); unit `core-52-address-form-state.test.ts` (controlled + `form.reset()` → ค่าไม่เปลี่ยน, `onValueChange` ไม่ถูกเรียก)
   และ `checkout-thai-polish.test.ts` (placeholder `เลือกประเทศ`) ปรับตาม `CountrySelect` ใหม่
@@ -701,7 +704,7 @@ Data model / Workflows / API routes: none · Admin UI: none (dashboard ของ
   (แทนข้อตรวจ label ของ `NativeSelect` ใน `FIELD_COMPONENTS`); `selectOption(` ใน `e2e/**` มีเฉพาะใน `fillCard` ของ `support/stripe.ts` (select ใน iframe ของ Stripe)
 - AC-48 (ทุก task select) ☑ #614–#622 reviewer: `git diff origin/develop --stat -- apps/backend apps/storefront/package.json pnpm-lock.yaml apps/storefront/src/styles/globals.css apps/storefront/src/components/ui` ว่าง;
   diff ของ e2e เดิมเปลี่ยนเฉพาะบรรทัดตามกฎ 49; AC-5, AC-17, AC-19 ผ่าน; e2e storefront ทั้งชุดผ่านใน CI
-- AC-49 (SFUI-16b, 16c, กฎ 46) ☑ #616, #617 e2e ใน `sfui-16-select.spec.ts`: viewport 390×844 — แตะ `shipping-country-select` และ `product-select-button` → `<t>-options` มองเห็นและ boundingBox อยู่ในจอทั้งกล่อง, เลือก item ได้, `scrollWidth <= innerWidth`
+- AC-49 (SFUI-16b, 16c, กฎ 46) ☑ #616, #617 e2e ใน `sfui-16-select.spec.ts`: viewport 390×844 — แตะ `shipping-country-select` (**แทนด้วยรอบ 50: ใช้ select อื่นในฟอร์ม checkout ไม่ได้แล้ว → SFUI-20b ย้ายขั้นนี้ไปที่ `shipping-address-select` เมื่อมีที่อยู่ที่บันทึกไว้**) และ `product-select-button` → `<t>-options` มองเห็นและ boundingBox อยู่ในจอทั้งกล่อง, เลือก item ได้, `scrollWidth <= innerWidth`
 - AC-50 (SFUI-18a, กฎ 56–57) ☑ #620 unit: `src/lib/util/address-lines.test.ts` ลำดับครบ/ข้ามช่องว่าง (ไม่มี `,` หรือช่องว่างซ้อน); `compare-addresses` ต่างกันแค่ `address_2` → `false`;
   `addressFrom` (ใน `core-63-address-invisible.test.ts`) ส่ง `address_2` ที่ตัดช่องว่าง/zero-width แล้ว (เดิมคาด `""`)
 - AC-51 (SFUI-18a) ☑ #620 e2e ใหม่ `e2e/sfui-18-thai-address.spec.ts`: ที่อยู่ที่บันทึกไว้มี `address_2` (สร้างผ่าน API) → checkout เลือกจาก `shipping-address-select` แล้วส่ง → `cart.shipping_address.address_2` = ค่านั้น (API);
@@ -709,7 +712,7 @@ Data model / Workflows / API routes: none · Admin UI: none (dashboard ของ
   group join ด้วยที่อยู่ที่มี `address_2` → cart ของกลุ่มมี `address_2`
 - AC-52 (SFUI-18b, กฎ 52–54) ☑ #621 e2e (ใน `sfui-18-thai-address.spec.ts`): ทั้ง 5 ฟอร์ม — label ของ `address_1` และตำบลตามกฎ 53 (`expectThai`), ลำดับ DOM ของ testid ตามกฎ 53 (`compareDocumentPosition`),
   กรอกตำบลแล้วบันทึก → ค่าใน API (cart, `/store/customers/me/addresses`, ที่อยู่ใบเสร็จของโปรไฟล์) = ค่าที่กรอก; จัดวาง 375/767 แถวละช่อง, 768/1280 คู่ตามกฎ 54 (เกณฑ์ AC-37) — แก้ `sfui-12a/12b` ส่วน AC-37 ให้ตรงตารางใหม่
-- AC-53 (SFUI-18c, กฎ 55) ☑ #622 unit `address-required` + `error-message.test.ts`: `address_2` ว่าง/ช่องว่างล้วน → missing, ข้อความใหม่; e2e: ส่งโดยตำบลว่าง → `shipping-address-2-input-error` = `fieldErrorMessage` จาก label จริง;
+- AC-53 (SFUI-18c, กฎ 55) ☑ #622 (**ข้อความ `MISSING_ADDRESS_MESSAGE` แทนด้วยรอบ 50 — กฎ 69, AC-62**) unit `address-required` + `error-message.test.ts`: `address_2` ว่าง/ช่องว่างล้วน → missing, ข้อความใหม่; e2e: ส่งโดยตำบลว่าง → `shipping-address-2-input-error` = `fieldErrorMessage` จาก label จริง;
   ตำบลเป็นช่องว่างล้วน → `address-error-message` = `MISSING_ADDRESS_MESSAGE`; e2e เดิมที่กรอกฟอร์มที่อยู่เพิ่มบรรทัดกรอกตำบล (เพิ่มเท่านั้น — ข้อยกเว้นดู AC-54)
 - AC-54 (SFUI-18a/18b/18c) ☑ #620–#622 reviewer: `apps/backend/**` ไม่ถูกแก้; `sfui-baseline.json` เปลี่ยนเฉพาะรายการของกฎ 53: ข้อความ `ที่อยู่`, `อาคาร ห้อง ฯลฯ`, `MISSING_ADDRESS_MESSAGE`
   และ testid ใหม่ `shipping-address-2-input`; diff ของ e2e ใน 18c เป็นบรรทัดเพิ่ม (กรอกตำบล) เท่านั้น ยกเว้น flag บังคับของช่องตำบลในตาราง AC-37 (18c แก้ 4 บรรทัดให้ตรงกฎ 55 — reviewer รับ)
@@ -764,6 +767,235 @@ builder รัน e2e **ทุก** spec ที่อ้างหน้าที
   ถ้าใช้จะแทน `useFieldError` ได้ แต่ต้องเขียนฟอร์มทุกตัวใหม่และ e2e การคงค่าหลัง error (CORE-4f/4h/20d/23c/52) เสี่ยง — **ไม่เลือกในรอบนี้** (ADR-032 D1 ค เดิม); **เสนอ คงไม่ใช้** · ถาม owner ว่ายืนยันไหม
 - ข้อเสนอของ planner ที่ owner แย้งได้ (ไม่ใช่คำถามบังคับ): label `บ้านเลขที่ หมู่ ซอย ถนน` + placeholder ตัวอย่าง, ป้าย `เขต/อำเภอ` คงข้อความเดิม, คู่ช่องใหม่ (กฎ 54), บริษัทอยู่ก่อนบ้านเลขที่,
   รูปแบบสรุปที่อยู่บรรทัดเดียวตามลำดับไทย (กฎ 57), ตัด option `-` ของประเทศในที่อยู่ใบเสร็จ (กฎ 41)
+
+## ส่วน consistency + ที่อยู่ (รอบ 50 — owner 2026-11-28, ก่อน release v0.4.0)
+Status: accepted (owner 2026-11-28 — ตัดสินทุกข้อก่อนเขียน; ADR-034 accepted) · spec พร้อม — task SFUI-19a..22 ☐ · **release v0.4.0 (#603) พักจนรอบ 50 merge ครบ** (owner 2026-11-28)
+Goal (owner's words, 2026-11-28): "ช่องจังหวัดต้องบังคับกรอก", "ซ่อนช่องประเทศ ส่ง th (เปิดขายแค่ไทย) และซ่อนบรรทัดประเทศในสรุปที่อยู่", "ทุกปุ่มขนาดเท่ากัน = default ของ shadcn รวมปุ่มจ่ายเงิน
+และลิงก์สลับ login/สมัคร", ตรวจ consistency ทั้งร้านบน browser จริงแล้วแก้ — "ใช้ค่ามาตรฐานของ component shadcn ที่ติดตั้ง ไม่แก้โดยไม่จำเป็น; ถ้า shadcn มี component ให้ `shadcn add` และประกอบตาม docs";
+gap ฟอร์มค่าเดียว 16px; `h1` ทุกหน้าขนาดเดียว (ถอด `uppercase`, hero คงได้); ซ่อนตัวเลือก region ในเมนูข้างเมื่อมีประเทศเดียว; รวมใน v0.4.0
+Out of scope: `apps/backend/**` · แก้ไฟล์ใน `src/components/ui/*` (เพิ่มได้เฉพาะไฟล์ใหม่จาก `shadcn add` ตามกฎ 64) · `package.json`/lockfile · สไตล์ภายใน iframe ของ Stripe · หน้าใหม่/flow ใหม่ ·
+รายการ "ควรพิจารณา" ที่ไม่รวม (ตาราง "ไม่รวม" ด้านล่าง) · autocomplete/รายการจังหวัดแบบเลือก (จังหวัดยังเป็นช่องพิมพ์)
+อินพุต: audit ของ qa บน prod build ของ develop `523056bb` (1280×800 + 390×844, `getComputedStyle`) + คำตัดสิน owner 2026-11-28 · ทางเลือก: ADR-034
+
+### What Medusa already gives us
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| ปุ่ม/แบ่งหน้า/toggle/checkbox/ช่องค้นหาของ storefront | ไม่มี (Medusa ไม่มี UI storefront; medusajs.com/integrations ไม่มี plugin UI storefront) — shadcn registry 4.23.1: `button`, `checkbox`, `input`, `input-group`, `dialog`, `sheet`, `accordion`, `select` **มีแล้ว**; `pagination`, `toggle-group` (+ `toggle`) ยังไม่ติดตั้ง | **ใช้** ของ `ui/` ตาม default; **`shadcn add pagination toggle-group`** (กฎ 64) — ไม่มี component กลางใหม่ |
+| ประเทศของที่อยู่ | Address ของ Medusa (`country_code`) + region ปฏิเสธประเทศนอก region | ส่ง `th` คงที่ผ่าน hidden input (กฎ 70) — ไม่แก้ backend |
+| จังหวัด | Address ของ Medusa มี `province` (string) | as-is — บังคับฝั่ง storefront (กฎ 69) |
+| ส่งที่อยู่ให้ Stripe | `payment-button` ส่ง `state = province`, `country = country_code` อยู่แล้ว | as-is |
+
+Data model / Workflows / API routes: none · Admin UI: none · Storefront pages: ไม่มีหน้าใหม่ — หน้าตาเปลี่ยนตามตาราง inventory
+
+### Inventory สิ่งที่ต้องแก้ (ณ `523056bb`; path ใต้ `apps/storefront/src/`, บรรทัดตาม audit)
+| # | Task | ไฟล์:บรรทัด | testid / ที่ผิด (ค่าที่วัด) | แก้เป็น |
+|---|---|---|---|---|
+| 1 | 19a | `modules/checkout/components/shipping/index.tsx:371-373` | `submit-delivery-option-button` 48px (`lg` + `h-12`, className `mt` พิมพ์ผิด) | `Button` default (กฎ 59) |
+| 2 | 19a | `modules/checkout/components/payment/index.tsx:392-394` | `submit-payment-button` 48px | default + พิสูจน์ Stripe (กฎ 61) |
+| 3 | 19a | `modules/checkout/components/payment-button/index.tsx:265,310`; `modules/checkout/components/promptpay-payment/index.tsx:73,307` | `submit-order-button` (บัตร/พร้อมเพย์) และปุ่มของพร้อมเพย์ 48px | default |
+| 4 | 19a | `modules/order/components/order-pay/pay-buttons.tsx:42-43,136-137` | `order-pay-card-button`, `order-pay-promptpay-button` 48px | default |
+| 5 | 19a | `modules/layout/components/cart-dropdown/index.tsx:284`; `modules/checkout/components/refunded-go-to-cart/index.tsx:14` | `go-to-cart-button` 48px; ไปตะกร้าหลังคืนเงิน `lg` + `h-12` | default |
+| 6 | 19a | `modules/cart/templates/summary.tsx:33`; `modules/cart/components/sign-in-prompt/index.tsx:17` | `checkout-button` 40px; ปุ่มเข้าสู่ระบบ `h-10` | default |
+| 7 | 19a | `modules/products/components/product-actions/index.tsx:310` | `add-product-button` 40px (ปุ่มมือถือ `mobile-cart-button` 36px) | default |
+| 8 | 19a | `modules/account/components/address-card/add-address.tsx:188`, `edit-address-modal.tsx:257` | `cancel-button` 40px คู่ `save-button` 36px | default |
+| 9 | 19a | `modules/evoucher/components/voucher-copy-button/index.tsx:12` → `modules/common/components/copy-button/index.tsx:86` | `voucher-copy-button` 32px (`sm` จาก prop legacy `small`/`medium`) | ลบ prop `size` ของ `CopyButton`, default |
+| 10 | 19a | `modules/group-buy/components/group-page/group-join.tsx:202-203` | ปุ่ม ghost `sm` 32px | ghost default |
+| 11 | 19a | `modules/account/components/account-info/index.tsx:81-82` | `edit-button` `w-[100px] min-h-[25px]` padding 4px 16px | default (ไม่มี className ขนาด) |
+| 12 | 19a | `modules/shipping/components/free-shipping-price-nudge/index.tsx:216`; `modules/layout/components/cart-mismatch-banner/index.tsx:45` | ปุ่ม icon รูปทรงเอง; ghost `p-0` | `size="icon"` / ghost default |
+| 13 | 19a | `styles/globals.css` (`@utility contrast-btn`) | ไม่มีผู้ใช้ | ลบ (กฎ 62) |
+| 14 | 19b | `modules/order/templates/order-details-template.tsx:46-47` | `order-return-button` 42px ขอบเอง | `Button asChild variant="outline"` + ลิงก์ |
+| 15 | 19b | `modules/account/components/login/index.tsx:90-95`; `modules/account/components/register/index.tsx:99,147-152` | `login-to-register-button`, `register-to-login-button`, `register-login-link` 44px 12px underline | `Button variant="link"` default (กฎ 63) |
+| 16 | 19b | `modules/checkout/components/addresses/index.tsx:64-67`; `shipping/index.tsx:168-171`; `payment/index.tsx:290-293,379`; `discount-code/index.tsx:138-142,231` | `edit-address-button`, `edit-delivery-button`, `edit-payment-button` 22.4px hover ต่างกัน; `add-discount-button` | `Button variant="link"` default |
+| 17 | 19b | `modules/account/components/address-card/edit-address-modal.tsx:115-126` | `address-edit-button`, `address-delete-button` 20px 12px outline ของ browser | `Button variant="ghost"` default |
+| 18 | 19b | `modules/common/components/delete-button/index.tsx:54-57` | `product-delete-button`, `cart-item-remove-button` | `Button variant="ghost"` (`size="icon"` เมื่อไม่มีข้อความ) |
+| 19 | 19b | `modules/account/components/account-nav/index.tsx:110-114,181-184`; `app/[countryCode]/(main)/affiliate/layout.tsx:46` | `logout-button` กับ `affiliate-logout` หน้าตาต่างกัน | ทั้งคู่ `Button variant="ghost"` default |
+| 20 | 19b | `modules/account/components/overview/index.tsx:125-127` | `open-order-button` icon ดิบ 16px | `Button variant="ghost" size="icon"` (+ `asChild` ถ้าเป็นลิงก์) |
+| 21 | 19c | `modules/search/components/search-form/index.tsx:24-39` | `search-query-input` `<input>` ดิบ 40px; `search-submit` 40px `bg-black` | `Input` + `Button` ตามตัวอย่าง docs "Input with button" (กฎ 65) |
+| 22 | 19c | `modules/store/components/store-search-box/index.tsx:43-67` | `store-search-input` 46.4px ไม่มีกรอบ; `store-search-clear` 15px | `InputGroup` + addon icon + `InputGroupButton size="icon-xs"` (กฎ 65) |
+| 23 | 19c | `modules/store/components/store-hits/pagination.tsx:17-36`; `modules/store/components/pagination/index.tsx:36` | `product-pagination` และแบ่งหน้าของ orders/หมวด 28.8px 18px | `shadcn add pagination` (กฎ 66) |
+| 24 | 19d | `modules/store/components/store-refinements/option-refinements.tsx:109-119`; `refinement-list/options-picker/index.tsx:118-122` | `option-refinement` 40px 12px | `shadcn add toggle-group` (กฎ 67) |
+| 25 | 19d | `modules/store/components/store-refinements/current-refinements.tsx:85,107` | `clear-refinements` ลิงก์เอง; `remove-refinement` chip `h-8` | `Button variant="link"`; `Button variant="outline"` default |
+| 26 | 19d | `modules/store/components/store-refinements/refinement-group.tsx:36-39`, `on-sale-toggle.tsx:25-28` | `refinement-<attribute>`, `on-sale-toggle` checkbox native 13px | `ui/checkbox` + `Field orientation="horizontal"` (กฎ 67) |
+| 27 | 19d | `modules/products/components/product-tabs/accordion.tsx:38`; `option-refinements.tsx:96` | `AccordionTrigger` override `px-1 py-1.5` (32px) และ `py-3` (44px) | `AccordionTrigger` default (กฎ 68) — จาก "ควรพิจารณา" |
+| 28 | 20a | ฟอร์มที่อยู่ 5 ตัว (`checkout/components/{shipping-address,billing_address}`, `account/components/{address-card/add-address,address-card/edit-address-modal,profile-billing-address}`) + `lib/util/address-required.ts` | จังหวัดไม่บังคับ (UI + server) | บังคับ (กฎ 69) |
+| 29 | 20b | ฟอร์มที่อยู่ 5 ตัว + `modules/checkout/components/country-select/` | ช่องประเทศ (modal เพิ่มที่อยู่ส่งค่าว่าง → "กรุณาเลือกประเทศ") | hidden `th`, ลบ `CountrySelect` ของ checkout (กฎ 70) |
+| 30 | 20c | `lib/util/address-lines.ts` + ผู้ใช้ 7 ไฟล์ (กฎ 57) | สรุปที่อยู่มีบรรทัดประเทศ (checkout review แสดง "TH") | ไม่มีบรรทัดประเทศ (กฎ 71) |
+| 31 | 20c | `modules/layout/components/side-menu/index.tsx:93-107`; `modules/layout/components/country-select/index.tsx:83-84` | ตัวเลือก region แสดง "Thailand" ตัวเลือกเดียว, dropdown ทับข้อความที่ 390px, trigger override 28px | ซ่อนเมื่อ ≤ 1 ประเทศ + ถอด override (กฎ 72) |
+| 32 | 21a | `shipping-address/index.tsx:142,239`; `billing_address/index.tsx:34`; `add-address.tsx`/`edit-address-modal.tsx` (`gap-2` + `gap-y-2` :95/:154); `profile-billing-address:126`; `profile-name:62`; `profile-phone:60`; `profile-password:43`; `login:52`; `register:48`; `discount-code:157` | gap ระหว่างช่อง 8px/16px ปน (`gap-2`, `gap-y-2`, `gap-x-4 gap-y-2`) | `gap-4` (16px) ทุกฟอร์ม (กฎ 73) |
+| 33 | 21a | `modules/checkout/components/error-message/index.tsx:8` (ผู้ใช้ 8 ไฟล์); `add-address.tsx:177`; `edit-address-modal.tsx:246`; `register/index.tsx:95`; `returns/components/return-request-form/index.tsx:150,158`; `group-join.tsx:134,215,290` | error ระดับฟอร์ม `text-rose-500` 12–14px | `text-sm text-destructive` (กฎ 74) |
+| 34 | 21a | `modules/checkout/components/address-select/index.tsx:45-47` | `shipping-address-select` 46px `px-16` | `SelectTrigger` default (กฎ 75) |
+| 35 | 21a | `add-address.tsx:86-88`; `edit-address-modal.tsx:144-146`; `layout/components/side-menu/index.tsx:62-68`; `layout/components/search/drawer.tsx:49`; `products/components/product-actions/mobile-actions.tsx:193-195` | ปุ่มปิด overlay เขียนเอง icon 20px (mobile-actions 48×48) | `DialogClose`/`SheetClose asChild` + `Button variant="ghost" size="icon"` (กฎ 76) — จาก "ควรพิจารณา" |
+| 36 | 21b | `<h1` 27 ไฟล์ใน `src/` (ยกเว้น `modules/home/components/hero`) | 16px `uppercase` (auth/verify/affiliate login), 24/36 (affiliate), 30/48 (account/404/search/policy/group), 32/40 (PDP), 32/48 (order) | `text-3xl font-semibold tracking-tight` (กฎ 77) |
+
+**ไม่รวม** (จาก "ควรพิจารณา" ของ audit — ไม่ใช่การถอด override กลับ default และไม่ใช่การใช้ component ของ shadcn ที่ตรงตัว):
+| รายการ audit | เหตุผล |
+|---|---|
+| การ์ดตัวเลือกจัดส่งมีขอบ 1px (`shipping/index.tsx:220` `OPTION_CLASS`) แต่ชำระเงิน `border-0` (`payment-container/index.tsx:44`) | การ์ดเป็น class ของเราเอง ไม่ใช่ default ของ component — การทำให้เหมือนกันคือการออกแบบ → Q-R50-1 |
+| `option-button` บน PDP/group (radio sr-only + label 40px — `option-select.tsx:38-50`) → toggle-group | radio native เป็นส่วนของฟอร์ม no-JS ของ PDP; ToggleGroup ของ Radix ไม่ส่งค่าใน `<form>` (ADR-034 D4 ง) |
+| icon `size-[15px]`/`size={20}` นอกปุ่มที่แปลงในรอบนี้ (`layout/components/search/index.tsx:144` ของ `nav-search-button`, `account-nav/index.tsx:57-117`) | ไม่ใช่ override ของ component (`nav-search-button` ล็อกขนาดด้วย core-50); icon **ใน**ปุ่มที่แปลงแล้วใช้ default `size-4` ของ `Button` (กฎ 60) |
+| "จำนวน: 1" ใน cart dropdown ตัวใหญ่กว่าข้อความ variant | ข้อความธรรมดา ไม่ใช่ component — backlog |
+| `search-input` ใน search drawer 54.4px (`layout/components/search/index.tsx:72`) | แถบค้นหาเต็มกว้างไร้กรอบแบบ `CommandInput` — เปลี่ยนเป็น `command` = ออกแบบใหม่ (ADR-034 D4 จ) |
+| `nav-menu-button` สูงเต็ม nav 63px; การ์ด `add-address-button` 220px | layout/ดีไซน์ตั้งใจ (audit) |
+| ลิงก์ช่องทางติดต่อ ≥ 44px (`contact-channel`, spec 01 CORE-85) | ลิงก์ข้อความ ไม่ใช่ปุ่ม — คงไว้ |
+
+### Business rules (ต่อจากกฎ 57; ADR-034)
+58. ขอบเขต = ตาราง inventory รอบ 50. **ยกเว้นกฎ "คง computed style" (กฎ 19, 22, 27 และบทเรียน CLAUDE.md เรื่องงานย้าย class) เฉพาะ element ในตาราง** — ค่าที่ test ใหม่ assert
+    = ค่าที่ component ของ shadcn render จริงบน build ของ branch (`getComputedStyle`) ไม่ใช่ค่าจากชื่อ class; ส่วนอื่นของหน้ายังอยู่ใต้กฎ 19; e2e เดิมแก้ได้เฉพาะตามกฎ 78
+59. (ADR-034 D1) ทุก `Button` (`@/components/button` หรือ `@/components/ui/button`) และ `buttonVariants(...)` ใน `src/modules/**`, `src/app/**`, `src/components/*.tsx` (นอก `ui/`):
+    prop/argument `size` ไม่มี หรือเป็น `"default"` หรือ `"icon"` (ปุ่มที่มีแต่ icon — ต้องมี `aria-label` ไทย) เท่านั้น; className/argument ที่ส่งเข้า **ห้ามมี** token ขนาด:
+    `h-*`, `min-h-*`, `max-h-*`, `size-*`, `w-[…]`, `min-w-*`, `p-*`/`px-*`/`py-*`/`pt-*`/`pr-*`/`pb-*`/`pl-*`, `text-{xs,sm,base,lg,xl,2xl,…}`/`text-[…]`, `leading-*`, `rounded-*`, `font-*` (รวมแบบมี prefix breakpoint/state เช่น `md:h-10`, `has-[>svg]:px-2`)
+    — ยอมเฉพาะ layout ภายนอก (`w-full`, `w-auto`, `w-fit`, `flex-1`, `grow`, `shrink-0`, `self-*`, `m*-*`, `order-*`, `hidden`/`flex` ตาม breakpoint, `justify-*` ของเนื้อหา) และสีตามบทบาทที่ไม่เปลี่ยนขนาด;
+    ข้อยกเว้นเดียว: **`InputGroupButton size="icon-xs"` ภายใน `InputGroupAddon`** (pattern ของ docs `input-group` — ปุ่มแสดงรหัสผ่าน `<t>-toggle`, `store-search-clear`); `InputGroupButton` size อื่นห้ามใช้;
+    wrapper `@/components/button` (`isLoading`) ใช้ได้ตามเดิม
+60. (D3) ปุ่ม/ลิงก์ที่ไม่ใช่ shadcn ในตาราง inventory: action → `<Button>`; navigation → `<Button asChild>` ครอบลิงก์ (`LocalizedClientLink`/`<a>` — ได้ `data-slot="button"`, ลิงก์ไม่ซ้อนปุ่ม spec 01 กฎ 146b);
+    variant ตามบทบาท: การกระทำหลักของขั้นตอน `default`; รอง/ย้อนกลับ/ยกเลิก `outline`; การกระทำในบรรทัดข้อความ (แก้ไข, สลับฟอร์ม, ล้างทั้งหมด, เพิ่มโค้ดส่วนลด) `link`; ในรายการ/แถว (แก้/ลบที่อยู่, ออกจากระบบ) `ghost`;
+    icon อย่างเดียว `ghost` + `size="icon"`; icon ใน `Button` ไม่ส่ง `size-*` (ใช้ default `size-4` ของ `buttonVariants`); testid/`aria-*`/ข้อความไทย/`onClick`/`href`/`type`/`disabled` คงเดิม
+61. (D2) ปุ่มจ่ายเงินทุกตัว (`submit-payment-button`, `submit-order-button` บัตร/พร้อมเพย์, `order-pay-card-button`, `order-pay-promptpay-button`) สูง 36px; **ห้ามแก้ปัญหาคลิกตก iframe ด้วยความสูงปุ่ม**:
+    หลังกรอกบัตรใน Stripe Elements `document.elementFromPoint(จุดกลางของปุ่ม)` ต้องเป็นปุ่มหรือลูกของปุ่ม; ถ้าไม่ใช่ ให้ปรับระยะห่าง/layout รอบปุ่ม (เช่น `mt-*` ของ container) แล้วบันทึกใน PR
+    หรือหยุดรายงาน planner — ไม่ใส่ `h-*` กลับ
+62. `@utility contrast-btn` ใน `src/styles/globals.css` ถูกลบ (ไม่มีผู้ใช้ — ข้อยกเว้นของกฎ 36/51 เฉพาะ SFUI-19a เฉพาะบล็อกนี้); `e2e/sfui-button-lg.unit.spec.ts` ถูกลบและแทนด้วย guard ของ AC-55
+63. **ประกาศการแทนถ้อยคำ (ไม่ลบถ้อยคำเดิม — มีผลตั้งแต่ task ที่ระบุ merge)**:
+    (a) spec 09 **กฎ 20** ท่อน "`large` → `lg` + `h-12` คงความสูง 48px ของ develop …" → "`small|medium|large` → size `default` (36px) ทั้งหมด (กฎ 59)" — SFUI-19a
+    (b) spec 01 **กฎข้อ 137** "`register-login-link` มีพื้นที่แตะสูง ≥ 44px" และ **กฎข้อ 146 (a)** "≥ 44px ที่ 375px" → "เป็น `Button variant="link"` size default สูง 36px";
+        **AC-178** / **AC-187** ท่อน `boundingBox().height ≥ 44` → `= 36` (ส่วนเติมอีเมล, testid ไม่ซ้ำ, `register-button` = 0 ตัว ยังมีผล) — SFUI-19b
+    (c) spec 09 กฎ 40c, 41–44, 53–55, 57 และ AC-28, AC-32, AC-34, AC-44, AC-49, AC-53 ส่วนประเทศ/ช่องบังคับ/บรรทัดประเทศ → กฎ 69–72 — SFUI-20a/20b/20c (หมายเหตุในแต่ละข้อ)
+64. (D4) component ใหม่ใน `ui/` มาจาก `pnpm dlx shadcn@4.23.1 add pagination` (SFUI-19c) และ `pnpm dlx shadcn@4.23.1 add toggle-group` (SFUI-19d — ได้ `toggle` + `toggle-group`) **เท่านั้น**;
+    ตัวที่มีแล้ว (`button`) ต้อง "No changes." (`--dry-run --diff`); hash ของไฟล์ใหม่ใน `e2e/support/shadcn-ui.json` (AC-19); ไม่รับการแก้ `package.json`/lockfile/`globals.css` ที่ CLI เสนอ
+    (ต้องการ dependency ใหม่ → หยุดรายงาน planner); ไม่ add `switch`, `alert`, `command`, `native-select`, `combobox`, `form`
+65. ช่องค้นหา: (a) `search-form` = ตัวอย่าง docs "Input with button": `<Input type="search" id="search-q" name="q" …>` ของ `@/components/ui/input` + `<Button type="submit">` default ใน container `flex gap-2`;
+    ยังเป็น GET form ที่ทำงานเมื่อปิด JS (`role="search"`, `action`, label `sr-only` คงเดิม); (b) `store-search-box` = `InputGroup` → `InputGroupAddon` (icon `Search`) → `InputGroupInput type="search"` (`aria-label` เดิม)
+    → `InputGroupAddon align="inline-end"` → `InputGroupButton size="icon-xs"` `store-search-clear` (`aria-label="ล้างคำค้นหา"`); (c) ช่อง `search-input` ของ drawer คงเดิม (ตาราง "ไม่รวม");
+    (d) แก้ allow-list กฎ 26 + AC-35 (`sfui-13-form-guard.unit.spec.ts`): ลบรายการ `<input type="search">` ของ `store-search-box` และ `search-form`; `search/components/search-form/index.tsx` เป็นไฟล์เดียวนอก `src/components/**`
+    และ `common/components/input` ที่ import `@/components/ui/input` ได้ (element `<Input type="search">` `search-query-input` เท่านั้น); `store-search-box` ใช้ `InputGroupInput` (ไม่ใช่ `<input` ใน JSX)
+66. แบ่งหน้า (`Pagination` ของ starter + `SearchPagination` ของ store): `Pagination` (`aria-label="แบ่งหน้า"` ทับค่าอังกฤษ, testid เดิมบน `<nav>`) → `PaginationContent` → `PaginationItem` → `PaginationLink`
+    (`href` = URL ของหน้านั้นจริง: starter `?page=<n>` บน path ปัจจุบัน, store `createURL(page)` ของ `usePagination`; `onClick` → `preventDefault()` + `router.push`/`refine` เดิม; `isActive` บนหน้าปัจจุบัน → `aria-current="page"`;
+    `aria-label` ไทย `หน้า <n>` เดิม — spec 01 กฎ 136c/148c ยังมีผล); จุดไข่ปลาคง `<span aria-hidden="true">` เดิม (ไม่ใช้ `PaginationEllipsis`/`PaginationPrevious`/`PaginationNext` — ข้อความอังกฤษตายตัว);
+    ไม่ส่ง className ขนาดเข้า part ของ `pagination` (ระยะห่าง `mt-12` ของ container ภายนอกคงได้)
+67. ตัวกรองของ store: (a) chip ตัวเลือก (`option-refinement` ทั้งสองไฟล์) = `ToggleGroup type="multiple" variant="outline" spacing={2}` (className layout `flex-wrap` ได้) → `ToggleGroupItem value data-testid="option-refinement"`;
+    `value` ของกลุ่ม = ค่าที่ `isRefined`; `onValueChange(next)` เรียก `refine(v)` **ครั้งเดียว** สำหรับค่าที่ต่างจากเดิม (เพิ่มหรือเอาออก); ข้อความ + จำนวน `(<count>)` เดิม; `aria-pressed` มาจาก Radix;
+    (b) checkbox หมวด/`on-sale-toggle` = ตัวอย่าง docs `Field orientation="horizontal"` → `Checkbox` (`@/components/ui/checkbox`, `checked={isRefined}`, `onCheckedChange={() => refine(…)}` — ไม่อยู่ใน `<form>` จึงไม่ติดเรื่อง reset ของกฎ 20)
+    → `FieldLabel htmlFor`; testid เดิมอยู่บน `Checkbox` root (`role="checkbox"`); ไม่ใช้ `common/components/checkbox` (ตัวนั้นเพื่อฟอร์ม server action); allow-list กฎ 26 ลบสองรายการนี้;
+    (c) `clear-refinements` = `Button variant="link"`, `remove-refinement` = `Button variant="outline"` (icon `X` ไม่มี `size-*`; `title`/`aria-label`/`truncate` ของข้อความเดิม — spec 01 กฎข้อ 149)
+68. `AccordionTrigger` (`product-tabs/accordion.tsx`, `option-refinements.tsx`) ไม่มี className ที่เปลี่ยน padding/ความสูง/ตัวอักษร (ใช้ default ของ shadcn); `AccordionContent` คง className เดิม
+69. (owner — จังหวัดบังคับ) ช่องจังหวัดใน 5 ฟอร์ม (`shipping-province-input`, checkout `billing-province-input`, `state-input` ของ add/edit address, `billing-province-input` ของ `profile-billing-address`) มี `required`
+    (ป้าย `*` ตามกฎ 30; error ระดับช่องตามกฎ 32); `REQUIRED_ADDRESS_FIELDS` = `["first_name", "last_name", "address_1", "address_2", "city", "province", "postal_code"]`;
+    `MISSING_ADDRESS_MESSAGE` = `กรุณากรอกชื่อ นามสกุล ที่อยู่ ตำบล/แขวง เขต/อำเภอ จังหวัด และรหัสไปรษณีย์ให้ครบ (ช่องที่มีแต่ช่องว่างถือว่ายังไม่ได้กรอก)` (ตรงตัว);
+    ข้อมูลเดิมที่ไม่มี `province` แสดงผลได้, group join ด้วยที่อยู่ที่บันทึกไว้ไม่ตรวจเพิ่ม, เลือกที่อยู่เดิมใน checkout → ช่องจังหวัดว่างแสดง error ระดับช่องจนกรอก (เหมือนกฎ 55)
+70. (D5 — owner: ซ่อนประเทศ) ทั้ง 5 ฟอร์ม **ไม่ render ช่องประเทศ** และมี `<input type="hidden">` ชื่อเดิม (`shipping_address.country_code`, `billing_address.country_code`, `country_code` ×3) ค่า `ADDRESS_COUNTRY_CODE`
+    (= `"th"` export จาก `src/lib/util/address-required.ts` — ที่เดียว); state ของ checkout (`formData`/`setFormAddress`) ไม่อ่าน/เขียนประเทศจาก UI; ลบ `modules/checkout/components/country-select/` และ unit ที่ทดสอบมัน
+    (`core-52-address-form-state.test.ts` ส่วน `CountrySelect`, `checkout-thai-polish.test.ts` ข้อ placeholder `เลือกประเทศ`); การ์ด `profile-billing-address` ไม่ประกอบ `Select` ประเทศเอง; คู่ช่อง (กฎ 54) ไม่มีแถวประเทศ;
+    testid `shipping-country-select`, `billing-country-select`, `country-select`, `billing-country-code-select` ไม่มีใน `src/` แล้ว; `useFieldError` สำหรับ select (กฎ 43) และ `e2e/support/select.ts` คงไว้ (select อื่นยังใช้)
+71. (owner — ซ่อนบรรทัดประเทศ) `addressLines(address)` คืน `string[]` ที่มีเฉพาะบรรทัดที่อยู่ตามลำดับไทยของกฎ 57 (`[]` เมื่อทุกช่องว่าง) — ไม่มีบรรทัดประเทศ; ผู้ใช้ 7 ไฟล์ของกฎ 57 ไม่แสดงประเทศ
+    (`address-province-country` ของการ์ดใน `edit-address-modal` ถูกลบ, `<span>{country}</span>` ของ `profile-billing-address` ถูกลบ, checkout review/สรุปจัดส่ง/ใบเสร็จ, `order/components/shipping-details`, `address-select`, `shipping`, `group-join` ไม่มี "TH")
+72. (D6 — owner) เมนูข้าง: รวม `regions.flatMap((r) => r.countries ?? [])` ได้ ≤ 1 ประเทศ → ไม่ render `CountrySelect` ของ layout และ `country-select-arrow`; ≥ 2 → แสดงตามเดิม;
+    `SelectTrigger` ของ `layout/components/country-select` ไม่มี className ขนาด (กฎ 75); `SheetDescription` คงข้อความเดิม (baseline กฎ 10)
+73. (owner — gap) container ที่จัดช่องกรอกของทุกฟอร์มในตาราง inventory ของรอบ 48 (ระดับ grid/flex ของช่อง รวมคู่ `md:grid-cols-2`) ใช้ **`gap-4`** (16px ทั้งแนวตั้ง/แนวนอน) — ไม่มี `gap-2`, `gap-y-*`, `gap-x-*`
+    ปนในระดับช่อง; ไม่ใช้ `FieldGroup` (default `gap-7` ต่างค่าที่ owner เลือก); ระยะภายใน `Field` (label–control–error) เป็นของ shadcn ไม่แก้
+74. error ระดับฟอร์ม (testid ของกฎ 32e + `group-join`, `return-request-form`, add/edit address, register) = `text-sm text-destructive` (สี/ขนาดเท่า `FieldError`): `ErrorMessage` ของ `checkout/components/error-message`
+    เปลี่ยน class เป็น `pt-2 text-sm text-destructive` (ไม่มี `text-xs`/`leading-5`); จุด hard-code ในตาราง inventory ข้อ 33 ใช้ `text-sm text-destructive`; ไม่มี `text-rose-` ใน `src/**` (ไม่ใช่ test); testid/ตำแหน่ง/ข้อความคงเดิม
+75. `SelectTrigger` ทุกตัวใน `src/modules/**` ไม่มี className ขนาด (`h-*`, `px-*`, `py-*`, `text-*` ขนาด) — layout `w-full`/`w-auto` ได้ (กฎ 40b); ใช้กับ `checkout/address-select` และ `layout/country-select`
+76. ปุ่มปิด overlay ในตาราง inventory ข้อ 35 = `DialogClose asChild`/`SheetClose asChild` → `<Button variant="ghost" size="icon" aria-label="<ไทยเดิม>" data-testid="<เดิม>">` + icon `X` (default `size-4`);
+    ยังใช้ `showCloseButton={false}` กับ content ของ `ui/` (ปุ่มในตัวมีข้อความ "Close" — กฎ 3); focus/Escape/คืน focus ตามกฎ 11
+77. (owner — h1) ทุก `<h1` ใน `src/**` ยกเว้น `modules/home/components/hero` มี className ด้าน typography **เท่านี้**: `text-3xl font-semibold tracking-tight` (+ สี `text-foreground` และ layout ภายนอกได้;
+    ไม่มี `uppercase`, `text-[…]`, `text-{xs…2xl}`, `leading-*`, `font-{normal,medium,bold}`) → computed ทุกหน้า font-size 32px (`--text-3xl` ของ theme = 2rem), font-weight 600, letter-spacing และ line-height เท่ากันทุกหน้า,
+    `text-transform: none`; `<h1>` ที่เดิมไม่มี class (เช่น `store-page-title`) ใส่ class เดียวกัน; หัวข้อระดับอื่น (h2/h3) ไม่อยู่ในขอบเขต
+78. testid/ข้อความ/baseline/e2e: testid เดิมคงที่บน element ที่ทำหน้าที่เดิม (ยกเว้นที่กฎ 70/71 ลบ); `e2e/support/sfui-baseline.json` แก้ได้**เฉพาะ**: ลบ testid `shipping-country-select`, `billing-country-select`, `country-select`,
+    `billing-country-code-select`, `address-province-country` และข้อความ `เลือกประเทศ` (20b/20c), ข้อความ `MISSING_ADDRESS_MESSAGE` เป็นค่าใหม่ของกฎ 69 (20a); e2e เดิมแก้ได้เฉพาะไฟล์ที่ task ระบุในตาราง Tasks
+    และเฉพาะ (i) ค่าที่คาดของขนาด/ฟอนต์ที่รอบนี้ตั้งใจเปลี่ยน (`sfui-3d-payment`, `core-79`, `core-90`, `sfui-9a..9e-font`, `sfui-5b-catalog`, `sfui-5c-checkout-heading`, `sfui-6-parity` ถ้าเกี่ยว),
+    (ii) ลบบรรทัดเลือก/ตรวจประเทศ (20b), (iii) เพิ่มบรรทัดกรอกจังหวัด + fixture API ที่อยู่ที่บันทึกไว้เติม `province` (20a — เพิ่มอย่างเดียว), (iv) ตัวโต้ตอบที่ element เปลี่ยนชนิด (checkbox ตัวกรอง, chip, แบ่งหน้า) โดย assertion ผลทางธุรกิจคงเดิม
+79. ปิดรอบ (SFUI-22): ไม่มี JSX `<button` ใน `src/modules/**`, `src/app/**` (ไม่ใช่ test) นอก allow-list ใน guard (ไฟล์ + testid + เหตุผล — เช่น trigger ของ Radix ที่ใช้ `asChild` ไม่ได้);
+    ปุ่มที่ไม่อยู่ใต้กฎขนาด: `RadioGroupItem`, `Checkbox`, `AccordionTrigger`, `SelectTrigger`, `ToggleGroupItem` (36px โดย default อยู่แล้ว), `SheetTrigger` ของ `nav-menu-button`, การ์ด `add-address-button`, `InputGroupButton` `icon-xs`
+
+### Acceptance criteria (ต่อจาก AC-54)
+- AC-55 (SFUI-19a, กฎ 59, 62) static ใหม่ `e2e/sfui-19-button-size.unit.spec.ts` (แทน `sfui-button-lg.unit.spec.ts` ที่ถูกลบ): parse TSX ของ `src/modules/**`, `src/app/**`, `src/components/*.tsx` (นอก `ui/`) —
+  ทุก JSX `<Button`/`<…Close asChild><Button` และ call `buttonVariants(...)` มี `size` ไม่มี/`"default"`/`"icon"`; className (string literal, template, `cn(...)` ที่ครอบ) ไม่มี token ขนาดของกฎ 59;
+  `<InputGroupButton` มี `size="icon-xs"` และเป็นลูกของ `InputGroupAddon`; positive/negative control ในไฟล์ (เช่น `<Button size="lg">`, `<Button className="h-12">`, `buttonVariants({ size: "sm" })`, `<Button className="md:h-10">` → ผิด;
+  `<Button className="w-full mt-4">`, `<Button size="icon" aria-label="ลบ">` → ผ่าน); `globals.css` ไม่มี `contrast-btn`; ไฟล์ `e2e/sfui-button-lg.unit.spec.ts` ไม่มีแล้ว
+- AC-56 (SFUI-19a, กฎ 58–59) e2e ใหม่ `e2e/sfui-19-button-size.spec.ts`: Given viewport `1280×800` และ `390×844` บนชุดหน้า P (หน้าแรก, `/store`, PDP, `/cart` มีสินค้า, cart dropdown เปิด, checkout `step=address|delivery|payment|review`,
+  `/account` overview/profile (เปิด `edit-panel`)/addresses (เปิด modal เพิ่ม/แก้)/orders/order details, order confirmed, หน้าจ่าย order ค้างจ่าย, `/g/<token>`, `/account/vouchers` ที่มี voucher, หน้าคืนเงินแล้วไปตะกร้าถ้าสร้างได้ใน test)
+  When อ่านทุก element ที่มองเห็นและตรง `[data-slot="button"]` Then `getComputedStyle(el).height` = `36px` และ `data-size="icon"` → width = `36px` ด้วย; และ testid ของตาราง inventory ข้อ 1–12 ที่อยู่ในหน้าสูง 36px (±0.5)
+- AC-57 (SFUI-19a, กฎ 61) e2e (Stripe test จริง — CI มี secret): แก้ `sfui-3d-payment.spec.ts` step D-1 → `submit-payment-button` สูง 36px และหลัง `fillCard` (บัตร `4242…`) `elementFromPoint` ที่จุดกลางของปุ่มคือปุ่ม/ลูกของปุ่ม,
+  คลิกแล้ว URL มี `step=review`; ใหม่ (ใน `sfui-19-button-size.spec.ts`): บัตร 3DS (`4000 0027 6000 3184`) → กด `submit-order-button` → challenge → คำสั่งซื้อสำเร็จ; พร้อมเพย์ → กดปุ่มของพร้อมเพย์แล้ว QR แสดง;
+  e2e เดิมที่จ่ายผ่าน `support/stripe.ts` ผ่านโดยไม่แก้ (CI ชุดเต็ม)
+- AC-58 (SFUI-19b, กฎ 60, 63b) e2e: แก้ `core-79-login-link-mobile.spec.ts` และ `core-90-auth-toggle.spec.ts` เฉพาะเกณฑ์ขนาด → ที่ 375×812 `register-login-link`, `login-to-register-button`, `register-to-login-button`
+  มี `data-slot="button"`, `data-variant="link"`, สูง 36px; พฤติกรรมเดิมผ่าน (เติมอีเมลในฟอร์ม login, `register-button` บนหน้า login = 0 ตัว)
+- AC-59 (SFUI-19b, กฎ 60) e2e ใหม่ (ใน `sfui-19-button-size.spec.ts`): ข้อ 14–20 ของตาราง — `order-return-button` เป็น `<a>` ที่มี `data-slot="button"` `data-variant="outline"` (Tab หยุด 1 ครั้ง);
+  `edit-address-button`/`edit-delivery-button`/`edit-payment-button`/`add-discount-button` `data-variant="link"`; `address-edit-button`/`address-delete-button`/`logout-button`/`affiliate-logout` `data-variant="ghost"` และ
+  `logout-button` กับ `affiliate-logout` มี computed `height`/`padding`/`font-size`/`color` เท่ากัน; `product-delete-button`/`cart-item-remove-button`/`open-order-button` `data-size="icon"` 36×36 มี `aria-label` ไทย;
+  ทุกตัวสูง 36px; e2e เดิมที่กดปุ่มเหล่านี้ผ่านโดยไม่แก้
+- AC-60 (SFUI-19c, กฎ 64–66) (1) static: `src/components/ui/pagination.tsx` อยู่ใน `shadcn-ui.json` (AC-19 ผ่าน), `--dry-run --diff` ของ `pagination` และ `button` = "No changes." (บันทึกใน PR); `sfui-13-form-guard` ผ่านตามกฎ 65d;
+  (2) e2e ใหม่ `e2e/sfui-19c-search-pagination.spec.ts`: `search-query-input` `data-slot="input"` สูง 36px และ `search-submit` `data-slot="button"` สูง 36px; ปิด JS แล้วกรอก + submit → URL `/th/search?q=<คำ>`;
+  `store-search-input` อยู่ใน `[data-slot="input-group"]` สูง 36px, พิมพ์แล้ว `store-search-clear` (`data-slot="input-group-button"`, `aria-label` = `ล้างคำค้นหา`) กดแล้วช่องว่าง;
+  `product-pagination` เป็น `nav` `aria-label="แบ่งหน้า"`, ลิงก์หน้า 36×36 มี `href` ของหน้านั้น, หน้าปัจจุบัน `aria-current="page"`, กด `หน้า 2` → ผลลัพธ์ชุดใหม่และ URL มีหน้า 2; แบ่งหน้าของ `/account/orders` กดหน้า 2 → `?page=2`;
+  ไม่มีข้อความ `Previous`/`Next`/`More pages`/`pagination` ใน `textContent`/`aria-label` ของหน้า
+- AC-61 (SFUI-19d, กฎ 64, 67–68) (1) static: `toggle.tsx`, `toggle-group.tsx` ใน `shadcn-ui.json`; allow-list ของ `sfui-13-form-guard` ไม่มีรายการ checkbox ของ `on-sale-toggle`/`refinement-group`; `AccordionTrigger` ในสองไฟล์ไม่มี className ขนาด;
+  (2) e2e ใหม่ `e2e/sfui-19d-refinements.spec.ts` บน `/store`: `option-refinement` เป็น `[data-slot="toggle-group-item"]` สูง 36px, กดแล้ว `aria-pressed="true"` และรายการสินค้าถูกกรอง, กดซ้ำ → `false` และกลับครบ;
+  `refinement-<attribute>`/`on-sale-toggle` เป็น `role="checkbox"` 16×16, คลิก label แล้ว `aria-checked="true"` และกรองจริง; `remove-refinement`/`clear-refinements` สูง 36px กดแล้วลบตัวกรอง;
+  AccordionTrigger ของ PDP tabs และกลุ่มตัวเลือกใน store มี computed padding เท่ากัน; e2e เดิมของตัวกรอง (grep testid เหล่านี้) ผ่านโดยแก้ตามกฎ 78 (iv) เท่านั้น
+- AC-62 (SFUI-20a, กฎ 69) unit: `address-required` — `province` ว่าง/ช่องว่างล้วน/zero-width → missing; `MISSING_ADDRESS_MESSAGE` ตรงตัวกับกฎ 69 (`error-message.test.ts`, `core-63-address-invisible.test.ts` ส่วนข้อความ);
+  e2e (ใน `e2e/sfui-20-address.spec.ts` ใหม่): ทั้ง 5 ฟอร์ม ช่องจังหวัด `required` และ label มี `*`; ส่งโดยจังหวัดว่าง → `<t>-error` = `fieldErrorMessage` จาก label จริง ไม่ส่ง server action;
+  จังหวัดเป็นช่องว่างล้วน → `address-error-message` (checkout) / `address-error` (modal ที่อยู่ในบัญชี) = `MISSING_ADDRESS_MESSAGE` ใหม่ (ค่าจาก import ไม่ hard-code) และ ≠ ข้อความ fallback; e2e เดิมที่กรอกที่อยู่ผ่านโดยเพิ่มบรรทัดกรอกจังหวัด
+- AC-63 (SFUI-20b, กฎ 70) e2e (ใน `sfui-20-address.spec.ts`): ทั้ง 5 ฟอร์ม ไม่มี testid ประเทศเดิมและไม่มี `[role="combobox"]` ภายในฟอร์มที่ label/ชื่อเป็นประเทศ; มี `input[type="hidden"][name="<ชื่อเดิม>"][value="th"]`;
+  checkout ส่งที่อยู่ → `cart.shipping_address.country_code` และ `billing_address.country_code` = `th` (API); modal เพิ่มที่อยู่ (เดิมขึ้น "กรุณาเลือกประเทศ") บันทึกสำเร็จ → ที่อยู่ใน `/store/customers/me/addresses` `country_code` = `th`;
+  แก้ที่อยู่ + ที่อยู่ใบเสร็จของโปรไฟล์ → `th`; static: ไม่มีไดเรกทอรี/การ import `modules/checkout/components/country-select`; unit `address-required` มี `ADDRESS_COUNTRY_CODE === "th"`
+- AC-64 (SFUI-20c, กฎ 71–72) unit `address-lines.test.ts`: คืน `[line]` ไม่มีรหัสประเทศ, ทุกช่องว่าง → `[]`; unit ใหม่ `side-menu` (render จริง): regions รวม 1 ประเทศ → ไม่มี `country-select-button`/`country-select-arrow`, 2 ประเทศ → มี;
+  e2e (ใน `sfui-20-address.spec.ts`): สรุปที่อยู่ของ checkout review (`shipping-address-summary` + ใบเสร็จ), หน้าคำสั่งซื้อ, รายการ `shipping-address-select`, การ์ดที่อยู่, `current-info` ของที่อยู่ใบเสร็จ ไม่มีคำ `TH`/`Thailand`/`ประเทศไทย`
+  (regex คำเต็ม) และไม่มี `address-province-country`; เมนูข้าง (seed มีไทยประเทศเดียว) ไม่มี `country-select-button`; แก้ `sfui-3b-sheet.spec.ts` ขั้นรายการประเทศ → ตรวจว่าไม่แสดง (กฎ 78 (ii))
+- AC-65 (SFUI-21b, กฎ 77) (1) static ใหม่ใน `e2e/sfui-21-consistency.unit.spec.ts`: ทุก `<h1` ใน `src/**` (ไม่ใช่ test, ยกเว้น hero) มี token `text-3xl`, `font-semibold`, `tracking-tight` และไม่มี token typography อื่นของกฎ 77;
+  (2) e2e ใหม่ `e2e/sfui-21-heading.spec.ts`: หน้าที่มี `h1` ในชุด P + login/register/verify/affiliate login/affiliate dashboard (payouts, earnings, profile, programs)/search/policy/404/categories/collections
+  ที่ 1280 และ 390 — computed `font-size` = `32px`, `font-weight` = `600`, `text-transform` = `none`, `letter-spacing` และ `line-height` เท่ากันทุกหน้า; hero คงค่าเดิม (`sfui-5b-catalog` ข้อ hero ไม่แก้)
+- AC-66 (SFUI-21a, กฎ 73–76) (1) static (ใน `sfui-21-consistency.unit.spec.ts`): ไม่มี `text-rose-` ใน `src/**`; container ช่องของไฟล์ในข้อ 32 ไม่มี `gap-2`/`gap-y-`/`gap-x-`; `SelectTrigger` ใน `src/modules/**` ไม่มี className ขนาด;
+  ปุ่มปิดในข้อ 35 เป็น `Button` ภายใต้ `DialogClose`/`SheetClose asChild`; (2) e2e ใหม่ `e2e/sfui-21-forms.spec.ts`: ทุกฟอร์มในตาราง inventory รอบ 48 (เปิด `edit-panel`/`Dialog` ก่อนวัด) container ของช่อง
+  computed `row-gap` = `16px` (และ `column-gap` = `16px` ที่ ≥ 768px สำหรับคู่); error ระดับฟอร์มที่ trigger ได้ (`address-error-message`, `login-error-message`, `register-error`, `promotion-error`, `return-error`)
+  มี `color` = computed color ของ `FieldError` ในหน้าเดียวกัน และ `font-size` = `14px`; `shipping-address-select` สูง 36px; ปุ่มปิด `close-modal-button`/`close-menu-button`/ปุ่มปิด search drawer/mobile actions สูงและกว้าง 36px,
+  `aria-label` ไทย, `Escape` ยังปิด, focus กลับ trigger (กฎ 11)
+- AC-67 (SFUI-22, กฎ 79) (1) static (ใน `sfui-21-consistency.unit.spec.ts`): ไม่มี JSX `<button` นอก allow-list ของกฎ 79; (2) e2e (ใน `sfui-19-button-size.spec.ts` ขยาย): ชุดหน้า P + หน้า login/register/store ที่ 1280 และ 390 —
+  ทุก element ที่มองเห็นและตรง `button, a[data-slot="button"], [role="button"]` ที่ไม่อยู่ในรายการยกเว้นของกฎ 79 สูง 36px (icon 36×36); (3) AC-5, AC-17, AC-19 ผ่าน
+- AC-68 (ทุก task รอบ 50) reviewer: `git diff origin/develop --stat -- apps/backend apps/storefront/package.json pnpm-lock.yaml` ว่าง; `apps/storefront/src/components/ui` มีเฉพาะไฟล์ใหม่จาก CLI ของกฎ 64 (19c, 19d);
+  `globals.css` เปลี่ยนเฉพาะการลบ `contrast-btn` (19a); `sfui-baseline.json` เปลี่ยนเฉพาะรายการกฎ 78; diff ของ e2e เดิมเป็นไปตามกฎ 78; e2e storefront ทั้งชุดผ่านใน CI
+
+### Test plan
+| ชนิด | AC |
+|---|---|
+| static (`test:e2e:unit`) | AC-55, AC-60 (1), AC-61 (1), AC-63 (static), AC-65 (1), AC-66 (1), AC-67 (1) (+ AC-5, AC-19, AC-35 เดิม) |
+| unit (Vitest + jsdom — render ของจริง ไม่ mock primitive) | AC-62 (unit), AC-63 (`ADDRESS_COUNTRY_CODE`), AC-64 (unit) |
+| e2e (Playwright, prod build) | AC-56, AC-57 (Stripe test จริง), AC-58, AC-59, AC-60 (2), AC-61 (2), AC-62–AC-64 (e2e), AC-65 (2), AC-66 (2), AC-67 (2) + ชุดเดิม (กฎ 78) |
+| reviewer | AC-68 |
+- guard ขนาดปุ่ม (AC-55) **แทน** `sfui-button-lg.unit.spec.ts` (ลบใน 19a); ค่า 36px ใน e2e = ค่าที่วัดจาก `getComputedStyle` บน build ของ branch (กฎ 58)
+- Stripe (AC-57): builder รันในเครื่องได้เมื่อมี key (`source ~/.zshrc` + `stripe listen` ตาม CLAUDE.md) ไม่มี key → ระบุว่ารอ CI; ห้ามข้าม step พิสูจน์ `elementFromPoint`
+- payload ประเทศ (AC-63): ตรวจทั้ง hidden input ใน DOM และค่าใน API หลังส่ง (ไม่ใช่แค่ DOM)
+- ข้อความ server (AC-62): ค่าที่คาด import จาก `src/lib/util/address-required.ts` และ assert ≠ ข้อความ fallback (บทเรียน CORE-83)
+- qa ปลาย stack บน **browser จริง** (prod build 1280 + 390): ทุกปุ่ม 36px (icon 36×36), ฟอร์มที่อยู่ไม่มีช่องประเทศ, payload `country_code=th`, จังหวัดว่าง → error ใต้ช่อง + server ปฏิเสธด้วยข้อความใหม่, สรุปที่อยู่ไม่มีบรรทัดประเทศ,
+  รายการ audit ในตาราง inventory ถูกแก้ครบ; หน้าตาที่เปลี่ยนเป็น default ของ shadcn ไม่ใช่ defect (กฎ 58) · evidence `docs/evidence/storefront-consistency/<TASK>/` (`REPORT.md` + ภาพ ≤ 5, PNG ≤ 300KB; 22 ไม่มี UI ใหม่ — ภาพรวมปลาย stack)
+- builder รัน e2e **ทุก** spec ที่อ้างหน้า/testid ที่แตะ (grep ใน `apps/storefront/e2e/`) ก่อน push
+
+### Tasks (รอบ 50)
+เจ้าของไฟล์ร่วม (แก้ตามลำดับ stack): ฟอร์มที่อยู่ add/edit address (19a → 19b → 20a → 20b → 20c → 21a), `checkout/components/{shipping,payment}/index.tsx` (19a → 19b), `group-join.tsx` (19a → 20c → 21a),
+`login`/`register` (19b → 21b → 21a), `option-refinements.tsx` (19d เท่านั้น), `e2e/sfui-13-form-guard.unit.spec.ts` (19c → 19d → 20b), `e2e/sfui-19-button-size.{spec,unit.spec}.ts` (19a → 19b → 22),
+`e2e/sfui-20-address.spec.ts` (20a → 20b → 20c), `e2e/sfui-21-consistency.unit.spec.ts` (21b → 21a → 22), `sfui-baseline.json` (20a → 20b → 20c), `sfui-9a-font.spec.ts` (20b → 21b), `shadcn-ui.json` (19c → 19d) ·
+ไม่แตะ `apps/backend/**`, `package.json`/lockfile · LOC ไม่นับไฟล์ที่ CLI สร้างและ `shadcn-ui.json`
+
+| Task | งาน — ไฟล์ที่เป็นเจ้าของ | AC | Depends | ∥ | LOC |
+|---|---|---|---|---|---|
+| SFUI-19a | ปุ่ม shadcn ที่ override ขนาด → default (inventory 1–13): ไฟล์ในข้อ 1–12 **+ ทุกจุดที่ guard AC-55 พบเพิ่ม** (ระบุใน PR; เกิน ~10 ไฟล์นอกตารางหยุดแจ้ง planner), `globals.css` (ลบ `contrast-btn`); ลบ `e2e/sfui-button-lg.unit.spec.ts`; ใหม่ `e2e/sfui-19-button-size.{unit.spec,spec}.ts`; แก้ `sfui-3d-payment.spec.ts` (D-1 → 36px + `elementFromPoint`); หมายเหตุกฎ 20 แทนแล้ว | AC-55, AC-56, AC-57, AC-68 | PR เอกสารรอบ 50 (stack) | — | ~300 |
+| SFUI-19b | ปุ่ม/ลิงก์ที่ไม่ใช่ shadcn — account/checkout/order (inventory 14–20): `order-details-template.tsx`, `account/components/{login,register,account-nav,overview}`, `address-card/edit-address-modal.tsx` (ข้อ 17), `checkout/components/{addresses,shipping,payment,discount-code}`, `common/components/delete-button`, `app/[countryCode]/(main)/affiliate/layout.tsx`; แก้ `core-79`, `core-90` ตาม AC-58; ขยาย `sfui-19-button-size.spec.ts` (AC-59) | AC-58, AC-59, AC-68 | SFUI-19a | ∥ 19c, 19d | ~280 |
+| SFUI-19c | ค้นหา + แบ่งหน้า (inventory 21–23): `shadcn add pagination`; `search/components/search-form`, `store/components/store-search-box`, `store/components/store-hits/pagination.tsx`, `store/components/pagination/index.tsx`; `sfui-13-form-guard` (กฎ 65d); ใหม่ `e2e/sfui-19c-search-pagination.spec.ts` | AC-60, AC-68 | SFUI-19a | ∥ 19b | ~280 |
+| SFUI-19d | ตัวกรอง store + accordion (inventory 24–27): `shadcn add toggle-group`; `store/components/store-refinements/{option-refinements,current-refinements,refinement-group,on-sale-toggle}.tsx`, `store/components/refinement-list/options-picker/index.tsx`, `products/components/product-tabs/accordion.tsx`; `sfui-13-form-guard` (allow-list checkbox); ใหม่ `e2e/sfui-19d-refinements.spec.ts`; e2e เดิมของตัวกรองตามกฎ 78 (iv) | AC-61, AC-68 | SFUI-19c (`sfui-13-form-guard`, `shadcn-ui.json`) | ∥ 19b | ~330 |
+| SFUI-20a | จังหวัดบังคับ (inventory 28, กฎ 69): `required` ใน 5 ฟอร์ม, `lib/util/address-required.ts` (+ `ADDRESS_COUNTRY_CODE` สำหรับ 20b), unit `address-required.test.ts`, `error-message.test.ts`, `core-63-address-invisible.test.ts`; `sfui-baseline.json` (ข้อความ); **เพิ่มบรรทัดกรอกจังหวัด** ใน e2e/`support/stripe.ts`/`support/medusa.ts`/`support/group-buy.ts` + fixture API (~15 ไฟล์ — เพิ่มอย่างเดียว); ตาราง AC-37 ของ `sfui-12a/12b` (flag บังคับ); ใหม่ `e2e/sfui-20-address.spec.ts` (ส่วน AC-62) | AC-62, AC-68 | SFUI-19b | — | ~300 |
+| SFUI-20b | ซ่อนประเทศ (inventory 29, กฎ 70): 5 ฟอร์ม (hidden `th`), ลบ `checkout/components/country-select/`, unit `core-52-address-form-state.test.ts`/`checkout-thai-polish.test.ts` (ส่วน CountrySelect), `sfui-11-form-field.unit.spec.ts` (AC-26 (c)), `sfui-13-form-guard` (ตัวนับ/`CountrySelect`); `sfui-baseline.json` (testid/ข้อความประเทศ); e2e ~25 ไฟล์ที่เลือก/ตรวจประเทศ (ลบบรรทัด — กฎ 78 (ii)) รวม `support/stripe.ts`; ขั้นมือถือ checkout ของ AC-49 ใน `sfui-16-select.spec.ts` ย้ายไป `shipping-address-select` (ข้อยกเว้นเดียวของกฎ 78 (ii)); ส่วน AC-63 ของ `sfui-20-address.spec.ts`; หมายเหตุกฎ 40c/41–44/53/54 | AC-63, AC-68 | SFUI-20a | — | ~450 — เกินเพดานเพราะส่วนใหญ่เป็นการ**ลบ** (`CountrySelect` ~125, unit ~80, บรรทัด e2e ~150 ผ่าน helper); แยกไม่ได้เพราะเอาช่องออกแล้ว e2e ที่เลือกประเทศล้มทันที; เกิน ~550 หยุดแจ้ง planner |
+| SFUI-20c | สรุปที่อยู่ไม่มีประเทศ + ตัวเลือก region (inventory 30–31, กฎ 71–72): `lib/util/address-lines.{ts,test.ts}`, ผู้ใช้ 7 ไฟล์ของกฎ 57, `layout/components/side-menu/index.tsx`, `layout/components/country-select/index.tsx` (ถอด override); unit ใหม่ `side-menu` (multi-country); `sfui-baseline.json` (`address-province-country`); แก้ `sfui-3b-sheet.spec.ts` + e2e ที่ assert บรรทัดประเทศ (grep `address-summary`, `address-province-country`); ส่วน AC-64 ของ `sfui-20-address.spec.ts` | AC-64, AC-68 | SFUI-20b | — | ~220 |
+| SFUI-21b | `h1` ขนาดเดียว (inventory 36, กฎ 77): `<h1` 27 ไฟล์; ใหม่ `e2e/sfui-21-consistency.unit.spec.ts` (AC-65 (1)), `e2e/sfui-21-heading.spec.ts`; แก้ค่าที่คาดของ `h1` ใน `sfui-9a..9e-font`, `sfui-5c-checkout-heading` (กฎ 78 (i)) | AC-65, AC-68 | SFUI-19b, SFUI-20b (`sfui-9a-font`) | ∥ 20c | ~300 |
+| SFUI-21a | ฟอร์ม consistency (inventory 32–35, กฎ 73–76): gap ในไฟล์ข้อ 32, `checkout/components/error-message` + จุด `text-rose-500` ข้อ 33, `checkout/components/address-select` (ข้อ 34), ปุ่มปิด overlay ข้อ 35 (`add-address`, `edit-address-modal`, `side-menu`, `search/drawer.tsx`, `mobile-actions.tsx`); ขยาย `sfui-21-consistency.unit.spec.ts` (AC-66 (1)); ใหม่ `e2e/sfui-21-forms.spec.ts` | AC-66, AC-68 | SFUI-20c, SFUI-21b | — | ~300 |
+| SFUI-22 | ปิดรอบ: guard `<button` ดิบ + allow-list (กฎ 79) ใน `sfui-21-consistency.unit.spec.ts`; ขยาย `sfui-19-button-size.spec.ts` (AC-67 (2)); ติ๊ก AC-55–68 + Status ของส่วนนี้; ROADMAP; อัปเดต body #603 (session หลัก) | AC-67, AC-68 | SFUI-19d, SFUI-21a | — | ~150 |
+
+ลำดับ: 19a → (19b ∥ 19c → 19d) → 20a (หลัง 19b) → 20b → 20c · 21b (หลัง 19b + 20b) ∥ 20c → 21a (หลัง 20c + 21b) → 22 (หลัง 19d + 21a)
+· merge จริงทีละตัว: 19a → 19b → 19c → 19d → 20a → 20b → 20c → 21b → 21a → 22 (sync `origin/develop` + CI เขียวก่อนแต่ละตัว; แต่ละ PR เขียวได้เอง — 20a เพิ่ม `required` พร้อมบรรทัดกรอกจังหวัดใน PR เดียว)
+· **stack** แบบรอบ 44–49 (owner อนุญาตชุด SFUI): 19a แตกจาก branch เอกสาร `docs/storefront-r50-consistency`, task ที่มี Depends สองตัวแตกจาก branch ที่รวมทั้งสองแล้ว → เปิด PR ทั้งชุดตอนท้าย (base = `develop`)
+· **release v0.4.0 (#603) พักจนรอบ 50 merge ครบ** (owner 2026-11-28)
+
+### Open questions (รอบ 50)
+- **Q-R50-1** (ไม่ block): การ์ดตัวเลือกจัดส่ง (ขอบ 1px) กับการ์ดชำระเงิน (`border-0`) ต่างกัน — ทำให้เหมือนกันไหม? **เสนอ: ไม่ทำรอบนี้** (ไม่ใช่ override ของ shadcn — ออกแบบการ์ดใหม่; backlog หลัง v0.4.0)
+- **Q-R50-2** (ไม่ block): error ระดับฟอร์มใช้ `Alert variant="destructive"` ของ shadcn (`shadcn add alert` — กล่องมีขอบ + icon) แทนข้อความสี `text-destructive` ไหม? **เสนอ: ไม่ทำรอบนี้** (กฎ 74 ทำให้สี/ขนาดตรง `FieldError` แล้ว)
 
 ## Open questions
 - ~~ADR-032 D1–D5~~ ตัดสินแล้ว (owner 2026-11-27): **รับตามข้อเสนอ** — D1 = ก, D2 = ก (placeholder เฉพาะเบอร์โทร/รหัสไปรษณีย์), D3 = ก (`*` อย่างเดียว ไม่ใส่ "(ไม่บังคับ)"),

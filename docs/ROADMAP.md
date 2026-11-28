@@ -1,6 +1,6 @@
 # ROADMAP — milestone, ลำดับ PR, สถานะ
 
-อัปเดตล่าสุด: 2026-11-28 (ปิดรอบ 49 — merge ครบ #612, #614–#622; release v0.4.0 #603 พร้อมให้ owner merge/tag) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
+อัปเดตล่าสุด: 2026-11-28 (รอบ 50 spec พร้อม — ADR-034; v0.4.0 #603 พักจนรอบ 50 merge ครบ) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
 [`docs/roadmap/history.md`](roadmap/history.md) และ follow-up เก่า (รอบ 13–39) อยู่ที่
 [`docs/roadmap/followups-archive.md`](roadmap/followups-archive.md)
 
@@ -10,10 +10,10 @@
   รอบ 43 ส่วน v0.3.1 (OPS-36 #554, PAY-23 #555, PAY-24 #556, OPS-39 #559) เป็น 🚀 · OPS-40 (PII ค่าเดี่ยวจาก review #559) ☑ #562 (merge 2026-11-26 — ข้อยกเว้น d1/d2/d3 ของกฎ 22d + กรณีรู้แล้ว `cart_13rjFZ` → OPS-41), **ไม่อยู่ใน v0.3.1**
 - **ยังไม่ release หลัง v0.3.1**: OPS-40 + รอบ 44 (SFUI, 16 task) + รอบ 45 (7 task) + รอบ 46 (admin ไทย, 5 task) + รอบ 47 (#600–#602) + รอบ 48 (ฟอร์ม, 6 task #604–#610)
   + SFUI-14 #612 + รอบ 49 (select/ที่อยู่ไทย, 9 task #614–#622) อยู่ใน `develop` เท่านั้น · owner **ยังไม่ go-live** (release `develop → main` เป็นของ owner)
-- **รอบปัจจุบัน**: ไม่มีรอบที่กำลังทำ — **รอบ 49 ☑ merge ครบ 2026-11-28** (#614–#622 + SFUI-14 #612; qa ผ่าน AC-38–54 ไม่พบ defect) ·
-  **release v0.4.0 (#603) พร้อมให้ owner merge/tag** (เลิกพัก) · รอบ 48 ☑ ครบ 2026-11-27 · รอบ 43 "หลัง go-live" (14 task) รอ owner สั่ง
-- **รอ owner ตัดสิน**: merge/tag v0.4.0 (#603) + Q-R49-5/6 + `disabled={updating}` ของจำนวนในตะกร้า (รอบ 49) + เรื่องก่อน go-live (Stripe live, ค่าส่ง, staging)
-- **ขั้นต่อไป**: owner merge/tag v0.4.0 (#603) → go-live (checklist ข้อ 1–16) → **v1.0.0**
+- **รอบปัจจุบัน**: **รอบ 50** (ปุ่มขนาดเดียว, ซ่อนประเทศ, จังหวัดบังคับ, consistency — spec 09, ADR-034 accepted) — **spec พร้อม**, 10 task ☐ ·
+  **release v0.4.0 (#603) พักจนรอบ 50 merge ครบ** (owner 2026-11-28) · รอบ 49 ☑ ครบ 2026-11-28 · รอบ 43 "หลัง go-live" (14 task) รอ owner สั่ง
+- **รอ owner ตัดสิน**: Q-R50-1/2 (ไม่ block) + Q-R49-5/6 + `disabled={updating}` ของจำนวนในตะกร้า (รอบ 49) + เรื่องก่อน go-live (Stripe live, ค่าส่ง, staging)
+- **ขั้นต่อไป**: PR เอกสารรอบ 50 → stack SFUI-19a..22 → owner merge/tag v0.4.0 (#603) → go-live (checklist ข้อ 1–16) → **v1.0.0**
 
 ### Release
 
@@ -23,7 +23,7 @@
 | v0.2.0 | 🚀 | 2026-11-19 | #423 (`e274d387`), tag `v0.2.0` | task ใน milestone/Admin UI ที่ merge หลัง v0.1.0 ถึงรอบ 39 |
 | v0.3.0 | 🚀 | 2026-11-24 | #521 (`47c3e545`), tag `v0.3.0`, [GitHub Release](https://github.com/techpowerdev/medusa-ecom/releases/tag/v0.3.0) | แก้จากการทดสอบ manual (รอบ 40 = 32 task) + รอบ 41 (36 task; PAY-13 ✕) |
 | v0.3.1 | 🚀 | 2026-11-25 | #561 (`88bb0b63`), tag `v0.3.1` | รอบ 42 (21 task 🚀 — history หัวข้อ "รอบ 42 — ผลจริง") + 4 task ก่อน go-live ของรอบ 43 (3 🚀 train #557 + OPS-39 🚀 #559; Q-R43-ฉ = ก แก้เพิ่ม + OPS-39 owner 2026-11-25) |
-| (ยังไม่ release → v0.4.0) | ☐ พร้อม — รอ owner merge/tag (รอบ 49 + #612 merge ครบ 2026-11-28) | — | #603 | OPS-40 #562 + รอบ 44 (#565–#581) + รอบ 45 (#583–#590) + รอบ 46 (#593–#599) + รอบ 47–48 (#600–#610) + SFUI-14 #612 + รอบ 49 (#614–#622) |
+| (ยังไม่ release → v0.4.0) | ☐ พักจนรอบ 50 merge ครบ (owner 2026-11-28) | — | #603 | OPS-40 #562 + รอบ 44 (#565–#581) + รอบ 45 (#583–#590) + รอบ 46 (#593–#599) + รอบ 47–48 (#600–#610) + SFUI-14 #612 + รอบ 49 (#614–#622) + รอบ 50 |
 | go-live | ☐ owner ยังไม่ go-live | — | — | หลัง v0.3.1 + OPS-40 (☑ #562) + Go-live checklist ข้อ 1–16 |
 | v1.0.0 | ☐ | — | — | release แรกที่เปิดร้านจริง: Go-live checklist ครบ + smoke test บน production ผ่าน (Q-R43-จ owner 2026-11-25) |
 | หลัง go-live | ☐ รอ owner สั่ง | — | — | รอบ 43 อีก 14 task (รวม OPS-41) |
@@ -229,9 +229,35 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
   - keyframe เก่าของ starter ที่ไม่มีผู้ใช้ใน `globals.css` (`ring`, `fade-in-right`, `fade-in-top`, `fade-out-top`, `slide-in`; `theme-css.test.ts` ยังอ้าง `animate-fade-in-top`)
 - รอ owner (เปลี่ยนพฤติกรรม): Select จำนวนในตะกร้า `disabled={updating}` ระหว่างอัปเดต — ดูคำถามรอบ 49
 
+## รอบ 50 — ปุ่มขนาดเดียว, ซ่อนประเทศ, จังหวัดบังคับ, consistency (spec 09 "ส่วน consistency + ที่อยู่ (รอบ 50)", ADR-034 accepted 2026-11-28) (☐ spec พร้อม)
+
+ที่มา: owner ทดสอบหลังรอบ 49 (2026-11-28) + audit บน browser จริงของ qa (develop `523056bb`) · ทุกปุ่ม `default` 36px รวมปุ่มจ่ายเงิน (พิสูจน์ Stripe ใน e2e) ·
+ซ่อนช่อง/บรรทัดประเทศ (ส่ง `th`) · จังหวัดบังคับ · gap ฟอร์ม 16px · `h1` ขนาดเดียว · `shadcn add pagination toggle-group` · stack · **#603 พักจนรอบ 50 merge ครบ**
+
+| Task | spec | งาน (สั้น) | Depends | UI/qa | สถานะ |
+|---|---|---|---|---|---|
+| SFUI-19a | 09 | ปุ่ม shadcn ที่ override ขนาด → default + guard ใหม่ (แทน `sfui-button-lg`) + Stripe 36px | PR เอกสารรอบ 50 (stack) | ✓ | ☐ |
+| SFUI-19b | 09 | ปุ่ม/ลิงก์ไม่ใช่ shadcn (account/checkout/order) → `Button`; ลิงก์ auth 36px (แทน spec 01 กฎ 137/146a) | SFUI-19a | ✓ | ☐ |
+| SFUI-19c | 09 | ค้นหา (`Input`+`Button`, `InputGroup`) + `shadcn add pagination` | SFUI-19a | ✓ | ☐ |
+| SFUI-19d | 09 | ตัวกรอง store: `shadcn add toggle-group`, `ui/checkbox`, chip `Button`; `AccordionTrigger` default | SFUI-19c | ✓ | ☐ |
+| SFUI-20a | 09 | จังหวัดบังคับ (UI + server + ข้อความใหม่) + เพิ่มบรรทัดกรอกจังหวัดใน e2e | SFUI-19b | ✓ | ☐ |
+| SFUI-20b | 09 | ซ่อนประเทศ 5 ฟอร์ม (hidden `th`), ลบ `CountrySelect` ของ checkout + e2e ~25 ไฟล์ | SFUI-20a | ✓ | ☐ |
+| SFUI-20c | 09 | สรุปที่อยู่ไม่มีบรรทัดประเทศ + ซ่อนตัวเลือก region เมื่อมีประเทศเดียว | SFUI-20b | ✓ | ☐ |
+| SFUI-21b | 09 | `h1` ขนาดเดียว `text-3xl font-semibold tracking-tight` (27 ไฟล์) | SFUI-19b, 20b | ✓ | ☐ |
+| SFUI-21a | 09 | gap ฟอร์ม 16px, error ระดับฟอร์ม `text-destructive`, `SelectTrigger`/ปุ่มปิด overlay default | SFUI-20c, 21b | ✓ | ☐ |
+| SFUI-22 | 09 | ปิดรอบ: guard `<button>` ดิบ + e2e ทุกปุ่ม 36px + ติ๊ก AC + #603 | SFUI-19d, 21a | — | ☐ |
+
+- ลำดับ: 19a → (19b ∥ 19c → 19d) → 20a → 20b → 20c ∥ 21b → 21a → 22 · merge: 19a → 19b → 19c → 19d → 20a → 20b → 20c → 21b → 21a → 22
+- **ไฟล์ร่วม** (stack ตามลำดับ): modal ที่อยู่ 19a → 19b → 20a → 20b → 20c → 21a · `sfui-13-form-guard` 19c → 19d → 20b · `sfui-baseline.json` 20a → 20b → 20c
+- ไม่มี dependency ใหม่ (component ใหม่จาก `shadcn add` 3 ไฟล์) · admin/backend ไม่กระทบ · evidence `docs/evidence/storefront-consistency/<TASK>/`
+
 ## คำถามที่รอ owner
 
-- **v0.4.0**: #603 พร้อม — รอบ 49 + SFUI-14 #612 merge ครบ 2026-11-28 → owner merge `develop → main` + tag `v0.4.0`
+- **v0.4.0**: #603 **พักจนรอบ 50 merge ครบ** (owner 2026-11-28) → แล้ว owner merge `develop → main` + tag `v0.4.0`
+
+- **รอบ 50**: ADR-034 accepted (owner ตัดสินครบ 2026-11-28) · ยังเปิด (ไม่ block):
+  - Q-R50-1 การ์ดตัวเลือกจัดส่ง (มีขอบ) กับชำระเงิน (ไม่มีขอบ) ทำให้เหมือนกันไหม — เสนอ ไม่ทำรอบนี้ (backlog)
+  - Q-R50-2 error ระดับฟอร์มใช้ `Alert` ของ shadcn ไหม — เสนอ ไม่ทำรอบนี้ (กฎ 74 ทำสี/ขนาดตรง `FieldError` แล้ว)
 
 - **รอบ 49**: ADR-033 accepted, ~~Q-R49-1~~ = ก, ~~Q-R49-2~~ = ข, ~~Q-R49-3~~ = stack ได้, ~~Q-R49-4~~ = บังคับ (owner 2026-11-28) · ยังเปิด (ไม่ block รอบ 49):
   - Q-R49-5 ย้าย component ร่วมของรอบ 48 (`Input`, `Checkbox`, spinner) ไปประกอบตามตัวอย่าง docs ของ shadcn ไหม — เสนอ ไม่ทำตอนนี้ (backlog หลัง v0.4.0)
@@ -303,7 +329,8 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 | รอบ 46 admin ภาษาไทย | 10 | ☑ | 5 ☑ (#594–#597 + AI18N-N1 #599; เอกสาร #593, #598) | ADR-031 accepted 2026-11-26; stack แบบรอบ 44; Q1 = ก; ยังไม่ release |
 | รอบ 47 ทดสอบ manual ก่อน v0.4.0 | 02, 10 | ☑ | 2 ☑ (#600, #602; เอกสาร #601) | AI18N-N2, EV-27; วันที่ admin คง พ.ศ. (owner 2026-11-27) |
 | รอบ 48 ฟอร์ม storefront แบบ shadcn | 09 | ☑ | 6 ☑ (#605–#610; เอกสาร #604) | ADR-032 accepted 2026-11-27; stack; ยังไม่ release (#603) |
-| รอบ 49 select Radix + ที่อยู่ไทย | 09 | ☑ | 9 ☑ (#614–#622) + SFUI-14 ☑ #612 | ADR-033 accepted 2026-11-28; stack; ยังไม่ release (#603 พร้อม) |
+| รอบ 49 select Radix + ที่อยู่ไทย | 09 | ☑ | 9 ☑ (#614–#622) + SFUI-14 ☑ #612 | ADR-033 accepted 2026-11-28; stack; ยังไม่ release (#603) |
+| รอบ 50 consistency + ที่อยู่ | 09 | ☐ | 10 ☐ | ADR-034 accepted 2026-11-28; stack; #603 พักจนรอบนี้ merge |
 | รอบ 43 | 01, 03, 04, 06–08 | ◐ | 4 🚀 + 1 ☑ + 14 ☐ | 4 🚀 (3 train #557 + OPS-39 #559) ใน v0.3.1; OPS-40 ☑ #562 ก่อน go-live (ไม่อยู่ใน v0.3.1); 14 ตัวหลัง go-live (รวม OPS-41) |
 
 จำนวน task นับจากตารางใน history.md ณ 2026-11-24 และตารางรอบ 43 ด้านบน ณ 2026-11-25 (task ที่อยู่หลาย milestone นับที่ milestone หลักของ spec)
