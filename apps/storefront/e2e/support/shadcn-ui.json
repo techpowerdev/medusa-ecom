@@ -11,6 +11,7 @@
     "input-group.tsx": "6996cb984a8464ea026254581fa3947ce02dd54c28e4f188dbcb7b8a3671676a",
     "input.tsx": "0c9457181f6ddc80969bcf854e92c362903a55b6e889fbef3fd85343ecc4af5b",
     "label.tsx": "344bde38b8531615dbf8e14af3895517c24d8ef6ce56ddeda7e2e6fe4b5d0c00",
+    "pagination.tsx": "421ec23ffccca577e159c6b667268984c97c5600d0a95fd075687a4aa61e5c02",
     "popover.tsx": "3f99d3add6c9fa4f03721e81297ee10e1310785ee1d9d9d4c82a114d84ab0757",
     "radio-group.tsx": "cfc4f99ee68be2fbbd70de3ffad82e1462d5e8e0bb0aecfd190a4f5115325862",
     "select.tsx": "962830436bd0b7ee50e556f0747e277d6a86869ed27d167516346b15f26309d8",

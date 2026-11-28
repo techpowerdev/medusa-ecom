@@ -7,6 +7,7 @@ import { THAI, expectThai } from "./support/thai-text"
 // CORE-78: spec 01 AC-177 (กฎข้อ 136) — ส่วนคำสั่งซื้อแบบกลุ่มแสดงเฉพาะหน้า 1 ของ /account/orders,
 // overview แสดง "ดูทั้งหมด" เมื่อมีแต่ membership แบบกลุ่ม, `Pagination` มี aria-label/aria-current ภาษาไทย
 // ปุ่มเลขหน้าของ Pagination (ไม่มี testid ต่อปุ่ม) หาด้วย role + ชื่อภายใน `orders-pagination`
+// SFUI-19c (spec 09 กฎ 66, 78 (iv)): เลขหน้าเป็นลิงก์ `PaginationLink` ของ shadcn → หาด้วย role link
 test.use({ evidenceTarget: { feature: "core", taskId: "CORE-78" }, viewport: { width: 1280, height: 800 } })
 
 const ordersPath = `/${CC}/account/orders`
@@ -36,24 +37,24 @@ test("AC-177: 12 order + membership กลุ่ม → ส่วนกลุ่
       await expect(group).toBeVisible()
       await expect(cards).toHaveCount(10)
       await expect(pagination).toHaveAttribute("aria-label", "แบ่งหน้า")
-      const buttons = pagination.getByRole("button")
+      const buttons = pagination.getByRole("link")
       await expect(buttons).toHaveCount(2)
       for (const label of await buttons.evaluateAll((els) => els.map((e) => e.getAttribute("aria-label") ?? ""))) {
         expect(label, label).toMatch(THAI)
       }
       await expect(pagination.locator('[aria-current="page"]')).toHaveCount(1)
-      await expect(pagination.getByRole("button", { name: "หน้า 1", exact: true })).toHaveAttribute("aria-current", "page")
-      await expect(pagination.getByRole("button", { name: "หน้า 2", exact: true })).not.toHaveAttribute("aria-current", /.*/)
+      await expect(pagination.getByRole("link", { name: "หน้า 1", exact: true })).toHaveAttribute("aria-current", "page")
+      await expect(pagination.getByRole("link", { name: "หน้า 2", exact: true })).not.toHaveAttribute("aria-current", /.*/)
       await pagination.scrollIntoViewIfNeeded()
       await evidence("page-1-group-1280")
     })
 
     await step("กดหน้า 2 → ไม่เห็นส่วนกลุ่ม, aria-current ย้ายไปหน้า 2", async () => {
-      await pagination.getByRole("button", { name: "หน้า 2", exact: true }).click()
+      await pagination.getByRole("link", { name: "หน้า 2", exact: true }).click()
       await expect(page).toHaveURL(new RegExp(`${ordersPath}\\?page=2$`))
       await expect(cards).toHaveCount(2)
       await expect(group).toHaveCount(0)
-      await expect(pagination.getByRole("button", { name: "หน้า 2", exact: true })).toHaveAttribute("aria-current", "page")
+      await expect(pagination.getByRole("link", { name: "หน้า 2", exact: true })).toHaveAttribute("aria-current", "page")
       await evidence("page-2-no-group-1280")
     })
 

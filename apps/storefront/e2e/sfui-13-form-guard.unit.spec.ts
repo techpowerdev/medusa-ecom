@@ -58,8 +58,6 @@ type Allowed = { file: string; tag: "input" | "select"; match: Record<string, st
 
 /** allow-list ของกฎ 26 (ไฟล์ + element) — `<input type="hidden">` ยกเว้นทุกไฟล์ใน src/modules, src/app */
 const ALLOW_LIST: Allowed[] = ([
-  { file: "store/components/store-search-box/index.tsx", tag: "input", match: { type: "search", "data-testid": "store-search-input" }, why: "ช่องค้นหา" },
-  { file: "search/components/search-form/index.tsx", tag: "input", match: { type: "search", "data-testid": "search-query-input" }, why: "ช่องค้นหา" },
   { file: "layout/components/search/index.tsx", tag: "input", match: { type: "search", "data-testid": "search-input" }, why: "ช่องค้นหาใน drawer" },
   { file: "store/components/store-refinements/on-sale-toggle.tsx", tag: "input", match: { type: "checkbox", "data-testid": "on-sale-toggle" }, why: "ตัวกรอง" },
   {
@@ -179,6 +177,9 @@ function defaultLabel(module: string): string | null {
 
 const UI_INPUT = "src/components/ui/input"
 
+/** SFUI-19c (กฎ 65d): ไฟล์เดียวนอก src/components/** และ common/components/input ที่ import ui/input ได้ — element `<Input>` ตามนี้เท่านั้น */
+const UI_INPUT_EXTRA = { file: "src/modules/search/components/search-form/index.tsx", match: { type: "search", "data-testid": "search-query-input" } }
+
 test("AC-35 (กฎ 26): <input>/<select>/<textarea> ของ JSX อยู่ใน common/components หรือตรงคู่ ไฟล์ + element ของ allow-list (element ละหนึ่งตัวพอดี)", () => {
   const files = sourceFiles().filter((f) => /^src\/(modules|app)\/.*\.tsx$/.test(f))
   const outside: string[] = []
@@ -216,9 +217,27 @@ test("AC-35 (กฎ 28): @/components/ui/input import ได้เฉพาะ�
     (file) =>
       importsOf(file).some((i) => i.module && asModule(i.module) === UI_INPUT) &&
       !file.startsWith("src/components/") &&
-      !file.startsWith("src/modules/common/components/input/")
+      !file.startsWith("src/modules/common/components/input/") &&
+      file !== UI_INPUT_EXTRA.file
   )
   expect(offenders).toEqual([])
+})
+
+test("AC-35 (กฎ 65d): search-form import ui/input และมี <Input type=\"search\"> search-query-input ตัวเดียว", () => {
+  const { file, match } = UI_INPUT_EXTRA
+  const local = parse(file)
+    .statements.filter(ts.isImportDeclaration)
+    .filter((d) => asModule(resolveImport(file, (d.moduleSpecifier as ts.StringLiteral).text) ?? "") === UI_INPUT)
+    .flatMap((d) => {
+      const named = d.importClause?.namedBindings
+      return named && ts.isNamedImports(named) ? named.elements.map((e) => e.name.text) : []
+    })
+  expect(local, `${file} import { Input } จาก @/components/ui/input`).toEqual(["Input"])
+  const sf = parse(file)
+  const inputs = tagsOf(sf)
+    .filter((t) => t.tagName.getText(sf) === "Input")
+    .map((t) => attrs(t, sf))
+  expect(inputs.map((a) => Object.fromEntries(Object.keys(match).map((k) => [k, a[k]])))).toEqual([match])
 })
 
 test("AC-35 (กฎ 28–30): ทุก Input/CountrySelect/Checkbox ของ common ในไฟล์ของตาราง inventory มี label", () => {

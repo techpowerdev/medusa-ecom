@@ -7,6 +7,7 @@ import { THAI } from "./support/thai-text"
 // และ `SearchPagination` ของ /store มี aria-label/aria-current ภาษาไทย
 // GB-8 จาก overview ยิงฝั่ง server (Playwright มองไม่เห็น request) → `limit=1` พิสูจน์ใน unit `core-92-overview-pagination.test.ts`
 // ปุ่มเลขหน้า (ไม่มี testid ต่อปุ่ม) หาด้วย role + ชื่อภายใน `product-pagination` แบบ AC-177
+// SFUI-19c (spec 09 กฎ 66, 78 (iv)): เลขหน้าเป็นลิงก์ `PaginationLink` ของ shadcn → หาด้วย role link
 test.use({
   evidenceTarget: { feature: "core", taskId: "CORE-92" },
   viewport: { width: 1280, height: 800 },
@@ -74,7 +75,7 @@ test("AC-189: /store ที่มี ≥ 2 หน้า → nav ของ Search
       await expect(pagination).toBeVisible()
       await expect(pagination).toHaveJSProperty("tagName", "NAV")
       expect((await pagination.getAttribute("aria-label")) ?? "").toMatch(THAI)
-      const buttons = pagination.getByRole("button")
+      const buttons = pagination.getByRole("link")
       await expect(buttons).toHaveCount(4)
       for (const label of await buttons.evaluateAll((els) =>
         els.map((e) => e.getAttribute("aria-label") ?? "")
@@ -83,7 +84,7 @@ test("AC-189: /store ที่มี ≥ 2 หน้า → nav ของ Search
       }
       await expect(pagination.locator('[aria-current="page"]')).toHaveCount(1)
       await expect(
-        pagination.getByRole("button", { name: "หน้า 1", exact: true })
+        pagination.getByRole("link", { name: "หน้า 1", exact: true })
       ).toHaveAttribute("aria-current", "page")
       await pagination.scrollIntoViewIfNeeded()
       await evidence("store-pagination-page-1-1280")
@@ -92,10 +93,10 @@ test("AC-189: /store ที่มี ≥ 2 หน้า → nav ของ Search
 
   await step("กดหน้า 2 → aria-current ย้ายไปหน้า 2", async () => {
     await pagination
-      .getByRole("button", { name: "หน้า 2", exact: true })
+      .getByRole("link", { name: "หน้า 2", exact: true })
       .click()
     await expect(
-      pagination.getByRole("button", { name: "หน้า 2", exact: true })
+      pagination.getByRole("link", { name: "หน้า 2", exact: true })
     ).toHaveAttribute("aria-current", "page")
     await expect(pagination.locator('[aria-current="page"]')).toHaveCount(1)
   })

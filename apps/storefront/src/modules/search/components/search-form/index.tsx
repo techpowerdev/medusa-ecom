@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 type SearchFormProps = {
@@ -21,22 +23,18 @@ const SearchForm = ({ countryCode, defaultValue, className }: SearchFormProps) =
     <label htmlFor="search-q" className="sr-only">
       ค้นหาสินค้า
     </label>
-    <input
+    {/* SFUI-19c (spec 09 กฎ 65a): ตัวอย่าง docs "Input with button" ของ shadcn */}
+    <Input
       id="search-q"
       type="search"
       name="q"
       defaultValue={defaultValue}
       placeholder="ค้นหาสินค้า"
       data-testid="search-query-input"
-      className="flex-1 h-10 px-4 border rounded-md border-border bg-background text-sm leading-5"
     />
-    <button
-      type="submit"
-      className="h-10 px-4 rounded-md bg-black text-white hover:bg-gray-800"
-      data-testid="search-submit"
-    >
+    <Button type="submit" data-testid="search-submit">
       ค้นหา
-    </button>
+    </Button>
   </form>
 )
 

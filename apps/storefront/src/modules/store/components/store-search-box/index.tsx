@@ -4,6 +4,13 @@ import { Search, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useSearchBox } from "react-instantsearch"
 
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group"
+
 const DEBOUNCE_MS = 250
 
 /**
@@ -39,10 +46,10 @@ const StoreSearchBox = () => {
     refine("")
   }
 
+  // SFUI-19c (spec 09 กฎ 65b): `input-group` ของ shadcn — icon ค้นหาใน addon ต้นช่อง, ปุ่มล้างเป็น `InputGroupButton` ใน addon ท้ายช่อง
   return (
-    <div className="mb-6 flex items-center gap-x-3 border-b border-border">
-      <Search aria-hidden="true" className="size-[15px] shrink-0 text-muted-foreground" />
-      <input
+    <InputGroup className="mb-6">
+      <InputGroupInput
         type="search"
         value={inputValue}
         onChange={(event) => {
@@ -51,21 +58,25 @@ const StoreSearchBox = () => {
         }}
         placeholder="ค้นหาสินค้า"
         aria-label="ค้นหาสินค้า"
-        className="text-sm leading-[1.4rem] w-full bg-transparent py-3 text-foreground outline-hidden placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+        className="[&::-webkit-search-cancel-button]:hidden"
         data-testid="store-search-input"
       />
+      <InputGroupAddon>
+        <Search aria-hidden="true" />
+      </InputGroupAddon>
       {inputValue && (
-        <button
-          type="button"
-          onClick={clear}
-          aria-label="ล้างคำค้นหา"
-          className="shrink-0 text-muted-foreground hover:text-foreground"
-          data-testid="store-search-clear"
-        >
-          <X aria-hidden="true" className="size-[15px]" />
-        </button>
+        <InputGroupAddon align="inline-end">
+          <InputGroupButton
+            size="icon-xs"
+            onClick={clear}
+            aria-label="ล้างคำค้นหา"
+            data-testid="store-search-clear"
+          >
+            <X aria-hidden="true" />
+          </InputGroupButton>
+        </InputGroupAddon>
       )}
-    </div>
+    </InputGroup>
   )
 }
 

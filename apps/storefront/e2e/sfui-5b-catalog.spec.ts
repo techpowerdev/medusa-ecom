@@ -30,7 +30,7 @@ test("AC-15: หน้าแรก, store, PDP และหน้าค้นห
     await evidence("01-home")
   })
 
-  await step("store: ชื่อและราคาบนการ์ด 14px/22.4px, มุม thumbnail 10px, ช่องค้นหา 14px/22.4px และ icon ค้นหาของ lucide 15px", async () => {
+  await step("store: ชื่อและราคาบนการ์ด 14px/22.4px, มุม thumbnail 10px, ช่องค้นหา 14px/20px และ icon ค้นหาของ lucide 16px", async () => {
     await page.goto(`/${CC}/store`)
     const card = page.getByTestId("products-list").getByTestId("product-wrapper").first()
     await expect(card).toBeVisible()
@@ -38,11 +38,13 @@ test("AC-15: หน้าแรก, store, PDP และหน้าค้นห
     expect(await font(card.getByTestId("price").first())).toEqual({ size: "14px", lineHeight: "22.4px", weight: "400" })
     // Thumbnail: rounded-lg ตามกฎ 20 (Container → rounded-lg) = --radius 0.625rem (review SFUI-5b blocker)
     expect(await card.locator("div").first().evaluate((el) => getComputedStyle(el).borderRadius)).toBe("10px")
+    // SFUI-19c (spec 09 กฎ 58, 65b, 78 (i)): ช่องค้นหาเป็น `input-group` ของ shadcn — ค่าที่ component render (`md:text-sm` 14px/20px,
+    // icon ใน addon ใช้ default `size-4` = 16px)
     const input = page.getByTestId("store-search-input")
-    expect(await font(input)).toEqual({ size: "14px", lineHeight: "22.4px", weight: "400" })
-    const icon = input.locator("xpath=preceding-sibling::*[local-name()='svg'][1]")
+    expect(await font(input)).toEqual({ size: "14px", lineHeight: "20px", weight: "400" })
+    const icon = input.locator("xpath=following-sibling::*[@data-slot='input-group-addon'][1]/*[local-name()='svg']")
     await expect(icon).toHaveClass(/lucide/)
-    expect(await icon.evaluate((el) => el.getBoundingClientRect().width)).toBe(15)
+    expect(await icon.evaluate((el) => el.getBoundingClientRect().width)).toBe(16)
     await evidence("02-store")
   })
 
