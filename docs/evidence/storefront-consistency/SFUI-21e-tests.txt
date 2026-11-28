@@ -1,0 +1,23 @@
+# SFUI-21e — ผลทดสอบ (spec 09 กฎ 74 (a)/(b)/(c); AC-71/68)
+สภาพแวดล้อม: stack บน SFUI-21d (9fcbc461), node 24, prod build — backend :9491 (NODE_ENV=production, start จาก .medusa/server,
+DB medusa_sfui21e, Redis db 13, Stripe test), storefront :8491
+
+## Red
+- static sfui-21-consistency.unit (เพิ่ม AC-71 (1)): 2 failed — testid 21e ทั้ง 9 ตัวเป็น <p>; element ที่มี text-destructive + testid
+  นอกแถว "ไม่รวม" 8 จุด
+- e2e ใหม่ sfui-21e-action-errors บน build ของ 9fcbc461: 4 failed / 4 (data-slot ไม่ใช่ alert/field-error)
+
+## Green
+- e2e sfui-21e-action-errors: 4 passed (add-to-cart-error, group-create-team-error = Alert; cart-error-notice = Alert default สีเท่า body;
+  flash-qty-exceeds-remaining + cart-flash-exceeds-remaining = FieldError, 390px PDP/ตะกร้าไม่ล้น)
+- e2e เดิมที่อ้าง testid ของ 21e (13 ไฟล์ รวม 9 ไฟล์ของ AC-71 (3) + core-30, group-buy-not-started, group-buy-ui-polish, sfui-9e-font;
+  --workers=1): 47 passed (รวม sfui-21e) — ไม่แก้ e2e เดิม
+- playwright project unit (รวม evidence-budget, AC-19): 271 passed; vitest: 140 files / 2089 passed
+- pnpm lint && pnpm typecheck: ผ่าน; pnpm --filter storefront build: ผ่าน
+
+## แก้หลัง CI ชุดเต็มล้ม (#636/#637 run 46157553348 — การ์ดแคมเปญทีมไม่ขึ้นหน้าแรกภายใน 100s)
+- สาเหตุ: GET /store/group-buy/campaigns/active เรียง ends_at จากใกล้สุดแล้วตัด 50 (MAX_CAMPAIGNS) — ชุดเต็มมีแคมเปญ active +48 ชม.
+  ค้างจาก spec ก่อนหน้า > 50 ตัว แคมเปญ +48 ชม. ของ test ที่สร้างทีหลังสุดจึงหลุดจากรายการ → แก้ ends_at ของ test เป็น +1 ชม. (ไม่แก้ src)
+- จำลองชุดเต็ม (DB medusa_sfui21e_fix, --workers=1): 21 spec ที่สร้างแคมเปญ group ก่อน (แคมเปญ active 66 ตัว) แล้วตามด้วย test เดิม
+  และ test ที่แก้ใน run เดียว → เดิม failed (การ์ดไม่ขึ้น 100s — ตรงกับ CI), ที่แก้ passed; รวม 95 passed / 1 failed (ตัวเดิม)
+- sfui-21e-action-errors --repeat-each=3 บน DB เดียวกัน (active 65 ตัว): 12 passed; playwright unit 271 passed; lint/typecheck ผ่าน

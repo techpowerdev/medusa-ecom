@@ -1,3 +1,4 @@
+import { FieldError } from "@/components/ui/field"
 import type { PdpCustomerLimit } from "@lib/util/flash-allowance"
 
 /**
@@ -20,15 +21,12 @@ export default function FlashCustomerLimit({
         {limit.remaining != null && ` (เหลือสิทธิ์ ${limit.remaining} ชิ้น)`}
       </p>
       {limit.remaining === 0 && (
-        <p
-          className="text-xs leading-5 font-normal text-destructive"
-          role="alert"
-          data-testid="flash-customer-limit-reached"
-        >
+        // SFUI-21e (spec 09 กฎ 74 (b)): ข้อความผูกตัวเลือกจำนวน = FieldError (inline)
+        <FieldError data-testid="flash-customer-limit-reached">
           {limit.in_cart > 0
             ? "สิทธิ์ราคาแฟลชเซลที่เหลือของคุณอยู่ในตะกร้าแล้ว"
             : "คุณใช้สิทธิ์ราคาแฟลชเซลครบแล้ว"}
-        </p>
+        </FieldError>
       )}
     </>
   )

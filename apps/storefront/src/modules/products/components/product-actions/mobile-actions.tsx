@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils"
 
 import useToggleState from "@lib/hooks/use-toggle-state"
+import ErrorMessage from "@modules/checkout/components/error-message"
 import ChevronDown from "@modules/common/icons/chevron-down"
 import X from "@modules/common/icons/x"
 
@@ -169,15 +170,8 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                   : "เพิ่มลงตะกร้า"}
               </Button>
             </div>
-            {error && (
-              <p
-                className="text-xs leading-5 font-normal text-destructive"
-                role="alert"
-                data-testid="mobile-add-to-cart-error"
-              >
-                {error}
-              </p>
-            )}
+            {/* SFUI-21e (spec 09 กฎ 74 (a)): error ของการกระทำ "เพิ่มลงตะกร้า" = Alert ผ่าน ErrorMessage */}
+            <ErrorMessage error={error} data-testid="mobile-add-to-cart-error" />
           </div>
         )}
       </div>

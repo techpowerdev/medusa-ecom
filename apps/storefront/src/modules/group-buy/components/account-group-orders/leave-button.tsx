@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
 
 import { Button } from "@/components/button"
+import { FieldError } from "@/components/ui/field"
 
 // GB-7b (spec 04 กฎข้อ 13): ออกจากกลุ่ม = ยกเลิก draft order ของ membership นี้ — ยืนยันก่อนส่ง และกันกดซ้ำด้วย ref (in-flight) + disabled
 // render ทุกแถวเสมอ (review #223): ถ้าถอด component เมื่อ canLeave เป็น false หลัง router.refresh() state error จะหายไปด้วย
@@ -69,9 +70,8 @@ export default function LeaveGroupButton({ membershipId, canLeave }: { membershi
         </Button>
       )}
       {error && (
-        <p className="text-xs leading-5 font-normal text-destructive" data-testid="group-leave-error">
-          {error}
-        </p>
+        // SFUI-21e (spec 09 กฎ 74 (b)): error ผูกกับแถวคำสั่งซื้อกลุ่ม = FieldError (inline)
+        <FieldError data-testid="group-leave-error">{error}</FieldError>
       )}
     </div>
   )
