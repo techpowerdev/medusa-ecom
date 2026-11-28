@@ -1,6 +1,7 @@
 import { deleteLineItem } from "@lib/data/cart"
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { notifyCartUpdated } from "@lib/util/cart-events"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { LoaderCircle, Trash2 } from "lucide-react"
 import { useState } from "react"
@@ -45,6 +46,12 @@ const DeleteButton = ({
     }
   }
 
+  const icon = isDeleting ? (
+    <LoaderCircle className="animate-spin" data-testid="cart-item-remove-spinner" />
+  ) : (
+    <Trash2 />
+  )
+
   return (
     <div
       className={cn(
@@ -52,22 +59,24 @@ const DeleteButton = ({
         className
       )}
     >
-      <button
-        className="flex gap-x-1 text-muted-foreground hover:text-foreground cursor-pointer"
-        onClick={() => handleDelete(id)}
-        disabled={isDeleting}
-        data-testid={dataTestId}
-      >
-        {isDeleting ? (
-          <LoaderCircle
-            className="size-4 animate-spin"
-            data-testid="cart-item-remove-spinner"
-          />
-        ) : (
-          <Trash2 className="size-4" />
-        )}
-        <span>{children}</span>
-      </button>
+      {/* SFUI-19b (spec 09 กฎ 60, inventory 18): ghost; ไม่มีข้อความ → size="icon" + aria-label ไทย */}
+      {children ? (
+        <Button variant="ghost" onClick={() => handleDelete(id)} disabled={isDeleting} data-testid={dataTestId}>
+          {icon}
+          <span>{children}</span>
+        </Button>
+      ) : (
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="ลบสินค้าออกจากตะกร้า"
+          onClick={() => handleDelete(id)}
+          disabled={isDeleting}
+          data-testid={dataTestId}
+        >
+          {icon}
+        </Button>
+      )}
       {error && (
         // qa #142 D-2: ขึ้นบรรทัดใหม่เต็มความกว้างของแถว (order-last) ไม่ถูกบีบข้างปุ่ม
         <span

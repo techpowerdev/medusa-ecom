@@ -6,6 +6,7 @@ import { LOGIN_VIEW } from "@modules/account/templates/login-template"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import PendingAddToCartFields from "@modules/account/components/pending-add-to-cart-fields"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
+import { Button } from "@/components/ui/button"
 import Input from "@modules/common/components/input"
 import { useActionState } from "react"
 import { useParams } from "next/navigation"
@@ -87,15 +88,15 @@ const Login = ({ setCurrentView, defaultEmail, notice }: Props) => {
       </form>
       <span className="text-center text-foreground text-xs leading-5 font-normal mt-6">
         ยังไม่เป็นสมาชิก?{" "}
-        <button
+        <Button
           type="button"
+          variant="link"
           onClick={() => setCurrentView(LOGIN_VIEW.REGISTER)}
-          // CORE-90 (กฎข้อ 146a): พื้นที่แตะ ≥ 44px บนมือถือ และ testid ไม่ซ้ำกับ submit ของฟอร์มสมัคร
-          className="underline inline-flex items-center justify-center min-h-[44px] min-w-[44px] px-2"
+          // CORE-90 (กฎข้อ 146a): testid ไม่ซ้ำกับ submit ของฟอร์มสมัคร; SFUI-19b (spec 09 กฎ 63b): Button link size default 36px
           data-testid="login-to-register-button"
         >
           สมัครสมาชิก
-        </button>
+        </Button>
         .
       </span>
     </div>

@@ -287,13 +287,9 @@ const Payment = ({
         </h2>
         {!isOpen && paymentReady && (
           <p className="text-sm leading-[1.4rem]">
-            <button
-              onClick={handleEdit}
-              className="text-primary underline-offset-4 hover:underline"
-              data-testid="edit-payment-button"
-            >
+            <Button variant="link" onClick={handleEdit} data-testid="edit-payment-button">
               แก้ไข
-            </button>
+            </Button>
           </p>
         )}
       </div>
@@ -376,14 +372,14 @@ const Payment = ({
           {resetShown && (
             <div role="alert" className="pt-2 flex items-center gap-x-3 text-xs leading-5 font-normal" data-testid="payment-session-reset-notice">
               <p className="text-sm leading-[1.4rem]">{SESSION_RESET}</p>
-              <button
+              <Button
+                variant="link"
                 onClick={() => renewSession(selectedPaymentMethod)}
                 disabled={isLoading}
-                className="text-primary underline-offset-4 hover:underline"
                 data-testid="payment-session-retry"
               >
                 ลองอีกครั้ง
-              </button>
+              </Button>
             </div>
           )}
           <PlaceOrderNotice shown={paidOrder.shown} errorTestId="payment-session-order-error" />

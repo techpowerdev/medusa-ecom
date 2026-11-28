@@ -1,11 +1,12 @@
 import { expect, test } from "./support/fixtures"
 import { STOREFRONT_COUNTRY as CC, adminHeaders, createCustomer, publishableKey } from "./support/medusa"
 
-// CORE-79: spec 01 AC-178 (กฎข้อ 137) — ที่ 375px ปุ่ม register-login-link แตะได้สูง ≥ 44px
+// CORE-79: spec 01 AC-178 (กฎข้อ 137) — ที่ 375px ปุ่ม register-login-link เป็น Button variant="link" ของ shadcn สูง 36px
+// (เกณฑ์ ≥ 44px แทนด้วย ADR-034 — spec 09 กฎ 63b, AC-58; SFUI-19b)
 // และกดแล้วสลับเป็นฟอร์ม login ที่ email-input มีอีเมลที่กรอกในฟอร์มสมัคร (ช่องรหัสผ่านว่าง); หา element ด้วย data-testid
 test.use({ viewport: { width: 375, height: 812 }, evidenceTarget: { feature: "core", taskId: "CORE-79" } })
 
-test("AC-178: 375px register-login-link สูง ≥ 44px และกดแล้วเติมอีเมลในฟอร์ม login", async ({
+test("AC-178 + AC-58: 375px register-login-link เป็น Button link สูง 36px และกดแล้วเติมอีเมลในฟอร์ม login", async ({
   page,
   request,
   step,
@@ -13,7 +14,7 @@ test("AC-178: 375px register-login-link สูง ≥ 44px และกดแล
 }) => {
   const customer = await createCustomer(request, await publishableKey(request, await adminHeaders(request)))
 
-  await step("สมัครด้วยอีเมลที่มีบัญชีแล้ว → เห็น register-login-link สูง ≥ 44px", async () => {
+  await step("สมัครด้วยอีเมลที่มีบัญชีแล้ว → เห็น register-login-link เป็น Button link สูง 36px", async () => {
     await page.goto(`/${CC}/account`)
     await expect(page.getByTestId("login-page")).toBeVisible()
     await page.getByTestId("login-to-register-button").click()
@@ -28,8 +29,9 @@ test("AC-178: 375px register-login-link สูง ≥ 44px และกดแล
     await expect(link).toBeVisible()
     const box = await link.boundingBox()
     expect(box).not.toBeNull()
-    expect(box!.height).toBeGreaterThanOrEqual(44)
-    expect(box!.width).toBeGreaterThanOrEqual(44)
+    expect(box!.height).toBe(36)
+    await expect(link).toHaveAttribute("data-slot", "button")
+    await expect(link).toHaveAttribute("data-variant", "link")
     await evidence("01-register-login-link-375")
   })
 

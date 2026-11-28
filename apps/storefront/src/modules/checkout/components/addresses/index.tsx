@@ -15,6 +15,7 @@ import BillingAddress from "../billing_address"
 import ErrorMessage from "../error-message"
 import ShippingAddress from "../shipping-address"
 import { SubmitButton } from "../submit-button"
+import { Button } from "@/components/ui/button"
 
 const Addresses = ({
   cart,
@@ -61,13 +62,9 @@ const Addresses = ({
         </h2>
         {!isOpen && cart?.shipping_address && (
           <p className="text-sm leading-[1.4rem]">
-            <button
-              onClick={handleEdit}
-              className="text-primary underline-offset-4 hover:text-primary/80"
-              data-testid="edit-address-button"
-            >
+            <Button variant="link" onClick={handleEdit} data-testid="edit-address-button">
               แก้ไข
-            </button>
+            </Button>
           </p>
         )}
       </div>

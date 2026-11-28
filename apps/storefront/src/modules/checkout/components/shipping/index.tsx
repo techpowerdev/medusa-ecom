@@ -165,13 +165,9 @@ const Shipping: React.FC<ShippingProps> = ({
           cart?.billing_address &&
           cart?.email && (
             <p className="text-sm leading-[1.4rem]">
-              <button
-                onClick={handleEdit}
-                className="text-primary underline-offset-4 hover:underline"
-                data-testid="edit-delivery-button"
-              >
+              <Button variant="link" onClick={handleEdit} data-testid="edit-delivery-button">
                 แก้ไข
-              </button>
+              </Button>
             </p>
           )}
       </div>

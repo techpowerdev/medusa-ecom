@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { LogOut } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { useLinkStatus } from "next/link"
 import { useParams, usePathname } from "next/navigation"
 
@@ -106,19 +106,16 @@ const AccountNav = ({
                     <ChevronDown className="transform -rotate-90" />
                   </LocalizedClientLink>
                 </li>
-                <li>
-                  <button
+                <li className="py-2 border-b border-gray-200 px-8">
+                  {/* SFUI-19b (spec 09 กฎ 60, inventory 19): ghost default แบบเดียวกับ desktop และ affiliate-logout */}
+                  <Button
                     type="button"
-                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8 w-full"
+                    variant="ghost"
                     onClick={handleLogout}
                     data-testid="logout-button"
                   >
-                    <div className="flex items-center gap-x-2">
-                      <LogOut className="size-[15px]" />
-                      <span>ออกจากระบบ</span>
-                    </div>
-                    <ChevronDown className="transform -rotate-90" />
-                  </button>
+                    ออกจากระบบ
+                  </Button>
                 </li>
               </ul>
             </div>
@@ -178,13 +175,14 @@ const AccountNav = ({
                 </AccountNavLink>
               </li>
               <li className="text-grey-700">
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={handleLogout}
                   data-testid="logout-button"
                 >
                   ออกจากระบบ
-                </button>
+                </Button>
               </li>
             </ul>
           </div>

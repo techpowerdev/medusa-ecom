@@ -1,0 +1,19 @@
+# SFUI-19b — ผลทดสอบ (spec 09 กฎ 60, 63b, AC-58/59/68)
+สภาพแวดล้อม: stack บน feat/SFUI-19a-button-default-size (92ee3019), node 24, prod build — backend :9481 (NODE_ENV=production,
+start จาก .medusa/server, DB medusa_sfui19b, Redis db 12), storefront :8481, Stripe test จริง (stripe listen → :9481)
+
+## Red (build ที่ src = SFUI-19a, test ใหม่/แก้แล้ว)
+- core-79 AC-178 + AC-58: register-login-link สูง 44 (คาด 36) — failed
+- core-90 AC-187 + AC-58: login-to-register-button สูง 44 (คาด 36) — failed
+- sfui-19-button-size AC-59: order-return-button data-slot "" (คาด "button") — failed
+  รวม 3 failed / 3
+
+## Green
+- e2e ของ task: core-79, core-90, sfui-19-button-size AC-59 — 3 passed
+- e2e ที่อ้าง testid ที่แตะ (34 ไฟล์, --workers=1; grep order-return-button, login-to-register-button, register-to-login-button,
+  register-login-link, logout-button, affiliate-logout, open-order-button, address-edit/delete-button, edit-address/delivery/payment-button,
+  payment-session-retry, add/remove-discount-button, product-delete-button, cart-item-remove-button/spinner): 95 passed / 95 (7.1m)
+  (รวม sfui-19-button-size ทั้งไฟล์ — AC-56 ×2, AC-57 3DS + พร้อมเพย์, AC-59)
+- playwright project unit (รวม AC-55 guard, evidence-budget, sfui-baseline): 254 passed
+- vitest (apps/storefront): 138 files / 2072 tests passed
+- pnpm lint && pnpm typecheck: ผ่าน (0 error); pnpm --filter storefront build: ผ่าน
