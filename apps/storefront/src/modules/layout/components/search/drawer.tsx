@@ -1,6 +1,8 @@
 "use client"
 
 import { X } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
 import React from "react"
 
 import {
@@ -41,12 +43,11 @@ const SearchDrawer = ({
       >
         <div className="flex items-center justify-between border-b px-4 py-3">
           <SheetTitle className="text-base leading-6 font-semibold">ค้นหา</SheetTitle>
-          <SheetClose
-            aria-label="ปิดการค้นหา"
-            className="text-muted-foreground hover:text-foreground"
-            data-testid="close-search-drawer"
-          >
-            <X className="size-5" />
+          {/* SFUI-21a (spec 09 กฎ 76): ปุ่มปิด = Close asChild → Button ghost icon ขนาด default ของ shadcn (icon X size-4) */}
+          <SheetClose asChild>
+            <Button variant="ghost" size="icon" aria-label="ปิดการค้นหา" data-testid="close-search-drawer">
+              <X />
+            </Button>
           </SheetClose>
         </div>
         {/* ซ่อนด้วย `hidden` ไม่ใช่ `sr-only`: กล่อง 1px ของ sr-only ที่ข้อความล้นถูกนับเป็น container ที่เลื่อนแนวนอนใน

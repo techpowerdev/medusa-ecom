@@ -50,7 +50,7 @@ const Login = ({ setCurrentView, defaultEmail, notice }: Props) => {
             <input type="hidden" name="country_code" value={countryCode} />
           </>
         )}
-        <div className="flex flex-col w-full gap-y-2">
+        <div className="flex flex-col w-full gap-4">
           <Input
             label="อีเมล"
             name="email"

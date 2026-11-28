@@ -70,3 +70,110 @@ test("AC-65 (1): ทุก <h1 ใน src/** (ยกเว้น hero) ใช้
   expect(withH1.length, "จำนวนไฟล์ที่มี <h1 (นอก hero)").toBeGreaterThanOrEqual(27)
   expect(found).toEqual([])
 })
+
+// ---- SFUI-21a (spec 09 กฎ 73, 75, 76; AC-66 (1)) ----
+
+/** ไฟล์ของตาราง inventory ข้อ 32 (ฟอร์มรอบ 48) — container ของช่องกรอกใช้ gap-4 */
+const GAP_FILES = [
+  "checkout/components/shipping-address/index.tsx",
+  "checkout/components/billing_address/index.tsx",
+  "account/components/address-card/add-address.tsx",
+  "account/components/address-card/edit-address-modal.tsx",
+  "account/components/profile-billing-address/index.tsx",
+  "account/components/profile-name/index.tsx",
+  "account/components/profile-phone/index.tsx",
+  "account/components/profile-password/index.tsx",
+  "account/components/login/index.tsx",
+  "account/components/register/index.tsx",
+  "checkout/components/discount-code/index.tsx",
+].map((f) => `src/modules/${f}`)
+
+/** ไฟล์ของตาราง inventory ข้อ 35 — ปุ่มปิด overlay */
+const CLOSE_FILES = [
+  "account/components/address-card/add-address.tsx",
+  "account/components/address-card/edit-address-modal.tsx",
+  "layout/components/side-menu/index.tsx",
+  "layout/components/search/drawer.tsx",
+  "products/components/product-actions/mobile-actions.tsx",
+].map((f) => `src/modules/${f}`)
+
+const BAD_GAP = /^(?:[a-z0-9-]+:)*(?:gap-2|gap-[xy]-.+)$/
+const SIZE_TOKEN = /^(?:[a-z0-9-]+:|data-\[[^\]]+\]:)*(?:h-.+|min-h-.+|p[xytrbl]?-.+|text-(?:xs|sm|base|lg|\d*xl|\[.+\])|leading-.+)$/
+
+const parseTsx = (file: string) => ts.createSourceFile(file, readSource(file), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+const openingOf = (n: ts.Node) => (ts.isJsxElement(n) ? n.openingElement : ts.isJsxSelfClosingElement(n) ? n : null)
+const attrOf = (el: ts.JsxOpeningElement | ts.JsxSelfClosingElement, sf: ts.SourceFile, name: string) =>
+  el.attributes.properties.find((p): p is ts.JsxAttribute => ts.isJsxAttribute(p) && p.name.getText(sf) === name)
+const lineOf = (sf: ts.SourceFile, n: ts.Node) => sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1
+
+/** container (JSX element) ที่มี `<Input` อยู่ภายในและ className มี gap-2, gap-x-… หรือ gap-y-… */
+export function fieldGapViolations(file: string, sf = parseTsx(file)): string[] {
+  const out: string[] = []
+  const visit = (n: ts.Node) => {
+    const el = openingOf(n)
+    if (el && ts.isJsxElement(n)) {
+      const bad = classTokens(attrOf(el, sf, "className")).filter((t) => BAD_GAP.test(t))
+      const hasInput = n.getText(sf).includes("<Input")
+      if (bad.length && hasInput) out.push(`${file}:${lineOf(sf, n)} ${bad.join(" ")}`)
+    }
+    n.forEachChild(visit)
+  }
+  visit(sf)
+  return out
+}
+
+test("AC-66 (1): container ของช่องในไฟล์ข้อ 32 ไม่มี gap-2/gap-x-*/gap-y-* (กฎ 73 — gap-4)", () => {
+  const control = ts.createSourceFile(
+    "c.tsx",
+    'const a = <div className="grid gap-x-4 gap-y-2"><Input /></div>\nconst b = <div className="grid gap-4"><Input /></div>\nconst c = <div className="flex gap-x-2"><Button /></div>',
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX
+  )
+  expect(fieldGapViolations("c.tsx", control)).toEqual(["c.tsx:1 gap-x-4 gap-y-2"])
+  expect(GAP_FILES.flatMap((f) => fieldGapViolations(f))).toEqual([])
+})
+
+test("AC-66 (1): SelectTrigger ใน src/modules/** ไม่มี className ขนาด (กฎ 75)", () => {
+  const found: string[] = []
+  for (const file of sourceFiles().filter((f) => f.startsWith("src/modules/") && f.endsWith(".tsx"))) {
+    const sf = parseTsx(file)
+    const visit = (n: ts.Node) => {
+      const el = openingOf(n)
+      if (el && el.tagName.getText(sf) === "SelectTrigger") {
+        const bad = classTokens(attrOf(el, sf, "className")).filter((t) => SIZE_TOKEN.test(t))
+        if (bad.length) found.push(`${file}:${lineOf(sf, n)} ${bad.join(" ")}`)
+      }
+      n.forEachChild(visit)
+    }
+    visit(sf)
+  }
+  expect(found).toEqual([])
+})
+
+test("AC-66 (1): ปุ่มปิด overlay ในไฟล์ข้อ 35 = DialogClose/SheetClose asChild → Button ghost icon (กฎ 76)", () => {
+  const found: string[] = []
+  let closes = 0
+  for (const file of CLOSE_FILES) {
+    const sf = parseTsx(file)
+    const visit = (n: ts.Node) => {
+      const el = openingOf(n)
+      if (el && /^(Dialog|Sheet)Close$/.test(el.tagName.getText(sf))) {
+        closes++
+        const child = ts.isJsxElement(n) ? n.children.map(openingOf).find(Boolean) : null
+        const ok =
+          !!attrOf(el, sf, "asChild") &&
+          !!child &&
+          child.tagName.getText(sf) === "Button" &&
+          attrOf(child, sf, "variant")?.initializer?.getText(sf) === '"ghost"' &&
+          attrOf(child, sf, "size")?.initializer?.getText(sf) === '"icon"' &&
+          !!attrOf(child, sf, "aria-label")
+        if (!ok) found.push(`${file}:${lineOf(sf, n)}`)
+      }
+      n.forEachChild(visit)
+    }
+    visit(sf)
+  }
+  expect(closes, "ปุ่มปิดในไฟล์ข้อ 35").toBe(5)
+  expect(found).toEqual([])
+})
