@@ -79,7 +79,10 @@ async function teamCampaign(request: APIRequestContext, admin: Headers, productI
         target_value: 5,
         group_mode: "team",
         team_duration_hours: 24,
-        ends_at: new Date(Date.now() + 48 * 3600_000).toISOString(),
+        // GET /store/group-buy/campaigns/active เรียง ends_at จากใกล้สุดแล้วตัด 50 แคมเปญ (MAX_CAMPAIGNS, spec 04 กฎข้อ 28f) — ชุดเต็มมีแคมเปญ
+        // active +48 ชม. ค้างจาก spec ก่อนหน้า > 50 ตัว แคมเปญ +48 ชม. ที่สร้างทีหลังสุดจึงหลุดจากหน้าแรก → จบใน 1 ชม. ให้อยู่ต้นรายการ
+        // (ทีมถูกตัดเวลาตามแคมเปญ — computeGroupEndsAt; test นี้ไม่สร้างทีมสำเร็จอยู่แล้ว)
+        ends_at: new Date(Date.now() + 3600_000).toISOString(),
         application_method: {
           type: "percentage",
           target_type: "items",

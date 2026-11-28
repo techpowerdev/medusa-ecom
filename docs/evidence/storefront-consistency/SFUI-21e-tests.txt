@@ -14,3 +14,10 @@ DB medusa_sfui21e, Redis db 13, Stripe test), storefront :8491
   --workers=1): 47 passed (รวม sfui-21e) — ไม่แก้ e2e เดิม
 - playwright project unit (รวม evidence-budget, AC-19): 271 passed; vitest: 140 files / 2089 passed
 - pnpm lint && pnpm typecheck: ผ่าน; pnpm --filter storefront build: ผ่าน
+
+## แก้หลัง CI ชุดเต็มล้ม (#636/#637 run 46157553348 — การ์ดแคมเปญทีมไม่ขึ้นหน้าแรกภายใน 100s)
+- สาเหตุ: GET /store/group-buy/campaigns/active เรียง ends_at จากใกล้สุดแล้วตัด 50 (MAX_CAMPAIGNS) — ชุดเต็มมีแคมเปญ active +48 ชม.
+  ค้างจาก spec ก่อนหน้า > 50 ตัว แคมเปญ +48 ชม. ของ test ที่สร้างทีหลังสุดจึงหลุดจากรายการ → แก้ ends_at ของ test เป็น +1 ชม. (ไม่แก้ src)
+- จำลองชุดเต็ม (DB medusa_sfui21e_fix, --workers=1): 21 spec ที่สร้างแคมเปญ group ก่อน (แคมเปญ active 66 ตัว) แล้วตามด้วย test เดิม
+  และ test ที่แก้ใน run เดียว → เดิม failed (การ์ดไม่ขึ้น 100s — ตรงกับ CI), ที่แก้ passed; รวม 95 passed / 1 failed (ตัวเดิม)
+- sfui-21e-action-errors --repeat-each=3 บน DB เดียวกัน (active 65 ตัว): 12 passed; playwright unit 271 passed; lint/typecheck ผ่าน
