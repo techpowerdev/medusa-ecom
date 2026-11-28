@@ -1,17 +1,19 @@
+import { PricedPromotion } from "@lib/util/price-breakdown"
 import { HttpTypes } from "@medusajs/types"
 import { TableCell, TableRow } from "@/components/ui/table"
 
 import LineItemOptions from "@modules/common/components/line-item-options"
-import LineItemPrice from "@modules/common/components/line-item-price"
 import LineItemUnitPrice from "@modules/common/components/line-item-unit-price"
 import Thumbnail from "@modules/products/components/thumbnail"
 
 type ItemProps = {
   item: HttpTypes.StoreCartLineItem | HttpTypes.StoreOrderLineItem
   currencyCode: string
+  /** SFUI-24c (กฎข้อ 159): promotions ของ order — ราคาต่อชิ้นหักเฉพาะส่วนลดอัตโนมัติ */
+  promotions?: PricedPromotion[] | null
 }
 
-const Item = ({ item, currencyCode }: ItemProps) => {
+const Item = ({ item, currencyCode, promotions }: ItemProps) => {
   return (
     <TableRow className="w-full" data-testid="product-row">
       <TableCell className="p-4 pl-0! w-24 whitespace-normal">
@@ -31,27 +33,14 @@ const Item = ({ item, currencyCode }: ItemProps) => {
       </TableCell>
 
       <TableCell className="p-4 pr-0! whitespace-normal">
-        <span className="pr-0! flex flex-col items-end h-full justify-center">
-          <span className="flex gap-x-1 ">
-            <p className="text-sm leading-[1.4rem] text-muted-foreground">
-              <span data-testid="product-quantity">{item.quantity}</span>x{" "}
-            </p>
-            {/* CORE-65 (spec 01 กฎข้อ 123): ชิ้นเดียว ราคาต่อหน่วย = ราคารวม → ไม่แสดงซ้ำ */}
-            {item.quantity > 1 && (
-              <LineItemUnitPrice
-                item={item}
-                style="tight"
-                currencyCode={currencyCode}
-              />
-            )}
-          </span>
-
-          <LineItemPrice
-            item={item}
-            style="tight"
-            currencyCode={currencyCode}
-          />
-        </span>
+        {/* SFUI-24c (spec 01 กฎข้อ 159a): "ราคาต่อชิ้น × จำนวน" ทุก qty ไม่มียอดรวมต่อแถว */}
+        <LineItemUnitPrice
+          item={item}
+          promotions={promotions}
+          style="tight"
+          currencyCode={currencyCode}
+          showQuantity
+        />
       </TableCell>
     </TableRow>
   )

@@ -8,6 +8,7 @@ import React from "react"
 import { applyPromotions } from "@lib/data/cart"
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { convertToLocale } from "@lib/util/money"
+import { isCustomerCode } from "@lib/util/price-breakdown"
 import { HttpTypes } from "@medusajs/types"
 import Input from "@modules/common/components/input"
 import Trash from "@modules/common/icons/trash"
@@ -65,7 +66,9 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
     codes: string[]
   } | null>(null)
 
-  const { promotions = [] } = cart
+  // SFUI-24c (spec 01 กฎข้อ 160): รายการและชุดโค้ดที่ส่งให้ action มีเฉพาะโค้ดที่ลูกค้าใส่เอง (กฎข้อ 158b) —
+  // ส่วนลดอัตโนมัติ (flash/ซื้อกลุ่ม) ลดราคาในแถวแล้ว ไม่แสดงเป็นโค้ด
+  const promotions = (cart.promotions ?? []).filter((p) => !!p.code && isCustomerCode(p.code, cart.promotions))
   const knownCodes = () => {
     const latest = latestRef.current
     if (latest && latest.basis === cart.promotions) {

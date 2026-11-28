@@ -76,7 +76,8 @@ test("order: ตาราง/ตัวอักษร/หัวข้อ/ไอ�
     // Table.Cell เดิมไม่มี whitespace-nowrap → ชื่อสินค้ายาว/ตัวเลือกตัดบรรทัดได้ (TableCell ของ shadcn มี nowrap)
     for (const i of [0, 1, 2]) expect.soft(await whiteSpace(cells.nth(i)), `cell ${i}`).toBe("normal")
     expect.soft(await typo(row.getByTestId("product-name"))).toEqual(TXT_MEDIUM_PLUS)
-    expect.soft(await typo(row.getByTestId("product-quantity").locator(".."))).toEqual(TXT_MEDIUM)
+    // SFUI-24c (spec 01 กฎข้อ 159a): "฿ราคาต่อชิ้น × จำนวน" อยู่ในบรรทัดเดียวกับราคา (text-sm leading-6 ของราคาเดิม) = 14px/24px/400
+    expect.soft(await typo(row.getByTestId("product-quantity").locator(".."))).toEqual({ ...TXT_MEDIUM, lineHeight: "24px" })
 
     // OrderDetails: <Text> ที่ไม่ใส่ขนาด = txt-medium
     expect.soft(await typo(page.getByTestId("order-email").locator(".."))).toEqual(TXT_MEDIUM)

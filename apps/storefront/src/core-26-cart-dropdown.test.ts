@@ -5,8 +5,9 @@ import { act, createElement } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-// CORE-26 (spec 01 กฎข้อ 81, AC-117; qa #199): ยอดรวมใน dropdown ของตะกร้าต้องเป็น `item_total` ที่ Medusa คำนวณ
-// (หลังส่วนลด รวม VAT — ตรงกับราคาต่อ line) และ dropdown ที่เปิดเองต้องปิดเองใน 5 วินาทีแม้ mouse อยู่ใต้ panel
+// CORE-26 (spec 01 กฎข้อ 81, AC-117; qa #199): dropdown ที่เปิดเองต้องปิดเองใน 5 วินาทีแม้ mouse อยู่ใต้ panel
+// SFUI-24c (กฎข้อ 159d แทนกฎข้อ 81a): บรรทัดยอด = "รวมค่าสินค้า" จาก price-breakdown ตัวเดียวกับ CartTotals
+// และแถวแสดงราคาต่อชิ้น × จำนวน (ไม่มียอดรวมต่อแถว)
 const SOURCE = path.resolve(__dirname, "modules/layout/components/cart-dropdown/index.tsx")
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/th/products/t-shirt" }))
@@ -19,7 +20,7 @@ vi.mock("@modules/common/components/localized-client-link", () => ({
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-describe("CORE-26: static — ยอดรวมจาก field ของ Medusa ไม่คำนวณเอง (AC-117)", () => {
+describe("CORE-26 / SFUI-24c: static — ยอดรวมจาก helper เดียวกับ CartTotals ไม่คำนวณเองใน component", () => {
   const src = fs.readFileSync(SOURCE, "utf8")
   // ยกเว้น `countItems` ที่รวม `quantity` (ไม่ใช่ราคา)
   const withoutCountItems = src.replace(/const countItems = [\s\S]*?\n\n/, "")
@@ -32,18 +33,23 @@ describe("CORE-26: static — ยอดรวมจาก field ของ Medusa
     expect(src, "countItems ต้องยังอยู่ (ไม่ใช่ regex ยกเว้นผิดที่)").toMatch(/const countItems = /)
   })
 
-  it("ไม่หาร/คูณ 1.07 และใช้ item_total ไม่ใช่ subtotal", () => {
+  it("ไม่หาร/คูณ 1.07 และใช้ priceBreakdown ไม่ใช่ item_total", () => {
     expect(src).not.toMatch(/1\.07/)
-    expect(src).toMatch(/\bitem_total\b/)
-    expect(src).not.toMatch(/\.subtotal\b/)
+    expect(src).toMatch(/\bpriceBreakdown\(/)
+    expect(src).not.toMatch(/\bitem_total\b/)
   })
 })
 
+// flash −20% (อัตโนมัติ) บนราคารวม VAT 2,950 → 2,360 ต่อชิ้น
 const line = (quantity: number) => ({
   id: "item_1",
   title: "เสื้อยืด",
   quantity,
   created_at: "2026-11-03T00:00:00Z",
+  unit_price: 2950,
+  is_tax_inclusive: true,
+  tax_lines: [{ rate: 7 }],
+  adjustments: [{ code: "FLASH-TSHIRT", amount: 590 * quantity, is_tax_inclusive: true }],
   total: 2360 * quantity,
   original_total: 2950 * quantity,
   variant: { title: "M" },
@@ -54,6 +60,7 @@ const cart = (quantity: number) =>
     id: "cart_1",
     currency_code: "thb",
     items: [line(quantity)],
+    promotions: [{ id: "promo_flash", code: "FLASH-TSHIRT", is_automatic: true }],
     subtotal: 5514.02,
     item_total: 2360 * quantity,
   }) as never
@@ -98,14 +105,19 @@ describe("CORE-26: dropdown ของตะกร้า (กฎข้อ 81)", (
     vi.useRealTimers()
   })
 
-  it("ยอดรวม = item_total ป้าย 'ยอดรวมสินค้า (รวม VAT)' ไม่มี 'ไม่รวมภาษี'", async () => {
+  it("ยอด = รวมค่าสินค้าจาก helper (4,720) ป้าย 'รวมค่าสินค้า' แถวแสดงราคาต่อชิ้น × จำนวน ไม่มียอดรวมต่อแถว", async () => {
     await render(2)
     await hover(byTestId("nav-cart-link")!)
     const total = byTestId("cart-subtotal")!
     expect(Number(total.getAttribute("data-value"))).toBe(4720)
+    expect(byTestId("cart-subtotal-label")!.textContent).toBe("รวมค่าสินค้า")
     const panel = byTestId("nav-cart-dropdown")!
-    expect(panel.textContent).toContain("ยอดรวมสินค้า (รวม VAT)")
-    expect(panel.textContent).not.toContain("ไม่รวมภาษี")
+    expect(panel.textContent).not.toMatch(/VAT|ไม่รวมภาษี/)
+    const item = panel.querySelector('[data-testid="cart-item"]')!
+    expect(item.querySelectorAll('[data-testid="product-price"]')).toHaveLength(0)
+    expect(item.querySelector('[data-testid="product-unit-price"]')!.getAttribute("data-value")).toBe("2360")
+    expect(item.querySelector('[data-testid="product-unit-original-price"]')!.textContent).toContain("2,950")
+    expect(item.querySelector('[data-testid="product-quantity"]')!.textContent).toBe("2")
   })
 
   it("เปิดเองหลังจำนวนเปลี่ยน แล้ว mouse อยู่ใต้ panel → ยังปิดเองภายใน 5 วินาที", async () => {

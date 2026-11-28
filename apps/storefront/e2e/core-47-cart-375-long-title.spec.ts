@@ -19,7 +19,9 @@ import { chooseOption, expectSelected } from "./support/select"
 import { THAI } from "./support/thai-text"
 
 // CORE-47 (spec 01 กฎข้อ 105, AC-142): /cart ที่ < 1024 แต่ละ line เป็นการ์ด — ชื่อสินค้ายาว (~90 ตัว ไทยปนอังกฤษ) ใช้ความกว้าง
-// ทางขวาของรูปทั้งหมด, บรรทัดล่างปุ่มลบ/จำนวน + ยอด 7 หลักพร้อมราคาขีดฆ่าชิดขวาไม่ถูกตัด; ≥ 1024 ตารางเดิม; `type="preview"` ไม่เปลี่ยน
+// ทางขวาของรูปทั้งหมด, บรรทัดล่างปุ่มลบ/จำนวน + ราคาชิดขวาไม่ถูกตัด; ≥ 1024 ตารางเดิม; `type="preview"` ไม่เปลี่ยน
+// SFUI-24c (กฎข้อ 159a): ไม่มียอดรวมต่อแถว/คอลัมน์ "รวม" — ราคาต่อชิ้น (หลักหมื่นมีทศนิยม) อยู่ตำแหน่งเดิมของราคารวม;
+// โค้ดส่วนลดไม่ลดราคาในแถว จึงไม่มีราคาขีดฆ่า (กฎข้อ 159b)
 test.use({ evidenceTarget: { feature: "core", taskId: "CORE-47" } })
 
 const MOBILE = { width: 375, height: 812 }
@@ -42,8 +44,6 @@ const ROW_TEST_IDS = [
   "product-delete-button",
   "product-select-button",
   "product-unit-price",
-  "product-price",
-  "product-original-price",
 ]
 
 type TempProduct = { productId: string; handle: string; variantId: string }
@@ -72,7 +72,7 @@ async function measureCards(page: Page) {
       // bottom ของ product-variant/top ของ price/select/delete เทียบในแถวเดียวกัน — วัดหลัง scroll ครั้งเดียว (ไม่ปน scroll ของ centre)
       const tops = () => ({
         variantBottom: one("product-variant").getBoundingClientRect().bottom,
-        price: one("product-price").getBoundingClientRect().top,
+        price: one("product-unit-price").getBoundingClientRect().top,
         select: one("product-select-button").getBoundingClientRect().top,
         delete: one("product-delete-button").getBoundingClientRect().top,
       })
@@ -91,7 +91,7 @@ async function measureCards(page: Page) {
           lineHeight,
           lines: Math.round(title.getBoundingClientRect().height / lineHeight),
         },
-        prices: [number(one("product-price")), number(one("product-original-price"))],
+        prices: [number(one("product-unit-price"))],
         select: centre(one("product-select-button")),
         deleteButton: centre(one("product-delete-button")),
         tops: tops(),
@@ -123,7 +123,7 @@ async function tableLayout(page: Page) {
   })
 }
 
-test("AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90 ตัวอ่านได้ ยอด 7 หลักไม่ถูกตัด, ≥ 1024 ตารางเดิม, preview ไม่เปลี่ยน", async ({
+test("AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90 ตัวอ่านได้ ราคาต่อชิ้นไม่ถูกตัด, ≥ 1024 ตาราง, preview ไม่เปลี่ยน", async ({
   page,
   context,
   request,
@@ -236,7 +236,7 @@ test("AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90
     )
 
     await step(
-      "(a) 375: การ์ด — ชื่อใช้ความกว้างทางขวาของรูป ≤ 5 บรรทัด, บรรทัดล่างปุ่มลบ/จำนวน/รวมชิดขวาไม่ถูกตัด, หน้าไม่ล้น",
+      "(a) 375: การ์ด — ชื่อใช้ความกว้างทางขวาของรูป ≤ 5 บรรทัด, บรรทัดล่างปุ่มลบ/จำนวน/ราคาชิดขวาไม่ถูกตัด, หน้าไม่ล้น",
       async () => {
         await page.setViewportSize(MOBILE)
         await openCart()
@@ -245,15 +245,18 @@ test("AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90
           await page.evaluate(() => document.documentElement.scrollWidth)
         ).toBeLessThanOrEqual(MOBILE.width)
         expect(cards.map((c) => c.title.text).sort()).toEqual([...TITLES].sort())
-        // ยอด 7 หลัก: line จำนวน 99 = ฿1,222,221.33 ก่อนลด
+        // ราคาต่อชิ้นหลักหมื่นมีทศนิยม (฿12,345.67) — ไม่มียอดรวมต่อแถวแล้ว
         const amounts = cards.flatMap((c) =>
           c.prices.map((p) => Number(p.text.replace(/[^\d.]/g, "")))
         )
-        expect(Math.max(...amounts)).toBeGreaterThanOrEqual(1_000_000)
+        expect(Math.max(...amounts)).toBeCloseTo(UNIT_PRICE, 2)
         for (const c of cards) {
           const name = c.title.text.slice(0, 12)
           for (const id of ROW_TEST_IDS) {
             expect(c.counts[id], `${name}: ${id} 1 ตัวต่อแถว`).toBe(1)
+          }
+          for (const id of ["product-price", "product-original-price", "product-unit-original-price"]) {
+            expect(c.counts[id], `${name}: ไม่มี ${id}`).toBeUndefined()
           }
           for (const [id, count] of Object.entries(c.counts)) {
             expect(count, `${name}: ${id} ไม่ซ้ำในแถว`).toBe(1)
@@ -270,7 +273,7 @@ test("AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90
           }
           expect(
             Math.max(...c.prices.map((p) => p.right)),
-            `${name}: รวมชิดขวา`
+            `${name}: ราคาชิดขวา`
           ).toBeGreaterThanOrEqual(c.rowRight - 2)
           for (const key of ["price", "select", "delete"] as const) {
             expect(c.tops[key], `${name}: ${key} อยู่บรรทัดล่าง`).toBeGreaterThanOrEqual(
@@ -297,14 +300,14 @@ test("AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90
 
     for (const viewport of REGRESSION) {
       await step(
-        `(d) ${viewport.width}: ตารางเดิม — header 5 ช่อง, padding = DESKTOP_BASELINE, กล่องจำนวน 112, รูป 96`,
+        `(d) ${viewport.width}: ตาราง — header 4 ช่อง (ไม่มีคอลัมน์รวม), padding = DESKTOP_BASELINE, กล่องจำนวน 112, รูป 96`,
         async () => {
           await page.setViewportSize(viewport)
           await openCart()
           await expect(page.getByTestId("cart-summary-column")).toBeVisible()
           const header = page.getByTestId("cart-items-header")
-          await expect(header.locator("th")).toHaveCount(5)
-          for (let i = 0; i < 5; i++) {
+          await expect(header.locator("th")).toHaveCount(4)
+          for (let i = 0; i < 4; i++) {
             await expect(header.locator("th").nth(i)).toBeVisible()
           }
           for (const row of await page.getByTestId("product-row").all()) {
@@ -315,7 +318,7 @@ test("AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90
           expect(t.cellDisplays).toEqual(
             t.cellDisplays.map(() => "table-cell")
           )
-          expect(t.cellDisplays).toHaveLength(TITLES.length * 5)
+          expect(t.cellDisplays).toHaveLength(TITLES.length * 4)
           expect(t.layout).toEqual(DESKTOP_BASELINE)
           expect(t.imageLinkWidth).toBe(96)
           expect(t.scrollWidth).toBeLessThanOrEqual(viewport.width)
@@ -376,9 +379,9 @@ test("AC-142: /cart < 1024 เป็นการ์ด ชื่อยาว ~90
   async function openCart() {
     await page.goto(`/${CC}/cart`)
     await expect(page.getByTestId("product-row")).toHaveCount(TITLES.length)
-    await expect(page.getByTestId("product-original-price")).toHaveCount(
-      TITLES.length
-    )
+    // รอจนโค้ดมีผล (แถวส่วนลดในสรุป) — โค้ดไม่ลดราคาในแถว (SFUI-24c กฎข้อ 159b)
+    await expect(page.getByTestId("cart-totals").getByTestId("cart-discount")).toBeVisible()
+    await expect(page.getByTestId("product-unit-price")).toHaveCount(TITLES.length)
   }
 
   function storeHeaders(customer: Customer): Headers {

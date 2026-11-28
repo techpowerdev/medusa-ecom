@@ -18,7 +18,7 @@ import {
 } from "./support/medusa"
 
 // CORE-44 (spec 01 กฎข้อ 102, AC-138): (a) ที่ ≥ 1024 คอลัมน์สรุปของ /cart ไม่ล้นเมื่อมีโค้ดส่วนลด (กว้าง 360 เท่าเดิม)
-// และ product-price ไม่ถูกคอลัมน์สรุปทับ; (b) product-select-button แสดงจำนวนจริงของ line (99) และแก้ลดได้
+// และราคาในแถวไม่ถูกคอลัมน์สรุปทับ (SFUI-24c กฎข้อ 159a: product-unit-price อยู่ตำแหน่งเดิมของราคารวม); (b) product-select-button แสดงจำนวนจริงของ line (99) และแก้ลดได้
 test.use({ evidenceTarget: { feature: "core", taskId: "CORE-44" } })
 
 const VIEWPORTS = [
@@ -37,14 +37,14 @@ const isUpdateToTwoBody = (body: string) => {
   }
 }
 
-/** ตำแหน่งของ cart-summary-column + ทุก product-price (จุดกลางไม่ถูกตัด/ทับ = elementFromPoint อยู่ใน product-price) */
+/** ตำแหน่งของ cart-summary-column + ทุก product-unit-price (จุดกลางไม่ถูกตัด/ทับ = elementFromPoint อยู่ใน product-unit-price) */
 async function measure(page: Page) {
   return page.evaluate(() => {
     const summary = document
       .querySelector('[data-testid="cart-summary-column"]')
       ?.getBoundingClientRect()
     const prices = Array.from(
-      document.querySelectorAll<HTMLElement>('[data-testid="product-price"]')
+      document.querySelectorAll<HTMLElement>('[data-testid="product-unit-price"]')
     ).map((el) => {
       const r = el.getBoundingClientRect()
       const hit = document.elementFromPoint(
@@ -160,14 +160,14 @@ test("AC-138: /cart ที่ 1024/1280 คอลัมน์สรุปไม�
     name: string
   ) {
     await step(
-      `${viewport.width} ${name}: หน้าไม่ล้น, cart-summary-column กว้าง 360 อยู่ในจอ และไม่ทับ product-price`,
+      `${viewport.width} ${name}: หน้าไม่ล้น, cart-summary-column กว้าง 360 อยู่ในจอ และไม่ทับ product-unit-price`,
       async () => {
         await page.setViewportSize(viewport)
         await page.goto(`/${CC}/cart`)
         await expect(page.getByTestId("product-row")).toHaveCount(lineCount)
-        await expect(
-          page.getByTestId("product-original-price").first()
-        ).toBeVisible()
+        // โค้ดส่วนลดไม่ลดราคาในแถว (กฎข้อ 159b) — ไม่มีราคาขีดฆ่า ไม่มียอดรวมต่อแถว
+        await expect(page.getByTestId("product-unit-price").first()).toBeVisible()
+        await expect(page.getByTestId("product-price")).toHaveCount(0)
         await expect(page.getByTestId("cart-summary-column")).toBeVisible()
         const m = await measure(page)
         expect(m.scrollWidth).toBeLessThanOrEqual(viewport.width)
@@ -177,7 +177,7 @@ test("AC-138: /cart ที่ 1024/1280 คอลัมน์สรุปไม�
         expect(m.prices.length).toBe(lineCount)
         for (const p of m.prices) {
           expect(p.right).toBeLessThanOrEqual(m.summary!.left)
-          expect(p.hitInside, "จุดกลางของ product-price ไม่ถูกตัด/ทับ").toBe(
+          expect(p.hitInside, "จุดกลางของ product-unit-price ไม่ถูกตัด/ทับ").toBe(
             true
           )
         }

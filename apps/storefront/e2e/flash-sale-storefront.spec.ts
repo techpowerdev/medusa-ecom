@@ -224,7 +224,9 @@ test("AC-1, AC-8 (g): cart ได้ส่วนลด flash; ใส่ code แ
   await step("AC-1: cart แสดงยอดหลังส่วนลด flash", async () => {
     await openCart(page, context, baseURL!, cartId)
     // ยอดรวมรวมภาษี (ราคา THB รวม VAT) — ส่วนลด flash −20% คำนวณโดย Medusa
-    await expect(page.getByTestId("cart-discount")).toBeVisible()
+    // SFUI-24a (spec 01 กฎข้อ 158): ส่วนลดอัตโนมัติอยู่ในรวมค่าสินค้า — ไม่มีแถวส่วนลด
+    await expect(page.getByTestId("cart-discount")).toHaveCount(0)
+    await expect(page.getByTestId("cart-totals").getByTestId("cart-subtotal")).toHaveAttribute("data-value", `${FLASH_PRICE}`)
     await expect(page.getByTestId("cart-total")).toHaveAttribute("data-value", `${FLASH_PRICE}`)
     await expect(page.getByTestId("flash-not-combinable")).toHaveCount(0)
     await evidence("03-cart-flash-discount")

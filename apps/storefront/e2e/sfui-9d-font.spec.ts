@@ -31,6 +31,7 @@ const LARGE_SEMI: Font = { size: "16px", lineHeight: "24px", weight: "600" }
 const XL_SEMI: Font = { size: "24px", lineHeight: "36px", weight: "600" }
 const XXL_SEMI: Font = { size: "32px", lineHeight: "48px", weight: "600" } // SFUI-21b (spec 09 กฎ 77, 78 (i)): h1 ทุกหน้า text-3xl font-semibold tracking-tight = 32px/48px/600 (วัดบน build)
 const H1 = XXL_SEMI
+const TOTALS_ROW: Font = { size: "14px", lineHeight: "22.4px", weight: "400" }
 // SFUI-23 (spec 09 กฎ 85, 78 (i)): ประโยคลิงก์สลับ login/สมัคร `text-sm` เท่าปุ่ม = 14px/20px/400 (เดิม 12px/20px/400)
 const TOGGLE_SENTENCE: Font = { size: "14px", lineHeight: "20px", weight: "400" }
 
@@ -122,15 +123,16 @@ test("AC-21: หน้า login/register, ภาพรวมบัญชี, โ
     await evidence("02-account-orders")
   })
 
-  await step("รายละเอียด order: หัวข้อ 32px/48px/600, สรุปคำสั่งซื้อ 14px/24px/600 + 12px/20px/400 + 14px/24px/400, ช่วยเหลือ 14px/24px/400", async () => {
+  // SFUI-24a (spec 01 กฎข้อ 158): สรุปคำสั่งซื้อใช้ CartTotals ตัวเดียวกับ cart/checkout — แถวยอด 14px/22.4px/400 (text-sm leading-[1.4rem])
+  await step("รายละเอียด order: หัวข้อ 32px/48px/600, สรุปคำสั่งซื้อ 14px/24px/600 + แถว CartTotals 14px/22.4px/400, ช่วยเหลือ 14px/24px/400", async () => {
     await page.goto(`/${CC}/account/orders/details/${id}`)
     await expect(page.getByTestId("order-details-container")).toBeVisible()
     expect.soft(await font(page.getByTestId("order-details-heading"))).toEqual(XXL_SEMI)
     const summary = page.getByTestId("order-summary")
     expect.soft(await font(summary.locator("h2"))).toEqual(BASE_SEMI)
-    expect.soft(await font(summary.locator("h2 + div"))).toEqual(SMALL_REGULAR)
-    expect.soft(await font(summary.locator("h2 + div > div").first())).toEqual(BASE_REGULAR)
-    expect.soft(await font(summary.locator("h2 + div > div").last())).toEqual(BASE_REGULAR)
+    const totals = summary.getByTestId("cart-totals")
+    expect.soft(await font(totals.getByTestId("cart-subtotal-label"))).toEqual(TOTALS_ROW)
+    expect.soft(await font(totals.getByTestId("cart-total").locator(".."))).toEqual(TOTALS_ROW)
     expect.soft(await font(page.getByTestId("order-help").locator("h2 + div"))).toEqual(BASE_REGULAR)
     await evidence("03-account-order-details")
   })

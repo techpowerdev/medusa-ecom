@@ -14,7 +14,8 @@ import {
 import { isAddToCartBody, waitForServerAction } from "./support/server-action"
 
 // CORE-26: spec 01 AC-117 (กฎข้อ 81, qa #199) — ยอดรวมใน dropdown ของตะกร้า = `item_total` ที่ Medusa คำนวณ
-// (หลังส่วนลด flash รวม VAT) ตรงกับราคาต่อ line, แถว `cart-totals` รวมได้ยอดสุทธิ และ dropdown ที่เปิดเองปิดเองใน 5 วินาที
+// (หลังส่วนลด flash รวม VAT) ตรงกับ Σ ราคาต่อชิ้น × จำนวนของแถว (SFUI-24c กฎข้อ 159d: ป้าย "รวมค่าสินค้า" ไม่มียอดรวมต่อแถว),
+// แถว `cart-totals` รวมได้ยอดสุทธิ และ dropdown ที่เปิดเองปิดเองใน 5 วินาที
 // สร้างสินค้า/แคมเปญเฉพาะของ test นี้ (promotion มี target rule เฉพาะสินค้านี้) และปิดแคมเปญเมื่อจบ
 // หา element ด้วย data-testid เท่านั้น
 test.use({ evidenceTarget: { feature: "core", taskId: "CORE-26" } })
@@ -146,7 +147,7 @@ test.afterAll(async ({ request }) => {
   )
 })
 
-test("AC-117: dropdown แสดง item_total หลังส่วนลด flash ป้าย 'รวม VAT' และแถว cart-totals รวมได้ยอดสุทธิ", async ({
+test("AC-117: dropdown แสดง item_total หลังส่วนลด flash = Σ ราคาต่อชิ้น × จำนวน และแถว cart-totals รวมได้ยอดสุทธิ", async ({
   page,
   context,
   request,
@@ -163,7 +164,7 @@ test("AC-117: dropdown แสดง item_total หลังส่วนลด fl
   expect(cart.discount_total, "flash discount").toBeGreaterThan(0)
   expect(cart.item_total).toBeCloseTo(PRICE * QTY * 0.8, 2)
 
-  await step("ชี้ nav-cart-link → cart-subtotal = item_total = ผลรวมราคา line ที่แสดง", async () => {
+  await step("ชี้ nav-cart-link → cart-subtotal = item_total = Σ ราคาต่อชิ้น × จำนวนที่แสดง", async () => {
     await page.goto(`/${CC}/products/${handle}`)
     await page.getByTestId("nav-cart-link").hover()
     const dropdown = page.getByTestId("nav-cart-dropdown")
@@ -172,28 +173,30 @@ test("AC-117: dropdown แสดง item_total หลังส่วนลด fl
     expect(await dataValue(total)).toBeCloseTo(cart.item_total, 2)
     expect(await shownAmount(total)).toBeCloseTo(cart.item_total, 2)
 
-    const linePrices = await dropdown.getByTestId("cart-item").getByTestId("product-price").all()
+    await expect(dropdown.getByTestId("cart-item").getByTestId("product-price")).toHaveCount(0)
     let sum = 0
-    for (const price of linePrices) sum += await shownAmount(price)
+    for (const item of await dropdown.getByTestId("cart-item").all()) {
+      const quantity = Number(await item.getByTestId("product-quantity").innerText())
+      sum += (await shownAmount(item.getByTestId("product-unit-price"))) * quantity
+    }
     expect(sum).toBeCloseTo(await dataValue(total), 2)
 
     const label = dropdown.getByTestId("cart-subtotal-label")
-    await expect(label).toHaveText("ยอดรวมสินค้า (รวม VAT)")
+    await expect(label).toHaveText(/[฀-๿]/)
+    await expect(label).not.toHaveText(/VAT/)
     await expect(dropdown).not.toContainText("ไม่รวมภาษี")
     await evidence("01-dropdown-item-total")
   })
 
-  // CORE-57 (กฎข้อ 115b): แถวรวม VAT ทั้งชุด — แถว "รวม VAT แล้ว" (cart-taxes) เป็นข้อมูลไม่บวกซ้ำ
-  await step("/th/cart: ยอดก่อนส่วนลด − ส่วนลด + ค่าจัดส่ง = ยอดรวมทั้งสิ้น (±0.01)", async () => {
+  // SFUI-24a (กฎข้อ 158 — แทนกฎข้อ 115b): ส่วนลด flash (อัตโนมัติ) อยู่ในรวมค่าสินค้าแล้ว ไม่มีแถวส่วนลด
+  await step("/th/cart: รวมค่าสินค้า (หลังส่วนลด flash) + ค่าจัดส่ง = ยอดรวมทั้งสิ้น (±0.01)", async () => {
     await page.goto(`/${CC}/cart`)
     const totals = page.getByTestId("cart-totals")
     await expect(totals).toBeVisible()
-    const discount = totals.getByTestId("cart-discount")
-    await expect(discount).toBeVisible()
-    const rows =
-      (await dataValue(totals.getByTestId("cart-subtotal"))) -
-      (await dataValue(discount)) +
-      (await dataValue(totals.getByTestId("cart-shipping")))
+    await expect(totals.getByTestId("cart-discount")).toHaveCount(0)
+    const subtotal = await dataValue(totals.getByTestId("cart-subtotal"))
+    expect(subtotal).toBeCloseTo(cart.item_total, 2)
+    const rows = subtotal + (await dataValue(totals.getByTestId("cart-shipping")))
     const grand = await dataValue(totals.getByTestId("cart-total"))
     expect(Math.abs(rows - grand), `rows=${rows} total=${grand}`).toBeLessThanOrEqual(0.01)
     expect(grand).toBeCloseTo(cart.total, 2)

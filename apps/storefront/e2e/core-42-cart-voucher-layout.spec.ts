@@ -20,18 +20,18 @@ import {
 } from "./support/medusa"
 import { THAI } from "./support/thai-text"
 
-// CORE-42 (spec 01 กฎข้อ 100, AC-136): (a) ตารางสินค้า /cart ไม่ล้นที่ 375 (คอลัมน์ "รวม" อยู่ในจอ ไม่ถูกตัด)
-// และคอลัมน์ราคาต่อหน่วยยังอยู่ที่ 1280; (b) แถวรหัสของการ์ด voucher ไม่มีช่องว่างใต้แถวเมื่อสถานะว่าง (span aria-live ยังอยู่)
+// CORE-42 (spec 01 กฎข้อ 100, AC-136): (a) ตารางสินค้า /cart ไม่ล้นที่ 375 (ราคาต่อชิ้นอยู่ในจอ ไม่ถูกตัด)
+// SFUI-24c (กฎข้อ 159a): ไม่มีคอลัมน์ "รวม" — ราคาต่อชิ้นอยู่ตำแหน่งเดิมของราคารวม และโค้ดส่วนลดไม่ลดราคาในแถว (ไม่มีราคาขีดฆ่า); (b) แถวรหัสของการ์ด voucher ไม่มีช่องว่างใต้แถวเมื่อสถานะว่าง (span aria-live ยังอยู่)
 test.use({ evidenceTarget: { feature: "core", taskId: "CORE-42" } })
 
 const MOBILE = { width: 375, height: 812 }
 const DESKTOP = { width: 1280, height: 720 }
 
-/** ทุก `product-price` อยู่ในจอ (0 ≤ left, right ≤ 375) และจุดกลางไม่ถูก ancestor ตัด (elementFromPoint อยู่ใน product-price) */
+/** ทุก `product-unit-price` อยู่ในจอ (0 ≤ left, right ≤ 375) และจุดกลางไม่ถูก ancestor ตัด (elementFromPoint อยู่ใน product-unit-price) */
 async function pricesInViewport(page: Page) {
   return page.evaluate(() =>
     Array.from(
-      document.querySelectorAll<HTMLElement>('[data-testid="product-price"]')
+      document.querySelectorAll<HTMLElement>('[data-testid="product-unit-price"]')
     ).map((el) => {
       const r = el.getBoundingClientRect()
       const hit = document.elementFromPoint(
@@ -199,12 +199,13 @@ test("AC-136a: ตารางสินค้า /cart ไม่ล้นที�
 
   async function expectCartFits(quantity: number) {
     await step(
-      `375 จำนวน ${quantity}: หน้าไม่ล้นแนวนอน และ product-price อยู่ในจอครบ ไม่ถูกตัด`,
+      `375 จำนวน ${quantity}: หน้าไม่ล้นแนวนอน และ product-unit-price อยู่ในจอครบ ไม่ถูกตัด`,
       async () => {
         await page.setViewportSize(MOBILE)
         await page.goto(`/${CC}/cart`)
         await expect(page.getByTestId("product-row")).toHaveCount(1)
-        await expect(page.getByTestId("product-original-price")).toBeVisible()
+        await expect(page.getByTestId("product-unit-price")).toBeVisible()
+        await expect(page.getByTestId("product-unit-original-price")).toHaveCount(0)
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth)
         ).toBeLessThanOrEqual(375)
@@ -213,7 +214,7 @@ test("AC-136a: ตารางสินค้า /cart ไม่ล้นที�
         for (const p of prices) {
           expect(p.left).toBeGreaterThanOrEqual(0)
           expect(p.right).toBeLessThanOrEqual(375)
-          expect(p.hitInside, "จุดกลางของ product-price ไม่ถูกตัด").toBe(true)
+          expect(p.hitInside, "จุดกลางของ product-unit-price ไม่ถูกตัด").toBe(true)
         }
         await evidence(`01-cart-375-qty${quantity}`)
       }
@@ -222,17 +223,17 @@ test("AC-136a: ตารางสินค้า /cart ไม่ล้นที�
 
   async function expectDesktopLayout() {
     await step(
-      "1280: header 5 ช่อง visible และ padding/ตำแหน่งของทุก cell เท่าก่อน CORE-42",
+      "1280: header 4 ช่อง visible และ padding/ตำแหน่งของทุก cell เท่าก่อน CORE-42 (ไม่มีคอลัมน์รวม — SFUI-24c)",
       async () => {
         await page.setViewportSize(DESKTOP)
         await page.goto(`/${CC}/cart`)
         const header = page.getByTestId("cart-items-header")
-        await expect(header.locator("th")).toHaveCount(5)
-        for (let i = 0; i < 5; i++) {
+        await expect(header.locator("th")).toHaveCount(4)
+        for (let i = 0; i < 4; i++) {
           await expect(header.locator("th").nth(i)).toBeVisible()
         }
         await expect(page.getByTestId("product-unit-price")).toBeVisible()
-        await expect(page.getByTestId("product-price")).toBeVisible()
+        await expect(page.getByTestId("product-price")).toHaveCount(0)
         expect(await desktopLayout(page)).toEqual(DESKTOP_BASELINE)
       }
     )

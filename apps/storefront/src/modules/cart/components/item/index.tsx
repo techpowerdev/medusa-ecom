@@ -17,13 +17,13 @@ import {
   INSUFFICIENT_INVENTORY,
   INSUFFICIENT_INVENTORY_MESSAGE,
 } from "@lib/util/insufficient-inventory"
+import { PricedPromotion } from "@lib/util/price-breakdown"
 import { HttpTypes } from "@medusajs/types"
 import CartFlashExceedsRemaining, {
   CartFlashExceedsCustomerLimit,
 } from "@modules/cart/components/flash-exceeds-remaining"
 import DeleteButton from "@modules/common/components/delete-button"
 import LineItemOptions from "@modules/common/components/line-item-options"
-import LineItemPrice from "@modules/common/components/line-item-price"
 import LineItemUnitPrice from "@modules/common/components/line-item-unit-price"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Spinner from "@modules/common/icons/spinner"
@@ -50,6 +50,8 @@ type ItemProps = {
   item: HttpTypes.StoreCartLineItem
   type?: "full" | "preview"
   currencyCode: string
+  /** SFUI-24c (กฎข้อ 159): promotions ของ cart — ราคาต่อชิ้นหักเฉพาะส่วนลดอัตโนมัติ */
+  promotions?: PricedPromotion[] | null
   /** FS-15 (กฎข้อ 20b): remaining_units เมื่อจำนวนของ line นี้เกินโควตา flash */
   flashRemaining?: number
   /** FS-21 (กฎข้อ 26b): สิทธิ์ flash ที่เหลือของลูกค้า เมื่อจำนวนรวมในแคมเปญเกิน */
@@ -60,6 +62,7 @@ const Item = ({
   item,
   type = "full",
   currencyCode,
+  promotions,
   flashRemaining,
   flashCustomerRemaining,
 }: ItemProps) => {
@@ -74,8 +77,9 @@ const Item = ({
     setUpdating(false)
   }
 
-  // CORE-47 (กฎข้อ 105): /cart < small แต่ละ line เป็นการ์ด — render ครั้งเดียว `tr` เป็น grid 3 คอลัมน์ (รูป | ชื่อ/จำนวน | รวม)
-  // แล้ว `td` เป็น block: รูป row-span 2 ซ้าย, ชื่อ + ตัวเลือก col-span 2 ใช้ความกว้างที่เหลือ, บรรทัดล่าง = ปุ่มลบ/จำนวน + รวมชิดขวา
+  // CORE-47 (กฎข้อ 105): /cart < small แต่ละ line เป็นการ์ด — render ครั้งเดียว `tr` เป็น grid 3 คอลัมน์ (รูป | ชื่อ/จำนวน | ราคา)
+  // แล้ว `td` เป็น block: รูป row-span 2 ซ้าย, ชื่อ + ตัวเลือก col-span 2 ใช้ความกว้างที่เหลือ, บรรทัดล่าง = ปุ่มลบ/จำนวน + ราคาชิดขวา
+  // SFUI-24c (กฎข้อ 159a): ไม่มียอดรวมต่อแถว — ราคาต่อชิ้นอยู่คอลัมน์สุดท้าย (ตำแหน่งเดิมของราคารวม) ทุกขนาดจอ
   // class ทั้งหมดอยู่ใต้ `type === "full"` และเป็น `max-small:` (≥ small ไม่มี class ใหม่ → ตารางเดิมทุกพิกเซล; preview เท่าเดิม)
   const card = type === "full"
 
@@ -178,48 +182,20 @@ const Item = ({
         </TableCell>
       )}
 
-      {type === "full" && (
-        <TableCell className="whitespace-normal p-4 hidden small:table-cell">
-          <LineItemUnitPrice
-            item={item}
-            style="tight"
-            currencyCode={currencyCode}
-          />
-        </TableCell>
-      )}
-
       <TableCell
         className={cn("whitespace-normal p-4 pr-0!", {
           "max-small:block max-small:pl-2 max-small:pt-0 max-small:whitespace-nowrap":
             card,
         })}
       >
-        <span
-          className={cn("pr-0!", {
-            "flex flex-col items-end h-full justify-center": type === "preview",
-          })}
-        >
-          {type === "preview" && (
-            <span className="flex gap-x-1 ">
-              <p className="text-sm leading-[1.4rem] text-muted-foreground">
-                <span data-testid="product-quantity">{item.quantity}</span>x{" "}
-              </p>
-              {/* CORE-66 (spec 01 กฎข้อ 124): preview ชิ้นเดียว ราคาต่อหน่วย = ราคารวม → ไม่แสดงซ้ำ; /cart (type="full") คงเดิม */}
-              {item.quantity > 1 && (
-                <LineItemUnitPrice
-                  item={item}
-                  style="tight"
-                  currencyCode={currencyCode}
-                />
-              )}
-            </span>
-          )}
-          <LineItemPrice
-            item={item}
-            style="tight"
-            currencyCode={currencyCode}
-          />
-        </span>
+        {/* SFUI-24c (กฎข้อ 159a): preview แสดง "ราคาต่อชิ้น × จำนวน" ทุก qty; /cart จำนวนคือ select (ไม่มี × n ซ้ำ) */}
+        <LineItemUnitPrice
+          item={item}
+          promotions={promotions}
+          style="tight"
+          currencyCode={currencyCode}
+          showQuantity={type === "preview"}
+        />
       </TableCell>
     </TableRow>
   )

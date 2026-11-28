@@ -1,4 +1,5 @@
 import repeat from "@lib/util/repeat"
+import { PricedPromotion } from "@lib/util/price-breakdown"
 import { HttpTypes } from "@medusajs/types"
 import { Table, TableBody } from "@/components/ui/table"
 
@@ -7,7 +8,8 @@ import Item from "@modules/order/components/item"
 import SkeletonLineItem from "@modules/skeletons/components/skeleton-line-item"
 
 type ItemsProps = {
-  order: HttpTypes.StoreOrder
+  /** SFUI-24c: `promotions` (retrieveOrder ขอ code/is_automatic — กฎข้อ 158f) ไม่อยู่ใน type ของ StoreOrder */
+  order: HttpTypes.StoreOrder & { promotions?: PricedPromotion[] | null }
 }
 
 const Items = ({ order }: ItemsProps) => {
@@ -29,6 +31,7 @@ const Items = ({ order }: ItemsProps) => {
                       key={item.id}
                       item={item}
                       currencyCode={order.currency_code}
+                      promotions={order.promotions}
                     />
                   )
                 })
