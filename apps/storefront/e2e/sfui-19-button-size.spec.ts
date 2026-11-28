@@ -1,6 +1,7 @@
 import { Page } from "@playwright/test"
 
 import { BACKEND_URL, expect, test } from "./support/fixtures"
+import { createActiveAffiliate } from "./support/affiliate"
 import { createVoucher, placeCapturedOrder, waitDelivered } from "./support/evoucher"
 import { addAddresses, groupBuyOrder, poolGroup } from "./support/group-buy"
 import {
@@ -9,6 +10,7 @@ import {
   adminHeaders,
   cartReadyForPayment,
   createCustomer,
+  fulfillAndShip,
   placeOrder,
   publishableKey,
   signInAs,
@@ -284,5 +286,120 @@ test.describe("AC-57: ปุ่มจ่ายเงิน 36px ใช้งา�
     await page.getByTestId("submit-order-button").click()
     await expect(page.getByTestId("promptpay-qr")).toBeVisible({ timeout: 30_000 })
     await evidence("04-promptpay-qr")
+  })
+})
+
+// SFUI-19b (spec 09 กฎ 60, AC-59): ปุ่ม/ลิงก์ที่ไม่ใช่ shadcn ในตาราง inventory ข้อ 14–20 เป็น `Button` ตามบทบาท (variant) ขนาด default/icon
+const THAI_LABEL = /[\u0E00-\u0E7F]/
+
+/** `slot`: Button ที่เป็นลูกของ `<…Trigger asChild>` ได้ data-slot ของ trigger ทับ (Slot ของ Radix รวม props) */
+async function expectButton(page: Page, testId: string, variant: string, size = "default", slot = "button") {
+  const el = page.getByTestId(testId).first()
+  await expect(el, testId).toBeVisible()
+  await expect(el, testId).toHaveAttribute("data-slot", slot)
+  await expect(el, testId).toHaveAttribute("data-variant", variant)
+  await expect(el, testId).toHaveAttribute("data-size", size)
+  const { height, width } = await el.evaluate((n) => ({
+    height: getComputedStyle(n).height,
+    width: getComputedStyle(n).width,
+  }))
+  expect(height, `${testId} สูง`).toBe("36px")
+  if (size === "icon") {
+    expect(width, `${testId} กว้าง`).toBe("36px")
+    expect(await el.getAttribute("aria-label"), `${testId} aria-label ไทย`).toMatch(THAI_LABEL)
+  }
+}
+
+const STYLE_KEYS = ["height", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft", "fontSize", "color"] as const
+const styleOf = (page: Page, testId: string) =>
+  page.getByTestId(testId).first().evaluate((n, keys) => {
+    const s = getComputedStyle(n)
+    return Object.fromEntries(keys.map((k) => [k, s[k as keyof CSSStyleDeclaration] as string]))
+  }, STYLE_KEYS as unknown as string[])
+
+test("AC-59: ปุ่ม/ลิงก์ข้อ 14–20 เป็น Button ของ shadcn ตามบทบาท สูง 36px (icon 36×36 + aria-label ไทย)", async ({
+  page,
+  context,
+  request,
+  baseURL,
+  step,
+}) => {
+  test.setTimeout(240_000)
+  await page.setViewportSize({ width: 1280, height: 800 })
+  const admin = await adminHeaders(request)
+  const pk = await publishableKey(request, admin)
+  const customer = await createCustomer(request, pk)
+  const order = await placeOrder(request, pk, customer)
+  await fulfillAndShip(request, admin, order.id)
+  await addAddresses(request, pk, customer, [
+    { first_name: "Somchai", last_name: "Jaidee", address_1: "1 Sukhumvit Rd", city: "Bangkok", postal_code: "10110", phone: "0812345678" },
+  ])
+  const cartId = await cartReadyForPayment(request, pk, customer)
+  await signInAs(context, baseURL!, customer)
+  await context.addCookies([{ name: "_medusa_cart_id", value: cartId, url: baseURL! }])
+  let logoutStyle: Record<string, string> = {}
+
+  await step("order details: order-return-button เป็น <a> outline และ Tab หยุด 1 ครั้ง", async () => {
+    await visit(page, `/${CC}/account/orders/details/${order.id}`, "order-return-button")
+    await expectButton(page, "order-return-button", "outline")
+    const link = page.getByTestId("order-return-button")
+    expect(await link.evaluate((n) => n.tagName)).toBe("A")
+    expect(await link.evaluate((n) => n.querySelectorAll("a, button, input, [tabindex]").length), "ไม่มี element ที่ focus ได้ซ้อนข้างใน").toBe(0)
+  })
+
+  await step("account overview: open-order-button icon; logout-button ghost", async () => {
+    await visit(page, `/${CC}/account`, "open-order-button")
+    await expectButton(page, "open-order-button", "ghost", "icon")
+    const logout = page.locator('[data-testid="logout-button"]:visible')
+    await expect(logout).toHaveCount(1)
+    await expect(logout).toHaveAttribute("data-variant", "ghost")
+    expect(await logout.evaluate((n) => getComputedStyle(n).height)).toBe("36px")
+    logoutStyle = await logout.evaluate((n, keys) => {
+      const s = getComputedStyle(n)
+      return Object.fromEntries(keys.map((k) => [k, s[k as keyof CSSStyleDeclaration] as string]))
+    }, STYLE_KEYS as unknown as string[])
+  })
+
+  await step("addresses: address-edit-button / address-delete-button ghost", async () => {
+    await visit(page, `/${CC}/account/addresses`, "address-edit-button")
+    await expectButton(page, "address-edit-button", "ghost", "default", "dialog-trigger")
+    await expectButton(page, "address-delete-button", "ghost")
+  })
+
+  await step("cart: product-delete-button icon; add-discount-button link; cart dropdown: cart-item-remove-button ghost", async () => {
+    await visit(page, `/${CC}/cart`, "product-delete-button")
+    await expectButton(page, "product-delete-button", "ghost", "icon")
+    await expectButton(page, "add-discount-button", "link")
+    await page.getByTestId("nav-cart-link").hover()
+    await expect(page.getByTestId("nav-cart-dropdown")).toBeVisible()
+    // cart-item-remove-button มีข้อความ "ลบ" → ghost size default (กฎ 60 / inventory 18: size="icon" เมื่อไม่มีข้อความ)
+    await expectButton(page, "cart-item-remove-button", "ghost")
+  })
+
+  await step("checkout review: edit-address-button / edit-delivery-button / edit-payment-button link", async () => {
+    const headers = { authorization: `Bearer ${customer.token}`, "x-publishable-api-key": pk }
+    const pc = await request.post(`${BACKEND_URL}/store/payment-collections`, { headers, data: { cart_id: cartId } })
+    expect(pc.status(), await pc.text()).toBe(200)
+    const ses = await request.post(
+      `${BACKEND_URL}/store/payment-collections/${(await pc.json()).payment_collection.id}/payment-sessions`,
+      { headers, data: { provider_id: "pp_system_default" } }
+    )
+    expect(ses.status(), await ses.text()).toBe(200)
+    await visit(page, `/${CC}/checkout?step=review`, "submit-order-button")
+    for (const id of ["edit-address-button", "edit-delivery-button", "edit-payment-button"]) {
+      await expectButton(page, id, "link")
+    }
+  })
+
+  await step("affiliate portal: affiliate-logout ghost สไตล์เท่า logout-button", async () => {
+    const affiliate = await createActiveAffiliate(request, admin, { prefix: "e2e-sfui19b" })
+    await context.clearCookies()
+    await page.goto(`/${CC}/affiliate/login`)
+    await page.getByTestId("affiliate-login-email").fill(affiliate.email)
+    await page.getByTestId("affiliate-login-password").fill(affiliate.password)
+    await page.getByTestId("affiliate-login-submit").click()
+    await expect(page.getByTestId("affiliate-logout")).toBeVisible({ timeout: 15_000 })
+    await expectButton(page, "affiliate-logout", "ghost")
+    expect(await styleOf(page, "affiliate-logout")).toEqual(logoutStyle)
   })
 })

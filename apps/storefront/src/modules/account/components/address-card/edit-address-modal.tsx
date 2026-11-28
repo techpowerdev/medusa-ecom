@@ -112,22 +112,15 @@ const EditAddress: React.FC<EditAddressProps> = ({
         </div>
         <div className="flex items-center gap-x-4">
           <DialogTrigger asChild>
-            <button
-              className="text-xs leading-5 font-normal text-foreground flex items-center gap-x-2"
-              data-testid="address-edit-button"
-            >
-              <SquarePen className="size-4" />
+            <Button variant="ghost" data-testid="address-edit-button">
+              <SquarePen />
               แก้ไข
-            </button>
+            </Button>
           </DialogTrigger>
-          <button
-            className="text-xs leading-5 font-normal text-foreground flex items-center gap-x-2"
-            onClick={removeAddress}
-            data-testid="address-delete-button"
-          >
-            {removing ? <Spinner /> : <Trash2 className="size-4" />}
+          <Button variant="ghost" onClick={removeAddress} data-testid="address-delete-button">
+            {removing ? <Spinner /> : <Trash2 />}
             ลบ
-          </button>
+          </Button>
         </div>
       </div>
 

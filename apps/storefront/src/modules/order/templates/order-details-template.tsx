@@ -1,5 +1,6 @@
 "use client"
 
+import { Button } from "@/components/ui/button"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Help from "@modules/order/components/help"
@@ -40,13 +41,15 @@ const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
         <OrderDetails order={order} showStatus />
         <Items order={order} />
         {canReturn && (
-          <LocalizedClientLink
-            href={`/account/orders/details/${order.id}/return`}
-            className="self-start rounded-md border border-border px-4 py-2 text-foreground hover:bg-muted"
-            data-testid="order-return-button"
-          >
-            ขอคืนสินค้า
-          </LocalizedClientLink>
+          // SFUI-19b (spec 09 กฎ 60): ลิงก์ navigation หน้าตาปุ่ม = Button asChild ครอบลิงก์ (focus ที่ <a> ตัวเดียว)
+          <Button asChild variant="outline" className="self-start">
+            <LocalizedClientLink
+              href={`/account/orders/details/${order.id}/return`}
+              data-testid="order-return-button"
+            >
+              ขอคืนสินค้า
+            </LocalizedClientLink>
+          </Button>
         )}
         <ShippingDetails order={order} />
         <OrderSummary order={order} />

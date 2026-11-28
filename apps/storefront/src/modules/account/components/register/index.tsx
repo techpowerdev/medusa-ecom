@@ -6,6 +6,7 @@ import { LOGIN_VIEW } from "@modules/account/templates/login-template"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import PendingAddToCartFields from "@modules/account/components/pending-add-to-cart-fields"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
+import { Button } from "@/components/ui/button"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { signup } from "@lib/data/customer"
 import { useSubmitOnce } from "@lib/hooks/use-submit-once"
@@ -96,8 +97,9 @@ const Register = ({ setCurrentView }: Props) => {
             data-testid="register-email-exists"
           >
             <span>{message.error}</span>{" "}
-            <button
+            <Button
               type="button"
+              variant="link"
               onClick={(e) => {
                 // CORE-79 (กฎข้อ 137): ส่งอีเมลที่อยู่ในช่องตอนกด (ผู้ใช้อาจแก้หลังส่งฟอร์ม) ไปเติมในฟอร์ม login
                 const email = e.currentTarget.form?.elements.namedItem("email")
@@ -106,12 +108,11 @@ const Register = ({ setCurrentView }: Props) => {
                   email instanceof HTMLInputElement ? email.value : undefined
                 )
               }}
-              // CORE-79 (กฎข้อ 137): พื้นที่แตะ ≥ 44×44px บนมือถือ
-              className="underline inline-flex items-center justify-center min-h-[44px] min-w-[44px] px-2"
+              // SFUI-19b (spec 09 กฎ 63b): Button link size default 36px (แทน ≥ 44px ของ CORE-79)
               data-testid="register-login-link"
             >
               เข้าสู่ระบบ
-            </button>
+            </Button>
           </div>
         ) : (
           <ErrorMessage
@@ -144,15 +145,15 @@ const Register = ({ setCurrentView }: Props) => {
       </form>
       <span className="text-center text-foreground text-xs leading-5 font-normal mt-6">
         เป็นสมาชิกอยู่แล้ว?{" "}
-        <button
+        <Button
           type="button"
+          variant="link"
           onClick={() => setCurrentView(LOGIN_VIEW.SIGN_IN)}
-          // CORE-90 (กฎข้อ 146a): พื้นที่แตะ ≥ 44px บนมือถือ
-          className="underline inline-flex items-center justify-center min-h-[44px] min-w-[44px] px-2"
+          // SFUI-19b (spec 09 กฎ 63b): Button link size default 36px (แทน ≥ 44px ของ CORE-90)
           data-testid="register-to-login-button"
         >
           เข้าสู่ระบบ
-        </button>
+        </Button>
         .
       </span>
     </div>

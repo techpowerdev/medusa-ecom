@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button"
 import ChevronDown from "@modules/common/icons/chevron-down"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { convertToLocale } from "@lib/util/money"
@@ -122,15 +123,17 @@ const Overview = ({ customer, orders, hasGroupOrders = false }: OverviewProps) =
                                 })}
                               </span>
                             </div>
-                            <button
-                              className="flex items-center justify-between"
-                              data-testid="open-order-button"
-                            >
-                              <span className="sr-only">
-                                ไปที่คำสั่งซื้อ #{order.display_id}
+                            {/* SFUI-19b (spec 09 กฎ 60, inventory 20): อยู่ในลิงก์ของการ์ดแล้ว → asChild บน <span>
+                                (หน้าตา ghost icon โดยไม่ซ้อน element ที่ focus ได้ในลิงก์ — spec 01 กฎ 146b) */}
+                            <Button asChild variant="ghost" size="icon">
+                              <span
+                                role="img"
+                                aria-label={`ไปที่คำสั่งซื้อ #${order.display_id}`}
+                                data-testid="open-order-button"
+                              >
+                                <ChevronDown className="-rotate-90" />
                               </span>
-                              <ChevronDown className="-rotate-90" />
-                            </button>
+                            </Button>
                           </div>
                         </LocalizedClientLink>
                       </li>

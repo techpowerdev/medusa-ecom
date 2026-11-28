@@ -1,6 +1,7 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import React from "react"
 
@@ -135,14 +136,14 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
       <div className="text-sm leading-[1.4rem]">
         <form action={(a) => addPromotionCode(a)} className="w-full mb-5">
           <Label className="flex gap-x-1 my-2 items-center">
-            <button
+            <Button
+              variant="link"
               onClick={() => setIsOpen(!isOpen)}
               type="button"
-              className="text-sm leading-[1.4rem] text-primary underline-offset-4 hover:text-primary/80"
               data-testid="add-discount-button"
             >
               เพิ่มโค้ดส่วนลด
-            </button>
+            </Button>
 
             {/* <Tooltip content="You can add multiple promotion codes">
               <InformationCircleSolid className="text-muted-foreground" />
@@ -228,8 +229,10 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                       </span>
                     </p>
                     {!promotion.is_automatic && (
-                      <button
-                        className="flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="ลบโค้ดส่วนลดออกจากคำสั่งซื้อ"
                         disabled={busy}
                         aria-busy={removingCode === promotion.code}
                         onClick={() => {
@@ -241,11 +244,8 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                         }}
                         data-testid="remove-discount-button"
                       >
-                        <Trash size={14} />
-                        <span className="sr-only">
-                          ลบโค้ดส่วนลดออกจากคำสั่งซื้อ
-                        </span>
-                      </button>
+                        <Trash />
+                      </Button>
                     )}
                   </div>
                 )
