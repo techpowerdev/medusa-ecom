@@ -15,9 +15,10 @@ export default function AffiliateAuthForms({ countryCode }: { countryCode: strin
   const [loginState, loginAction, loginPending] = useActionState(affiliateLogin, null)
   const [registerState, registerAction, registerPending] = useActionState(affiliateRegister, null)
 
+  // SFUI-23 (spec 09 กฎ 81): ระยะระหว่างช่อง gap-4 เท่าฟอร์มลูกค้า (กฎ 73)
   return (
     <div className="grid grid-cols-1 small:grid-cols-2 gap-12 w-full">
-      <form onSubmit={submitWithoutReset(loginAction)} className="flex flex-col gap-y-2">
+      <form onSubmit={submitWithoutReset(loginAction)} className="flex flex-col gap-4">
         <h1 className="text-3xl font-semibold tracking-tight mb-4" data-testid="affiliate-login-title">
           เข้าสู่ระบบแอฟฟิลิเอต
         </h1>
@@ -37,7 +38,7 @@ export default function AffiliateAuthForms({ countryCode }: { countryCode: strin
         </SubmitButton>
       </form>
 
-      <form onSubmit={submitWithoutReset(registerAction)} className="flex flex-col gap-y-2">
+      <form onSubmit={submitWithoutReset(registerAction)} className="flex flex-col gap-4">
         <h2 className="text-base leading-6 font-semibold mb-4">สมัครเป็นแอฟฟิลิเอต</h2>
         <input type="hidden" name="countryCode" value={countryCode} />
         <Input label="ชื่อ" name="name" autoComplete="name" required data-testid="affiliate-register-name" />

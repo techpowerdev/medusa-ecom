@@ -87,6 +87,8 @@ const GAP_FILES = [
   "account/components/login/index.tsx",
   "account/components/register/index.tsx",
   "checkout/components/discount-code/index.tsx",
+  // SFUI-23 (กฎ 81, AC-72 (1)): ฟอร์ม login/สมัครของ affiliate (inventory 38) — ตกจากข้อ 32
+  "affiliate/components/auth-forms/index.tsx",
 ].map((f) => `src/modules/${f}`)
 
 /** ไฟล์ของตาราง inventory ข้อ 35 — ปุ่มปิด overlay */
@@ -461,4 +463,68 @@ test("AC-67 (1): ไม่มี JSX <button ดิบใน src/modules/**, src
   for (const a of RAW_BUTTON_ALLOWED) {
     expect(rawButtons(a.file).map((hit) => hit.replace(/:\d+ /, " ")), `${a.file} ${a.testId}`).toContain(`${a.file} ${a.testId}`)
   }
+})
+
+// ---- SFUI-23 (spec 09 กฎ 83, 84; AC-73 (static), AC-74 (static)) ----
+
+const NUDGE = M("shipping/components/free-shipping-price-nudge/index.tsx")
+
+/** JSX element ที่มี `data-testid="<testId>"` (string literal) ทุกตัวในไฟล์ */
+function elementsWithTestId(file: string, testId: string, sf = parseTsx(file)) {
+  const out: { el: ts.JsxOpeningElement | ts.JsxSelfClosingElement; node: ts.Node }[] = []
+  const visit = (n: ts.Node) => {
+    const el = openingOf(n)
+    const init = el && attrOf(el, sf, "data-testid")?.initializer
+    if (el && init && ts.isStringLiteral(init) && init.text === testId) out.push({ el, node: n })
+    n.forEachChild(visit)
+  }
+  visit(sf)
+  return { sf, out }
+}
+
+test("AC-73 (static): ลิงก์ในกล่องส่งฟรี = Button asChild (ghost/secondary, size default) ครอบ LocalizedClientLink ไม่มี className ทับ (กฎ 83)", () => {
+  const want: [string, string, string[], string][] = [
+    ["free-shipping-nudge-cart-link", '"ghost"', [], '"/cart"'],
+    ["free-shipping-nudge-store-link", '"secondary"', ["grow"], '"/store"'],
+  ]
+  for (const [id, variant, classes, href] of want) {
+    const { sf, out } = elementsWithTestId(NUDGE, id)
+    expect(out.length, id).toBe(1)
+    const { el, node } = out[0]
+    expect(el.tagName.getText(sf), id).toBe("Button")
+    expect(!!attrOf(el, sf, "asChild"), `${id} asChild`).toBe(true)
+    expect(attrOf(el, sf, "variant")?.initializer?.getText(sf), `${id} variant`).toBe(variant)
+    expect(attrOf(el, sf, "size"), `${id} size (default)`).toBeUndefined()
+    expect(classTokens(attrOf(el, sf, "className")), `${id} className`).toEqual(classes)
+    const child = ts.isJsxElement(node) ? node.children.map(openingOf).find(Boolean) : null
+    expect(child?.tagName.getText(sf), `${id} child`).toBe("LocalizedClientLink")
+    expect(attrOf(child!, sf, "href")?.initializer?.getText(sf), `${id} href`).toBe(href)
+    expect(attrOf(child!, sf, "className"), `${id} child className`).toBeUndefined()
+  }
+  const src = readSource(NUDGE)
+  expect(src).not.toContain("outline-hidden")
+  expect(src).not.toContain("rounded-2xl")
+})
+
+/** ตารางกฎ 84 (รายการปิด): testid → [ไฟล์, จำนวน element, token margin] */
+const NEGATIVE_MARGIN: [string, string, number, string][] = [
+  ["logout-button", "account/components/account-nav/index.tsx", 2, "-ml-4"],
+  ["add-discount-button", "checkout/components/discount-code/index.tsx", 1, "-ml-4"],
+  ["register-login-link", "account/components/register/index.tsx", 1, "-ml-4"],
+  ["edit-address-button", "checkout/components/addresses/index.tsx", 1, "-mr-4"],
+  ["edit-delivery-button", "checkout/components/shipping/index.tsx", 1, "-mr-4"],
+  ["edit-payment-button", "checkout/components/payment/index.tsx", 1, "-mr-4"],
+]
+
+test("AC-74 (static): className ของปุ่มในตารางกฎ 84 = token margin ของแถวนั้นพอดี (ไม่มี token อื่น)", () => {
+  const bad: string[] = []
+  for (const [id, f, count, token] of NEGATIVE_MARGIN) {
+    const { sf, out } = elementsWithTestId(M(f), id)
+    if (out.length !== count) bad.push(`${id} @ ${f}: พบ ${out.length} ตัว (คาด ${count})`)
+    for (const { el } of out) {
+      const tokens = classTokens(attrOf(el, sf, "className"))
+      if (el.tagName.getText(sf) !== "Button" || tokens.join(" ") !== token) bad.push(`${id} @ ${f}:${lineOf(sf, el)} [${tokens.join(" ")}]`)
+    }
+  }
+  expect(bad).toEqual([])
 })

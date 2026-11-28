@@ -98,9 +98,11 @@ const Register = ({ setCurrentView }: Props) => {
             error={
               <>
             <span>{message.error}</span>{" "}
+            {/* SFUI-23 (spec 09 กฎ 84): -ml-4 ให้ข้อความตรงแนวข้อความ error ด้านบน */}
             <Button
               type="button"
               variant="link"
+              className="-ml-4"
               onClick={(e) => {
                 // CORE-79 (กฎข้อ 137): ส่งอีเมลที่อยู่ในช่องตอนกด (ผู้ใช้อาจแก้หลังส่งฟอร์ม) ไปเติมในฟอร์ม login
                 const email = e.currentTarget.form?.elements.namedItem("email")
@@ -146,8 +148,9 @@ const Register = ({ setCurrentView }: Props) => {
           สมัครสมาชิก
         </SubmitButton>
       </form>
-      <span className="text-center text-foreground text-xs leading-5 font-normal mt-6">
-        เป็นสมาชิกอยู่แล้ว?{" "}
+      {/* SFUI-23 (spec 09 กฎ 85): ประโยค text-sm เท่าปุ่ม ไม่มี "." — ระยะเว้นคือ padding ซ้ายของปุ่ม */}
+      <div className="mt-6 flex flex-wrap items-center justify-center text-sm text-foreground">
+        <span>เป็นสมาชิกอยู่แล้ว?</span>
         <Button
           type="button"
           variant="link"
@@ -157,8 +160,7 @@ const Register = ({ setCurrentView }: Props) => {
         >
           เข้าสู่ระบบ
         </Button>
-        .
-      </span>
+      </div>
     </div>
   )
 }

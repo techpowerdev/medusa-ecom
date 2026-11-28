@@ -1,0 +1,20 @@
+# SFUI-23 — ผลทดสอบ (เก็บตกรอบ 50; spec 09 กฎ 81–85; AC-72–75)
+สภาพแวดล้อม: stack บน c0c0cae2 (spec) ← SFUI-22 cfa91f46, node 24, prod build — backend :9481 (NODE_ENV=production, start จาก .medusa/server,
+DB medusa_sfui23, Redis db 12, Stripe test + stripe listen), storefront :8481
+
+## Red (บน c0c0cae2 — ก่อนแก้ src)
+- static sfui-21-consistency.unit: 3 failed / 15 passed — AC-66/72 (1) auth-forms :20, :40 gap-y-2; AC-73 (static) ไม่พบ free-shipping-nudge-cart-link;
+  AC-74 (static) 7 ปุ่มไม่มี token margin (logout ×2, add-discount, register-login-link, edit-address/delivery/payment)
+- e2e sfui-23-followups + sfui-9d-font: 6 failed — AC-72 row-gap 8px (คาด 16px); AC-73 ไม่พบ cart-link; AC-74 edit-address ขอบขวาข้อความ 664 vs 680
+  (ต่าง 16px), register-login-link 485 vs 469; AC-75 textContent "ยังไม่เป็นสมาชิก? สมัครสมาชิก."; 9d ประโยคลิงก์สลับ 12px (คาด 14px — กฎ 78 (i))
+
+## Green
+- e2e sfui-23-followups: 5 passed (AC-72 1280/390, AC-73 375/390/1280, AC-74 checkout review 1280/390 + เมนูบัญชีมือถือ/desktop, AC-74 register-login-link
+  1280/375, AC-75 375/1280)
+- e2e ที่อ้างหน้า/testid ที่แตะ (34 ไฟล์, --workers=1): 91/91 passed — รวม sfui-9d-font (แก้เฉพาะค่าฟอนต์ประโยค → 14px/20px/400), sfui-19-button-size
+  (AC-56/57/59/67, Stripe test), sfui-21-forms, sfui-21d-alert, sfui-11-form-field, core-4e (shipping nudge), core-79, core-90, core-73, core-40, core-4j,
+  affiliate-portal*, affiliate-header/profile-overflow, thai-ui-account/checkout ฯลฯ — ไม่มีไฟล์อื่นถูกแก้
+  (รอบแรก 89 passed + 2 ล้ม ENOENT ของ trace artifact เพราะรัน project unit ขนานกัน → รันซ้ำ 2 ไฟล์แยก: 3 passed)
+- playwright project unit (รวม evidence-budget, AC-19): 276 passed; vitest: 140 files / 2089 passed
+- pnpm lint && pnpm typecheck: ผ่าน (warning เดิม ไม่มีในไฟล์ของ task); pnpm --filter storefront build: ผ่าน
+- AC-68: git diff cfa91f46 -- apps/backend apps/storefront/package.json pnpm-lock.yaml apps/storefront/src/components/ui ว่าง; sfui-baseline.json ไม่แก้

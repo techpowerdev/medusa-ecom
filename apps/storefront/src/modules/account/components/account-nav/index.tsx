@@ -107,10 +107,12 @@ const AccountNav = ({
                   </LocalizedClientLink>
                 </li>
                 <li className="py-2 border-b border-gray-200 px-8">
-                  {/* SFUI-19b (spec 09 กฎ 60, inventory 19): ghost default แบบเดียวกับ desktop และ affiliate-logout */}
+                  {/* SFUI-19b (spec 09 กฎ 60, inventory 19): ghost default แบบเดียวกับ desktop และ affiliate-logout
+                      SFUI-23 (กฎ 84): -ml-4 ให้ข้อความตรง icon ของแถวอื่น (padding/พื้นที่กดคงตาม default) */}
                   <Button
                     type="button"
                     variant="ghost"
+                    className="-ml-4"
                     onClick={handleLogout}
                     data-testid="logout-button"
                   >
@@ -175,9 +177,11 @@ const AccountNav = ({
                 </AccountNavLink>
               </li>
               <li className="text-grey-700">
+                {/* SFUI-23 (spec 09 กฎ 84): -ml-4 ให้ข้อความตรงแนวลิงก์เมนู */}
                 <Button
                   type="button"
                   variant="ghost"
+                  className="-ml-4"
                   onClick={handleLogout}
                   data-testid="logout-button"
                 >

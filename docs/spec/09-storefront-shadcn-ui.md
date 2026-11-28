@@ -5,7 +5,7 @@ Status: accepted (owner 2026-11-26: ADR-030 accepted, Q1 = ยอมรับ, Q
 · SFUI-1a..7 ☑ (#565–#581); รอบ 45 เก็บกวาด (SFUI-8, 9a–9e, 10) ดูหัวข้อ "ส่วนเก็บกวาดหลัง SFUI-7" (owner 2026-11-26 "เก็บต่อเลย");
 รอบ 48 ฟอร์ม (SFUI-11a..13, ADR-032 accepted 2026-11-27) ☑ (#605–#610; เอกสาร #604) ดูหัวข้อ "ส่วนฟอร์ม (รอบ 48)";
 รอบ 49 select เป็น Radix + ช่องตำบล/ที่อยู่ไทย (SFUI-15..18c, ADR-033 accepted 2026-11-28) ☑ (#614–#622) + SFUI-14 ☑ #612 ดูหัวข้อ "ส่วน select + ที่อยู่ไทย (รอบ 49)";
-รอบ 50 ปุ่มขนาดเดียว/ซ่อนประเทศ/จังหวัดบังคับ/consistency (SFUI-19a..22, ADR-034 accepted 2026-11-28) ☑ (#625…#637) ดูหัวข้อ "ส่วน consistency + ที่อยู่ (รอบ 50)"
+รอบ 50 ปุ่มขนาดเดียว/ซ่อนประเทศ/จังหวัดบังคับ/consistency (SFUI-19a..22, ADR-034 accepted 2026-11-28) ☑ (#625…#637) + SFUI-23 เก็บตกจาก qa ☐ ดูหัวข้อ "ส่วน consistency + ที่อยู่ (รอบ 50)"
 Goal (owner's words, 2026-11-26): เปลี่ยน storefront (`apps/storefront`) จาก UI ของ Medusa เป็น shadcn/ui (Radix) — แทนทั้ง 4 ชั้น (shim `common/components/ui`,
 `@medusajs/ui-preset` + `thai-ui-preset.js` + class `txt-*`/`h*-webs`, `@medusajs/icons` → `lucide-react`, `@headlessui/react` → Radix ผ่าน shadcn) และถอด `tailwindcss-radix`;
 อัป Tailwind v3 → v4 ก่อนแล้วใช้ shadcn CLI รุ่นล่าสุด; ยอมให้หน้าตาเปลี่ยนเป็นสไตล์ shadcn แต่ยังใช้สี brand ตาม ADR-008
@@ -769,8 +769,9 @@ builder รัน e2e **ทุก** spec ที่อ้างหน้าที
   รูปแบบสรุปที่อยู่บรรทัดเดียวตามลำดับไทย (กฎ 57), ตัด option `-` ของประเทศในที่อยู่ใบเสร็จ (กฎ 41)
 
 ## ส่วน consistency + ที่อยู่ (รอบ 50 — owner 2026-11-28, ก่อน release v0.4.0)
-Status: done — SFUI-19a..22 ☑ (#625…#637) · AC-55..71 ☑ (qa ปลาย stack บน browser จริง — `docs/evidence/storefront-consistency/SFUI-22/REPORT.md`; ผล test ต่อ task `SFUI-*-tests.txt`)
-· accepted (owner 2026-11-28 — ตัดสินทุกข้อก่อนเขียน; ADR-034 accepted) · **release v0.4.0 (#603) พร้อม merge หลังรอบ 50 merge ครบ** (owner 2026-11-28 — พักจนรอบนี้ merge)
+Status: done — SFUI-19a..23 ☑ (#625…#638) · AC-55..71 ☑ (qa ปลาย stack บน browser จริง — `docs/evidence/storefront-consistency/SFUI-22/REPORT.md`; ผล test ต่อ task `SFUI-*-tests.txt`)
+· **SFUI-23 ☑ #638** (`docs/evidence/storefront-consistency/SFUI-23/REPORT.md`; เก็บตก D1–D3 + "ควรพิจารณา" 1–2 ของ REPORT นั้น — owner 2026-11-28 สั่งแก้ก่อน v0.4.0; inventory 38–42, กฎ 81–85, AC-72..75)
+· accepted (owner 2026-11-28 — ตัดสินทุกข้อก่อนเขียน; ADR-034 accepted) · **release v0.4.0 (#603) พร้อม merge หลังรอบ 50 merge ครบ (รวม SFUI-23)** (owner 2026-11-28 — พักจนรอบนี้ merge)
 Goal (owner's words, 2026-11-28): "ช่องจังหวัดต้องบังคับกรอก", "ซ่อนช่องประเทศ ส่ง th (เปิดขายแค่ไทย) และซ่อนบรรทัดประเทศในสรุปที่อยู่", "ทุกปุ่มขนาดเท่ากัน = default ของ shadcn รวมปุ่มจ่ายเงิน
 และลิงก์สลับ login/สมัคร", ตรวจ consistency ทั้งร้านบน browser จริงแล้วแก้ — "ใช้ค่ามาตรฐานของ component shadcn ที่ติดตั้ง ไม่แก้โดยไม่จำเป็น; ถ้า shadcn มี component ให้ `shadcn add` และประกอบตาม docs";
 gap ฟอร์มค่าเดียว 16px; `h1` ทุกหน้าขนาดเดียว (ถอด `uppercase`, hero คงได้); ซ่อนตัวเลือก region ในเมนูข้างเมื่อมีประเทศเดียว; รวมใน v0.4.0
@@ -828,6 +829,11 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
 | 35 | 21a | `add-address.tsx:86-88`; `edit-address-modal.tsx:144-146`; `layout/components/side-menu/index.tsx:62-68`; `layout/components/search/drawer.tsx:49`; `products/components/product-actions/mobile-actions.tsx:193-195` | ปุ่มปิด overlay เขียนเอง icon 20px (mobile-actions 48×48) | `DialogClose`/`SheetClose asChild` + `Button variant="ghost" size="icon"` (กฎ 76) — จาก "ควรพิจารณา" |
 | 36 | 21b | `<h1` 27 ไฟล์ใน `src/` (ยกเว้น `modules/home/components/hero`) | 16px `uppercase` (auth/verify/affiliate login), 24/36 (affiliate), 30/48 (account/404/search/policy/group), 32/40 (PDP), 32/48 (order) | `text-3xl font-semibold tracking-tight` (กฎ 77) |
 | 37 | 21c | `modules/checkout/components/shipping/index.tsx:31,218-356` (`OPTION_CLASS` 3 จุด); `modules/checkout/components/payment-container/index.tsx:34-67` | การ์ดจัดส่งมีขอบ 1px ที่ `RadioGroupItem` แต่การ์ดชำระเงิน `border-0` กรอบอยู่ที่ container + `OptionDot` วาดเอง | Choice Card ของ docs shadcn (`FieldLabel` + `Field` + `RadioGroupItem`) ทั้งสอง (กฎ 80 — owner Q-R50-1) |
+| 38 | 23 | `modules/affiliate/components/auth-forms/index.tsx:20,40` | `<form>` login/สมัครของ affiliate `gap-y-2` (8px) ขณะ login ลูกค้า 16px — ตกจากข้อ 32 (qa ปลาย stack D1) | `gap-4` (กฎ 73, 81) |
+| 39 | 23 | `modules/shipping/components/free-shipping-price-nudge/index.tsx:203-225` | `free-shipping-nudge-popup` กล่อง `w-[400px]` + `fixed right-5` ล้นจอซ้ายที่ 375/390 ข้อความ/ปุ่มถูกตัด (มีก่อนรอบ — qa D2) | กว้างตามจอเมื่อแคบ (กฎ 82) |
+| 40 | 23 | `free-shipping-price-nudge/index.tsx:271-283` | ลิงก์ "ดูตะกร้าสินค้า"/"ดูสินค้า" เขียนเอง ~44px `rounded-2xl py-2.5 text-[15px] outline-hidden` ไม่มี focus ring, ไม่มี testid (qa D3 — AC-67 ไม่จับเพราะไม่มี `data-variant`) | `Button asChild` size default (กฎ 83) |
+| 41 | 23 | `account/components/account-nav/index.tsx:111-118,178-185`; `checkout/components/addresses/index.tsx:65`; `checkout/components/shipping/index.tsx:166`; `checkout/components/payment/index.tsx:290`; `checkout/components/discount-code/index.tsx:139-146`; `account/components/register/index.tsx:101-116` | ข้อความของ `logout-button` (มือถือ x=72 ขณะ icon ของแถวอื่น x=56; desktop เยื้อง 16px), `edit-address-button`/`edit-delivery-button`/`edit-payment-button`, `add-discount-button`, `register-login-link` เยื้องจากแนวคอลัมน์ 16px เพราะ `px-4` ของ size default (qa "ควรพิจารณา" 1) | margin ติดลบด้านที่ชิดคอลัมน์ (กฎ 84) |
+| 42 | 23 | `account/components/login/index.tsx:89-101`; `account/components/register/index.tsx:149-161` | ประโยค 12px (`text-xs`) + ลิงก์สลับ 14px + `.` ท้ายประโยคถูกแยกด้วย padding 16px ของปุ่ม (qa "ควรพิจารณา" 2) | ประโยค `text-sm` + ปุ่มท้ายบรรทัด ไม่มี `.` (กฎ 85) |
 
 **ไม่รวม** (จาก "ควรพิจารณา" ของ audit — ไม่ใช่การถอด override กลับ default และไม่ใช่การใช้ component ของ shadcn ที่ตรงตัว; การ์ดตัวเลือกเดิมอยู่ที่นี่ — owner ตัดสินให้ทำ → ข้อ 37):
 | รายการ audit | เหตุผล |
@@ -839,7 +845,7 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
 | `nav-menu-button` สูงเต็ม nav 63px; การ์ด `add-address-button` 220px | layout/ดีไซน์ตั้งใจ (audit) |
 | ลิงก์ช่องทางติดต่อ ≥ 44px (`contact-channel`, spec 01 CORE-85) | ลิงก์ข้อความ ไม่ใช่ปุ่ม — คงไว้ |
 
-### Business rules (ต่อจากกฎ 57; ADR-034) — กฎ 58–80
+### Business rules (ต่อจากกฎ 57; ADR-034) — กฎ 58–85 (81–85 = SFUI-23)
 58. ขอบเขต = ตาราง inventory รอบ 50. **ยกเว้นกฎ "คง computed style" (กฎ 19, 22, 27 และบทเรียน CLAUDE.md เรื่องงานย้าย class) เฉพาะ element ในตาราง** — ค่าที่ test ใหม่ assert
     = ค่าที่ component ของ shadcn render จริงบน build ของ branch (`getComputedStyle`) ไม่ใช่ค่าจากชื่อ class; ส่วนอื่นของหน้ายังอยู่ใต้กฎ 19; e2e เดิมแก้ได้เฉพาะตามกฎ 78
 59. (ADR-034 D1) ทุก `Button` (`@/components/button` หรือ `@/components/ui/button`) และ `buttonVariants(...)` ใน `src/modules/**`, `src/app/**`, `src/components/*.tsx` (นอก `ui/`):
@@ -962,7 +968,8 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
 78. testid/ข้อความ/baseline/e2e: testid เดิมคงที่บน element ที่ทำหน้าที่เดิม (ยกเว้นที่กฎ 70/71 ลบ); `e2e/support/sfui-baseline.json` แก้ได้**เฉพาะ**: ลบ testid `shipping-country-select`, `billing-country-select`, `country-select`,
     `billing-country-code-select`, `address-province-country` และข้อความ `เลือกประเทศ` (20b/20c), ข้อความ `MISSING_ADDRESS_MESSAGE` เป็นค่าใหม่ของกฎ 69 (20a); e2e เดิมแก้ได้เฉพาะไฟล์ที่ task ระบุในตาราง Tasks
     และเฉพาะ (i) ค่าที่คาดของขนาด/ฟอนต์ที่รอบนี้ตั้งใจเปลี่ยน (`sfui-3d-payment`, `core-79`, `core-90`, `sfui-9a..9e-font`, `sfui-5b-catalog`, `sfui-5c-checkout-heading`, `sfui-6-parity` ถ้าเกี่ยว; ของ error ตามกฎ 74 (SFUI-21d): `sfui-9c-font.spec.ts:99-101` (`address-error-message`)
-    และ `sfui-9a-font.spec.ts:155-157` (`cart-item-remove-error`) — เฉพาะค่าที่คาดของฟอนต์ ที่ grep `font(`/`getComputedStyle`/`toHaveCSS` บน testid ในตารางกฎ 74c พบ ณ `523056bb`),
+    และ `sfui-9a-font.spec.ts:155-157` (`cart-item-remove-error`) — เฉพาะค่าที่คาดของฟอนต์ ที่ grep `font(`/`getComputedStyle`/`toHaveCSS` บน testid ในตารางกฎ 74c พบ ณ `523056bb`;
+    **แก้ในรอบ 50 — SFUI-23**: + ค่าฟอนต์ของประโยคลิงก์สลับใน `sfui-9d-font.spec.ts` (กฎ 85) และค่าขนาด/ตำแหน่งของ element ใน inventory 38–42 ที่ e2e เดิม assert),
     (ii) ลบบรรทัดเลือก/ตรวจประเทศ (20b), (iii) เพิ่มบรรทัดกรอกจังหวัด + fixture API ที่อยู่ที่บันทึกไว้เติม `province` (20a — เพิ่มอย่างเดียว), (iv) ตัวโต้ตอบที่ element เปลี่ยนชนิด (checkbox ตัวกรอง, chip, แบ่งหน้า, การ์ดตัวเลือกจัดส่ง/ชำระเงินที่ข้อความย้ายออกจาก `RadioGroupItem` ไปอยู่ใน `FieldLabel` — กฎ 80)
     โดย assertion ผลทางธุรกิจคงเดิม
 79. ปิดรอบ (SFUI-22): ไม่มี JSX `<button` ใน `src/modules/**`, `src/app/**` (ไม่ใช่ test) นอก allow-list ใน guard (ไฟล์ + testid + เหตุผล — เช่น trigger ของ Radix ที่ใช้ `asChild` ไม่ได้);
@@ -976,6 +983,41 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
     คงอยู่บน `RadioGroupItem`** (`role="radio"` — กฎ 9); ช่องกรอกบัตร/QR (children ของ `PaymentContainer`) render **ถัดจาก `FieldLabel` นอก label** ใน wrapper `flex flex-col gap-2` ของรายการนั้น
     (ไม่มี iframe ของ Stripe ใน `<label>`); คลิกที่ใดก็ได้ในการ์ด (label) เลือกตัวเลือก, ลูกศรเปลี่ยนตัวเลือก (กฎ 12), disabled คงพฤติกรรมเดิม; ไม่ใส่ className ที่เปลี่ยนสไตล์ของ part ใน `ui/field`/`ui/radio-group`
     (ระยะห่างระหว่างการ์ด `gap-*` ของ container ได้)
+
+#### กฎ 81–85 — เก็บตกจาก qa ปลาย stack (SFUI-23, owner 2026-11-28 สั่งแก้ก่อน v0.4.0)
+81. (D1 — inventory 38) `<form>` ทั้งสองของ `affiliate/components/auth-forms` ใช้ `flex flex-col gap-4` แทน `gap-y-2` — อยู่ในขอบเขตกฎ 73 อยู่แล้ว (ฟอร์ม affiliate ของ 12c) แต่ตกจากรายการไฟล์ข้อ 32;
+    `mb-4` ของหัวข้อและ `mt-4` ของ `SubmitButton` คงไว้ (ระยะภายนอก); เพิ่มไฟล์นี้ใน `GAP_FILES` ของ `sfui-21-consistency.unit.spec.ts` (**แก้ในรอบ 50 — SFUI-23**: AC-66 ครอบไฟล์นี้ด้วย)
+82. (D2 — inventory 39) `FreeShippingPopup`: root `fixed bottom-5 inset-x-5 sm:left-auto` (แทน `right-5`; ขวา 20px ทุกขนาด, < 640px ซ้าย 20px ด้วย) + `pointer-events-none`
+    และลูกตรงทั้งสอง (แถวปุ่มปิด, กล่องเนื้อหา) `pointer-events-auto` (root กว้างเต็มจอเมื่อแคบ — พื้นที่ว่างข้างปุ่มปิดต้องไม่กินการแตะของหน้า);
+    กล่องเนื้อหา `w-full sm:w-[400px]` (แทน `w-[400px]`); แถวข้อความ `flex justify-between` เพิ่ม `flex-wrap gap-x-2` ได้ถ้าข้อความล้น;
+    สี/ข้อความ/testid/transition/เงื่อนไขแสดง-ซ่อนเดิม; ≥ 640px หน้าตาเดิม (กว้าง 400px ชิดขวา 20px)
+83. (D3 — inventory 40) ลิงก์สองตัวในกล่อง = `Button asChild` ครอบ `LocalizedClientLink` (กฎ 60) size default: "ดูตะกร้าสินค้า" `variant="ghost"` (`href="/cart"`, testid ใหม่ `free-shipping-nudge-cart-link`),
+    "ดูสินค้า" `variant="secondary"` + `className="grow"` (`href="/store"`, testid ใหม่ `free-shipping-nudge-store-link`) — ไม่มี className อื่น (กฎ 59; ไม่ใส่ `rounded-*`/`text-[15px]`/`outline-hidden`/สีทับ);
+    focus ring = default ของ `buttonVariants` (`focus-visible:ring-[3px]`); เหตุผลของ variant: กล่องพื้นดำ — `outline`/`default` มีพื้น `bg-background`/`bg-primary` ทั้งคู่จนลำดับความสำคัญหาย,
+    `ghost` สืบสีขาวของกล่อง (ใกล้ปุ่มโปร่งเดิม) และ `secondary` พื้นอ่อน (ใกล้ปุ่มขาวเดิม); testid ใหม่ 2 ตัวไม่ต้องเพิ่มใน `sfui-baseline.json` — ถ้า guard ของ baseline บังคับ
+    ให้เพิ่มได้เฉพาะ 2 ตัวนี้ (**แก้ในรอบ 50 — SFUI-23**: ข้อยกเว้นของกฎ 78)
+84. (qa "ควรพิจารณา" 1 — inventory 41) ปุ่ม ghost/link ที่มีข้อความและวางชิดแนวคอลัมน์ ใช้ **margin ติดลบเท่า padding แนวนอนของ size default** ด้านที่ชิดคอลัมน์ ให้ข้อความตรงแนว
+    (**รายการปิด**; ±1px วัดจาก `Range` ของ text node):
+
+    | testid | margin | ขอบข้อความต้องตรงกับ |
+    |---|---|---|
+    | `logout-button` ใน `mobile-account-nav` | `-ml-4` | ขอบซ้ายของ icon (`svg`) ใน `profile-link` |
+    | `logout-button` ใน `account-nav` (desktop) | `-ml-4` | ขอบซ้ายข้อความของ `overview-link` |
+    | `add-discount-button` | `-ml-4` | ขอบซ้ายของ `<form>` ที่ครอบ |
+    | `register-login-link` (ใน `AlertDescription` ของ `register-email-exists` — grid `justify-items-start` ปุ่มขึ้นบรรทัดของตัวเอง) | `-ml-4` | ขอบซ้ายของข้อความ `<span>` ใน `AlertDescription` เดียวกัน |
+    | `edit-address-button`, `edit-delivery-button`, `edit-payment-button` | `-mr-4` | ขอบขวาของแถวหัวข้อ (ancestor ที่ใกล้ที่สุดซึ่ง computed `justify-content` = `space-between`) |
+
+    16px = `px-4` ของ size default (ปุ่มที่มี `svg` ใช้ `-ml-3`/`-mr-3` ตาม `has-[>svg]:px-3` — ในรายการไม่มี); ห้าม `px-0`/`p-0`, variant/size ใหม่, แก้ `ui/button.tsx` (กฎ 59, ADR-030) —
+    margin เป็น layout ภายนอกที่กฎ 59 อนุญาต ขนาด 36px/padding/hover/focus ring/พื้นที่กดคงตาม default (AC-56, AC-59 ไม่เปลี่ยน — margin ไม่อยู่ในเกณฑ์ "เท่ากัน" ของ `logout-button` กับ `affiliate-logout`);
+    shadcn ไม่มี variant/size ที่ไม่มี padding จึงไม่มีทางที่ "ตรง default" กว่านี้โดยไม่ลดพื้นที่กด; **ไม่รวม** (คง default): `affiliate-logout` (หัว `flex-wrap` — จอกว้างอยู่ขวา, 390 ขึ้นบรรทัดชิดซ้าย
+    ไม่มีด้านเดียวที่ตรงแนว), `clear-refinements`, `cart-item-remove-button`, `address-edit-button`/`address-delete-button`, `payment-session-retry`, ghost ของ `group-join`, ลิงก์สลับของกฎ 85;
+    พบปุ่มอื่นที่เยื้องแบบนี้ → หยุดแจ้ง planner (ไม่เพิ่มรายการเอง)
+85. (qa "ควรพิจารณา" 2 — inventory 42) ประโยคลิงก์สลับของ `login` (`login-to-register-button`) และ `register` (`register-to-login-button`): แทน `<span className="… text-xs … mt-6">ข้อความ{" "}<Button …/>.</span>`
+    ด้วย `<div className="mt-6 flex flex-wrap items-center justify-center text-sm text-foreground">` → `<span>ยังไม่เป็นสมาชิก?</span>` (register: `เป็นสมาชิกอยู่แล้ว?`) → `<Button type="button" variant="link" …>` เดิม
+    (ไม่มี className, testid/`onClick`/ข้อความเดิม); **ไม่มี `{" "}` และไม่มี `.` ท้ายประโยค**; ระยะระหว่างประโยคกับข้อความลิงก์ = padding ซ้าย 16px ของปุ่ม (ไม่ใช้ margin ติดลบ — padding ทำหน้าที่เว้นวรรค
+    และ margin ติดลบจะให้พื้นที่กดของปุ่มทับข้อความประโยค); ประโยคกับปุ่มขนาดตัวอักษรเดียวกัน (14px — `text-sm` เท่า `buttonVariants`) แบบ block login ของ shadcn (`text-center text-sm` + ลิงก์ท้ายประโยค)
+    แต่ลิงก์ยังเป็น `Button variant="link"` size default 36px ตาม ADR-034/กฎ 63b — **AC-58 คงเดิมไม่ขัด**; ประโยคนโยบายของ register (`register-privacy-link`, `register-terms-link` — ลิงก์ข้อความ ไม่ใช่ปุ่ม) ไม่อยู่ในขอบเขต;
+    spec 01 กฎข้อ 155 (d) + AC-196 ท่อน "." ของปุ่มสลับ → ไม่มี "." แล้ว (**แก้ในรอบ 50 — SFUI-23**; หมายเหตุใน spec 01); e2e เดิม: ค่าฟอนต์ของ parent ปุ่มสลับใน `sfui-9d-font.spec.ts` (~บรรทัด 51 `SMALL_REGULAR` → 14px) แก้ได้ตามกฎ 78 (i)
 
 ### Acceptance criteria (ต่อจาก AC-54)
 - AC-55 (SFUI-19a, กฎ 59, 62) ☑ #625 static ใหม่ `e2e/sfui-19-button-size.unit.spec.ts` (แทน `sfui-button-lg.unit.spec.ts` ที่ถูกลบ): parse TSX ของ `src/modules/**`, `src/app/**`, `src/components/*.tsx` (นอก `ui/`) —
@@ -1020,7 +1062,7 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
 - AC-65 (SFUI-21b, กฎ 77) ☑ #632 (1) static ใหม่ใน `e2e/sfui-21-consistency.unit.spec.ts`: ทุก `<h1` ใน `src/**` (ไม่ใช่ test, ยกเว้น hero) มี token `text-3xl`, `font-semibold`, `tracking-tight` และไม่มี token typography อื่นของกฎ 77;
   (2) e2e ใหม่ `e2e/sfui-21-heading.spec.ts`: หน้าที่มี `h1` ในชุด P + login/register/verify/affiliate login/affiliate dashboard (payouts, earnings, profile, programs)/search/policy/404/categories/collections
   ที่ 1280 และ 390 — computed `font-size` = `32px`, `font-weight` = `600`, `text-transform` = `none`, `letter-spacing` และ `line-height` เท่ากันทุกหน้า; hero คงค่าเดิม (`sfui-5b-catalog` ข้อ hero ไม่แก้)
-- AC-66 (SFUI-21a, กฎ 73, 75–76) ☑ #633 (1) static (ใน `sfui-21-consistency.unit.spec.ts`): container ช่องของไฟล์ในข้อ 32 ไม่มี `gap-2`/`gap-y-`/`gap-x-`; `SelectTrigger` ใน `src/modules/**` ไม่มี className ขนาด;
+- AC-66 (SFUI-21a, กฎ 73, 75–76) ☑ #633 (**แก้ในรอบ 50 — SFUI-23**: (1) และ (2) ครอบฟอร์ม affiliate login/สมัคร (inventory 38) ด้วย — ดู AC-72) (1) static (ใน `sfui-21-consistency.unit.spec.ts`): container ช่องของไฟล์ในข้อ 32 ไม่มี `gap-2`/`gap-y-`/`gap-x-`; `SelectTrigger` ใน `src/modules/**` ไม่มี className ขนาด;
   ปุ่มปิดในข้อ 35 เป็น `Button` ภายใต้ `DialogClose`/`SheetClose asChild`; (2) e2e ใหม่ `e2e/sfui-21-forms.spec.ts`: ทุกฟอร์มในตาราง inventory รอบ 48 (เปิด `edit-panel`/`Dialog` ก่อนวัด) container ของช่อง
   computed `row-gap` = `16px` (และ `column-gap` = `16px` ที่ ≥ 768px สำหรับคู่); `shipping-address-select` สูง 36px; ปุ่มปิด `close-modal-button`/`close-menu-button`/ปุ่มปิด search drawer/mobile actions สูงและกว้าง 36px,
   `aria-label` ไทย, `Escape` ยังปิด, focus กลับ trigger (กฎ 11)
@@ -1049,14 +1091,36 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
   → `group-create-team-error` เป็น `[data-slot="alert"]`; `/cart?error=<ค่าที่รู้จัก>` → `cart-error-notice` เป็น `[data-slot="alert"]` และ computed `color` เท่าสีข้อความปกติของหน้า (`body`) ไม่ใช่สี destructive;
   PDP flash เลือกเกิน remaining (ตามแนว flash-sale-fs15) → `flash-qty-exceeds-remaining` เป็น `[data-slot="field-error"]`; ที่ 390px PDP และแถวตะกร้าไม่ล้นแนวนอน;
   (3) e2e เดิมที่อ้าง testid ของ 21e (`core-24`, `flash-sale-fs15`, `flash-sale-fs19`, `fs-21`, `fs-23`, `group-buy-home-campaigns`, `group-buy-account-orders`, `pay-12`, `pay-18`) ผ่านโดยไม่แก้
+- AC-72 (SFUI-23, กฎ 81) ☑ #638 (1) static: `GAP_FILES` ของ `sfui-21-consistency.unit.spec.ts` มี `affiliate/components/auth-forms/index.tsx` และ `fieldGapViolations` ของไฟล์ = `[]` (บน `cfa91f46` ได้ 2 จุด `:20`, `:40`);
+  (2) e2e ใหม่ `e2e/sfui-23-followups.spec.ts`: `/th/affiliate/login` (ยังไม่ login) ที่ 1280×800 และ 390×844 — `<form>` ที่ครอบ `affiliate-login-email` และที่ครอบ `affiliate-register-email`
+  computed `row-gap` = `16px` (เท่า container ช่องของ `login-page` — AC-66 (2))
+- AC-73 (SFUI-23, กฎ 82–83) ☑ #638 e2e (ใน `sfui-23-followups.spec.ts`; ตั้งข้อมูลตามแนว `core-4e-checkout-polish` ขั้น "shipping nudge" — customer ที่ login + สินค้าในตะกร้ายังไม่ถึงเกณฑ์ส่งฟรี → `/th/store`):
+  ที่ 375×812, 390×844 และ 1280×800 — `free-shipping-nudge-popup` มองเห็น; boundingBox ของ popup และของทุก element ที่มองเห็นข้างในอยู่ใน `[0, innerWidth]`; `documentElement.scrollWidth <= innerWidth`;
+  กล่องเนื้อหา (ลูกตรงของ popup ที่ครอบ `free-shipping-nudge-cart-link`) `scrollWidth <= clientWidth`; ที่ 1280 กล่องเนื้อหากว้าง 400px และขอบขวา = `innerWidth − 20` (±0.5 — คงหน้าตาเดิม);
+  ที่ 390 `document.elementFromPoint(10, <y กลางของ free-shipping-nudge-close>)` ไม่อยู่ใน popup (กฎ 82 `pointer-events`);
+  `free-shipping-nudge-cart-link` / `free-shipping-nudge-store-link` เป็น `<a>` ที่มี `data-slot="button"`, `data-variant` = `ghost` / `secondary`, `data-size="default"`, สูง 36px, `href` ลงท้าย `/th/cart` / `/th/store`;
+  focus `free-shipping-nudge-close` แล้วกด `Tab` → `document.activeElement` = `free-shipping-nudge-cart-link` และ computed `box-shadow` ≠ `none` (focus ring), `Tab` อีกครั้ง → `free-shipping-nudge-store-link` ได้ ring เช่นกัน;
+  กด `free-shipping-nudge-store-link` → URL `/th/store`; static: `free-shipping-price-nudge/index.tsx` ไม่มี `outline-hidden`, `rounded-2xl`, `text-[15px]` บนลิงก์ และ guard AC-55 ผ่าน;
+  `core-4e-checkout-polish` ขั้น shipping nudge และ AC-56/AC-67 (`sfui-19-button-size`) ผ่านโดยไม่แก้ (ลิงก์ใหม่ถูกนับใน selector `[data-variant][data-size]` อัตโนมัติ)
+- AC-74 (SFUI-23, กฎ 84) ☑ #638 e2e (ใน `sfui-23-followups.spec.ts`): ขอบข้อความ (`Range.getBoundingClientRect()` ของ text node) ของทุกแถวในตารางกฎ 84 ตรงกับ reference ของแถวนั้น ±1px —
+  `logout-button` มือถือที่ 390×844 (`/th/account`), desktop ที่ 1280×800; `add-discount-button`, `edit-address-button`, `edit-delivery-button`, `edit-payment-button` ที่ 1280 และ 390 (checkout ขั้น review ตามแนวชุดหน้า P ของ `sfui-19-button-size`);
+  `register-login-link` ที่ 1280 และ 375 (สมัครด้วยอีเมลที่มีบัญชีแล้ว ตามแนว `core-79`); ทุกตัวยัง `data-size="default"` สูง 36px และ computed `padding-left`/`padding-right` = `16px`;
+  static (ใน `sfui-21-consistency.unit.spec.ts`): className ของแต่ละ testid ในตาราง = token margin ของแถวนั้นพอดี (ไม่มี token อื่น) และ `ui/button.tsx` ไม่เปลี่ยน (AC-19); AC-59 ผ่านโดยไม่แก้
+- AC-75 (SFUI-23, กฎ 85) ☑ #638 e2e (ใน `sfui-23-followups.spec.ts`) ที่ 375×812 และ 1280×800 บน `/th/account` (login) และหลังกด `login-to-register-button` (register): element พ่อของ `login-to-register-button` /
+  `register-to-login-button` มี `textContent.trim()` = `ยังไม่เป็นสมาชิก?สมัครสมาชิก` / `เป็นสมาชิกอยู่แล้ว?เข้าสู่ระบบ` (ไม่มี `.` และไม่มี text node ช่องว่าง); computed `font-size` ของ `<span>` ประโยค = ของปุ่ม = `14px`;
+  ระยะจากขอบขวาข้อความประโยค ถึงขอบซ้ายข้อความลิงก์ (Range) = computed `padding-left` ของปุ่ม ±1px; จุดกึ่งกลางแนวตั้งของข้อความทั้งสองต่างกัน ≤ 1px; boundingBox ของ element พ่ออยู่ในจอ;
+  AC-58 (`core-79`, `core-90`) และ `sfui-11-form-field`, `sfui-21-forms` ที่กดปุ่มสลับ ผ่านโดยไม่แก้; `sfui-9d-font` แก้เฉพาะค่าที่คาดของฟอนต์ประโยค (กฎ 78 (i))
 
 ### Test plan
 | ชนิด | AC |
 |---|---|
-| static (`test:e2e:unit`) | AC-55, AC-60 (1), AC-61 (1), AC-63 (static), AC-65 (1), AC-66 (1), AC-67 (1), AC-69 (1), AC-70 (1), AC-71 (1) (+ AC-5, AC-19, AC-35 เดิม) |
+| static (`test:e2e:unit`) | AC-55, AC-60 (1), AC-61 (1), AC-63 (static), AC-65 (1), AC-66 (1), AC-67 (1), AC-69 (1), AC-70 (1), AC-71 (1), AC-72 (1), AC-73 (static), AC-74 (static) (+ AC-5, AC-19, AC-35 เดิม) |
 | unit (Vitest + jsdom — render ของจริง ไม่ mock primitive) | AC-62 (unit), AC-63 (`ADDRESS_COUNTRY_CODE`), AC-64 (unit), AC-70 (2) |
-| e2e (Playwright, prod build) | AC-56, AC-57 (Stripe test จริง), AC-58, AC-59, AC-60 (2), AC-61 (2), AC-62–AC-64 (e2e), AC-65 (2), AC-66 (2), AC-67 (2), AC-69 (2) (Stripe test), AC-70 (3), AC-71 (2)(3) + ชุดเดิม (กฎ 78) |
+| e2e (Playwright, prod build) | AC-56, AC-57 (Stripe test จริง), AC-58, AC-59, AC-60 (2), AC-61 (2), AC-62–AC-64 (e2e), AC-65 (2), AC-66 (2), AC-67 (2), AC-69 (2) (Stripe test), AC-70 (3), AC-71 (2)(3), AC-72 (2), AC-73–AC-75 (`sfui-23-followups.spec.ts`, 1280 + 390/375) + ชุดเดิม (กฎ 78) |
 | reviewer | AC-68 |
+- SFUI-23: ตำแหน่งข้อความวัดด้วย `document.createRange()` + `selectNodeContents(textNode)` (ไม่ใช่ boundingBox ของปุ่มซึ่งรวม padding); focus ring ตรวจหลัง `Tab` จริง (`:focus-visible` ไม่ติดเมื่อ `.focus()` จาก script);
+  e2e ที่ต้องรันก่อน push เพิ่ม: `core-4e-checkout-polish`, `core-79`, `core-90`, `sfui-9d-font`, `sfui-11-form-field`, `sfui-19-button-size`, `sfui-21-forms`, `sfui-21d-alert`, `core-73-register-existing-email`,
+  `affiliate-portal*`, `affiliate-header-overflow`, `core-4j-checkout-discount-address`, `core-40-discount-action-race` (grep testid ของ inventory 38–42)
 - guard ขนาดปุ่ม (AC-55) **แทน** `sfui-button-lg.unit.spec.ts` (ลบใน 19a); ค่า 36px ใน e2e = ค่าที่วัดจาก `getComputedStyle` บน build ของ branch (กฎ 58)
 - Stripe (AC-57): builder รันในเครื่องได้เมื่อมี key (`source ~/.zshrc` + `stripe listen` ตาม CLAUDE.md) ไม่มี key → ระบุว่ารอ CI; ห้ามข้าม step พิสูจน์ `elementFromPoint`
 - payload ประเทศ (AC-63): ตรวจทั้ง hidden input ใน DOM และค่าใน API หลังส่ง (ไม่ใช่แค่ DOM)
@@ -1072,6 +1136,8 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
 `sfui-9c-font.spec.ts` (21b → 21d), `e2e/sfui-13-form-guard.unit.spec.ts` (19c → 19d → 20b), `e2e/sfui-19-button-size.{spec,unit.spec}.ts` (19a → 19b → 22),
 `e2e/sfui-20-address.spec.ts` (20a → 20b → 20c), `e2e/sfui-21-consistency.unit.spec.ts` (21b → 21a → 21c → 21d → 21e → 22), `product-actions/index.tsx` (19a → 21e), `mobile-actions.tsx` (21a → 21e), `sfui-baseline.json` (20a → 20b → 20c), `sfui-9a-font.spec.ts` (20b → 21b → 21d),
 `shadcn-ui.json` (19c → 19d → 21d) · ไม่แตะ `apps/backend/**`, `package.json`/lockfile · LOC ไม่นับไฟล์ที่ CLI สร้างและ `shadcn-ui.json`
+· SFUI-23 ต่อท้ายทุกสาย (แตกจาก SFUI-22 `cfa91f46`): `login`/`register`, `account-nav`, `checkout/components/{addresses,shipping,payment,discount-code}`, `affiliate/components/auth-forms`,
+`free-shipping-price-nudge`, `sfui-21-consistency.unit.spec.ts`, `sfui-9d-font.spec.ts` (… → 22 → 23)
 
 | Task | งาน — ไฟล์ที่เป็นเจ้าของ | AC | Depends | ∥ | LOC |
 |---|---|---|---|---|---|
@@ -1088,9 +1154,10 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
 | SFUI-21d | ☑ #635 — error ระดับฟอร์ม = `Alert`, inline = `FieldError` (inventory 33, กฎ 74 — owner Q-R50-2 ทาง (ข)): `shadcn add alert`; `checkout/components/error-message/index.tsx` + unit ใหม่; จุด hard-code ระดับฟอร์ม (`add-address`, `edit-address-modal`, `register`, `returns/components/return-request-form`, `group-join.tsx` `group-join-error`, `account/components/account-info` `error-message`) → `ErrorMessage`; `checkout/components/review/index.tsx` `review-flash-exceeds-customer-limit`, `account/components/add-variant-error` → `ErrorMessage`; inline (`cart/components/item/index.tsx` `product-error-message`, `group-join.tsx` `group-units-limit`, `common/components/delete-button` `cart-item-remove-error`) → `FieldError`; ค่าฟอนต์ของ error ใน `sfui-9c-font.spec.ts` และ `sfui-9a-font.spec.ts` (กฎ 78 (i)); ขยาย `sfui-21-consistency.unit.spec.ts` (AC-70 (1)); ใหม่ `e2e/sfui-21d-alert.spec.ts` | AC-70, AC-68 | SFUI-21c (`sfui-21-consistency`; ได้ 19d ของ `shadcn-ui.json`, 19b ของ `delete-button`, 21a ของฟอร์มที่อยู่/register, 20c ของ `group-join`, 21b ของ `sfui-9a-font` มาด้วย) | — | ~360 |
 | SFUI-21e | ☑ #636 — error ของการกระทำ/ข้อความผูกตัวเลือกนอก checkout (ตารางกฎ 74c แถว 21e): `products/components/product-actions/{index,mobile-actions}.tsx` (`add-to-cart-error`, `mobile-add-to-cart-error` → `ErrorMessage`), `home/components/campaigns/create-team-button.tsx` (`ErrorMessage`), `cart/components/cart-error-notice` (`Alert` variant default), `products/components/flash-sale/{qty-exceeds-remaining,customer-limit}.tsx`, `cart/components/flash-exceeds-remaining`, `group-buy/components/account-group-orders/leave-button.tsx` (→ `FieldError`); ขยาย `sfui-21-consistency.unit.spec.ts` (AC-71 (1)); ใหม่ `e2e/sfui-21e-action-errors.spec.ts` | AC-71, AC-68 | SFUI-21d (`sfui-21-consistency`, `ErrorMessage`/`alert`; ได้ 19a ของ `product-actions` และ 21a ของ `mobile-actions` มาด้วย) | — | ~220 |
 | SFUI-22 | ☑ #637 — ปิดรอบ: guard `<button` ดิบ + allow-list (กฎ 79 — เจอนอกรายการหยุดแจ้ง planner) ใน `sfui-21-consistency.unit.spec.ts`; ขยาย `sfui-19-button-size.spec.ts` (AC-67 (2)); ติ๊ก AC-55–71 + Status ของส่วนนี้; ROADMAP; อัปเดต body #603 (session หลัก) | AC-67, AC-68 | SFUI-21e | — | ~150 |
+| SFUI-23 | ☑ #638 — เก็บตกจาก qa ปลาย stack (inventory 38–42, กฎ 81–85 — owner 2026-11-28 แก้ก่อน v0.4.0): `affiliate/components/auth-forms/index.tsx` (gap), `shipping/components/free-shipping-price-nudge/index.tsx` (popup + ลิงก์ `Button asChild`), `account/components/account-nav/index.tsx`, `checkout/components/{addresses,shipping,payment,discount-code}/index.tsx` (margin ติดลบ), `account/components/{login,register}/index.tsx` (ประโยคลิงก์สลับ + `register-login-link`); ขยาย `sfui-21-consistency.unit.spec.ts` (`GAP_FILES` + static AC-73/74); ใหม่ `e2e/sfui-23-followups.spec.ts`; e2e เดิมที่อาจต้องแก้ตามกฎ 78 (i) เท่านั้น: `sfui-9d-font.spec.ts` (~:51 ฟอนต์ประโยค 12px → 14px) — ไฟล์อื่นในรายการ test plan ต้องผ่านโดยไม่แก้ (ล้ม → หยุดแจ้ง planner); `sfui-baseline.json` ไม่แก้ (ยกเว้นกฎ 83); ติ๊ก AC-72..75 + Status; evidence `docs/evidence/storefront-consistency/SFUI-23/` (ภาพ popup 375 + ประโยคลิงก์สลับ 375 + เมนูบัญชีมือถือ) | AC-72, AC-73, AC-74, AC-75, AC-68 | SFUI-22 | — | ~250 |
 
-ลำดับ: 19a → (19b ∥ (19c → 19d)) → 20a (หลัง 19b) → 20b (หลัง 20a + 19d) → 20c · 21b (หลัง 19b + 20b) ∥ 20c → 21a (หลัง 20c + 21b) → 21c → 21d → 21e → 22
-· merge จริงทีละตัว: 19a → 19b → 19c → 19d → 20a → 20b → 20c → 21b → 21a → 21c → 21d → 21e → 22 (sync `origin/develop` + CI เขียวก่อนแต่ละตัว; แต่ละ PR เขียวได้เอง — 20a เพิ่ม `required` พร้อมบรรทัดกรอกจังหวัดใน PR เดียว)
+ลำดับ: 19a → (19b ∥ (19c → 19d)) → 20a (หลัง 19b) → 20b (หลัง 20a + 19d) → 20c · 21b (หลัง 19b + 20b) ∥ 20c → 21a (หลัง 20c + 21b) → 21c → 21d → 21e → 22 → 23
+· merge จริงทีละตัว: 19a → 19b → 19c → 19d → 20a → 20b → 20c → 21b → 21a → 21c → 21d → 21e → 22 → 23 (sync `origin/develop` + CI เขียวก่อนแต่ละตัว; แต่ละ PR เขียวได้เอง — 20a เพิ่ม `required` พร้อมบรรทัดกรอกจังหวัดใน PR เดียว)
 · **stack** แบบรอบ 44–49 (owner อนุญาตชุด SFUI): 19a แตกจาก branch เอกสาร `docs/storefront-r50-consistency`, task ที่มี Depends สองตัวแตกจาก branch ที่รวมทั้งสองแล้ว → เปิด PR ทั้งชุดตอนท้าย (base = `develop`)
 · **release v0.4.0 (#603) พร้อม merge หลังรอบ 50 merge ครบ** (owner 2026-11-28 — พักจนรอบนี้ merge)
 
@@ -1098,6 +1165,9 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
 - ~~Q-R50-1~~ = **ทำรอบนี้** (owner 2026-11-28): การ์ดจัดส่ง/ชำระเงินใช้โครงเดียวกัน = Choice Card ของ shadcn (กฎ 80, SFUI-21c)
 - ~~Q-R50-2~~ = **ใช้ `Alert` ของ shadcn กับ error ระดับฟอร์ม** (owner 2026-11-28 — ทาง (ข)): ระดับฟอร์ม = `Alert variant="destructive"`, inline ในแถว/เซลล์ = `FieldError` (กฎ 74, SFUI-21d)
 - SFUI-20b ~450 LOC — owner รับ (2026-11-28) · review #624 blocker 3 → กฎ 70 ทาง (ก) (`formData` เก็บ `ADDRESS_COUNTRY_CODE`)
+- SFUI-23 (owner 2026-11-28 สั่งแก้ D1–D3 + "ควรพิจารณา" 1–2): planner เลือก default ไว้แล้ว ไม่ block — (ก) ลิงก์ในกล่องส่งฟรีพื้นดำ `ghost` + `secondary` (กฎ 83; ทางอื่น: เปลี่ยนกล่องเป็นพื้นขาวแบบ card
+  แล้วใช้ `outline` + `default`); (ข) แนวข้อความใช้ margin ติดลบ (กฎ 84; ทางอื่น: คง padding ของ default แล้วยอมรับการเยื้อง); (ค) ประโยคลิงก์สลับไม่มี "." และเว้นด้วย padding ของปุ่ม (กฎ 85) ·
+  "ควรพิจารณา" 3–5 ของ REPORT SFUI-22 ไม่อยู่ใน SFUI-23 (ข้อ 3–4 อยู่ในตาราง "ไม่รวม" แล้ว; ข้อ 5 นอกขอบเขตกฎ 77)
 
 ## Open questions
 - ~~ADR-032 D1–D5~~ ตัดสินแล้ว (owner 2026-11-27): **รับตามข้อเสนอ** — D1 = ก, D2 = ก (placeholder เฉพาะเบอร์โทร/รหัสไปรษณีย์), D3 = ก (`*` อย่างเดียว ไม่ใส่ "(ไม่บังคับ)"),

@@ -1,6 +1,6 @@
 # ROADMAP — milestone, ลำดับ PR, สถานะ
 
-อัปเดตล่าสุด: 2026-11-28 (รอบ 50 ทำครบ 13 task — stack รอ merge; v0.4.0 #603 พร้อม merge หลังรอบ 50 merge ครบ) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
+อัปเดตล่าสุด: 2026-11-28 (รอบ 50 ทำครบ 14 task รวม SFUI-23 เก็บตก ☑ #638 — stack รอ merge; v0.4.0 #603 พร้อม merge หลังรอบ 50 merge ครบ) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
 [`docs/roadmap/history.md`](roadmap/history.md) และ follow-up เก่า (รอบ 13–39) อยู่ที่
 [`docs/roadmap/followups-archive.md`](roadmap/followups-archive.md)
 
@@ -10,10 +10,10 @@
   รอบ 43 ส่วน v0.3.1 (OPS-36 #554, PAY-23 #555, PAY-24 #556, OPS-39 #559) เป็น 🚀 · OPS-40 (PII ค่าเดี่ยวจาก review #559) ☑ #562 (merge 2026-11-26 — ข้อยกเว้น d1/d2/d3 ของกฎ 22d + กรณีรู้แล้ว `cart_13rjFZ` → OPS-41), **ไม่อยู่ใน v0.3.1**
 - **ยังไม่ release หลัง v0.3.1**: OPS-40 + รอบ 44 (SFUI, 16 task) + รอบ 45 (7 task) + รอบ 46 (admin ไทย, 5 task) + รอบ 47 (#600–#602) + รอบ 48 (ฟอร์ม, 6 task #604–#610)
   + SFUI-14 #612 + รอบ 49 (select/ที่อยู่ไทย, 9 task #614–#622) อยู่ใน `develop` เท่านั้น · owner **ยังไม่ go-live** (release `develop → main` เป็นของ owner)
-- **รอบปัจจุบัน**: **รอบ 50** (ปุ่มขนาดเดียว, ซ่อนประเทศ, จังหวัดบังคับ, consistency — spec 09, ADR-034 accepted) — **ทำครบ 13 task ☑** (#625…#637, stack รอ merge) ·
+- **รอบปัจจุบัน**: **รอบ 50** (ปุ่มขนาดเดียว, ซ่อนประเทศ, จังหวัดบังคับ, consistency — spec 09, ADR-034 accepted) — **ทำครบ 14 task ☑** (#625…#638, stack รอ merge) รวม **SFUI-23 ☑ #638** (เก็บตกจาก qa ปลาย stack — owner สั่งแก้ก่อน v0.4.0) ·
   **release v0.4.0 (#603) พร้อม merge หลังรอบ 50 merge ครบ** (owner 2026-11-28) · รอบ 49 ☑ ครบ 2026-11-28 · รอบ 43 "หลัง go-live" (14 task) รอ owner สั่ง
 - **รอ owner ตัดสิน**: Q-R49-5/6 + `disabled={updating}` ของจำนวนในตะกร้า (รอบ 49) + เรื่องก่อน go-live (Stripe live, ค่าส่ง, staging)
-- **ขั้นต่อไป**: merge stack SFUI-19a..22 ตามลำดับ → owner merge/tag v0.4.0 (#603) → go-live (checklist ข้อ 1–16) → **v1.0.0**
+- **ขั้นต่อไป**: merge stack SFUI-19a..23 ตามลำดับ → owner merge/tag v0.4.0 (#603) → go-live (checklist ข้อ 1–16) → **v1.0.0**
 
 ### Release
 
@@ -68,7 +68,7 @@ OPS-36, PAY-23, PAY-24 merge ใน train #557 · OPS-39 เพิ่มหล�
 | CORE-96 | 01 | สรุปขั้น payment ไม่ตัดคำทุกความกว้าง + บัตรของขวัญ + `renewedFrom` | — | ✓ | ☐ |
 | CORE-97 | 01 | nav ตะกร้า: ลิงก์ไม่ซ้อนปุ่ม, ป้ายไม่ค้างหลัง logout, backend ล่มไม่บอก (0) — ⚠️ ชน SFUI-3c (`cart-dropdown` → Radix `Popover`); ตัวที่ merge ทีหลังต้องเขียน static check ของ AC-194 ใหม่ให้อ้าง `PopoverAnchor` แทน `PopoverButton` (SFUI-3c ครอบลิงก์ `nav-cart-link` ด้วย `PopoverAnchor` — spec 09 กฎ 4b) | — | ✓ | ☐ |
 | CORE-98 | 01 | overview GB-8 ล้ม/`<ul>` ว่าง + a11y `SearchPagination` + จำนวน toggle ลดราคา | — | ✓ | ☐ |
-| CORE-99 | 01 | a11y ลิงก์/ปุ่ม: static ครอบทุกรูป, "." ปุ่มสลับ, testid `cart-sign-in-link` | — | ✓ | ☐ |
+| CORE-99 | 01 | a11y ลิงก์/ปุ่ม: static ครอบทุกรูป, ~~"." ปุ่มสลับ~~ (→ SFUI-23), testid `cart-sign-in-link` | — | ✓ | ☐ |
 | CORE-100 | 01 | hygiene storefront: purity 3 ไฟล์, coverage/`COMPARE`, e2e chip, unit กฎ 151e | — | — | ☐ |
 | FS-26 | 03 | e2e hygiene flash: `stripeRefunds`/`ok` ร่วม + catch ของ helper | — | — | ☐ |
 | GB-33 | 04 | test hygiene: filter ของ AC-69b, เกณฑ์เวลาผูก `LOCK_TIMEOUT`, comment | — | — | ☐ |
@@ -220,7 +220,7 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
   (`docs/evidence/storefront-select/SFUI-18c/REPORT.md`; ภาพของ 16a–18c commit มากับ #622)
 - **followup จาก review/qa**: รวมไว้ใน backlog รอบ 50 ด้านล่าง (ตรวจแล้วว่ายังไม่ถูกแก้ในรอบ 50; `hiddenSelectOf` ไม่ต้องทำแล้ว — `checkout/components/country-select` ถูกลบใน SFUI-20b)
 
-## รอบ 50 — ปุ่มขนาดเดียว, ซ่อนประเทศ, จังหวัดบังคับ, consistency (spec 09 "ส่วน consistency + ที่อยู่ (รอบ 50)", ADR-034 accepted 2026-11-28) (☑ ทำครบ 13 task — stack รอ merge)
+## รอบ 50 — ปุ่มขนาดเดียว, ซ่อนประเทศ, จังหวัดบังคับ, consistency (spec 09 "ส่วน consistency + ที่อยู่ (รอบ 50)", ADR-034 accepted 2026-11-28) (☑ 14 task รวม SFUI-23 — stack รอ merge)
 
 ที่มา: owner ทดสอบหลังรอบ 49 (2026-11-28) + audit บน browser จริงของ qa (develop `523056bb`) · ทุกปุ่ม `default` 36px รวมปุ่มจ่ายเงิน (พิสูจน์ Stripe ใน e2e) ·
 ซ่อนช่อง/บรรทัดประเทศ (ส่ง `th`) · จังหวัดบังคับ · gap ฟอร์ม 16px · `h1` ขนาดเดียว · `shadcn add pagination toggle-group` · stack · **#603 พักจนรอบ 50 merge ครบ**
@@ -240,9 +240,10 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 | SFUI-21d | 09 | error ระดับฟอร์ม = `Alert` (`shadcn add alert`), inline ในแถว = `FieldError` (owner Q-R50-2) | SFUI-21c | ✓ | ☑ #635 |
 | SFUI-21e | 09 | error ของการกระทำนอก checkout (เพิ่มลงตะกร้า, สร้างทีม, notice ตะกร้า) = `Alert`; ข้อความ flash/แถว = `FieldError` | SFUI-21d | ✓ | ☑ #636 |
 | SFUI-22 | 09 | ปิดรอบ: guard `<button>` ดิบ + e2e ทุกปุ่ม 36px + ติ๊ก AC (body #603 = session หลัก) | SFUI-21e | — | ☑ #637 |
+| SFUI-23 | 09 | เก็บตก qa: gap ฟอร์ม affiliate 16px, popup ส่งฟรีไม่ล้นจอ + ลิงก์ `Button`, แนวข้อความปุ่ม ghost/link, ประโยคลิงก์สลับ (กฎ 81–85) | SFUI-22 | ✓ | ☑ #638 |
 
-- ลำดับ: 19a → (19b ∥ 19c → 19d) → 20a → 20b (หลัง 20a + 19d) → 20c ∥ 21b → 21a → 21c → 21d → 21e → 22
-- merge: 19a → 19b → 19c → 19d → 20a → 20b → 20c → 21b → 21a → 21c → 21d → 21e → 22
+- ลำดับ: 19a → (19b ∥ 19c → 19d) → 20a → 20b (หลัง 20a + 19d) → 20c ∥ 21b → 21a → 21c → 21d → 21e → 22 → 23
+- merge: 19a → 19b → 19c → 19d → 20a → 20b → 20c → 21b → 21a → 21c → 21d → 21e → 22 → 23 (SFUI-23 owner สั่ง 2026-11-28 — ก่อน v0.4.0)
 - **ไฟล์ร่วม** (stack ตามลำดับ): modal ที่อยู่ 19a → 19b → 20a → 20b → 20c → 21a → 21d · `sfui-13-form-guard` 19c → 19d → 20b · `sfui-baseline.json` 20a → 20b → 20c
 - ไม่มี dependency ใหม่ (component ใหม่จาก `shadcn add` 4 ไฟล์) · admin/backend ไม่กระทบ · evidence `docs/evidence/storefront-consistency/<TASK>/`
 - **backlog รอบ 50** (ยังไม่มี task — หลัง v0.4.0; ตรวจแล้วว่ายังไม่ถูกแก้ในรอบ 50):
@@ -266,7 +267,8 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 
 - **v0.4.0**: #603 **พร้อม merge หลังรอบ 50 merge ครบ** (owner 2026-11-28 — รอบ 50 ทำครบแล้ว รอ merge stack) → แล้ว owner merge `develop → main` + tag `v0.4.0`
 
-- **รอบ 50**: ไม่มีคำถามค้าง — ADR-034 accepted · ~~Q-R50-1~~ = ทำ (Choice Card, SFUI-21c) · ~~Q-R50-2~~ = `Alert` เฉพาะ error ระดับฟอร์ม/การกระทำ (SFUI-21d, 21e) · SFUI-20b ~450 LOC owner รับ (2026-11-28)
+- **รอบ 50**: ไม่มีคำถามค้าง — ADR-034 accepted · ~~Q-R50-1~~ = ทำ (Choice Card, SFUI-21c) · ~~Q-R50-2~~ = `Alert` เฉพาะ error ระดับฟอร์ม/การกระทำ (SFUI-21d, 21e) · SFUI-20b ~450 LOC owner รับ (2026-11-28) ·
+  SFUI-23 ใช้ default ของ planner (ไม่ block): ลิงก์ popup ส่งฟรี `ghost` + `secondary`, แนวข้อความด้วย margin ติดลบ, ประโยคลิงก์สลับไม่มี "." (spec 09 Open questions รอบ 50)
 
 - **รอบ 49**: ADR-033 accepted, ~~Q-R49-1~~ = ก, ~~Q-R49-2~~ = ข, ~~Q-R49-3~~ = stack ได้, ~~Q-R49-4~~ = บังคับ (owner 2026-11-28) · ยังเปิด (ไม่ block รอบ 49):
   - Q-R49-5 ย้าย component ร่วมของรอบ 48 (`Input`, `Checkbox`, spinner) ไปประกอบตามตัวอย่าง docs ของ shadcn ไหม — เสนอ ไม่ทำตอนนี้ (backlog หลัง v0.4.0)
@@ -339,7 +341,7 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 | รอบ 47 ทดสอบ manual ก่อน v0.4.0 | 02, 10 | ☑ | 2 ☑ (#600, #602; เอกสาร #601) | AI18N-N2, EV-27; วันที่ admin คง พ.ศ. (owner 2026-11-27) |
 | รอบ 48 ฟอร์ม storefront แบบ shadcn | 09 | ☑ | 6 ☑ (#605–#610; เอกสาร #604) | ADR-032 accepted 2026-11-27; stack; ยังไม่ release (#603) |
 | รอบ 49 select Radix + ที่อยู่ไทย | 09 | ☑ | 9 ☑ (#614–#622) + SFUI-14 ☑ #612 | ADR-033 accepted 2026-11-28; stack; ยังไม่ release (#603) |
-| รอบ 50 consistency + ที่อยู่ | 09 | ☑ | 13 ☑ (#625…#637) | ADR-034 accepted 2026-11-28; stack; #603 พร้อม merge หลังรอบนี้ merge |
+| รอบ 50 consistency + ที่อยู่ | 09 | ☑ | 14 ☑ (#625…#638) | ADR-034 accepted 2026-11-28; stack; #603 พร้อม merge หลังรอบนี้ merge |
 | รอบ 43 | 01, 03, 04, 06–08 | ◐ | 4 🚀 + 1 ☑ + 14 ☐ | 4 🚀 (3 train #557 + OPS-39 #559) ใน v0.3.1; OPS-40 ☑ #562 ก่อน go-live (ไม่อยู่ใน v0.3.1); 14 ตัวหลัง go-live (รวม OPS-41) |
 
 จำนวน task นับจากตารางใน history.md ณ 2026-11-24 และตารางรอบ 43 ด้านบน ณ 2026-11-25 (task ที่อยู่หลาย milestone นับที่ milestone หลักของ spec)

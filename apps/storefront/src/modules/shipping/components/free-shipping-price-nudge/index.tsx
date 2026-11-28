@@ -199,10 +199,11 @@ function FreeShippingPopup({
 }) {
   const [isClosed, setIsClosed] = useState(false)
 
+  // SFUI-23 (spec 09 กฎ 82): < 640px กว้างตามจอ (inset-x-5) — root ไม่รับการแตะ (pointer-events-none) ให้พื้นที่ว่างข้างปุ่มปิดทะลุไปที่หน้า
   return (
     <div
       className={cn(
-        "fixed bottom-5 right-5 flex flex-col items-end gap-2 transition-all duration-500 ease-in-out z-10",
+        "fixed bottom-5 inset-x-5 sm:left-auto pointer-events-none flex flex-col items-end gap-2 transition-all duration-500 ease-in-out z-10",
         {
           "opacity-0 invisible delay-1000": price.target_reached,
           "opacity-0 invisible": isClosed,
@@ -211,7 +212,7 @@ function FreeShippingPopup({
       )}
       data-testid="free-shipping-nudge-popup"
     >
-      <div>
+      <div className="pointer-events-auto">
         <Button
           size="icon"
           onClick={() => setIsClosed(true)}
@@ -222,10 +223,10 @@ function FreeShippingPopup({
         </Button>
       </div>
 
-      <div className="w-[400px] bg-black text-white p-6 rounded-lg ">
+      <div className="pointer-events-auto w-full sm:w-[400px] bg-black text-white p-6 rounded-lg ">
         <div className="pb-4">
           <div className="space-y-3">
-            <div className="flex justify-between text-[15px] text-neutral-400">
+            <div className="flex flex-wrap justify-between gap-x-2 text-[15px] text-neutral-400">
               <div>
                 {price.target_reached ? (
                   <div className="flex items-center gap-1.5">
@@ -267,20 +268,15 @@ function FreeShippingPopup({
           </div>
         </div>
 
+        {/* SFUI-23 (spec 09 กฎ 83): Button asChild ขนาด default — ghost สืบสีขาวของกล่องพื้นดำ, secondary พื้นอ่อน; focus ring ของ buttonVariants */}
         <div className="flex gap-3">
-          <LocalizedClientLink
-            className="rounded-2xl bg-transparent shadow-none outline-hidden border-[1px] border-white text-[15px] py-2.5 px-4"
-            href="/cart"
-          >
-            ดูตะกร้าสินค้า
-          </LocalizedClientLink>
+          <Button asChild variant="ghost" data-testid="free-shipping-nudge-cart-link">
+            <LocalizedClientLink href="/cart">ดูตะกร้าสินค้า</LocalizedClientLink>
+          </Button>
 
-          <LocalizedClientLink
-            className="grow rounded-2xl bg-white text-neutral-950 shadow-none outline-hidden border-[1px] border-white text-[15px] py-2.5 px-4 text-center"
-            href="/store"
-          >
-            ดูสินค้า
-          </LocalizedClientLink>
+          <Button asChild variant="secondary" className="grow" data-testid="free-shipping-nudge-store-link">
+            <LocalizedClientLink href="/store">ดูสินค้า</LocalizedClientLink>
+          </Button>
         </div>
       </div>
     </div>

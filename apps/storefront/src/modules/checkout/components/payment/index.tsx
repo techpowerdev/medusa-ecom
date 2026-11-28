@@ -287,7 +287,8 @@ const Payment = ({
         </h2>
         {!isOpen && paymentReady && (
           <p className="text-sm leading-[1.4rem]">
-            <Button variant="link" onClick={handleEdit} data-testid="edit-payment-button">
+            {/* SFUI-23 (spec 09 กฎ 84): -mr-4 ให้ข้อความชิดขวาแถวหัวข้อ (padding/พื้นที่กดคงตาม default) */}
+            <Button variant="link" className="-mr-4" onClick={handleEdit} data-testid="edit-payment-button">
               แก้ไข
             </Button>
           </p>

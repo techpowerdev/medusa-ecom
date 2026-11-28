@@ -136,8 +136,10 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
       <div className="text-sm leading-[1.4rem]">
         <form action={(a) => addPromotionCode(a)} className="w-full mb-5">
           <Label className="flex gap-x-1 my-2 items-center">
+            {/* SFUI-23 (spec 09 กฎ 84): -ml-4 ให้ข้อความชิดซ้าย <form> (padding/พื้นที่กดคงตาม default) */}
             <Button
               variant="link"
+              className="-ml-4"
               onClick={() => setIsOpen(!isOpen)}
               type="button"
               data-testid="add-discount-button"
