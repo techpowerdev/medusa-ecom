@@ -60,7 +60,7 @@ test("AC-21: checkout (not-found, ที่อยู่, จัดส่ง, ช
   expect(saved.status(), "saved address").toBe(200)
   await signInAs(context, baseURL!, customer)
 
-  await step("ยังไม่มี cart: not-found ของ (checkout) หัวข้อ 30px/48px/600 คำอธิบาย 12px/20px/400; ตะกร้าว่าง 14px/24px/400", async () => {
+  await step("ยังไม่มี cart: not-found ของ (checkout) หัวข้อ 32px/48px/600 คำอธิบาย 12px/20px/400; ตะกร้าว่าง 14px/24px/400", async () => {
     await page.goto(`/${CC}/checkout`)
     await expect(page.getByTestId("not-found-title")).toBeVisible()
     expect.soft(await font(page.getByTestId("not-found-title"))).toEqual(XXL_SEMI)

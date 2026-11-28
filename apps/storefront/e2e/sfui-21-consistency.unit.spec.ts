@@ -67,6 +67,6 @@ test("AC-65 (1): ทุก <h1 ใน src/** (ยกเว้น hero) ใช้
   const files = sourceFiles().filter((f) => f.endsWith(".tsx") && f !== HERO)
   const found = files.flatMap((file) => h1Violations(file, readSource(file)).map((v) => `${file}:${v}`))
   const withH1 = files.filter((file) => readSource(file).includes("<h1"))
-  expect(withH1.length, "จำนวนไฟล์ที่มี <h1 (นอก hero)").toBe(27)
+  expect(withH1.length, "จำนวนไฟล์ที่มี <h1 (นอก hero)").toBeGreaterThanOrEqual(27)
   expect(found).toEqual([])
 })

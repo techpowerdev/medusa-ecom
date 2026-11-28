@@ -56,7 +56,7 @@ test("AC-21: store, category, collection, PDP และหน้าค้นห�
 }) => {
   await signIn(page, baseURL!)
 
-  await step("store: หัวข้อ 30px/48px/600 และราคาต่ำ/สูงของตัวกรองราคา 12px/20px/400", async () => {
+  await step("store: หัวข้อ 32px/48px/600 และราคาต่ำ/สูงของตัวกรองราคา 12px/20px/400", async () => {
     await page.goto(`/${CC}/store`)
     expect(await font(page.getByTestId("store-page-title"))).toEqual(XXL_SEMI)
     expect(await font(page.getByTestId("price-range-min"))).toEqual(SMALL)
@@ -64,7 +64,7 @@ test("AC-21: store, category, collection, PDP และหน้าค้นห�
     await evidence("01-store")
   })
 
-  await step("category และ collection: หัวข้อ 30px/48px/600", async () => {
+  await step("category และ collection: หัวข้อ 32px/48px/600", async () => {
     await page.goto(`/${CC}/categories/shirts`)
     expect(await font(page.getByTestId("category-page-title"))).toEqual(XXL_SEMI)
     await page.goto(`/${CC}/collections/featured`)
@@ -85,7 +85,7 @@ test("AC-21: store, category, collection, PDP และหน้าค้นห�
     await evidence("02-pdp")
   })
 
-  await step("หน้าค้นหา: หัวข้อ 30px/48px/600 และจำนวนผลลัพธ์ 12px/20px/400", async () => {
+  await step("หน้าค้นหา: หัวข้อ 32px/48px/600 และจำนวนผลลัพธ์ 12px/20px/400", async () => {
     await page.goto(`/${CC}/search?q=shirt`)
     expect(await font(page.getByTestId("search-page-title"))).toEqual(XXL_SEMI)
     expect(await font(page.getByTestId("search-result-count"))).toEqual(SMALL)

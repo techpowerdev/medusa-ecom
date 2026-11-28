@@ -42,7 +42,7 @@ test("AC-21: หน้า login/register, ภาพรวมบัญชี, โ
 }) => {
   test.setTimeout(180_000)
 
-  await step("login + register (ยังไม่ login): หัวข้อ 16px/24px/600, คำอธิบาย 14px/24px/400, ลิงก์สลับหน้า 12px/20px/400", async () => {
+  await step("login + register (ยังไม่ login): หัวข้อ 32px/48px/600, คำอธิบาย 14px/24px/400, ลิงก์สลับหน้า 12px/20px/400", async () => {
     await page.goto(`/${CC}/account`)
     const login = page.getByTestId("login-page")
     await expect(login).toBeVisible()
@@ -92,7 +92,7 @@ test("AC-21: หน้า login/register, ภาพรวมบัญชี, โ
     await evidence("01-account-overview")
   })
 
-  await step("โปรไฟล์ + ที่อยู่: หัวหน้า 30px/48px/600, คำอธิบาย 14px/24px/400, อีเมล 12px/20px/400, ปุ่มเพิ่มที่อยู่ 14px/24px/600", async () => {
+  await step("โปรไฟล์ + ที่อยู่: หัวหน้า 32px/48px/600, คำอธิบาย 14px/24px/400, อีเมล 12px/20px/400, ปุ่มเพิ่มที่อยู่ 14px/24px/600", async () => {
     await page.goto(`/${CC}/account/profile`)
     const header = page.getByTestId("account-page-header")
     await expect(header).toBeVisible()
@@ -107,7 +107,7 @@ test("AC-21: หน้า login/register, ภาพรวมบัญชี, โ
     expect.soft(await font(page.getByTestId("add-address-button").locator("span").first())).toEqual(BASE_SEMI)
   })
 
-  await step("รายการ order: หัวหน้า 30px/48px/600, เลขที่ order 16px/24px/600, วันที่/ยอด 12px/20px/400", async () => {
+  await step("รายการ order: หัวหน้า 32px/48px/600, เลขที่ order 16px/24px/600, วันที่/ยอด 12px/20px/400", async () => {
     await page.goto(`/${CC}/account/orders`)
     const header = page.getByTestId("account-page-header")
     await expect(header).toBeVisible()
@@ -120,7 +120,7 @@ test("AC-21: หน้า login/register, ภาพรวมบัญชี, โ
     await evidence("02-account-orders")
   })
 
-  await step("รายละเอียด order: หัวข้อ 30px/48px/600, สรุปคำสั่งซื้อ 14px/24px/600 + 12px/20px/400 + 14px/24px/400, ช่วยเหลือ 14px/24px/400", async () => {
+  await step("รายละเอียด order: หัวข้อ 32px/48px/600, สรุปคำสั่งซื้อ 14px/24px/600 + 12px/20px/400 + 14px/24px/400, ช่วยเหลือ 14px/24px/400", async () => {
     await page.goto(`/${CC}/account/orders/details/${id}`)
     await expect(page.getByTestId("order-details-container")).toBeVisible()
     expect.soft(await font(page.getByTestId("order-details-heading"))).toEqual(XXL_SEMI)
