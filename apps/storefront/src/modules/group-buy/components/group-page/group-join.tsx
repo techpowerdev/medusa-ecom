@@ -200,7 +200,6 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
               />
               <Button
                 variant="ghost"
-                size="sm"
                 disabled={busy}
                 onClick={() => updateSelection(removeFromSelection(selection, item.variant_id))}
                 data-testid="group-selection-remove"

@@ -254,7 +254,6 @@ const EditAddress: React.FC<EditAddressProps> = ({
               type="reset"
               variant="outline"
               onClick={close}
-              className="h-10"
               data-testid="cancel-button"
             >
               ยกเลิก

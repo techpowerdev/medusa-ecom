@@ -1,5 +1,4 @@
 import { buttonVariants } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 const SignInPrompt = () => {
@@ -14,7 +13,7 @@ const SignInPrompt = () => {
       <div>
         <LocalizedClientLink
           href="/account"
-          className={cn(buttonVariants({ variant: "outline" }), "h-10")}
+          className={buttonVariants({ variant: "outline" })}
           data-testid="sign-in-button"
         >
           เข้าสู่ระบบ

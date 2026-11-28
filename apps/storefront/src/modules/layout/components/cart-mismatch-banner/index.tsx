@@ -41,7 +41,7 @@ function CartMismatchBanner(props: {
 
         <Button
           variant="ghost"
-          className="hover:bg-transparent active:bg-transparent focus:bg-transparent disabled:text-orange-500 text-orange-950 p-0 bg-transparent"
+          className="hover:bg-transparent active:bg-transparent focus:bg-transparent disabled:text-orange-500 text-orange-950 bg-transparent"
           size="default"
           disabled={isPending}
           onClick={handleSubmit}

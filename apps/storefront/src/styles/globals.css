@@ -189,10 +189,6 @@
   @apply max-w-[1440px] w-full mx-auto px-6;
 }
 
-@utility contrast-btn {
-  @apply px-4 py-2 border border-black rounded-full hover:bg-black hover:text-white transition-colors duration-200 ease-in;
-}
-
 @layer utilities {
   /* SFUI-8: ป้ายลอยของ common/components/input ย้ายเป็น peer / peer-* บน label ของ component นั้น
      (rule `input ~ label` เดิมจับ <label> ทุกตัวที่ตามหลัง <input> พี่น้อง เช่น option-button บน PDP) */

@@ -1,0 +1,34 @@
+# SFUI-19a — ผลทดสอบ (spec 09 กฎ 58–62, AC-55/56/57/68; ADR-034 D1/D2)
+สภาพแวดล้อม: ฐาน develop c0310565, node 24, prod build — backend :9481 (NODE_ENV=production, start จาก .medusa/server, DB medusa_sfui19a, Redis db 12),
+storefront :8481 (next build + start), Stripe test จริง (stripe listen events ชุดเดียวกับ CI → :9481/hooks/payment/stripe_stripe)
+
+## Red
+- guard AC-55 ก่อนแก้ src: 2 failed / 1 passed — พบ 33 จุดใน 18 ไฟล์ (inventory ข้อ 1–12 + `checkout/components/submit-button` size={size});
+  globals.css ยังมี contrast-btn
+- e2e บน build ที่ src = develop: 5 failed / 5 — AC-56 `add-product-button` height 40px (1280, 390); AC-57 3DS/พร้อมเพย์ และ
+  sfui-3d-payment D-1: `submit-payment-button`/`submit-order-button` สูง 48 (คาด 36)
+
+## Green
+- (หลังแก้ helper) playwright project unit: 254 passed; lint + typecheck ผ่าน
+- vitest (apps/storefront): 138 files / 2072 tests passed
+- playwright project unit (รวม sfui-19-button-size.unit + evidence-budget): 254 passed
+- pnpm lint && pnpm typecheck: ผ่าน (0 error); pnpm --filter storefront build: ผ่าน
+- e2e ของ task: sfui-19-button-size.spec (AC-56 ×2 viewport, AC-57 3DS + พร้อมเพย์) + sfui-3d-payment: 5 passed
+
+## วินิจฉัยและคำตัดสิน (กฎ 61 / ADR-034 D2)
+- รอบแรกของชุด 29 ไฟล์: 97 passed / 5 failed — payments.spec AC-1/AC-2/AC-3 และ pay-9 AC-22c ล้มที่ continueToReview
+  (คลิก submit-payment-button แล้ว URL ยัง step=payment) ซ้ำได้; build ที่ src = develop (48px) payments AC-1+AC-3 2 passed
+  (อีก 1 ตัว = AC-56 1280 timeout จาก waitForLoadState("networkidle") ไม่มี timeout บน checkout ที่มี Stripe.js — จำกัด 5 วินาทีแล้ว)
+- สาเหตุ (spec วินิจฉัยชั่วคราว ลบแล้ว): หลังกรอกบัตรปุ่มอยู่นอกจอ → Playwright scroll แล้ว dispatch คลิกทันที; mousedown/mouseup/click
+  ไม่ถึง document หลักแต่ตกใน iframe การ์ดของ Stripe ที่ตำแหน่งก่อน scroll (hit-test ของ iframe ข้าม origin ยังเป็นค่าเก่า);
+  หลัง layout นิ่ง elementFromPoint ที่จุดกลางคือปุ่ม — ปุ่มไม่ถูกบัง; 48px ผ่านเพราะจุดกลางหลัง scroll เหนือขอบ iframe เดิม ~1px
+- คำตัดสินของ session หลัก: เป็นจังหวะของ automation ไม่ใช่ปุ่มถูกบัง (ผู้ใช้จริงเลื่อนเมาส์/แตะภายหลัง ได้ hit-test ใหม่) →
+  ไม่ปรับ layout ไม่เพิ่มความสูงปุ่ม; แก้ใน e2e: helper `waitUntilHittable(locator)` ใน e2e/support/stripe.ts
+  (scrollIntoViewIfNeeded → expect.toPass จน elementFromPoint เป็นปุ่ม/ลูก และ boundingBox นิ่ง 2 รอบติด) แล้ว continueToReview คลิกครั้งเดียว
+  (helper ไม่คลิกเอง — คง guard core-19b-continue-to-review.unit: .click( ครั้งเดียว ไม่มี toPass ใน continueToReview)
+
+## หลังแก้ helper
+- payments.spec AC-1/AC-2/AC-3 + pay-9 AC-22c + core-19b AC-64 (×2, 20 รอบ/ตัว) --repeat-each=3 --workers=1: 18 passed / 18 (DB/seed ใหม่, prod build)
+- ชุด 29 ไฟล์ที่อ้างหน้า/testid ที่แตะ (--workers=1): 102 passed / 102 (12.5m) — รวม sfui-19-button-size, sfui-3d-payment, payments, pay-9,
+  payments-order-pay, core-19b, core-37, core-42, evoucher-storefront, group-buy-join, core-4e, core-89, sfui-2/3a/3b/3c/6/9a/9b/12a,
+  core-22/23/23c/26/19a, thai-ui-cart-order, thai-ui-checkout, core-store, pay-15

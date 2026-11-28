@@ -368,9 +368,6 @@ const Shipping: React.FC<ShippingProps> = ({
               data-testid="delivery-option-error-message"
             />
             <Button
-              size="lg"
-              // D-1: คงความสูง 48px ของ size large เดิม (spec 09 กฎ 20)
-              className="mt h-12"
               onClick={handleSubmit}
               isLoading={isLoading}
               disabled={!selectedOptionId}
