@@ -25,6 +25,7 @@ const font = (locator: Locator): Promise<Font> =>
 const SMALL_REGULAR: Font = { size: "12px", lineHeight: "20px", weight: "400" }
 const BASE_REGULAR: Font = { size: "14px", lineHeight: "24px", weight: "400" }
 const LARGE_SEMI: Font = { size: "16px", lineHeight: "24px", weight: "600" }
+const ERROR_TEXT: Font = { size: "14px", lineHeight: "20px", weight: "400" } // SFUI-21d (spec 09 กฎ 74, 78 (i)): error = Alert/FieldError ของ shadcn (text-sm) วัดบน build
 const XXL_SEMI: Font = { size: "32px", lineHeight: "48px", weight: "600" } // SFUI-21b (spec 09 กฎ 77, 78 (i)): h1 ทุกหน้า text-3xl font-semibold tracking-tight = 32px/48px/600 (วัดบน build)
 
 const PRODUCT = "t-shirt"
@@ -153,7 +154,7 @@ test("AC-21: cart dropdown, หน้า cart, select ที่อยู่ใ�
     await row.getByTestId("product-delete-button").click()
     const error = row.getByTestId("cart-item-remove-error")
     await expect(error).toBeVisible({ timeout: 5000 })
-    expect.soft(await font(error)).toEqual(SMALL_REGULAR)
+    expect.soft(await font(error)).toEqual(ERROR_TEXT)
   })
 
   // SFUI-20b (spec 09 กฎ 70): ไม่มี select ประเทศของที่อยู่ใบเสร็จแล้ว — ขั้นวัดฟอนต์ของ select นั้นถูกแทน

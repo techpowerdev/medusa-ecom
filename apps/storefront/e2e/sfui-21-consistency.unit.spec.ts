@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test"
 import ts from "typescript"
 
 import { readSource, sourceFiles } from "./support/sfui-source"
+import manifest from "./support/shadcn-ui.json"
 
 // SFUI-21b (spec 09 กฎ 77, AC-65 (1) — owner: h1 ทุกหน้าขนาดเดียว): ทุก `<h1` ใน src/** (ไม่ใช่ test) ยกเว้น hero ของหน้าแรก
 // มี typography เท่านี้ `text-3xl font-semibold tracking-tight` (+ สี/layout ภายนอกได้) — ไม่มี uppercase, text-[…], text-{xs…2xl}, leading-*,
@@ -241,4 +242,92 @@ test("AC-69 (1): ทุก RadioGroupItem ในสองไฟล์อยู�
   expect(shipping.count, "RadioGroupItem ใน shipping (pickup toggle, จัดส่ง, สาขา)").toBe(3)
   expect(payment.count, "RadioGroupItem ใน payment-container").toBe(1)
   expect([...shipping.bad, ...payment.bad]).toEqual([])
+})
+
+// ---- SFUI-21d (spec 09 กฎ 64, 74; AC-70 (1) — owner Q-R50-2 ทาง (ข): error ระดับฟอร์ม = Alert, inline = FieldError) ----
+
+const M = (f: string) => `src/modules/${f}`
+const ERROR_MESSAGE = M("checkout/components/error-message/index.tsx")
+
+/** แบบ (a) ของ 21d ในตารางกฎ 74c: testid → ไฟล์ (testid อยู่บน `<ErrorMessage`) — `stripe-/manual-payment-error-message` ส่งผ่าน `errorTestId` ของ PlaceOrderNotice */
+const ALERT_21D: [string, string[]][] = [
+  ["login-error-message", ["account/components/login/index.tsx"]],
+  ["register-error", ["account/components/register/index.tsx"]],
+  ["register-email-exists", ["account/components/register/index.tsx"]],
+  ["affiliate-login-error", ["affiliate/components/auth-forms/index.tsx"]],
+  ["affiliate-register-error", ["affiliate/components/auth-forms/index.tsx"]],
+  ["address-error-message", ["checkout/components/addresses/index.tsx"]],
+  ["address-error", ["account/components/address-card/add-address.tsx", "account/components/address-card/edit-address-modal.tsx"]],
+  ["promotion-error", ["checkout/components/discount-code/index.tsx"]],
+  ["delivery-option-error-message", ["checkout/components/shipping/index.tsx"]],
+  ["payment-method-error-message", ["checkout/components/payment/index.tsx"]],
+  ["payment-session-pending-error", ["checkout/components/payment/index.tsx"]],
+  ["promptpay-payment-error-message", ["checkout/components/promptpay-payment/index.tsx", "order/components/order-pay/pay-buttons.tsx"]],
+  ["order-pay-error", ["order/components/order-pay/index.tsx"]],
+  ["order-pay-element-error", ["order/components/order-pay/index.tsx"]],
+  ["order-pay-card-error", ["order/components/order-pay/pay-buttons.tsx"]],
+  ["return-error", ["returns/components/return-request-form/index.tsx"]],
+  ["return-contact-store", ["returns/components/return-request-form/index.tsx"]],
+  ["group-join-error", ["group-buy/components/group-page/group-join.tsx"]],
+  ["review-flash-exceeds-customer-limit", ["checkout/components/review/index.tsx"]],
+  ["add-variant-error", ["account/components/add-variant-error/index.tsx"]],
+]
+/** แบบ (b) ของ 21d: testid อยู่บน `<FieldError` */
+const INLINE_21D: [string, string][] = [
+  ["group-units-limit", "group-buy/components/group-page/group-join.tsx"],
+  ["product-error-message", "cart/components/item/index.tsx"],
+  ["cart-item-remove-error", "common/components/delete-button/index.tsx"],
+]
+
+/** tag ของทุก JSX element ที่มี `data-testid="<testid>"` (string literal) ในไฟล์ */
+export function tagsWithTestId(file: string, testId: string, sf = parseTsx(file)): string[] {
+  const out: string[] = []
+  const visit = (n: ts.Node) => {
+    const el = openingOf(n)
+    const init = el && attrOf(el, sf, "data-testid")?.initializer
+    if (el && init && ts.isStringLiteral(init) && init.text === testId) out.push(el.tagName.getText(sf))
+    n.forEachChild(visit)
+  }
+  visit(sf)
+  return out
+}
+
+test("AC-70 (1): ตัวหา tag ของ testid (positive/negative control)", () => {
+  const sf = ts.createSourceFile(
+    "c.tsx",
+    'const a = <><ErrorMessage data-testid="x" /><p data-testid="x">e</p><FieldError data-testid="y">e</FieldError></>',
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX
+  )
+  expect(tagsWithTestId("c.tsx", "x", sf)).toEqual(["ErrorMessage", "p"])
+  expect(tagsWithTestId("c.tsx", "y", sf)).toEqual(["FieldError"])
+})
+
+test("AC-70 (1): alert ของ CLI อยู่ใน shadcn-ui.json, ไม่มี text-rose- ใน src/**, ErrorMessage = Alert destructive + AlertDescription (กฎ 64, 74)", () => {
+  expect(Object.keys(manifest.files)).toContain("alert.tsx")
+  expect(sourceFiles().filter((f) => readSource(f).includes("text-rose-"))).toEqual([])
+  const src = readSource(ERROR_MESSAGE)
+  expect(src).toMatch(/<Alert\s[^>]*variant="destructive"/)
+  expect(src).toContain("<AlertDescription")
+  expect(src).not.toContain("<AlertTitle")
+})
+
+test("AC-70 (1): testid แบบ (a) ของ 21d อยู่บน <ErrorMessage, แบบ (b) อยู่บน <FieldError, cart item ไม่ import ErrorMessage (กฎ 74)", () => {
+  const bad: string[] = []
+  for (const [id, files] of ALERT_21D) {
+    for (const f of files) {
+      const tags = tagsWithTestId(M(f), id)
+      if (!tags.length || tags.some((t) => t !== "ErrorMessage")) bad.push(`${id} @ ${f}: [${tags.join(", ")}]`)
+    }
+  }
+  for (const [id, f] of INLINE_21D) {
+    const tags = tagsWithTestId(M(f), id)
+    if (!tags.length || tags.some((t) => t !== "FieldError")) bad.push(`${id} @ ${f}: [${tags.join(", ")}]`)
+  }
+  // account-info: wrapper `error-message` (transition) ครอบ ErrorMessage ที่ไม่ส่ง testid
+  const info = readSource(M("account/components/account-info/index.tsx"))
+  if (!/data-testid="error-message"[^]*?<ErrorMessage error=/.test(info) || info.includes('variant="destructive"')) bad.push("error-message @ account-info")
+  expect(bad).toEqual([])
+  expect(readSource(M("cart/components/item/index.tsx"))).not.toContain("checkout/components/error-message")
 })

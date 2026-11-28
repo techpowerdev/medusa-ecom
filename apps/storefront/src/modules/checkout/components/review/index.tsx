@@ -1,6 +1,7 @@
 "use client"
 
 import { STORE_NAME } from "@lib/store-content"
+import ErrorMessage from "@modules/checkout/components/error-message"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { cn } from "@/lib/utils"
 
@@ -62,17 +63,21 @@ const Review = ({
             </div>
           </div>
           {flashLimitExceeded && (
-            <p
-              className="text-sm leading-[1.4rem] text-destructive mb-4"
-              role="alert"
-              data-testid="review-flash-exceeds-customer-limit"
-            >
-              จำนวนสินค้าแฟลชเซลในตะกร้าเกินสิทธิ์ที่คุณซื้อได้{" "}
-              <LocalizedClientLink href="/cart" className="underline">
-                กรุณาแก้จำนวนในตะกร้า
-              </LocalizedClientLink>{" "}
-              ก่อนสั่งซื้อ
-            </p>
+            // SFUI-21d (spec 09 กฎ 74 (a)): error ของขั้น review = Alert ผ่าน ErrorMessage (ระยะห่างภายนอกที่ wrapper)
+            <div className="mb-4">
+              <ErrorMessage
+                data-testid="review-flash-exceeds-customer-limit"
+                error={
+                  <span>
+                    จำนวนสินค้าแฟลชเซลในตะกร้าเกินสิทธิ์ที่คุณซื้อได้{" "}
+                    <LocalizedClientLink href="/cart" className="underline">
+                      กรุณาแก้จำนวนในตะกร้า
+                    </LocalizedClientLink>{" "}
+                    ก่อนสั่งซื้อ
+                  </span>
+                }
+              />
+            </div>
           )}
           <PaymentButton
             cart={cart}

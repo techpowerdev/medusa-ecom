@@ -92,10 +92,11 @@ const Register = ({ setCurrentView }: Props) => {
           />
         </div>
         {emailExists ? (
-          <div
-            className="pt-2 text-rose-500 text-xs leading-5 font-normal"
+          // SFUI-21d (spec 09 กฎ 74 (a)): Alert ผ่าน ErrorMessage — ลิงก์ไปเข้าสู่ระบบอยู่ใน AlertDescription
+          <ErrorMessage
             data-testid="register-email-exists"
-          >
+            error={
+              <>
             <span>{message.error}</span>{" "}
             <Button
               type="button"
@@ -113,7 +114,9 @@ const Register = ({ setCurrentView }: Props) => {
             >
               เข้าสู่ระบบ
             </Button>
-          </div>
+              </>
+            }
+          />
         ) : (
           <ErrorMessage
             error={message?.state === "error" ? message.error : null}

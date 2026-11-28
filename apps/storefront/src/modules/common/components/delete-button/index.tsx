@@ -2,6 +2,7 @@ import { deleteLineItem } from "@lib/data/cart"
 import { actionErrorMessage, settleAction } from "@lib/util/action-result"
 import { notifyCartUpdated } from "@lib/util/cart-events"
 import { Button } from "@/components/ui/button"
+import { FieldError } from "@/components/ui/field"
 import { cn } from "@/lib/utils"
 import { LoaderCircle, Trash2 } from "lucide-react"
 import { useState } from "react"
@@ -79,13 +80,10 @@ const DeleteButton = ({
       )}
       {error && (
         // qa #142 D-2: ขึ้นบรรทัดใหม่เต็มความกว้างของแถว (order-last) ไม่ถูกบีบข้างปุ่ม
-        <span
-          className="basis-full order-last text-destructive text-xs leading-5 font-normal"
-          role="alert"
-          data-testid="cart-item-remove-error"
-        >
+        // SFUI-21d (spec 09 กฎ 74 (b)): error ในแถว = FieldError (role="alert" จาก component)
+        <FieldError className="basis-full order-last" data-testid="cart-item-remove-error">
           {error}
-        </span>
+        </FieldError>
       )}
     </div>
   )

@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { FieldError } from "@/components/ui/field"
 import { TableCell, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import { updateLineItem } from "@lib/data/cart"
@@ -17,7 +18,6 @@ import {
   INSUFFICIENT_INVENTORY_MESSAGE,
 } from "@lib/util/insufficient-inventory"
 import { HttpTypes } from "@medusajs/types"
-import ErrorMessage from "@modules/checkout/components/error-message"
 import CartFlashExceedsRemaining, {
   CartFlashExceedsCustomerLimit,
 } from "@modules/cart/components/flash-exceeds-remaining"
@@ -169,7 +169,8 @@ const Item = ({
             </Select>
             {updating && <Spinner />}
           </div>
-          <ErrorMessage error={error} data-testid="product-error-message" />
+          {/* SFUI-21d (spec 09 กฎ 74 (b)): error ในเซลล์ของแถว = FieldError (inline) */}
+          {error && <FieldError data-testid="product-error-message">{error}</FieldError>}
           <CartFlashExceedsRemaining remaining={flashRemaining} />
           <CartFlashExceedsCustomerLimit remaining={flashCustomerRemaining} />
         </TableCell>
