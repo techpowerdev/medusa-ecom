@@ -6,10 +6,8 @@ import { HttpTypes } from "@medusajs/types"
 
 type AddressBookProps = {
   customer: HttpTypes.StoreCustomer
-  region: HttpTypes.StoreRegion
 }
 
-// SFUI-20b/20c (spec 09 กฎ 70): ฟอร์มที่อยู่ไม่ใช้ region แล้ว — คง prop `region` ของหน้า (ไม่แก้ page ที่เป็นไฟล์ของ 21b)
 const AddressBook: React.FC<AddressBookProps> = ({ customer }) => {
   const { addresses } = customer
   return (

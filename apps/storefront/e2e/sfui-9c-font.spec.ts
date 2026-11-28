@@ -29,7 +29,7 @@ const SMALL_REGULAR: Font = { size: "12px", lineHeight: "20px", weight: "400" }
 const SMALL_SEMI: Font = { size: "12px", lineHeight: "20px", weight: "600" }
 const BASE_REGULAR: Font = { size: "14px", lineHeight: "24px", weight: "400" }
 const BASE_SEMI: Font = { size: "14px", lineHeight: "24px", weight: "600" }
-const XXL_SEMI: Font = { size: "30px", lineHeight: "48px", weight: "600" }
+const XXL_SEMI: Font = { size: "32px", lineHeight: "48px", weight: "600" } // SFUI-21b (spec 09 กฎ 77, 78 (i)): h1 ทุกหน้า text-3xl font-semibold tracking-tight = 32px/48px/600 (วัดบน build)
 
 const savedAddress = {
   first_name: "สมชาย",

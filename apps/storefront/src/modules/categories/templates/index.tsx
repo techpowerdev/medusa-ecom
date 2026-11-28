@@ -64,7 +64,7 @@ export default function CategoryTemplate({
                 /
               </span>
             ))}
-          <h1 data-testid="category-page-title">{category.name}</h1>
+          <h1 className="text-3xl font-semibold tracking-tight" data-testid="category-page-title">{category.name}</h1>
         </div>
         {category.description && (
           <div className="mb-8 text-sm leading-6 font-normal">

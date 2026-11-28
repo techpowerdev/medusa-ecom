@@ -19,7 +19,7 @@ export default async function AffiliateProfilePage({ params }: { params: Promise
 
   return (
     <div className="content-container py-8 flex flex-col gap-y-6" data-testid="affiliate-profile-page">
-      <h1 className="text-2xl leading-[36px] font-semibold">โปรไฟล์</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">โปรไฟล์</h1>
       {/* AF-18 (กฎ 42): minmax(0,1fr) + ตัดคำใน <dd> — ค่ายาวไม่มีช่องว่าง (อีเมล) ไม่ดันหน้าล้นที่ 375px */}
       <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-6 gap-y-2 [&>dd]:[overflow-wrap:anywhere]">
         <dt className="text-muted-foreground">ชื่อ</dt>

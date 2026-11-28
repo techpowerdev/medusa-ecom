@@ -27,8 +27,7 @@ const SMALL_SEMI = at("12px", "20px", "600") // เดิม text-small-semi
 const BASE = at("14px", "24px", "400") // เดิม text-base-regular
 const BASE_SEMI = at("14px", "24px", "600") // เดิม text-base-semi
 const LARGE_SEMI = at("16px", "24px", "600") // เดิม text-large-semi
-const XL_SEMI = at("24px", "36px", "600") // เดิม text-xl-semi
-const XXL_SEMI = at("30px", "48px", "600") // เดิม text-2xl-semi
+const XXL_SEMI = at("32px", "48px", "600") // เดิม text-2xl-semi — SFUI-21b (spec 09 กฎ 77, 78 (i)): h1 ทุกหน้า text-3xl font-semibold tracking-tight = 32px/48px/600 (วัดบน build)
 const FIELD_LABEL = at("14px", "19.25px", "500") // FieldLabel ของ shadcn (text-sm leading-snug font-medium) — SFUI-12c
 
 async function signInNewCustomer(page: Page, baseURL: string, pk: string) {
@@ -71,7 +70,7 @@ test("AC-21: affiliate portal (login, earnings) คงขนาด/ระยะ�
   const admin = await adminHeaders(request)
   const who = await createActiveAffiliate(request, admin, { prefix: "e2e-sfui9e" })
   await page.goto(`/${CC}/affiliate/login`)
-  expect(await font(page.getByTestId("affiliate-login-title"))).toEqual(LARGE_SEMI)
+  expect(await font(page.getByTestId("affiliate-login-title"))).toEqual(XXL_SEMI) // SFUI-21b (กฎ 77): h1 ขนาดเดียว
   await page.getByTestId("affiliate-login-email").fill(who.email)
   await page.getByTestId("affiliate-login-password").fill(who.password)
   await page.getByTestId("affiliate-login-submit").click()
@@ -79,7 +78,7 @@ test("AC-21: affiliate portal (login, earnings) คงขนาด/ระยะ�
 
   await page.goto(`/${CC}/affiliate/earnings`)
   const root = page.getByTestId("affiliate-earnings-page")
-  expect(await font(root.getByRole("heading", { level: 1 }))).toEqual(XL_SEMI)
+  expect(await font(root.getByRole("heading", { level: 1 }))).toEqual(XXL_SEMI) // SFUI-21b (กฎ 77): h1 ขนาดเดียว
   const pending = page.getByTestId("affiliate-earnings-pending")
   expect(await font(pending.locator("dt"))).toEqual(SMALL)
   expect(await font(pending.locator("dd").first())).toEqual(LARGE_SEMI)

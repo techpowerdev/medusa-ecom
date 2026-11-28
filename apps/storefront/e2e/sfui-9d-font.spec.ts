@@ -29,7 +29,8 @@ const BASE_REGULAR: Font = { size: "14px", lineHeight: "24px", weight: "400" }
 const BASE_SEMI: Font = { size: "14px", lineHeight: "24px", weight: "600" }
 const LARGE_SEMI: Font = { size: "16px", lineHeight: "24px", weight: "600" }
 const XL_SEMI: Font = { size: "24px", lineHeight: "36px", weight: "600" }
-const XXL_SEMI: Font = { size: "30px", lineHeight: "48px", weight: "600" }
+const XXL_SEMI: Font = { size: "32px", lineHeight: "48px", weight: "600" } // SFUI-21b (spec 09 กฎ 77, 78 (i)): h1 ทุกหน้า text-3xl font-semibold tracking-tight = 32px/48px/600 (วัดบน build)
+const H1 = XXL_SEMI
 
 test("AC-21: หน้า login/register, ภาพรวมบัญชี, โปรไฟล์, ที่อยู่, รายการ/รายละเอียด order คงขนาดตัวอักษร/ระยะบรรทัด/น้ำหนักเดิม", async ({
   page,
@@ -45,14 +46,14 @@ test("AC-21: หน้า login/register, ภาพรวมบัญชี, โ
     await page.goto(`/${CC}/account`)
     const login = page.getByTestId("login-page")
     await expect(login).toBeVisible()
-    expect.soft(await font(login.locator("h1"))).toEqual(LARGE_SEMI)
+    expect.soft(await font(login.locator("h1"))).toEqual(H1)
     expect.soft(await font(login.locator("h1 + p"))).toEqual(BASE_REGULAR)
     expect.soft(await font(page.getByTestId("login-to-register-button").locator(".."))).toEqual(SMALL_REGULAR)
 
     await page.getByTestId("login-to-register-button").click()
     const register = page.getByTestId("register-page")
     await expect(register).toBeVisible()
-    expect.soft(await font(register.locator("h1"))).toEqual(LARGE_SEMI)
+    expect.soft(await font(register.locator("h1"))).toEqual(H1)
     expect.soft(await font(register.locator("h1 + p"))).toEqual(BASE_REGULAR)
     expect.soft(await font(page.getByTestId("register-privacy-link").locator(".."))).toEqual(SMALL_REGULAR)
   })

@@ -21,7 +21,7 @@ export default async function OrderCompletedTemplate({
           data-testid="order-complete-container"
         >
           <h1
-            className="flex flex-col gap-y-3 text-foreground text-3xl font-semibold mb-4"
+            className="text-3xl font-semibold tracking-tight flex flex-col gap-y-3 text-foreground mb-4"
             data-testid="order-complete-heading"
           >
             <span>ขอบคุณ!</span>

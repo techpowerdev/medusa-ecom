@@ -37,7 +37,7 @@ const VerifyAccount = () => {
       className="max-w-sm w-full flex flex-col items-center text-center gap-y-4"
       data-testid="verify-account-page"
     >
-      <h1 className="text-base leading-6 font-semibold uppercase">ยืนยันอีเมล</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">ยืนยันอีเมล</h1>
 
       {state === "verifying" && (
         <p className="text-sm leading-6 font-normal text-foreground">

@@ -24,7 +24,7 @@ const StoreTemplate = ({
   return (
     <div className="py-6 content-container" data-testid="category-container">
       <div className="mb-8 text-[30px] leading-[48px] font-semibold">
-        <h1 data-testid="store-page-title">สินค้าทั้งหมด</h1>
+        <h1 className="text-3xl font-semibold tracking-tight" data-testid="store-page-title">สินค้าทั้งหมด</h1>
       </div>
 
       <div className="flex flex-col small:flex-row small:items-start">

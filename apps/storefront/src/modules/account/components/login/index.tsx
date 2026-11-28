@@ -29,7 +29,7 @@ const Login = ({ setCurrentView, defaultEmail, notice }: Props) => {
       className="max-w-sm w-full flex flex-col items-center"
       data-testid="login-page"
     >
-      <h1 className="text-base leading-6 font-semibold uppercase mb-6">ยินดีต้อนรับกลับมา</h1>
+      <h1 className="text-3xl font-semibold tracking-tight mb-6">ยินดีต้อนรับกลับมา</h1>
       <p className="text-center text-sm leading-6 font-normal text-foreground mb-8">
         เข้าสู่ระบบเพื่อรับประสบการณ์การช้อปปิ้งที่ดียิ่งขึ้น
       </p>

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default async function NotFound() {
   return (
     <div className="flex flex-col gap-4 items-center justify-center min-h-[calc(100vh-64px)]">
-      <h1 className="text-[30px] leading-[48px] font-semibold text-foreground" data-testid="not-found-title">
+      <h1 className="text-3xl font-semibold tracking-tight text-foreground" data-testid="not-found-title">
         ไม่พบหน้านี้
       </h1>
       <p className="text-xs leading-5 font-normal text-foreground" data-testid="not-found-description">

@@ -32,7 +32,7 @@ const BASE_SEMI = { size: "14px", lineHeight: "24px", weight: "600" } // เด�
 const LARGE = { size: "16px", lineHeight: "24px", weight: "400" } // เดิม text-large-regular
 const XL_SEMI = { size: "24px", lineHeight: "36px", weight: "600" } // เดิม text-xl-semi
 const XXL = { size: "30px", lineHeight: "48px", weight: "400" } // เดิม text-2xl-regular
-const XXL_SEMI = { size: "30px", lineHeight: "48px", weight: "600" } // เดิม text-2xl-semi
+const XXL_SEMI = { size: "32px", lineHeight: "48px", weight: "600" } // เดิม text-2xl-semi — SFUI-21b (spec 09 กฎ 77, 78 (i)): h1 ทุกหน้า text-3xl font-semibold tracking-tight = 32px/48px/600 (วัดบน build)
 
 const PRODUCT = "t-shirt"
 
