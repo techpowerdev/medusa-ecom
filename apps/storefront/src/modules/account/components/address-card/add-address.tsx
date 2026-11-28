@@ -1,5 +1,6 @@
 "use client"
 
+import ErrorMessage from "@modules/checkout/components/error-message"
 import { Plus, X } from "lucide-react"
 import { useActionState, useEffect, useState } from "react"
 
@@ -162,14 +163,8 @@ const AddAddress = () => {
               data-testid="phone-input"
             />
           </div>
-          {formState.error && (
-            <div
-              className="text-rose-500 text-xs leading-5 font-normal py-2"
-              data-testid="address-error"
-            >
-              {formState.error}
-            </div>
-          )}
+          {/* SFUI-21d (spec 09 กฎ 74 (a)): error ของฟอร์ม = Alert ผ่าน ErrorMessage */}
+          <ErrorMessage error={formState.error} data-testid="address-error" />
           <DialogFooter className="mt-6">
             <Button
               type="reset"

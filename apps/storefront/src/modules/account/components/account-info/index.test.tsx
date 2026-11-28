@@ -80,11 +80,11 @@ describe("SFUI-3c: account-info → Collapsible", () => {
     expect(byTestId("success-message").className).toContain("opacity-0")
   })
 
-  it("ข้อความผิดพลาดยาวตัดบรรทัดได้ (ไม่ whitespace-nowrap/ไม่ตัดด้วย overflow-hidden ของ Badge)", () => {
+  // SFUI-21d (spec 09 กฎ 74 (a)): error = Alert ผ่าน ErrorMessage (เดิม Badge destructive) — ตัดบรรทัดได้เหมือนเดิม
+  it("ข้อความผิดพลาดยาวตัดบรรทัดได้ (Alert ไม่ whitespace-nowrap)", () => {
     render({ isError: true })
-    const message = byTestId("error-message").querySelector<HTMLElement>("[data-slot=badge]")!
+    const message = byTestId("error-message").querySelector<HTMLElement>("[data-slot=alert]")!
     expect(message.textContent).toBe(LONG_ERROR)
-    expect(message.className).toContain("whitespace-normal")
     expect(message.className).not.toMatch(/(^|\s)whitespace-nowrap(\s|$)/)
   })
 })

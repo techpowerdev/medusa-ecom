@@ -86,9 +86,9 @@ test("AC-6: ไฟล์ที่อ้าง var(--fg-*) อยู่ใน PEN
 })
 
 // ย้ายจาก e2e/sfui-legacy-css.unit.spec.ts (ลบใน SFUI-6): ตัวแปร CSS ที่ src/** อ้างตรงต้องมีนิยาม — ไม่งั้นค่าเป็น invalid เงียบๆ
-// ตัวแปรที่ไม่ต้องนิยามเอง: ของ Tailwind (namespace ของ theme + `--tw-*`), next/font, Radix
+// ตัวแปรที่ไม่ต้องนิยามเอง: ของ Tailwind (namespace ของ theme + `--tw-*`, `--spacing` ฐานของ v4 — ui/alert จาก CLI ของ SFUI-21d), next/font, Radix
 const EXTERNAL_VAR =
-  /^(tw-|radix-|font-noto-sans-thai$|(color|spacing|text|font|font-weight|tracking|leading|breakpoint|container|radius|shadow|inset-shadow|drop-shadow|blur|perspective|aspect|ease|animate|default)-)/
+  /^(tw-|radix-|font-noto-sans-thai$|spacing$|(color|spacing|text|font|font-weight|tracking|leading|breakpoint|container|radius|shadow|inset-shadow|drop-shadow|blur|perspective|aspect|ease|animate|default)-)/
 
 test("AC-16: ทุก var(--…) ที่ src/** อ้างตรงมีนิยามใน src/styles/*.css (ยกเว้นของ Tailwind/next/font/Radix)", () => {
   const css = fs

@@ -25,7 +25,8 @@ import { useId, useRef, useState } from "react"
 import GroupSelectionInfo from "./group-selection-info"
 
 import { Button } from "@/components/button"
-import { Field, FieldLabel } from "@/components/ui/field"
+import { Field, FieldError, FieldLabel } from "@/components/ui/field"
+import ErrorMessage from "@modules/checkout/components/error-message"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 type Props = {
@@ -130,11 +131,8 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
 
   // หน้า render ใหม่หลัง server action (เช่น setShippingMethod) ตอนกลุ่มหมดเวลา → ซ่อนฟอร์มแต่ยังแสดงผลของ join ที่ล้ม
   if (!joinable) {
-    return error ? (
-      <p className="text-xs leading-5 font-normal text-rose-500" role="alert" data-testid="group-join-error">
-        {error}
-      </p>
-    ) : null
+    // SFUI-21d (spec 09 กฎ 74 (a)): error ของการกระทำ join = Alert ผ่าน ErrorMessage
+    return <ErrorMessage error={error} data-testid="group-join-error" />
   }
 
   return (
@@ -211,9 +209,10 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
         </ul>
       )}
       {overLimit && (
-        <p className="text-xs leading-5 font-normal text-rose-500" data-testid="group-units-limit">
+        // SFUI-21d (spec 09 กฎ 74 (b)): ข้อความใต้รายการที่เลือก = FieldError (inline)
+        <FieldError data-testid="group-units-limit">
           เลือกได้สูงสุด {maxUnitsPerPerson} ชิ้นต่อคน (เลือกแล้ว {units} ชิ้น)
-        </p>
+        </FieldError>
       )}
 
       {addresses && addresses.length === 0 && (
@@ -285,11 +284,7 @@ export default function GroupJoin({ token, product, addresses, maxUnitsPerPerson
         </Field>
       )}
 
-      {(error || noShipping) && (
-        <p className="text-xs leading-5 font-normal text-rose-500" role="alert" data-testid="group-join-error">
-          {error ?? NO_SHIPPING}
-        </p>
-      )}
+      <ErrorMessage error={error || noShipping ? (error ?? NO_SHIPPING) : null} data-testid="group-join-error" />
 
       {!noShipping && (
         <Button

@@ -9,6 +9,7 @@ import {
   quantityInCart,
   readPendingAddQuery,
 } from "@lib/util/pending-add-to-cart"
+import ErrorMessage from "@modules/checkout/components/error-message"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
 
 type Props = {
@@ -80,13 +81,12 @@ const AddVariantError = async ({ countryCode, searchParams, confirm }: Props) =>
   }
 
   return (
-    <div
-      role="alert"
-      className="mb-6 rounded-rounded border border-destructive bg-muted p-4 text-sm leading-6 font-normal text-destructive"
-      data-testid="add-variant-error"
-    >
-      เพิ่มสินค้าลงตะกร้าไม่สำเร็จ สินค้าที่เลือกอาจไม่มีอยู่ หมดแล้ว
-      หรือมีไม่พอตามจำนวนที่ต้องการ
+    // SFUI-21d (spec 09 กฎ 74 (a)): error ของการกระทำเพิ่มลงตะกร้าหลัง login = Alert ผ่าน ErrorMessage (ระยะห่างภายนอกที่ wrapper)
+    <div className="mb-6">
+      <ErrorMessage
+        data-testid="add-variant-error"
+        error="เพิ่มสินค้าลงตะกร้าไม่สำเร็จ สินค้าที่เลือกอาจไม่มีอยู่ หมดแล้ว หรือมีไม่พอตามจำนวนที่ต้องการ"
+      />
     </div>
   )
 }

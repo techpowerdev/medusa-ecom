@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import { useEffect } from "react"
 
 import useToggleState from "@lib/hooks/use-toggle-state"
+import ErrorMessage from "@modules/checkout/components/error-message"
 import { useFormStatus } from "react-dom"
 
 // ข้อความจาก server อาจยาว — Badge ของ shadcn เป็น whitespace-nowrap จึงต้องให้ตัดบรรทัดได้ (review SFUI-2: จอ 390px)
@@ -117,9 +118,10 @@ const AccountInfo = ({
         )}
         data-testid="error-message"
       >
-        <Badge className={MESSAGE_CLASS} variant="destructive">
-          <span>{errorMessage}</span>
-        </Badge>
+        {/* SFUI-21d (spec 09 กฎ 74 (a)): error ของฟอร์ม = Alert ผ่าน ErrorMessage (testid อยู่บน wrapper ที่มี transition) */}
+        <div className="py-4">
+          <ErrorMessage error={isError ? errorMessage : null} />
+        </div>
       </div>
 
       <CollapsibleContent

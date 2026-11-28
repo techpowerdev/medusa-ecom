@@ -2,6 +2,7 @@
   "shadcn": "4.23.1",
   "files": {
     "accordion.tsx": "99de242681eb43121969db02bbb102aeeb1865ef52c7635672508a58c5429085",
+    "alert.tsx": "d03dcae5cdb63c381c1144ca9a0c49ba0e46466967d7deb94662034042acb034",
     "badge.tsx": "13a9380dfff853ee730c14a52df49f22aecd31f40f2998d7c1e7ec458b6e1650",
     "button.tsx": "79dd6f75f8136394442202d6b8b922fb269eaad0a5dba579397c9d5b41f893bb",
     "checkbox.tsx": "ba0ac64064e2d8fa7299d53e9e84b9a4772fef8dd4cf6170c56d3030a1d69941",

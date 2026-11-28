@@ -1,6 +1,7 @@
 "use client"
 
 import { requestReturn, ReturnRequestState } from "@lib/data/returns"
+import ErrorMessage from "@modules/checkout/components/error-message"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { Button } from "@/components/button"
 import { Field, FieldLabel } from "@/components/ui/field"
@@ -145,20 +146,22 @@ const ReturnRequestForm = ({ orderId, displayId, lines, reasons }: Props) => {
               </li>
             ))}
           </ul>
+          {/* SFUI-21d (spec 09 กฎ 74 (a)): error ของฟอร์มขอคืน = Alert ผ่าน ErrorMessage */}
           {state.contactStore ? (
-            // CORE-71 (กฎข้อ 129): location ไม่มีของ — ลองใหม่ไม่ช่วย ให้ติดต่อร้าน
-            <p className="text-sm leading-[1.4rem] text-rose-500" data-testid="return-contact-store">
-              {state.error}{" "}
-              <LocalizedClientLink href="/contact" className="underline" data-testid="return-contact-store-link">
-                ไปหน้าติดต่อร้าน
-              </LocalizedClientLink>
-            </p>
+            // CORE-71 (กฎข้อ 129): location ไม่มีของ — ลองใหม่ไม่ช่วย ให้ติดต่อร้าน (ลิงก์อยู่ใน AlertDescription)
+            <ErrorMessage
+              data-testid="return-contact-store"
+              error={
+                <span>
+                  {state.error}{" "}
+                  <LocalizedClientLink href="/contact" className="underline" data-testid="return-contact-store-link">
+                    ไปหน้าติดต่อร้าน
+                  </LocalizedClientLink>
+                </span>
+              }
+            />
           ) : (
-            state.error && (
-              <p className="text-sm leading-[1.4rem] text-rose-500" data-testid="return-error">
-                {state.error}
-              </p>
-            )
+            <ErrorMessage error={state.error} data-testid="return-error" />
           )}
           <div className="flex gap-x-4 items-center">
             <Button type="submit" disabled={isPending} isLoading={isPending} data-testid="return-submit-button">

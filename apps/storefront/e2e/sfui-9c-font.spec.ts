@@ -30,6 +30,7 @@ const SMALL_REGULAR: Font = { size: "12px", lineHeight: "20px", weight: "400" }
 const SMALL_SEMI: Font = { size: "12px", lineHeight: "20px", weight: "600" }
 const BASE_REGULAR: Font = { size: "14px", lineHeight: "24px", weight: "400" }
 const BASE_SEMI: Font = { size: "14px", lineHeight: "24px", weight: "600" }
+const ERROR_TEXT: Font = { size: "14px", lineHeight: "20px", weight: "400" } // SFUI-21d (spec 09 กฎ 74, 78 (i)): error = Alert/FieldError ของ shadcn (text-sm) วัดบน build
 const CHOICE: Font = { size: "14px", lineHeight: "19.25px", weight: "500" } // SFUI-21c: FieldLabel/FieldTitle ของ ui/field = text-sm leading-snug font-medium
 const XXL_SEMI: Font = { size: "32px", lineHeight: "48px", weight: "600" } // SFUI-21b (spec 09 กฎ 77, 78 (i)): h1 ทุกหน้า text-3xl font-semibold tracking-tight = 32px/48px/600 (วัดบน build)
 
@@ -105,7 +106,7 @@ test("AC-21: checkout (not-found, ที่อยู่, จัดส่ง, ช
     await page.getByTestId("submit-address-button").click()
     const error = page.getByTestId("address-error-message")
     await expect(error).toBeVisible()
-    expect.soft(await font(error)).toEqual(SMALL_REGULAR)
+    expect.soft(await font(error)).toEqual(ERROR_TEXT)
   })
 
   const cartId = await cartReadyForPayment(request, pk, customer)
