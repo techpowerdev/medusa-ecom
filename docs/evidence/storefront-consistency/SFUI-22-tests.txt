@@ -1,0 +1,19 @@
+# SFUI-22 — ผลทดสอบ (ปิดรอบ 50; spec 09 กฎ 79; AC-67/68 + nit review 19a/19b/19d/21a)
+สภาพแวดล้อม: stack บน SFUI-21e (da27d30f), node 24, prod build — backend :9481 (NODE_ENV=production, start จาก .medusa/server,
+DB medusa_sfui22, Redis db 12, Stripe test + stripe listen), storefront :8481
+
+## Red
+- static AC-67 (1) guard <button ดิบ (allow-list ว่าง): 1 failed — add-address.tsx:63 add-address-button
+- static AC-66 (1) gap guard ขยายเป็น <Input|<Select|<Checkbox: control ใหม่ 1 failed (ไม่จับ Select/Checkbox — 2 รายการขาด)
+- static AC-16 ข้อยกเว้น inline "--x": control ใหม่ 1 failed (ไฟล์นอก src/components/ui/ ได้รับยกเว้น)
+- e2e AC-56/AC-67 (1280) ปิดรายการยกเว้นของกฎ 79 ชั่วคราว: 1 failed — selector ใหม่จับ nav-menu-button (SheetTrigger ดิบ 63px)
+  ซึ่ง selector เดิม [data-slot="button"] ไม่จับ
+
+## Green
+- static sfui-21-consistency.unit: 16 passed (รวม AC-67 (1) 2 ตัว); sfui-legacy.unit: 7 passed
+- e2e sfui-19-button-size (AC-56/AC-67 1280+390 รวม login/register, AC-57 3DS + พร้อมเพย์ Stripe test, AC-59) + sfui-21-forms (1280+390,
+  คลิก close-modal-button จริง) + sfui-19d-refinements (chip ลดราคาหาด้วย testid+title จาก code): 8 passed (--workers=1)
+- ไม่พบปุ่มนอกรายการปิดของกฎ 79 ที่ไม่ใช่ 36px; ลิงก์ buttonVariants ที่อยู่ในหน้า (hero-cta, order-details-link) 36px —
+  pagination-link ไม่มีในชุดหน้า P ของ seed (ครอบโดย AC-60 sfui-19c); root toggle-group ที่ selector จับด้วยสูง 36px (1280/390)
+- playwright project unit (รวม evidence-budget, AC-19): 274 passed; vitest: 140 files / 2089 passed
+- pnpm lint && pnpm typecheck: ผ่าน (warning เดิม 27 ไม่มีในไฟล์ของ task); pnpm --filter storefront build: ผ่าน

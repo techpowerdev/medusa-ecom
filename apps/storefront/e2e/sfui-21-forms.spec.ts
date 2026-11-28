@@ -7,7 +7,7 @@ import { addToCartFromPdp } from "./support/server-action"
 
 // SFUI-21a (spec 09 กฎ 73, 75, 76; AC-66 (2) — owner: gap ฟอร์มค่าเดียว 16px): container ของช่องในทุกฟอร์มของตาราง inventory รอบ 48
 // row-gap = 16px (และ column-gap = 16px สำหรับคู่ที่ ≥ 768px); shipping-address-select สูง 36px; ปุ่มปิด overlay 36×36, aria-label ไทย,
-// Escape ยังปิด และ focus กลับ trigger (กฎ 11)
+// Escape ยังปิด (และคลิกปุ่มปิดของ modal เพิ่มที่อยู่ปิดได้ — SFUI-22) และ focus กลับ trigger (กฎ 11)
 test.use({ evidenceTarget: { feature: "storefront-consistency", taskId: "SFUI-21a" } })
 
 const THAI = /[฀-๿]/
@@ -32,13 +32,15 @@ async function expectGaps(scope: Locator, ids: string[], where: string) {
   }
 }
 
-async function expectCloseButton(page: Page, button: Locator, trigger: Locator, where: string) {
+/** `close`: ปิดด้วย Escape (ค่าเริ่มต้น) หรือคลิกปุ่มปิดจริง (review 21a — ปุ่มที่ผ่าน wrapper `@/components/button` ภายใต้ `DialogClose asChild`) */
+async function expectCloseButton(page: Page, button: Locator, trigger: Locator, where: string, close: "escape" | "click" = "escape") {
   await expect(button, where).toBeVisible()
   const box = await button.evaluate((el) => ({ h: getComputedStyle(el).height, w: getComputedStyle(el).width }))
   expect(box, `${where} ขนาด`).toEqual({ h: "36px", w: "36px" })
   expect(await button.getAttribute("aria-label"), `${where} aria-label`).toMatch(THAI)
   await expect(button).toHaveAttribute("data-variant", "ghost")
-  await page.keyboard.press("Escape")
+  if (close === "click") await button.click()
+  else await page.keyboard.press("Escape")
   await expect(page.getByRole("dialog")).toHaveCount(0)
   await expect(trigger, `${where} focus กลับ trigger`).toBeFocused()
 }
@@ -97,7 +99,8 @@ for (const viewport of [
       await addTrigger.click()
       const add = page.getByTestId("add-address-modal")
       await expectGaps(add, ADDRESS_FIELDS, "add-address")
-      await expectCloseButton(page, add.getByTestId("close-modal-button"), addTrigger, "add-address")
+      // add-address: คลิก close-modal-button จริง (Button จาก `@/components/button` ใน DialogClose asChild); edit-address: Escape
+      await expectCloseButton(page, add.getByTestId("close-modal-button"), addTrigger, "add-address", "click")
       const editTrigger = page.getByTestId("address-edit-button").first()
       await editTrigger.click()
       const edit = page.getByTestId("edit-address-modal")

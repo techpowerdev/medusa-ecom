@@ -90,6 +90,26 @@ test("AC-6: ไฟล์ที่อ้าง var(--fg-*) อยู่ใน PEN
 const EXTERNAL_VAR =
   /^(tw-|radix-|font-noto-sans-thai$|spacing$|(color|spacing|text|font|font-weight|tracking|leading|breakpoint|container|radius|shadow|inset-shadow|drop-shadow|blur|perspective|aspect|ease|animate|default)-)/
 
+/**
+ * ตัวแปรที่ไฟล์อ้างด้วย `var(--…)` แต่ไม่มีนิยาม — SFUI-19d: ตัวแปรที่ไฟล์ของ CLI ใน `src/components/ui/` ตั้งเองใน inline style
+ * (`style={{ "--gap": … }}` ของ ui/toggle-group) นับว่ามีนิยามในไฟล์นั้น; ไฟล์อื่นไม่ได้รับยกเว้นนี้ (review 19d)
+ */
+export function undefinedVars(file: string, source: string, declared: Set<string>): string[] {
+  const inline = new Set(
+    file.startsWith("src/components/ui/") ? Array.from(source.matchAll(/["']--([\w-]+)["']\s*:/g), (m) => m[1]) : []
+  )
+  return Array.from(source.matchAll(/var\(--([\w-]+)/g), (m) => m[1])
+    .filter((name) => !EXTERNAL_VAR.test(name) && !declared.has(name) && !inline.has(name))
+    .map((name) => `--${name} (${file})`)
+}
+
+test("AC-16: ข้อยกเว้น inline \"--x\": จำกัดเฉพาะ src/components/ui/ (positive/negative control)", () => {
+  const source = 'const a = <div style={{ "--gap": 1 }} className="gap-[var(--gap)]" />'
+  expect(undefinedVars("src/components/ui/x.tsx", source, new Set())).toEqual([])
+  expect(undefinedVars("src/modules/x/index.tsx", source, new Set())).toEqual(["--gap (src/modules/x/index.tsx)"])
+  expect(undefinedVars("src/modules/x/index.tsx", source, new Set(["gap"]))).toEqual([])
+})
+
 test("AC-16: ทุก var(--…) ที่ src/** อ้างตรงมีนิยามใน src/styles/*.css (ยกเว้นของ Tailwind/next/font/Radix)", () => {
   const css = fs
     .readdirSync(path.join(STOREFRONT, "src", "styles"))
@@ -97,13 +117,6 @@ test("AC-16: ทุก var(--…) ที่ src/** อ้างตรงมี�
     .map((name) => readSource(`src/styles/${name}`))
     .join("\n")
   const declared = new Set(Array.from(css.matchAll(/--([\w-]+)\s*:/g), (m) => m[1]))
-  // SFUI-19d: ตัวแปรที่ไฟล์ตั้งเองใน inline style (`style={{ "--gap": … }}` ของ ui/toggle-group จาก CLI) นับว่ามีนิยามในไฟล์นั้น
-  const missing = sourceFiles().flatMap((file) => {
-    const source = readSource(file)
-    const inline = new Set(Array.from(source.matchAll(/["']--([\w-]+)["']\s*:/g), (m) => m[1]))
-    return Array.from(source.matchAll(/var\(--([\w-]+)/g), (m) => m[1])
-      .filter((name) => !EXTERNAL_VAR.test(name) && !declared.has(name) && !inline.has(name))
-      .map((name) => `--${name} (${file})`)
-  })
+  const missing = sourceFiles().flatMap((file) => undefinedVars(file, readSource(file), declared))
   expect(missing, "ตัวแปร CSS ที่ไม่มีนิยาม").toEqual([])
 })
