@@ -16,7 +16,6 @@ import {
 
 import { addCustomerAddress } from "@lib/data/customer"
 import useToggleState from "@lib/hooks/use-toggle-state"
-import { HttpTypes } from "@medusajs/types"
 import { withActionFallback } from "@lib/util/action-fallback"
 import { submitWithoutReset } from "@lib/util/submit-without-reset"
 import { ADDRESS_COUNTRY_CODE } from "@lib/util/address-required"
@@ -25,11 +24,8 @@ import Input from "@modules/common/components/input"
 // CORE-23c (กฎข้อ 74a): action ล้ม (5xx/network) → error ไทยในฟอร์ม ไม่ใช่หน้า error ทั้งหน้า
 const saveAddress = withActionFallback(addCustomerAddress)
 
-// SFUI-20b (spec 09 กฎ 70): ไม่มีช่องประเทศแล้ว — `region` ไม่ถูกใช้ (คง prop ของผู้เรียก address-book)
-const AddAddress = (_props: {
-  region: HttpTypes.StoreRegion
-  addresses: HttpTypes.StoreCustomerAddress[]
-}) => {
+// SFUI-20b (spec 09 กฎ 70): ไม่มีช่องประเทศแล้ว — ไม่รับ `region`/`addresses` (nit review 20b — ลบใน 20c)
+const AddAddress = () => {
   const [successState, setSuccessState] = useState(false)
   const { state, open, close: closeModal } = useToggleState(false)
 

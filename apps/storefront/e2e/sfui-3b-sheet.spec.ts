@@ -206,68 +206,25 @@ test.describe("viewport 390×844", () => {
   })
 })
 
-test("AC-10 (review SFUI-3c): รายการประเทศใน side menu เปิด/เลือกด้วยคีย์บอร์ดโดย Sheet ไม่ปิด และลูกศรสะท้อนสถานะเปิดจริง", async ({
+// SFUI-20c (spec 09 กฎ 72, AC-64 — แทนขั้นรายการประเทศเดิมของ AC-10 ตามกฎ 78 (ii)): seed มีไทยประเทศเดียว → เมนูข้างไม่มีตัวเลือก region
+test("AC-10 + AC-64: side menu ของร้านที่มีประเทศเดียวไม่มีตัวเลือกประเทศ/ลูกศร และ Escape ปิด Sheet คืน focus", async ({
   page,
   step,
-  evidence,
 }) => {
   const warnings = radixWarnings(page)
   const sheet = page.getByTestId("nav-menu-popup")
-  const trigger = page.getByTestId("country-select-button")
-  const arrow = page.getByTestId("country-select-arrow")
-  const listbox = page.getByRole("listbox")
 
-  await step("เปิด side menu → ลูกศรอยู่ในสถานะปิด", async () => {
+  await step("เปิด side menu → ไม่มี country-select-button และ country-select-arrow", async () => {
     await page.goto(`/${CC}`)
     await page.getByTestId("nav-menu-button").click()
     await expect(sheet).toBeVisible()
-    await expect(arrow).toHaveAttribute("data-state", "closed")
+    await expect(page.getByTestId("country-select-button")).toHaveCount(0)
+    await expect(page.getByTestId("country-select-arrow")).toHaveCount(0)
   })
 
-  await step(
-    "Enter บน country-select-button → รายการประเทศเปิด (portal) Sheet ยังเปิด ลูกศรเป็น open",
-    async () => {
-      await trigger.focus()
-      await page.keyboard.press("Enter")
-      await expect(listbox).toBeVisible()
-      await expect(listbox.getByRole("option").first()).toBeVisible()
-      await expect(sheet).toBeVisible()
-      await expect(arrow).toHaveAttribute("data-state", "open")
-      await evidence("04-side-menu-country-open")
-    }
-  )
-
-  await step(
-    "Escape ปิดเฉพาะรายการประเทศ — Sheet ยังเปิด focus กลับ trigger ลูกศรเป็น closed",
-    async () => {
-      await page.keyboard.press("Escape")
-      await expect(listbox).toBeHidden()
-      await expect(sheet).toBeVisible()
-      await expect(trigger).toBeFocused()
-      await expect(arrow).toHaveAttribute("data-state", "closed")
-    }
-  )
-
-  await step(
-    "เปิดอีกครั้งแล้วเลือกประเทศปัจจุบันด้วย ArrowDown + Enter → รายการปิด Sheet ยังเปิด อยู่หน้าเดิม",
-    async () => {
-      await page.keyboard.press("Enter")
-      await expect(listbox).toBeVisible()
-      await page.keyboard.press("ArrowDown")
-      await page.keyboard.press("Enter")
-      await expect(listbox).toBeHidden()
-      await expect(sheet).toBeVisible()
-      await expect(page).toHaveURL(new RegExp(`/${CC}$`))
-      await expect(arrow).toHaveAttribute("data-state", "closed")
-    }
-  )
-
-  await step(
-    "Escape ครั้งถัดไปปิด Sheet และ focus กลับ nav-menu-button",
-    async () => {
-      await expectEscapeReturnsFocus(page, page.getByTestId("nav-menu-button"))
-    }
-  )
+  await step("Escape ปิด Sheet และ focus กลับ nav-menu-button", async () => {
+    await expectEscapeReturnsFocus(page, page.getByTestId("nav-menu-button"))
+  })
 
   expect(
     warnings,

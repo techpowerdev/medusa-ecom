@@ -21,22 +21,8 @@ type MyInformationProps = {
   regions: HttpTypes.StoreRegion[]
 }
 
-const ProfileBillingAddress: React.FC<MyInformationProps> = ({
-  customer,
-  regions,
-}) => {
-  const regionOptions = useMemo(() => {
-    return (
-      regions
-        ?.map((region) => {
-          return region.countries?.map((country) => ({
-            value: country.iso_2,
-            label: country.display_name,
-          }))
-        })
-        .flat() || []
-    )
-  }, [regions])
+// SFUI-20c (spec 09 กฎ 71): สรุปไม่มีบรรทัดประเทศ — `regions` ไม่ถูกใช้แล้ว (คง prop ของผู้เรียก)
+const ProfileBillingAddress: React.FC<MyInformationProps> = ({ customer }) => {
 
   const [successState, setSuccessState] = React.useState(false)
 
@@ -79,23 +65,17 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
       return "ยังไม่มีที่อยู่สำหรับออกใบเสร็จ"
     }
 
-    const country =
-      regionOptions?.find(
-        (country) => country?.value === billingAddress.country_code
-      )?.label || billingAddress.country_code?.toUpperCase()
-
     return (
       <div className="flex flex-col font-semibold" data-testid="current-info">
         <span>
           {billingAddress.first_name} {billingAddress.last_name}
         </span>
         <span>{billingAddress.company}</span>
-        {/* SFUI-18a (spec 09 กฎ 57): บรรทัดที่อยู่ตามลำดับไทย; ประเทศคงชื่อเต็มจาก region (เดิม) */}
+        {/* SFUI-18a (spec 09 กฎ 57): บรรทัดที่อยู่ตามลำดับไทย; SFUI-20c (กฎ 71): ไม่มีบรรทัดประเทศ */}
         <span>{addressLines(billingAddress)[0]}</span>
-        <span>{country}</span>
       </div>
     )
-  }, [billingAddress, regionOptions])
+  }, [billingAddress])
 
   return (
     <form onSubmit={onSubmit} onReset={() => clearState()} className="w-full">

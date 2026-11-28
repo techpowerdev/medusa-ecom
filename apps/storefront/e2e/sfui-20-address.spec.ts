@@ -5,7 +5,17 @@ import { fieldErrorMessage } from "../src/lib/util/field-validation"
 
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { addAddresses } from "./support/group-buy"
-import { STOREFRONT_COUNTRY as CC, adminHeaders, createCustomer, ok, publishableKey, signInAs, type Customer } from "./support/medusa"
+import {
+  STOREFRONT_COUNTRY as CC,
+  adminHeaders,
+  cartReadyForPayment,
+  createCustomer,
+  ok,
+  placeOrder,
+  publishableKey,
+  signInAs,
+  type Customer,
+} from "./support/medusa"
 import { addToCartFromPdp, isServerAction, waitForServerAction } from "./support/server-action"
 
 // SFUI-20a (spec 09 กฎ 69, AC-62 — owner 2026-11-28: จังหวัดบังคับกรอก): ช่องจังหวัดทั้ง 5 ฟอร์ม `required` + `*`;
@@ -323,5 +333,87 @@ test("AC-63: บัญชี — modal เพิ่ม/แก้ที่อย�
     })
     await billing.getByTestId("save-button").click()
     await expect.poll(async () => (await addresses()).find((a) => a.is_default_billing)?.country_code, { timeout: 15_000 }).toBe("th")
+  })
+})
+
+// SFUI-20c (spec 09 กฎ 71–72, AC-64 — owner: ซ่อนบรรทัดประเทศ): สรุปที่อยู่ทุกจุดไม่มีประเทศ และเมนูข้างไม่มีตัวเลือก region (seed มีไทยประเทศเดียว)
+const COUNTRY_WORD = /(^|[^A-Za-z])TH([^A-Za-z]|$)|Thailand|ประเทศไทย/
+
+async function expectNoCountry(box: Locator, where: string) {
+  await expect(box, where).toBeVisible()
+  const text = await box.innerText()
+  expect(text, `${where}: ${text}`).not.toMatch(COUNTRY_WORD)
+  await expect(box.getByTestId("address-province-country"), where).toHaveCount(0)
+}
+
+test("AC-64: สรุปที่อยู่ (checkout review, หน้าคำสั่งซื้อ, shipping-address-select, การ์ดที่อยู่, current-info ใบเสร็จ) ไม่มีประเทศ และเมนูข้างไม่มีตัวเลือก region", async ({
+  page,
+  context,
+  request,
+  baseURL,
+  step,
+  evidence,
+}) => {
+  test.setTimeout(150_000)
+  const pk = await publishableKey(request, await adminHeaders(request))
+  const customer = await createCustomer(request, pk)
+  await addAddresses(request, pk, customer, [SAVED_TH])
+  // ที่อยู่ใบเสร็จของโปรไฟล์ (is_default_billing) — สร้างผ่าน API ประเทศ th
+  await ok(
+    await request.post(`${BACKEND_URL}/store/customers/me/addresses`, {
+      headers: headersOf(pk, customer),
+      data: { ...SAVED_TH, address_1: "7 ถนนสีลม", country_code: "th", is_default_billing: true },
+    }),
+    "billing address"
+  )
+  const order = await placeOrder(request, pk, customer)
+  const cartId = await cartReadyForPayment(request, pk, customer)
+  const pc = await ok(await request.post(`${BACKEND_URL}/store/payment-collections`, { headers: headersOf(pk, customer), data: { cart_id: cartId } }), "payment collection")
+  await ok(
+    await request.post(`${BACKEND_URL}/store/payment-collections/${pc.payment_collection.id}/payment-sessions`, {
+      headers: headersOf(pk, customer),
+      data: { provider_id: "pp_system_default" },
+    }),
+    "payment session"
+  )
+  await signInAs(context, baseURL!, customer)
+  await context.addCookies([{ name: "_medusa_cart_id", value: cartId, url: baseURL! }])
+
+  await step("checkout review: shipping-address-summary + billing-address-summary", async () => {
+    await page.goto(`/${CC}/checkout?step=review`)
+    await expectNoCountry(page.getByTestId("shipping-address-summary"), "shipping-address-summary")
+    await expectNoCountry(page.getByTestId("billing-address-summary"), "billing-address-summary")
+    await evidence("01-checkout-review-no-country")
+  })
+
+  await step("รายการ shipping-address-select", async () => {
+    await page.goto(`/${CC}/checkout?step=address`)
+    await page.getByTestId("shipping-address-select").click()
+    const options = page.getByTestId("shipping-address-options")
+    await expectNoCountry(options, "shipping-address-options")
+    await page.keyboard.press("Escape")
+  })
+
+  await step("หน้าคำสั่งซื้อ: shipping-address-summary", async () => {
+    await page.goto(`/${CC}/account/orders/details/${order.id}`)
+    await expectNoCountry(page.getByTestId("shipping-address-summary"), "order shipping-address-summary")
+  })
+
+  await step("การ์ดที่อยู่ในบัญชี", async () => {
+    await page.goto(`/${CC}/account/addresses`)
+    for (const card of await page.getByTestId("address-container").all()) await expectNoCountry(card, "address-container")
+  })
+
+  await step("current-info ของที่อยู่ใบเสร็จในโปรไฟล์", async () => {
+    await page.goto(`/${CC}/account/profile`)
+    await expectNoCountry(page.getByTestId("account-billing-address-editor").getByTestId("current-info"), "current-info")
+  })
+
+  await step("เมนูข้าง (ไทยประเทศเดียว): ไม่มี country-select-button / country-select-arrow", async () => {
+    await page.goto(`/${CC}`)
+    await page.getByTestId("nav-menu-button").click()
+    await expect(page.getByTestId("nav-menu-popup")).toBeVisible()
+    await expect(page.getByTestId("country-select-button")).toHaveCount(0)
+    await expect(page.getByTestId("country-select-arrow")).toHaveCount(0)
   })
 })

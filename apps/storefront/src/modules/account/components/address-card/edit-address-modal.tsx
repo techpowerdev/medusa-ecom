@@ -28,7 +28,6 @@ import {
 import { cn } from "@/lib/utils"
 
 type EditAddressProps = {
-  region: HttpTypes.StoreRegion
   address: HttpTypes.StoreCustomerAddress
   isActive?: boolean
 }
@@ -36,7 +35,6 @@ type EditAddressProps = {
 // CORE-23c (กฎข้อ 74a): action ล้ม (5xx/network) → error ไทยในฟอร์ม ไม่ใช่หน้า error ทั้งหน้า
 const saveAddress = withActionFallback(updateCustomerAddress)
 
-// SFUI-20b (spec 09 กฎ 70): ไม่มีช่องประเทศแล้ว — `region` ไม่ถูกใช้ (คง prop ของผู้เรียก address-book)
 const EditAddress: React.FC<EditAddressProps> = ({
   address,
   isActive = false,
@@ -76,7 +74,7 @@ const EditAddress: React.FC<EditAddressProps> = ({
     setRemoving(false)
   }
 
-  const [line, country] = addressLines(address)
+  const [line] = addressLines(address)
 
   return (
     // SFUI-3a (spec 09 กฎ 4, 11): modal ที่อยู่ → Dialog ของ shadcn (Radix) — ปุ่มแก้ไขเป็น DialogTrigger (focus กลับเมื่อปิด)
@@ -103,11 +101,10 @@ const EditAddress: React.FC<EditAddressProps> = ({
               {address.company}
             </p>
           )}
-          {/* SFUI-18a (spec 09 กฎ 57): บรรทัดที่อยู่ตามลำดับไทย (address-address) + บรรทัดประเทศ (address-province-country);
-              testid เดิม address-postal-city (baseline กฎ 10) อยู่ที่กล่องของสองบรรทัด */}
+          {/* SFUI-18a (spec 09 กฎ 57): บรรทัดที่อยู่ตามลำดับไทย (address-address); testid เดิม address-postal-city (baseline กฎ 10) อยู่ที่กล่อง
+              SFUI-20c (กฎ 71): ไม่มีบรรทัดประเทศ (span ประเทศเดิมถูกลบ) */}
           <p className="flex flex-col text-left text-sm leading-6 font-normal mt-2" data-testid="address-postal-city">
             <span data-testid="address-address">{line}</span>
-            <span data-testid="address-province-country">{country}</span>
           </p>
         </div>
         <div className="flex items-center gap-x-4">

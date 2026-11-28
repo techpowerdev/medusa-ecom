@@ -35,6 +35,8 @@ const SideMenu = ({ regions, storeName }: SideMenuProps) => {
   const [open, setOpen] = useState(false)
   const countryToggleState = useToggleState()
   const close = () => setOpen(false)
+  // SFUI-20c (spec 09 กฎ 72 — ADR-034 D6): ประเทศรวมทุก region ≤ 1 → ไม่มีอะไรให้เลือก ไม่ render ตัวเลือก region และลูกศร
+  const countryCount = regions?.flatMap((r) => r.countries ?? []).length ?? 0
 
   return (
     <div className="h-full">
@@ -89,23 +91,23 @@ const SideMenu = ({ regions, storeName }: SideMenuProps) => {
               <div className="flex flex-col gap-y-6">
                 {/* SFUI-3b (review SFUI-3c): ลูกศรสะท้อนสถานะเปิดของรายการประเทศผ่าน `toggleState` — ไม่เปิด/ปิดตาม hover
                     (รายการประเทศเปิดด้วยคลิก/คีย์บอร์ดของ Select ใน SFUI-3c) */}
-                <div className="flex justify-between">
-                  {regions && (
+                {regions && countryCount > 1 && (
+                  <div className="flex justify-between">
                     <CountrySelect
                       toggleState={countryToggleState}
                       regions={regions}
                     />
-                  )}
-                  <ArrowRight
-                    aria-hidden
-                    data-testid="country-select-arrow"
-                    data-state={countryToggleState.state ? "open" : "closed"}
-                    className={cn(
-                      "size-4 transition-transform duration-150",
-                      countryToggleState.state ? "-rotate-90" : ""
-                    )}
-                  />
-                </div>
+                    <ArrowRight
+                      aria-hidden
+                      data-testid="country-select-arrow"
+                      data-state={countryToggleState.state ? "open" : "closed"}
+                      className={cn(
+                        "size-4 transition-transform duration-150",
+                        countryToggleState.state ? "-rotate-90" : ""
+                      )}
+                    />
+                  </div>
+                )}
                 <p className="flex justify-between text-sm leading-5 text-muted-foreground">
                   © {new Date().getFullYear()} {storeName} สงวนลิขสิทธิ์
                 </p>

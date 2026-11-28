@@ -162,21 +162,10 @@ test("กฎ 4b: ชี้ nav-cart-link → nav-cart-dropdown เป็น Popo
   })
 })
 
-test("กฎ 4: ตัวเลือกประเทศใน side menu เป็น Select — คลิกเปิดรายการภาษาไทย/ประเทศ, Escape ปิด", async ({
-  page,
-  step,
-}) => {
-  await step("เปิด side menu แล้วกดตัวเลือกประเทศ", async () => {
-    await page.goto(`/${CC}`)
-    await page.getByTestId("nav-menu-button").click()
-    const trigger = page.getByTestId("country-select-button")
-    await expect(trigger).toHaveAttribute("data-slot", "select-trigger")
-    await expect(trigger).toHaveText(THAI)
-    await trigger.click()
-    const listbox = page.getByRole("listbox")
-    await expect(listbox).toBeVisible()
-    await expect(listbox.getByRole("option").first()).toBeVisible()
-    await page.keyboard.press("Escape")
-    await expect(listbox).toBeHidden()
-  })
+// SFUI-20c (spec 09 กฎ 72): seed มีไทยประเทศเดียว → เมนูข้างไม่ render ตัวเลือกประเทศ (Select แบบหลายประเทศตรวจด้วย unit side-menu)
+test("กฎ 4 + กฎ 72: side menu ของร้านที่มีประเทศเดียวไม่มีตัวเลือกประเทศ", async ({ page }) => {
+  await page.goto(`/${CC}`)
+  await page.getByTestId("nav-menu-button").click()
+  await expect(page.getByTestId("nav-menu-popup")).toBeVisible()
+  await expect(page.getByTestId("country-select-button")).toHaveCount(0)
 })

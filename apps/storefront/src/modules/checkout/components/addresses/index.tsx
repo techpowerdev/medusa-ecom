@@ -133,7 +133,7 @@ const Addresses = ({
                   <p className="text-sm leading-[1.4rem] text-muted-foreground">
                     {cart.billing_address.first_name} {cart.billing_address.last_name}
                   </p>
-                  {/* SFUI-18a (spec 09 กฎ 57): ที่อยู่ตามลำดับไทย + บรรทัดประเทศ */}
+                  {/* SFUI-18a (spec 09 กฎ 57): ที่อยู่ตามลำดับไทย; SFUI-20c (กฎ 71): ไม่มีบรรทัดประเทศ */}
                   {addressLines(cart.billing_address).map((line, i) => (
                     <p key={i} className="text-sm leading-[1.4rem] text-muted-foreground">
                       {line}
