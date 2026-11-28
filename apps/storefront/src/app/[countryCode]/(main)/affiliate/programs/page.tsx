@@ -37,7 +37,7 @@ export default async function AffiliateProgramsPage({ params, searchParams }: Pr
 
   return (
     <div className="content-container py-8 flex flex-col gap-y-6" data-testid="affiliate-programs-page">
-      <h1 className="text-2xl leading-[36px] font-semibold">โปรแกรมค่าคอมมิชชัน</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">โปรแกรมค่าคอมมิชชัน</h1>
       {!result ? (
         <StatusNotice status={affiliate.status} />
       ) : result.programs.length ? (

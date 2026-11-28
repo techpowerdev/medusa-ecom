@@ -32,7 +32,7 @@ const BASE_SEMI = { size: "14px", lineHeight: "24px", weight: "600" } // เด�
 const LARGE = { size: "16px", lineHeight: "24px", weight: "400" } // เดิม text-large-regular
 const XL_SEMI = { size: "24px", lineHeight: "36px", weight: "600" } // เดิม text-xl-semi
 const XXL = { size: "30px", lineHeight: "48px", weight: "400" } // เดิม text-2xl-regular
-const XXL_SEMI = { size: "30px", lineHeight: "48px", weight: "600" } // เดิม text-2xl-semi
+const XXL_SEMI = { size: "32px", lineHeight: "48px", weight: "600" } // เดิม text-2xl-semi — SFUI-21b (spec 09 กฎ 77, 78 (i)): h1 ทุกหน้า text-3xl font-semibold tracking-tight = 32px/48px/600 (วัดบน build)
 
 const PRODUCT = "t-shirt"
 
@@ -56,7 +56,7 @@ test("AC-21: store, category, collection, PDP และหน้าค้นห�
 }) => {
   await signIn(page, baseURL!)
 
-  await step("store: หัวข้อ 30px/48px/600 และราคาต่ำ/สูงของตัวกรองราคา 12px/20px/400", async () => {
+  await step("store: หัวข้อ 32px/48px/600 และราคาต่ำ/สูงของตัวกรองราคา 12px/20px/400", async () => {
     await page.goto(`/${CC}/store`)
     expect(await font(page.getByTestId("store-page-title"))).toEqual(XXL_SEMI)
     expect(await font(page.getByTestId("price-range-min"))).toEqual(SMALL)
@@ -64,7 +64,7 @@ test("AC-21: store, category, collection, PDP และหน้าค้นห�
     await evidence("01-store")
   })
 
-  await step("category และ collection: หัวข้อ 30px/48px/600", async () => {
+  await step("category และ collection: หัวข้อ 32px/48px/600", async () => {
     await page.goto(`/${CC}/categories/shirts`)
     expect(await font(page.getByTestId("category-page-title"))).toEqual(XXL_SEMI)
     await page.goto(`/${CC}/collections/featured`)
@@ -85,7 +85,7 @@ test("AC-21: store, category, collection, PDP และหน้าค้นห�
     await evidence("02-pdp")
   })
 
-  await step("หน้าค้นหา: หัวข้อ 30px/48px/600 และจำนวนผลลัพธ์ 12px/20px/400", async () => {
+  await step("หน้าค้นหา: หัวข้อ 32px/48px/600 และจำนวนผลลัพธ์ 12px/20px/400", async () => {
     await page.goto(`/${CC}/search?q=shirt`)
     expect(await font(page.getByTestId("search-page-title"))).toEqual(XXL_SEMI)
     expect(await font(page.getByTestId("search-result-count"))).toEqual(SMALL)

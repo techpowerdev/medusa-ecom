@@ -18,10 +18,8 @@ const updateBillingAddress = withActionFallback(updateCustomerAddress)
 
 type MyInformationProps = {
   customer: HttpTypes.StoreCustomer
-  regions: HttpTypes.StoreRegion[]
 }
 
-// SFUI-20c (spec 09 กฎ 71): สรุปไม่มีบรรทัดประเทศ — `regions` ไม่ถูกใช้แล้ว (คง prop ของผู้เรียก)
 const ProfileBillingAddress: React.FC<MyInformationProps> = ({ customer }) => {
 
   const [successState, setSuccessState] = React.useState(false)

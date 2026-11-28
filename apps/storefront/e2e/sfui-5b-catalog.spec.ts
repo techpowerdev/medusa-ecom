@@ -48,11 +48,11 @@ test("AC-15: หน้าแรก, store, PDP และหน้าค้นห
     await evidence("02-store")
   })
 
-  await step("PDP: ชื่อสินค้า 32px/40px ตัวหนา 600 และคำอธิบาย 14px/22.4px", async () => {
+  await step("PDP: ชื่อสินค้า (h1) 32px/48px ตัวหนา 600 (กฎ 77 — SFUI-21b) และคำอธิบาย 14px/22.4px", async () => {
     await page.goto(`/${CC}/products/t-shirt`)
     expect(await font(page.locator("#product-info").getByTestId("product-title"))).toEqual({
       size: "32px",
-      lineHeight: "40px",
+      lineHeight: "48px",
       weight: "600",
     })
     expect(await font(page.getByTestId("product-description"))).toEqual({

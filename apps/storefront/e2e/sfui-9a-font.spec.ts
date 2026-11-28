@@ -25,7 +25,7 @@ const font = (locator: Locator): Promise<Font> =>
 const SMALL_REGULAR: Font = { size: "12px", lineHeight: "20px", weight: "400" }
 const BASE_REGULAR: Font = { size: "14px", lineHeight: "24px", weight: "400" }
 const LARGE_SEMI: Font = { size: "16px", lineHeight: "24px", weight: "600" }
-const XXL_SEMI: Font = { size: "30px", lineHeight: "48px", weight: "600" }
+const XXL_SEMI: Font = { size: "32px", lineHeight: "48px", weight: "600" } // SFUI-21b (spec 09 กฎ 77, 78 (i)): h1 ทุกหน้า text-3xl font-semibold tracking-tight = 32px/48px/600 (วัดบน build)
 
 const PRODUCT = "t-shirt"
 
@@ -75,7 +75,7 @@ test("AC-21: หน้า 404, นโยบาย, skeleton ของ store แ�
   step,
   evidence,
 }) => {
-  await step("404 ของ app (URL ที่ไม่มี route): หัวข้อ 30px/48px/600, คำอธิบาย 12px/20px/400", async () => {
+  await step("404 ของ app (URL ที่ไม่มี route): หัวข้อ 32px/48px/600, คำอธิบาย 12px/20px/400", async () => {
     await page.goto(`/${CC}/sfui-9a-no-such-page`)
     await expect(page.getByTestId("not-found-title")).toBeVisible()
     // app/not-found ไม่อยู่ใต้ layout ของ (main) — ไม่มี nav
@@ -84,7 +84,7 @@ test("AC-21: หน้า 404, นโยบาย, skeleton ของ store แ�
     expect.soft(await font(page.getByTestId("not-found-description"))).toEqual(SMALL_REGULAR)
   })
 
-  await step("404 ของ (main) (สินค้าที่ไม่มี → notFound()): หัวข้อ 30px/48px/600, คำอธิบาย 12px/20px/400", async () => {
+  await step("404 ของ (main) (สินค้าที่ไม่มี → notFound()): หัวข้อ 32px/48px/600, คำอธิบาย 12px/20px/400", async () => {
     await page.goto(`/${CC}/products/sfui-9a-no-such-product`)
     await expect(page.getByTestId("not-found-title")).toBeVisible()
     // (main)/not-found อยู่ใต้ layout ของ (main) (มี nav) ต่างจาก app/not-found — ยืนยันว่าเป็นหน้าของ (main)
@@ -94,7 +94,7 @@ test("AC-21: หน้า 404, นโยบาย, skeleton ของ store แ�
     await evidence("01-not-found")
   })
 
-  await step("หน้านโยบาย /shipping: หัวข้อ 30px/48px/600, เนื้อหา 14px/24px/400 + footer 12px/20px/400", async () => {
+  await step("หน้านโยบาย /shipping: หัวข้อ 32px/48px/600, เนื้อหา 14px/24px/400 + footer 12px/20px/400", async () => {
     await page.goto(`/${CC}/shipping`)
     await expect(page.getByTestId("policy-title")).toBeVisible()
     expect.soft(await font(page.getByTestId("policy-title"))).toEqual(XXL_SEMI)

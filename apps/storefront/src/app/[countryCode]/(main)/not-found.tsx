@@ -11,7 +11,7 @@ export default function NotFound() {
   return (
     <div className="flex flex-col gap-4 items-center justify-center min-h-[calc(100vh-64px)]">
       <h1
-        className="text-[30px] leading-[48px] font-semibold text-foreground"
+        className="text-3xl font-semibold tracking-tight text-foreground"
         data-testid="not-found-title"
       >
         ไม่พบหน้านี้

@@ -13,7 +13,7 @@ export const PolicyPage = ({
   children: React.ReactNode
 }) => (
   <div className="content-container py-12 max-w-3xl" data-testid="policy-page">
-    <h1 className="text-[30px] leading-[48px] font-semibold mb-8" data-testid="policy-title">
+    <h1 className="text-3xl font-semibold tracking-tight mb-8" data-testid="policy-title">
       {title}
     </h1>
     <div

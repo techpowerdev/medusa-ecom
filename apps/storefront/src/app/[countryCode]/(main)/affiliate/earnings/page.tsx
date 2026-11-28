@@ -35,7 +35,7 @@ export default async function AffiliateEarningsPage({ params }: { params: Promis
 
   return (
     <div className="content-container py-8 flex flex-col gap-y-6" data-testid="affiliate-earnings-page">
-      <h1 className="text-2xl leading-[36px] font-semibold">รายได้ค่าคอมมิชชัน</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">รายได้ค่าคอมมิชชัน</h1>
       {!byStatus ? (
         <StatusNotice status={affiliate.status} />
       ) : (

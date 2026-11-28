@@ -45,7 +45,7 @@ export default function GroupPage({ view: { group, campaign }, product, shareUrl
         <span className="text-xs leading-5 font-normal text-muted-foreground">
           {group.kind === "team" ? "ซื้อกลุ่มแบบทีม" : "ซื้อกลุ่มแบบกลุ่มเปิด"}
         </span>
-        <h1 className="text-[30px] leading-[48px] font-semibold break-words">{campaign.name}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight break-words">{campaign.name}</h1>
         {discount && (
           <p className="text-base leading-6 font-semibold text-primary underline-offset-4" data-testid="group-discount">
             รับส่วนลด {discount} เมื่อกลุ่มครบเป้าหมาย

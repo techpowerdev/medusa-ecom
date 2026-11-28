@@ -1,0 +1,17 @@
+# SFUI-21b — ผลทดสอบ (spec 09 กฎ 77, AC-65/68)
+สภาพแวดล้อม: stack บน feat/SFUI-20c-address-summary-region (ef907127), node 24, prod build — backend :9481 (NODE_ENV=production,
+start จาก .medusa/server, DB medusa_sfui21b, Redis db 12), storefront :8481
+
+## Red
+- static ใหม่ sfui-21-consistency.unit (AC-65 (1)) ก่อนแก้: 1 failed / 2 — 27 จุด `<h1` (27 ไฟล์) ขาด text-3xl/tracking-tight หรือมี
+  text-[30px]/text-2xl/text-base/leading-*/uppercase (control ผ่าน)
+- e2e ใหม่ sfui-21-heading (1280) บน build ที่ src = 20c: failed — font-size 16/24/30px, text-transform uppercase (login/register/verify),
+  line-height ไม่เท่ากัน (45 soft errors)
+
+## Green
+- ค่าที่วัดบน build: h1 = 32px / line-height 48px / 600 / letter-spacing -0.8px / text-transform none
+- e2e sfui-21-heading (1280 + 390, ≥ 25 หน้าต่อ viewport): 2 passed
+- e2e ที่อ้าง h1/หัวข้อ/หน้า auth+affiliate (22 ไฟล์ + core-79, core-90, affiliate-portal, affiliate-header-overflow; --workers=1):
+  69 passed / 1 failed → sfui-9e-font (affiliate-login-title / earnings h1 ยังคาด 16px/24px) แก้ค่าที่คาดแล้วรันซ้ำ sfui-9e 4 passed
+- playwright project unit: 259 passed; vitest (apps/storefront): 139 files / 2089 tests passed
+- pnpm lint && pnpm typecheck: ผ่าน (0 error); pnpm --filter storefront build: ผ่าน

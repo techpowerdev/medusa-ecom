@@ -29,7 +29,7 @@ const Register = ({ setCurrentView }: Props) => {
       className="max-w-sm flex flex-col items-center"
       data-testid="register-page"
     >
-      <h1 className="text-base leading-6 font-semibold uppercase mb-6">
+      <h1 className="text-3xl font-semibold tracking-tight mb-6">
         สมัครสมาชิก {STORE_NAME}
       </h1>
       <p className="text-center text-sm leading-6 font-normal text-foreground mb-4">

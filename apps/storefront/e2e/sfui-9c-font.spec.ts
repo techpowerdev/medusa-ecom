@@ -29,7 +29,7 @@ const SMALL_REGULAR: Font = { size: "12px", lineHeight: "20px", weight: "400" }
 const SMALL_SEMI: Font = { size: "12px", lineHeight: "20px", weight: "600" }
 const BASE_REGULAR: Font = { size: "14px", lineHeight: "24px", weight: "400" }
 const BASE_SEMI: Font = { size: "14px", lineHeight: "24px", weight: "600" }
-const XXL_SEMI: Font = { size: "30px", lineHeight: "48px", weight: "600" }
+const XXL_SEMI: Font = { size: "32px", lineHeight: "48px", weight: "600" } // SFUI-21b (spec 09 กฎ 77, 78 (i)): h1 ทุกหน้า text-3xl font-semibold tracking-tight = 32px/48px/600 (วัดบน build)
 
 const savedAddress = {
   first_name: "สมชาย",
@@ -60,7 +60,7 @@ test("AC-21: checkout (not-found, ที่อยู่, จัดส่ง, ช
   expect(saved.status(), "saved address").toBe(200)
   await signInAs(context, baseURL!, customer)
 
-  await step("ยังไม่มี cart: not-found ของ (checkout) หัวข้อ 30px/48px/600 คำอธิบาย 12px/20px/400; ตะกร้าว่าง 14px/24px/400", async () => {
+  await step("ยังไม่มี cart: not-found ของ (checkout) หัวข้อ 32px/48px/600 คำอธิบาย 12px/20px/400; ตะกร้าว่าง 14px/24px/400", async () => {
     await page.goto(`/${CC}/checkout`)
     await expect(page.getByTestId("not-found-title")).toBeVisible()
     expect.soft(await font(page.getByTestId("not-found-title"))).toEqual(XXL_SEMI)
