@@ -1173,7 +1173,7 @@ Out of scope: เปลี่ยนรูปแบบ `cart-totals` ของห
 none
 
 ### Business rules
-81. (CORE-26 — **qa #199: ลูกค้าสับสนเรื่องราคา**, review #199) (a) dropdown ของตะกร้า (`nav-cart-dropdown`) แสดงยอดรวมจาก field ที่ Medusa คำนวณซึ่ง**สอดคล้องกับราคาต่อ line ที่แสดง
+81. (CORE-26 — **qa #199: ลูกค้าสับสนเรื่องราคา**, review #199) **(รอบ 51: (a) ยอดของ dropdown + ราคารวมต่อแถว → กฎข้อ 159d (SFUI-24c); (b) → กฎข้อ 158 (SFUI-24a))** (a) dropdown ของตะกร้า (`nav-cart-dropdown`) แสดงยอดรวมจาก field ที่ Medusa คำนวณซึ่ง**สอดคล้องกับราคาต่อ line ที่แสดง
     (หลังส่วนลด flash/promotion และรวม VAT ตามราคาร้าน)** — ตาม Q-C1 (1) = (ก) (owner 2026-11-03): `cart.item_total` พร้อมป้าย "ยอดรวมสินค้า (รวม VAT)" แทน `cart.subtotal` + "(ไม่รวมภาษี)" ที่เป็นยอดก่อนส่วนลด
     และไม่รวมภาษี (เคส qa: line ฿2,360 × 2 แต่ยอดรวม ฿5,514.02 = 5,900/1.07); ห้ามคำนวณเอง (ไม่หาร 1.07, ไม่ `reduce` ราคา line); (b) `cart-totals` ของ `/cart` และ checkout: แถวที่แสดง
     (ยอดก่อนส่วนลด, ส่วนลด, ค่าจัดส่ง, ภาษี) ต้องรวมได้ `total` (±0.01) — ใช้ field ฐานภาษีเดียวกัน (`item_subtotal − discount_subtotal + shipping_subtotal + tax_total = total` — ไม่ใช้ `subtotal`
@@ -1841,7 +1841,7 @@ Out of scope: ไฟล์ e2e อื่นที่อ่าน `next-action` �
 none
 
 ### Business rules
-105. (CORE-47 — qa #287 O-1; ขยายกฎข้อ 100a; **owner เลือกทาง (C) "จัดแถวใหม่สำหรับมือถือ" 2026-11-04**) หน้า `/cart` ที่ < 1024px (`small` ใน `apps/storefront/tailwind.config.js` = `1024px`)
+105. (CORE-47 — qa #287 O-1; ขยายกฎข้อ 100a; **owner เลือกทาง (C) "จัดแถวใหม่สำหรับมือถือ" 2026-11-04**) **(รอบ 51: ราคารวมในบรรทัดล่างของการ์ด → ราคาต่อชิ้นตามกฎข้อ 159a — SFUI-24c)** หน้า `/cart` ที่ < 1024px (`small` ใน `apps/storefront/tailwind.config.js` = `1024px`)
      แต่ละ line item (`Item` แบบ `type="full"`) แสดงเป็นแถวแบบการ์ด อ่านได้แม้ชื่อสินค้ายาว (~90 ตัว ไทยปนอังกฤษ) และยอดรวม 7 หลักมีทศนิยมพร้อมราคาขีดฆ่า
      (ที่มา: ทางเดิม "แก้เฉพาะ className ของ cell" ของ builder `a74a496` ไม่ล้นจอแต่ที่ 375 container 327px เหลือช่องชื่อ 16px — รูป 59, จำนวน 128, รวม 108 — ชื่อยาวตัดราว 50 บรรทัด):
      (a) โครงการ์ด: รูปอยู่ซ้าย; ชื่อสินค้า (`product-title`) + ตัวเลือก (`product-variant`) ใช้ความกว้างที่เหลือทั้งหมดทางขวาของรูป และตัดคำตามปกติ (`break-words` กันคำยาวล้น —
@@ -2241,7 +2241,7 @@ none ใหม่ — middleware ใหม่ตัวสุดท้ายข�
 ## Follow-up รอบ 28 (2026-11-10 — เอกสารล้วน: บันทึกคำตัดสินของ owner)
 ที่มา: owner ตอบ "ตามที่แนะนำ" ทุกข้อ — Q-C6 = ก (หัวข้อปิดรอบ 27 → accepted), Q-C7 = ก (หัวข้อนี้) **แต่สั่งว่ายังไม่ต้องทำตอนนี้** → CORE-56 และ CORE-57 พักไว้ ไม่บล็อก release v0.1.0 (ปิดรอบ 29: owner สั่งทำ 2026-11-13 → CORE-56 ☑ #351, CORE-57 ☑ #352)
 Status: accepted (CORE-57 พักไว้ — owner ยังไม่สั่งทำ) · ปิดรอบ 29: owner สั่งทำ 2026-11-13 → CORE-57 ☑ #352
-Out of scope: dropdown ของตะกร้า (กฎข้อ 81a คงเดิม), ราคาค่าส่งจริง (Q-F1 — go-live checklist), หน้า order ในบัญชีลูกค้า (`order-summary` — ไม่ใช้ `cart-totals`), credit line/gift card (v1 ไม่มี)
+Out of scope: dropdown ของตะกร้า (กฎข้อ 81a คงเดิม), ราคาค่าส่งจริง (Q-F1 — go-live checklist), ~~หน้า order ในบัญชีลูกค้า (`order-summary` — ไม่ใช้ `cart-totals`)~~ (**ถอดในรอบ 51** — หน้ารายละเอียดคำสั่งซื้อใช้ `CartTotals` ตามกฎข้อ 158, SFUI-24a), credit line/gift card (v1 ไม่มี)
 
 ### What Medusa already gives us (รอบ 28)
 | Need | Medusa provides | Use as-is / extend / custom |
@@ -2253,7 +2253,7 @@ Out of scope: dropdown ของตะกร้า (กฎข้อ 81a คง�
 none
 
 ### Business rules (รอบ 28)
-115. (CORE-57 — Q-C7 = ก owner 2026-11-10; แทนฐาน "ก่อนภาษี" ของกฎข้อ 81b) `cart-totals` (`modules/common/components/cart-totals/index.tsx` — ทั้ง `/cart`, checkout และหน้า order-completed ที่ส่ง `order`) แสดงทุกแถวด้วยฐาน**รวม VAT** และไม่คำนวณยอดเอง (กฎข้อ 81):
+115. (CORE-57 — Q-C7 = ก owner 2026-11-10; แทนฐาน "ก่อนภาษี" ของกฎข้อ 81b) **(แทนด้วยกฎข้อ 158 — รอบ 51, owner 2026-11-29; มีผลจน SFUI-24a merge)** `cart-totals` (`modules/common/components/cart-totals/index.tsx` — ทั้ง `/cart`, checkout และหน้า order-completed ที่ส่ง `order`) แสดงทุกแถวด้วยฐาน**รวม VAT** และไม่คำนวณยอดเอง (กฎข้อ 81):
     (a) แถวและ field (ตรวจกับ 2.22.1 แล้ว — ดูตารางข้างบน; `data-testid` และ `data-value` = ค่าของ field คงชื่อเดิม):
         "ยอดรวมสินค้า (รวม VAT)" `cart-subtotal` = `original_item_total`; "ส่วนลด" `cart-discount` = `discount_total` แสดงเมื่อ > 0 และเป็นยอดลบ;
         "ค่าจัดส่ง" `cart-shipping` = `original_shipping_total` (= ราคา option ที่ขั้นเลือกวิธีจัดส่งแสดง เช่น ฿10); "รวม VAT แล้ว" `cart-taxes` = `tax_total` เป็นข้อมูล**ไม่บวกซ้ำ**; "ยอดรวมทั้งสิ้น" `cart-total` = `total`;
@@ -2379,7 +2379,7 @@ none
 assertion ป้ายแถวแรกที่ fixture มีส่วนลดมีที่เดียว: `src/core-57-cart-totals.test.ts:48` (`:83` และ `src/ev-7d-digital-only-totals.test.ts:67`, `:78`, `:100` ไม่มีส่วนลด — ผ่านต่อโดยไม่แก้);
 e2e ที่ assert ป้ายเป็นข้อความตรงตัวคือของ dropdown (`e2e/core-26-cart-dropdown-total.spec.ts:181`) ซึ่งไม่เปลี่ยน
 Status: done (Q-C8 = ก, Q-C9 = ก owner 2026-11-13; CORE-60 ☑ #372)
-Out of scope: dropdown ของตะกร้า (กฎข้อ 81a คงเดิม), ตัวเลข/field ของ `cart-totals` (กฎข้อ 115 คงเดิม), `order-summary` ของหน้าบัญชี (ไม่ใช้ `cart-totals`), แก้ `ALLOWED`/`eslint-disable` เดิม (Q-C9 = ก)
+Out of scope: dropdown ของตะกร้า (กฎข้อ 81a คงเดิม), ตัวเลข/field ของ `cart-totals` (กฎข้อ 115 คงเดิม), ~~`order-summary` ของหน้าบัญชี (ไม่ใช้ `cart-totals`)~~ (**ถอดในรอบ 51** — กฎข้อ 158, SFUI-24a), แก้ `ALLOWED`/`eslint-disable` เดิม (Q-C9 = ก)
 
 ### What Medusa already gives us (รอบ 31)
 | Need | Medusa provides | Use as-is / extend / custom |
@@ -2392,7 +2392,7 @@ Out of scope: dropdown ของตะกร้า (กฎข้อ 81a คง�
 none
 
 ### Business rules (รอบ 31)
-118. (CORE-60 — Q-C8 = ก owner 2026-11-13, qa #352; ต่อจากกฎข้อ 115a/c) ป้ายแถวแรกของ `cart-totals` (ทุกที่ที่ใช้: `/cart`, checkout, order-completed ที่ส่ง `order`):
+118. (CORE-60 — Q-C8 = ก owner 2026-11-13, qa #352; ต่อจากกฎข้อ 115a/c) **(แทนด้วยกฎข้อ 158 — รอบ 51, owner 2026-11-29; มีผลจน SFUI-24a merge)** ป้ายแถวแรกของ `cart-totals` (ทุกที่ที่ใช้: `/cart`, checkout, order-completed ที่ส่ง `order`):
      (a) เมื่อ `discount_total > 0` (เงื่อนไขเดียวกับที่ render `cart-discount`) ป้ายเป็น "ยอดรวมสินค้าก่อนส่วนลด (รวม VAT)"; เมื่อ `discount_total` เป็น 0/null/undefined คง "ยอดรวมสินค้า (รวม VAT)";
          **(ภาคผนวก 2026-11-17 — owner ตัดสิน, qa #372; แทนเงื่อนไขของข้อ (a) ข้างบน — ทำใน CORE-62 กฎข้อ 120)** ป้าย "ก่อนส่วนลด" ใช้เฉพาะเมื่อ**ราคาสินค้าลดจริง** (ส่วนลดระดับสินค้า > 0);
          ส่วนลดเฉพาะค่าส่งใช้ป้ายเดิม "ยอดรวมสินค้า (รวม VAT)"; แถว `cart-discount`, ตัวเลข, ข้อ (b)–(d) และ dropdown ไม่เปลี่ยน
@@ -2473,7 +2473,7 @@ none
      (e) ห้ามเพิ่ม `waitForTimeout`, `expect.timeout`/`timeout` ระดับ config และห้ามแตะโค้ดใต้ `src/`
      (หมายเหตุ รอบ 36, 2026-11-18 — review #388: static ของ (c) ใน `e2e/core-46-e2e-hygiene.unit.spec.ts:231–239` ผ่านได้แม้ไม่มี cleanup — `finally` ตรงกับ helper `sql()` และไฟล์ไม่มี `request.delete(` แล้ว →
      แก้ใน ADM-30 (spec 08 กฎ 34d, AC-35) ให้ตรวจ `finally` ของ test AC-44 จริง; พฤติกรรมที่ต้องได้ของ (c) ไม่เปลี่ยน — ☑ #402 ปิดรอบ 36: static ใหม่ล้มเมื่อลบ `softSql` ที่ลบ `affiliate` ออกจาก `finally`)
-120. (CORE-62 — owner ตัดสิน 2026-11-17, qa #372; แทนเงื่อนไขของกฎข้อ 118a ตามภาคผนวก 2026-11-17) ป้ายแถวแรกของ `cart-totals` (`cart-subtotal-label`; ทุกที่ที่ใช้: `/cart`, checkout, order-completed):
+120. (CORE-62 — owner ตัดสิน 2026-11-17, qa #372; แทนเงื่อนไขของกฎข้อ 118a ตามภาคผนวก 2026-11-17) **(แทนด้วยกฎข้อ 158 — รอบ 51, owner 2026-11-29; มีผลจน SFUI-24a merge)** ป้ายแถวแรกของ `cart-totals` (`cart-subtotal-label`; ทุกที่ที่ใช้: `/cart`, checkout, order-completed):
      (a) "ยอดรวมสินค้าก่อนส่วนลด (รวม VAT)" เมื่อ**ส่วนลดระดับสินค้า** `original_item_total − item_total > 0.005` (กันเศษ float — ค่าดิบของ field ตามกฎข้อ 115a); ไม่มี field ใด field หนึ่ง/เป็น null → ถือว่าไม่ลด;
          (หมายเหตุ ปิดรอบ 32 ตาม review #384: โค้ดที่ merge (`itemDiscounted` ใน `cart-totals/index.tsx`) ต้องมี `discount_total` truthy ร่วมด้วย เพื่อให้ป้ายสอดคล้องกับการ render แถว `cart-discount` —
          ไม่เปลี่ยนพฤติกรรมกับข้อมูลจริงของ Medusa 2.22.1 เพราะ `original_item_total > item_total` เกิดจากส่วนลดซึ่งนับรวมใน `discount_total` เสมอ)
@@ -2649,7 +2649,7 @@ qa บน prod build: order ผ่าน UI จริง qty ผสม 1/1/2/3 �
 none
 
 ### Business rules (รอบ 36 ส่วนที่ 2)
-123. (CORE-65 — owner ก 2026-11-18) `modules/order/components/item/index.tsx` (`Item` ของ order — ใช้ทั้งหน้า order-completed และ `/account/orders/details/[id]` ผ่าน `components/items`):
+123. (CORE-65 — owner ก 2026-11-18) **(แทนด้วยกฎข้อ 159 — รอบ 51, owner 2026-11-29: ราคาต่อชิ้น × จำนวนทุก qty ไม่มีราคารวมต่อแถว; มีผลจน SFUI-24c merge)** `modules/order/components/item/index.tsx` (`Item` ของ order — ใช้ทั้งหน้า order-completed และ `/account/orders/details/[id]` ผ่าน `components/items`):
      (a) `item.quantity === 1` → ไม่ render `LineItemUnitPrice` (ไม่มี `product-unit-price`/`product-unit-original-price` ในแถว); คง `product-quantity` ("1x") และ `LineItemPrice` (`product-price` และ `product-original-price` เมื่อลด);
      (b) `quantity ≥ 2` → เหมือนเดิมทุกอย่าง (ต่อหน่วย + รวม);
      (c) หน้าตาส่วนอื่นของแถวคงเดิม และไม่ล้นแนวนอนที่ 375;
@@ -2698,7 +2698,7 @@ Status: done (ปิดรอบ 37 2026-11-19 — CORE-66 ☑ #412, CORE-67 ☑
 none
 
 ### Business rules (รอบ 37)
-124. (CORE-66 — owner ข 2026-11-18; qa #406 O-1) `modules/cart/components/item/index.tsx` เมื่อ `type="preview"` (checkout summary):
+124. (CORE-66 — owner ข 2026-11-18; qa #406 O-1) **(แทนด้วยกฎข้อ 159 — รอบ 51, owner 2026-11-29: ราคาต่อชิ้น × จำนวนทุก qty ไม่มีราคารวมต่อแถว; มีผลจน SFUI-24c merge)** `modules/cart/components/item/index.tsx` เมื่อ `type="preview"` (checkout summary):
      (a) `item.quantity === 1` → ไม่ render `LineItemUnitPrice` (ในแถวไม่มี `product-unit-price`/`product-unit-original-price`); คงจำนวน ("1x") และ `LineItemPrice` (`product-price`, `product-original-price` เมื่อลด);
      (b) `quantity ≥ 2` → เหมือนเดิม (ต่อหน่วย + รวม);
      (c) ตัวเลขจำนวนในแถว preview ห่อด้วย `data-testid="product-quantity"` (แบบ `order/components/item:37`) — ข้อความที่เห็นเท่าเดิม;
@@ -2708,7 +2708,7 @@ none
          — **(ปิดรอบ 37 แก้ถ้อยคำ — review #412/#415)** "`toBeCloseTo(…, 2)`" ในข้อนี้และ AC-165/AC-166 หมายถึงเทียบได้ไม่เกินการปัดแสดงผล 2 ตำแหน่ง:
          ใช้ `expectAmounts`/`expectAmountClose` ของ `e2e/support/amounts.ts` (CORE-67 #415 ย้ายจาก core-65/66) ที่ยอม `|actual − expected| ≤ 0.005 + 1e-6`
          (`toBeCloseTo(v, 2)` ของ Playwright ต้องต่าง < 0.005 จึงล้มเมื่อค่าจริงลงท้าย .xx5 พอดี — ไม่ใช้ `toBeCloseTo` ตรงในเคสราคาอีก)
-125. (CORE-67 — owner สั่งทำ 2026-11-18; qa #406 O-2) ราคาขีดฆ่าของ line ใช้ `compare_at_unit_price` เมื่อมี (ทุกที่ที่ใช้ `LineItemPrice`/`LineItemUnitPrice`: `/cart`, preview ของ checkout, cart dropdown, order-completed, account order details):
+125. (CORE-67 — owner สั่งทำ 2026-11-18; qa #406 O-2) **(รอบ 51: (b)–(d) แทนด้วยกฎข้อ 159b — ขีดฆ่าเฉพาะราคาต่อชิ้น; หมายเหตุ "คงเดิม" ของ (f) (owner 2026-11-19) ถูกแทนด้วยคำตัดสิน 2026-11-29; มีผลจน SFUI-24c merge)** ราคาขีดฆ่าของ line ใช้ `compare_at_unit_price` เมื่อมี (ทุกที่ที่ใช้ `LineItemPrice`/`LineItemUnitPrice`: `/cart`, preview ของ checkout, cart dropdown, order-completed, account order details):
      (a) pure helper ใน `src/lib/util/` (เช่น `line-item-compare-at.ts` + `.test.ts`) คืน "ยอดอ้างอิงก่อนลด" ของทั้ง line:
          ถ้า `compare_at_unit_price` เป็นตัวเลข, `unit_price > 0` และ `compare_at_unit_price − unit_price > 0.005` → `compare_at_unit_price × original_total ÷ unit_price`
          (= ราคาเดิมต่อหน่วย × จำนวน ปรับฐานภาษีเดียวกับ `original_total` — ราคารวม VAT ได้ `compare_at × quantity`); นอกนั้น → `original_total ?? 0` (พฤติกรรมเดิม);
@@ -3121,3 +3121,134 @@ Out of scope: ลบ `OptionsPicker` (ดูรายการไม่ทำใ
 - ~~**Q-C18**~~ **ตัดสินแล้ว (owner 2026-11-25) = (ก) คงไว้** ไม่มี task — คำถามเดิม: (review #535 — แจ้ง owner ตอนปิดรอบ) overview นับ "มีคำสั่งซื้อกลุ่ม" จาก GB-8 รวม membership ที่ `cancelled` (ความหมายเดิมของ CORE-78/กฎข้อ 136b) → ลูกค้าที่มีแต่กลุ่มที่ยกเลิกเห็นลิงก์ "ดูทั้งหมด" ไม่เห็น "ยังไม่มีคำสั่งซื้อ":
   (ก) **[Recommended]** คงไว้ — หน้า orders แสดง membership ที่ยกเลิกด้วย (ลูกค้าดูประวัติ/การคืนเงินได้) สองหน้าจึงตรงกัน; ไม่มีงาน;
   (ข) ไม่นับ `cancelled` — ต้องเพิ่ม filter ใน GB-8 หรือฝั่ง storefront ~15 LOC + test และ overview จะต่างจากหน้า orders
+
+## Follow-up รอบ 51 (2026-11-29 — ทดสอบด้วยมือบน `615b9cde` ก่อน release v0.4.0; owner สั่งแก้ทั้งหมดก่อน release — #603 พักจนรอบนี้ merge)
+Status: accepted (owner 2026-11-29 — คำตัดสิน B1/B2 ด้านล่าง; ADR-035 accepted) · เลขกฎ/AC ต่อจาก CORE-100 (กฎข้อ 156, AC-197) · B3/B4 อยู่ใน spec 09 หัวข้อ "ส่วนเก็บตกทดสอบด้วยมือ (รอบ 51)"
+Goal (owner's words): "แก้ทั้งหมดก่อน release" — (B1) จ่ายพร้อมเพย์ล้ม 500 หลังเคยจ่ายบัตร; (B2) สรุปยอดทุกหน้าบวกไม่ลงตัว/ป้าย "รวม VAT แล้ว" ชวนงง/แถวสินค้าดูเหมือนลดซ้ำ
+Out of scope: ย้าย/รวม Stripe customer เดิมที่มี 2 ตัว (ADR-035 ข้อ 5); คำสั่งซื้อที่มีการรับคืน/ยกเลิกรับคืนแล้ว (`return_received`/`return_dismissed` — Medusa คิด totals ของ line จากจำนวนคงเหลือ
+`line-item/index.js:64–70` แต่แถวแสดงจำนวนที่สั่ง → เอกลักษณ์ของกฎข้อ 158d ไม่บังคับกับ order แบบนี้); ราคาบน PDP/การ์ดสินค้า (`calculated_price` ของ starter); หน้า group buy/pay (ไม่ใช้ `CartTotals`);
+credit line/gift card (v1 ไม่มี — `gift_card_total` ของ `order-summary` เดิมถอดไปพร้อม component); เปลี่ยนกติกา "code ชนะ flash" (ADR-009 คงเดิม)
+
+### What Medusa already gives us (รอบ 51)
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| Stripe customer ของลูกค้า | `createPaymentSessionsWorkflow` + `createAccountHolder` ของ Payment module + `StripeProviderService`/`StripePromptpayService` ของ `@medusajs/payment-stripe` 2.22.1 — **bug**: idempotency key = `customer.id` ข้าม provider (#12526) | **ขยาย** — subclass provider override `createAccountHolder` เท่านั้น (ADR-035, กฎข้อ 157) |
+| totals ของ line/ค่าส่ง/cart/order | `getLineItemTotals`/`getShippingMethodTotals`/`decorateCartTotals` ของ `@medusajs/utils` 2.22.1 (`dist/totals/{line-item,shipping-method,adjustment,cart}/index.js`): `total`, `tax_total`, `is_tax_inclusive`; adjustment แปลงฐานด้วย `tax_lines.rate` (`adjustment/index.js:18–24`) | ใช้ตามเดิม — แยกส่วนลดอัตโนมัติ/โค้ดจาก adjustment ด้วยสูตรเดียวกับ Medusa (กฎข้อ 158c) |
+| field ใน Store API | cart default (`api/store/carts/query-config.js`): `items.{unit_price,compare_at_unit_price,is_tax_inclusive,quantity}`, `items.tax_lines.rate`, `items.adjustments.{code,promotion_id,amount,is_tax_inclusive}`, `shipping_methods.{amount,is_tax_inclusive,tax_lines.rate,adjustments.{code,amount}}`, `promotions.{id,code,is_automatic}`; extra ที่ต้องขอ: `items.tax_total`, `shipping_methods.{total,tax_total}` · order default (`api/store/orders/query-config.js`): `*items`, `*items.tax_lines`, `*items.adjustments`, `*shipping_methods`(+`tax_lines`,`adjustments`); extra: `promotions.{code,is_automatic}` | ใช้ตามเดิม — เพิ่ม `+field` ใน `retrieveCart`/`retrieveOrder` (ไม่เพิ่ม route) |
+| รู้ว่าส่วนลดมาจากไหน | flash = promotion `is_automatic: true` (spec 03 FS-5, exclusive ด้วย rule `exclusivity.code_applied` — ADR-009); ซื้อกลุ่ม = โค้ด `GB-<token>` `is_automatic: false` ที่ **workflow ใส่ให้** (`join-group.ts` `applyGroupCodeStep`, prefix `GB-` — `promotion-exclusivity.ts:6`, ADR-011); price list แบบ sale = ไม่มี adjustment, ราคาเดิมอยู่ที่ `compare_at_unit_price` (กฎข้อ 125); order link กับทุก promotion ของ cart รวมอัตโนมัติ (`complete-cart.js:516–520`) | ใช้ตามเดิม — "โค้ดที่ลูกค้าใส่เอง" = promotion `is_automatic === false` และ code ไม่ขึ้นต้น `GB-` (กฎข้อ 158b) |
+| สรุปยอด / แถวสินค้า | `cart-totals`, `LineItemUnitPrice`, `LineItemPrice`, `order-summary` ของ Medusa Next.js Starter | **ขยาย** `CartTotals` ให้ทุกหน้าใช้ (ลบ `order-summary`, `LineItemPrice`); helper pure ใหม่ 1 ไฟล์ (ผู้ใช้ ≥ 2: `CartTotals`, แถว 3 ที่) |
+
+### Data model / Workflows / API routes
+none (ไม่มี model/workflow/route ใหม่ — PAY-26 เปลี่ยน provider ที่ register; SFUI-24a เพิ่ม `fields` ของ route เดิม)
+
+### Business rules (รอบ 51)
+157. (PAY-26 — B1; ADR-035) payment provider ของ Stripe ที่ register ใน `medusa-config.ts` คือ module ของเรา `src/modules/stripe-shared-customer/` (subclass `StripeProviderService` + `StripePromptpayService`
+     ของ `@medusajs/payment-stripe/dist/services`, `id: 'stripe'`, options เดิม):
+     (a) provider id คงเดิม `pp_stripe_stripe`, `pp_stripe-promptpay_stripe`; webhook `/hooks/payment/stripe_stripe` (ADR-023) ไม่เปลี่ยน;
+     (b) `createAccountHolder`: ถ้า `context.customer.account_holders` มี holder ของ **อีก** Stripe provider ที่มี `data.id` → คืน `{ id: data.id, data: holder.data }` โดยไม่เรียก Stripe;
+         ไม่มี → `super.createAccountHolder` ด้วย `idempotency_key` = `` `${customer.id}:${identifier}` `` (ไม่ใช้ `customer.id` เปล่าของ Payment module);
+     (c) ลูกค้า 1 คนมี Stripe customer 1 ตัวสำหรับบัตรและพร้อมเพย์ (account holder 2 แถว `external_id` เดียวกัน) ไม่ว่าจะเริ่มวิธีไหนก่อน และไม่ว่าจะแก้ที่อยู่/ชื่อ/เบอร์ระหว่างนั้น;
+     (d) method อื่นของ provider ไม่ override (รวม `deleteAccountHolder` — ข้อควรระวังใน ADR-035); dependency `@medusajs/payment-stripe` pin `2.22.1` ใน `apps/backend/package.json`
+158. (SFUI-24a — B2 สรุปยอด; owner 2026-11-29; **แทนกฎข้อ 81b, 115, 118, 120** — ข้อเหล่านั้นมีผลจน SFUI-24a merge) `CartTotals` (`modules/common/components/cart-totals`) เป็นสรุปยอด**ตัวเดียว**
+     ของ `/cart`, checkout (ทุกขั้น), order-completed และ `/account/orders/details/[id]` (แทน `order/components/order-summary` — ลบไฟล์; คง wrapper `data-testid="order-summary"` + หัวข้อ "สรุปคำสั่งซื้อ"):
+     (a) แถวตามลำดับ: "รวมค่าสินค้า" (`cart-subtotal`, ป้าย `cart-subtotal-label`) · "ค่าจัดส่ง" (`cart-shipping`; ซ่อนตามกฎ 115c เดิม — digital-only ที่ไม่มีค่าส่ง) ·
+         "ส่วนลด (โค้ด <codes>)" (`cart-discount`, ป้าย `cart-discount-label`; แสดงเมื่อ > 0.005, ยอดลบ; หลายโค้ดคั่นด้วย ", ") ·
+         "ภาษีมูลค่าเพิ่ม <rate>%" (`cart-taxes`, ป้าย `cart-taxes-label`; **แสดงเมื่อ > 0.005 เท่านั้น**; rate จาก `tax_lines.rate` ของรายการที่ไม่รวม VAT — ถ้ามีหลาย rate ป้ายไม่มี %) · เส้นคั่น · "ยอดรวมทั้งสิ้น" (`cart-total`);
+         `data-value` ของทุกแถว = ค่าดิบก่อนปัด; ไม่มีคำ "รวม VAT", "รวม VAT แล้ว", "VAT", "ก่อนส่วนลด", "ไม่รวมภาษี" ในป้าย;
+     (b) adjustment ของ "โค้ดที่ลูกค้าใส่เอง" = `code` ตรงกับ promotion ใน `promotions` ที่ `is_automatic === false` **และ** code ไม่ขึ้นต้น `GB-` (prefix ของ group buy — ค่าคงที่ในไฟล์ helper พร้อม comment อ้าง
+         `apps/backend/src/lib/promotion-exclusivity.ts`); code ที่ไม่พบใน `promotions` (เช่น promotion ถูกลบ) นับเป็นโค้ด (แสดงในบรรทัดส่วนลด — ไม่ซ่อนเงิน); นอกนั้น = "ส่วนลดอัตโนมัติ" (flash, group buy);
+     (c) คำนวณทีละรายการ (line item และ shipping method) ในฐานของรายการนั้น (`is_tax_inclusive` ของรายการ; `r` = Σ `tax_lines.rate` / 100) — สูตรเดียวกับ `calculateAdjustmentTotal` ของ Medusa:
+         adjustment บนฐานรายการ = `item.is_tax_inclusive ? s × (1 + r) : s` โดย `s = adj.is_tax_inclusive ? amount ÷ (1 + r) : amount` (adjustment ของค่าส่งใน cart ไม่มี `is_tax_inclusive` → false);
+         ยอดของรายการ = `unit_price × quantity` (ค่าส่ง: `amount`) − Σ adjustment อัตโนมัติบนฐานรายการ;
+         "รวมค่าสินค้า" = Σ ยอดของ line · "ค่าจัดส่ง" = Σ ยอดของ shipping method · "ส่วนลด" = Σ adjustment โค้ดบนฐานรายการ (line + shipping) ·
+         "ภาษีมูลค่าเพิ่ม" = Σ `tax_total` ของรายการที่ `is_tax_inclusive === false` (ร้านตั้ง THB/region รวม VAT → ตอนนี้ไม่แสดง) · "ยอดรวมทั้งสิ้น" = `total` ของ Medusa (ไม่คำนวณเอง);
+     (d) เอกลักษณ์: รวมค่าสินค้า + ค่าจัดส่ง − ส่วนลด + ภาษี = `total` (±0.01, `credit_line_total` = 0) — ถ้าข้อมูลจริงไม่เป็นไปตามนี้ให้หยุดและรายงาน planner (ห้ามปรับสูตรให้ผ่าน);
+     (e) helper pure ไฟล์เดียว `src/lib/util/price-breakdown.ts` (+ `.test.ts`) ใช้ทั้ง `CartTotals` และแถว (กฎข้อ 159) — storefront ไม่มี `MathBN`: คำนวณด้วย `Number` เพื่อ**แสดงผลเท่านั้น**
+         ปัด 2 ตำแหน่งครั้งเดียวตอนแสดง ไม่ส่งตัวเลขกลับ backend (แบบ helper ของ CORE-67); กฎ "ห้ามคำนวณยอดเอง" ของข้อ 81/115/120 ยกเว้นเฉพาะการแยกอัตโนมัติ/โค้ด/ภาษีข้างบน;
+     (f) `retrieveCart` เพิ่ม `+items.tax_total,+shipping_methods.total,+shipping_methods.tax_total` (และ field ในตาราง "What Medusa already gives us" ที่ payload ไม่มี); `retrieveOrder` เพิ่ม `+promotions.code,+promotions.is_automatic`
+         (+ field ของ shipping method ถ้าไม่มา) — builder ยืนยันใน e2e จาก API จริง ไม่ hardcode
+159. (SFUI-24c — B2 แถวสินค้า; owner 2026-11-29; **แทนกฎข้อ 123, 124, 125b–d และราคารวมของแถวในกฎข้อ 81a/105a**) แถวสินค้าใน `/cart`, preview ของ checkout, dropdown ตะกร้า, order-completed และ account order details:
+     (a) **ไม่มียอดรวมต่อแถว** — ไม่ render `product-price`/`product-original-price` ในแถว (ลบ `common/components/line-item-price` เมื่อไม่มีผู้ใช้; `product-price` ของ PDP/การ์ดสินค้าเป็นคนละ component ไม่เปลี่ยน);
+         แสดงราคาต่อชิ้น `product-unit-price` = ยอดของ line (กฎข้อ 158c) ÷ `quantity` และจำนวน `product-quantity` ในรูป "฿<ราคาต่อชิ้น> × <จำนวน>" ทุก qty (เลิกซ่อนเมื่อ qty 1);
+         `/cart` (`type="full"`) จำนวนคือ select เดิม (`product-select-button`) — ไม่มีข้อความ "× n" ซ้ำ; ลบคอลัมน์ "รวม" ของตาราง; < small (กฎข้อ 105) ราคาต่อชิ้นอยู่ตำแหน่งเดิมของราคารวม;
+     (b) ราคาขีดฆ่า `product-unit-original-price` เมื่อ**ลดโดยไม่ต้องใส่โค้ด**: อ้างอิง = `compare_at_unit_price` ถ้า > `unit_price` + 0.005 (price list แบบ sale) ไม่งั้น `unit_price`;
+         แสดงเมื่ออ้างอิง − ราคาต่อชิ้น > 0.005 (ส่วนลดอัตโนมัติ flash/group buy และ/หรือ sale) — ราคาขีดฆ่าตัวเดียวต่อแถว; ส่วนลดจากโค้ดที่ลูกค้าใส่**ไม่**ลดราคาในแถว (อยู่ในบรรทัด "ส่วนลด" ของกฎข้อ 158);
+     (c) Σ (ราคาต่อชิ้น × จำนวน) ทุกแถว = "รวมค่าสินค้า" ของ `CartTotals` หน้าเดียวกัน (ค่าดิบ ±0.01; ค่าที่แสดงหลังปัดดู Q-R51-3);
+     (d) dropdown ตะกร้า (`nav-cart-dropdown`): แถวตามข้อ (a)(b) และบรรทัดยอด (`cart-subtotal-label`/`cart-subtotal`) = "รวมค่าสินค้า" จาก helper เดียวกัน (แทน `item_total` + "ยอดรวมสินค้า (รวม VAT)" ของกฎข้อ 81a;
+         ไม่แสดงแถวอื่นของ `CartTotals` — default ของ Q-R51-1);
+     (e) testid ที่คงไว้: `product-row`, `product-title`, `product-variant`, `product-quantity`, `product-unit-price`, `product-unit-original-price`, `cart-item*`, `product-select-button`
+160. (SFUI-24c — ผลตามมาของกฎข้อ 158b) รายการ "โค้ดส่วนลดที่ใช้" (`checkout/components/discount-code` — ทั้ง `/cart` และ checkout) แสดงเฉพาะ promotion ที่เป็นโค้ดของลูกค้า (กฎข้อ 158b) — ไม่แสดง
+     promotion อัตโนมัติ (เช่น `FLASH-SWEATER`); ชุดโค้ดที่ส่งให้ action (กฎข้อ 98b เดิม) ไม่รวมโค้ดอัตโนมัติ; ไม่มีโค้ดของลูกค้า → ไม่มีหัวข้อรายการ
+
+### Acceptance criteria (รอบ 51)
+- AC-198 (PAY-26, กฎข้อ 157) integration ใหม่ `integration-tests/http/pay-26-shared-stripe-customer.spec.ts` (แบบ `payment-collection-reset.spec.ts`: `_makeRequest` ยิงจริง → throw) —
+  mock `Stripe.resources.Customers.prototype.create` **บังคับกติกา idempotency ของ Stripe**: key เดิม + params เดิม → คืน customer เดิม; key เดิม + params ต่าง → throw error แบบ Stripe (`StripeIdempotencyError`);
+  (a) Given ลูกค้าไม่มีที่อยู่ สร้าง payment session `pp_stripe_stripe` (200) When เพิ่มที่อยู่ (`POST /store/customers/me/addresses`) แล้วสร้าง session `pp_stripe-promptpay_stripe` ของ cart เดียวกัน Then 200
+      (**ล้มบน develop** — 500), `Customers.create` ถูกเรียก 1 ครั้ง, account holder 2 แถวของลูกค้า `external_id` เท่ากัน และ `PaymentIntents.create` ของ session พร้อมเพย์ได้ `customer` = id นั้น;
+  (b) ทิศกลับ (พร้อมเพย์ก่อน → เพิ่มที่อยู่ → บัตร) ผลเดียวกัน; (c) ลูกค้าใหม่ที่ยังไม่มี holder: `idempotencyKey` ของ `Customers.create` = `` `${customer.id}:stripe` `` หรือ `` `${customer.id}:stripe-promptpay` `` ตาม provider;
+  (d) provider id ของ session = `pp_stripe_stripe`/`pp_stripe-promptpay_stripe` และ webhook test เดิม (`/hooks/payment/stripe_stripe`) ผ่านโดยไม่แก้; unit ของ pure function เลือก holder (holder ของอีก provider ไม่มี `data.id` → ไม่ reuse)
+- AC-199 (PAY-26, กฎข้อ 157) e2e Stripe test จริง ใหม่ `apps/storefront/e2e/pay-26-shared-stripe-customer.spec.ts` (`evidenceTarget` PAY-26): ลูกค้าใหม่ที่ไม่มีที่อยู่ → checkout เลือกบัตร (session ถูกสร้าง) →
+  เพิ่มที่อยู่ในบัญชี → กลับ checkout เลือกพร้อมเพย์ Then QR แสดง (helper ของ `core-19f`); Stripe API (`customers.list({ email })`) มี customer **1** ตัว; e2e บัตร/3DS/พร้อมเพย์เดิม (`core-19f*`, `sfui-3d-payment`, spec ใน CI `storefront-e2e`) ผ่าน
+- AC-200 (SFUI-24a, กฎข้อ 158b–e) unit Vitest `src/lib/util/price-breakdown.test.ts` — **ล้มบน develop** (ไม่มีไฟล์); fixture คำนวณตามสูตร Medusa ในกฎข้อ 158c (ระบุที่มาใน comment) และทุกเคส assert เอกลักษณ์ 158d (±0.01):
+  (1) รวม VAT ล้วน + flash 30%: เสื้อสเวตเตอร์ `unit_price` 990 qty 1 adjustment อัตโนมัติ 297 (inclusive) + ค่าส่ง 10 → รวมค่าสินค้า 693, ค่าจัดส่ง 10, ส่วนลด 0, ภาษี 0, total 703;
+  (2) มีโค้ด: เสื้อยืด 590 × 2 + โค้ด `SAVE50` (fixed 50, inclusive) + ค่าส่ง 10 → รวมค่าสินค้า 1,180, ส่วนลด 50, total 1,140, `codes` = ["SAVE50"];
+  (3) ไม่รวม VAT ล้วน: 100 × 1 rate 7 → ภาษี 7, total 107; (4) ปน (ตัวอย่าง owner): A 107 รวม VAT, B 100 ไม่รวม VAT, ค่าส่ง 10 รวม VAT → 207 / 10 / ภาษี 7 / 224;
+  (5) ปน + โค้ดลดทั้ง order (adjustment ทั้งแบบ inclusive และไม่ inclusive บนรายการรวม/ไม่รวม VAT); (6) adjustment อัตโนมัติ + โค้ดบน line เดียวกัน (fixture — ในร้านจริง flash exclusive ไม่ซ้อนโค้ด ADR-009);
+  (7) ส่วนลดค่าส่ง 100% จากโค้ด (`shipping_methods.adjustments`) และจากอัตโนมัติ; (8) qty 3 ส่วนลด across ที่ต่อชิ้นไม่ลงตัว (เช่น 100 ÷ 3) — ค่าดิบตามข้อ (d); (9) `GB-ABC` (`is_automatic: false`) → อัตโนมัติ;
+  (10) code ที่ไม่มีใน `promotions` → โค้ด; (11) rate ต่างกันสองค่า → ป้ายไม่มี %; (12) digital-only ไม่มี shipping method → ค่าจัดส่ง 0 และ `CartTotals` ไม่มี `cart-shipping` (แทน test เดิมของ `ev-7d-digital-only-totals.test.ts`)
+- AC-201 (SFUI-24a, กฎข้อ 158a, 158f) unit render (`renderToStaticMarkup` — แทน `src/core-57-cart-totals.test.ts`): ป้ายทุกแถวมีอักษรไทย และไม่มี `/VAT|ก่อนส่วนลด|ไม่รวมภาษี/`; fixture (1) ไม่มี `cart-taxes` และไม่มี `cart-discount`;
+  fixture (2) `cart-discount-label` มี "SAVE50"; fixture (4) มี `cart-taxes` `data-value="7"` และ `cart-taxes-label` มี "7%"; static: ไม่มีไฟล์ `order/components/order-summary`, `order-details-template.tsx` import `CartTotals`;
+  e2e ใหม่ `e2e/sfui-24a-cart-totals.spec.ts` (1280×800 + 375×812, ลูกค้า login; หาด้วย `getByTestId("cart-totals").getByTestId(...)`):
+  Given cart ที่มี (i) สินค้า flash qty 1 (ii) สินค้า price list sale qty 2 + โค้ดของ test (`is_automatic: false`, fixed — แบบ `core-64`) แยกเป็นสองเคส (flash ถูกตัดเมื่อมีโค้ด — ADR-009) When เปิด `/th/cart`, ขั้น review ของ checkout,
+  order-completed หลัง `placeOrder` และ `/th/account/orders/details/<id>` Then ทุกหน้า: `cart-subtotal + cart-shipping − cart-discount + cart-taxes(0 ถ้าไม่มี) = cart-total` (±0.01) และ `cart-total` = `total` ของ API;
+  `cart-taxes` count 0 (ร้านรวม VAT — assert `is_tax_inclusive` ของ line/method จาก API ก่อน); เคสโค้ด `cart-discount` = Σ adjustment ของโค้ดจาก API; หน้า order details **ล้มบน develop** (ไม่มี `cart-totals`);
+  ที่ 375 `scrollWidth ≤ 375`; cleanup promotion/price list/order ใน `finally` ด้วยการตรวจ `ok()` (กฎข้อ 119); e2e เดิมที่แก้ตามกฎใหม่: `core-57-cart-totals`, `core-60-cart-subtotal-label`, `core-64-promotion-fixed-vat`, `ev-7d-digital-only-totals`, `thai-ui-cart-order`, `sfui-9d-font`, `sfui-18-thai-address`, `flash-sale-storefront` (ส่วน totals)
+- AC-202 (SFUI-24c, กฎข้อ 159) unit render ของแถว (`cart/components/item` full + preview, `order/components/item`, dropdown — render ของจริง) + e2e ใหม่ `e2e/sfui-24c-line-rows.spec.ts` (1280 + 375):
+  (a) ทุกแถวของทุกหน้าในกฎข้อ 159: `product-price`/`product-original-price` count 0, `product-unit-price` 1; preview/dropdown/order มี `product-quantity` = `quantity` ของ API;
+  (b) flash qty 1: `product-unit-original-price` = 990 (ค่าจาก API `unit_price`), `product-unit-price` = 693; sale qty 2: ขีดฆ่า = `compare_at_unit_price`, ราคาต่อชิ้น = sale; สินค้าที่มีแต่โค้ด: ไม่มี `product-unit-original-price`;
+  (c) Σ (`product-unit-price` `data-value` × จำนวน) ของแถวในหน้า = `cart-subtotal` `data-value` ของหน้าเดียวกัน (±0.01) ทุกหน้ารวม dropdown; (d) qty 1 แสดงราคาต่อชิ้น (แทน AC-164/165 ที่คาด count 0);
+  (e) order ของ group buy (draft แปลงแล้วผ่าน helper ของ spec 04) ใน account order details: แถวมีราคาขีดฆ่า และ `cart-discount` count 0 (GB = อัตโนมัติ);
+  e2e เดิมที่แก้: `core-26-cart-dropdown-total`, `core-42-cart-voucher-layout`, `core-44-cart-summary-qty`, `core-47-cart-375-long-title`, `core-65-order-item-unit-price`, `core-66-checkout-preview-unit-price`,
+  `core-67-sale-price-strikethrough`, `flash-sale-fs16`, `flash-sale-storefront`, `sfui-9a-font`, `sfui-9b-font`, `e2e/support/sfui-baseline.json` (+ `src/core-26-cart-dropdown.test.ts`, `line-item-compare-at.test.ts` หรือลบพร้อม helper ถ้าไม่มีผู้ใช้)
+- AC-203 (SFUI-24c, กฎข้อ 160) unit render `DiscountCode`: promotions = [`FLASH-SWEATER` อัตโนมัติ, `SAVE50` โค้ด] → รายการมี 1 แถว (`SAVE50`) (**ล้มบน develop** — 2); มีแต่อัตโนมัติ → ไม่มีหัวข้อรายการ;
+  e2e: cart ที่มีสินค้า flash ไม่มีโค้ด เปิด `/th/cart` และ checkout → ไม่มีแถวของ promotion อัตโนมัติในรายการโค้ด (หาภายใน testid ของ `discount-code`)
+
+### Non-functional (รอบ 51)
+- PAY-26: ไม่มี request Stripe เพิ่ม (reuse = 0 request); สร้างสองวิธีพร้อมกันครั้งแรก → อาจได้ 2 customer แต่ไม่ error (key ต่าง provider) — ยอมรับ (ADR-035)
+- SFUI-24a/24c: แสดงผลล้วน ไม่มี request เพิ่ม (field เพิ่มใน request เดิม)
+
+### Test plan (รอบ 51)
+| ระดับ | AC |
+|---|---|
+| unit (jest backend) + integration http | AC-198 |
+| e2e Stripe test จริง (CI `storefront-e2e`; ในเครื่องเมื่อมี key ตาม CLAUDE.md) + qa | AC-199 |
+| unit Vitest (helper + render ของจริง) | AC-200, AC-201 (unit/static), AC-202 (unit), AC-203 (unit) |
+| e2e storefront (prod build) + qa | AC-201, AC-202, AC-203 |
+
+TDD: integration AC-198 (a) ล้มบน develop ก่อน; unit AC-200 ล้มเพราะไม่มี helper; e2e AC-201 หน้า order details ล้ม; AC-203 unit ล้ม (2 แถว) ·
+builder รัน e2e **ทุก** spec ที่อ้าง testid ที่แตะ (รายการใน AC-201/202) ก่อน push · qa บน prod build: ทุกหน้าสรุปยอดด้วย cart flash และ cart sale + โค้ด + qty > 1 (ดู Q-R51-2) ตรวจ: ผลรวมแถว = รวมค่าสินค้า,
+ตัวเลขบวกลงตัว, ไม่มีบรรทัดภาษี, ขีดฆ่าในแถวเฉพาะลดอัตโนมัติ/sale, บรรทัดส่วนลดเฉพาะโค้ด; PAY-26: บัตร → เพิ่มที่อยู่ → พร้อมเพย์ได้ QR และ Stripe มี customer เดียว · evidence `docs/evidence/r51/<TASK>/`
+
+### Tasks (รอบ 51)
+| ID | Task | ไฟล์ที่แตะ (เจ้าของ) | ขนาด | AC | Depends | UI/qa | ชนไฟล์ |
+|----|------|------|------|----|---------|------|------|
+| PAY-26 | (B1, ADR-035) provider subclass บัตร + พร้อมเพย์ reuse Stripe customer, key ต่อ provider (กฎข้อ 157) | `apps/backend/src/modules/stripe-shared-customer/*` (ใหม่ + unit), `apps/backend/medusa-config.ts` (provider Stripe), `apps/backend/package.json` + `pnpm-lock.yaml`, `integration-tests/http/pay-26-shared-stripe-customer.spec.ts` (ใหม่), `apps/storefront/e2e/pay-26-shared-stripe-customer.spec.ts` (ใหม่) | ~40 LOC + ~250 LOC test | AC-198, AC-199 | PR เอกสารรอบ 51 | ✓ (flow จ่ายเงิน) | — (backend ล้วน + e2e ใหม่) |
+| SFUI-24a | (B2) helper `price-breakdown` + `CartTotals` ป้ายใหม่ทุกหน้า + order details ใช้ `CartTotals` (ลบ `order-summary`) + fields (กฎข้อ 158) | `src/lib/util/price-breakdown.ts` (ใหม่ + test), `modules/common/components/cart-totals`, `modules/order/templates/order-details-template.tsx`, `modules/order/components/order-summary` (ลบ), `lib/data/{cart,orders}.ts` (fields), test/e2e ใน AC-200/201 | ~120 LOC + ~300 LOC test | AC-200, AC-201 | PR เอกสารรอบ 51 | ✓ | `cart-totals`, `cart.ts`/`orders.ts` (24a เท่านั้น) |
+| SFUI-24c | (B2) แถวสินค้า: ราคาต่อชิ้น × จำนวน, ขีดฆ่าเฉพาะลดอัตโนมัติ/sale, ลบคอลัมน์รวม, dropdown ยอด = รวมค่าสินค้า, "โค้ดส่วนลดที่ใช้" เฉพาะโค้ดลูกค้า (กฎข้อ 159–160) | `modules/cart/components/item`, `modules/cart/templates/items.tsx` (หัวตาราง), `modules/order/components/item`, `modules/layout/components/cart-dropdown`, `modules/common/components/line-item-unit-price`, `line-item-price` (ลบ), `lib/util/line-item-compare-at.ts` (ลบถ้าไม่มีผู้ใช้), `checkout/components/discount-code`, test/e2e ใน AC-202/203 | ~80 LOC + ~250 LOC test | AC-202, AC-203 | **SFUI-24a** (helper + `cart-subtotal` ใหม่) | ✓ | e2e/`sfui-baseline.json` ที่ 24a แตะ → 24c sync หลัง 24a |
+| SFUI-24b | (spec 09 B3 + B4) กล่องทักทายที่อยู่ไม่เยื้อง + ตัวกรองไม่มี "Default option" (spec 09 กฎ 86–87) | ดู spec 09 Tasks รอบ 51 | ~30 LOC + ~80 LOC test | spec 09 AC-76, AC-77 | PR เอกสารรอบ 51 | ✓ | — |
+| R51-close | ปิดรอบ: ติ๊ก AC/task, ROADMAP + ย้ายตารางรอบ 44–51 ไป `history.md`, อัปเดต body #603 (session หลัก) | `docs/spec/{01,09}`, `docs/ROADMAP.md`, `docs/roadmap/history.md` | เอกสาร | — | ทุก task ข้างบน | — | — |
+
+ลำดับ: PAY-26 ∥ SFUI-24a ∥ SFUI-24b → SFUI-24c (หลัง 24a) → R51-close · stack ได้แบบรอบ 44–50 (24c แตกจาก branch ของ 24a) หรือทีละ PR · merge: PAY-26 → 24a → 24c → 24b (ตัวหลัง sync `origin/develop`) ·
+ทุก task มี UI/flow ลูกค้า → ผ่าน qa ก่อน merge (มี `REPORT.md`) · ไม่มี dependency ใหม่ยกเว้น `@medusajs/payment-stripe` 2.22.1 ของ PAY-26 (ADR-035)
+
+### Open questions (รอบ 51)
+- **Q-R51-1** ✅ owner ตอบ (ก) 2026-11-29 — (ไม่ block 24a; 24c ใช้ default) dropdown ตะกร้าแสดงอะไรในส่วนยอด — (ก) **[แนะนำ — default]** บรรทัด "รวมค่าสินค้า" บรรทัดเดียวจาก helper เดียวกับ `CartTotals` (dropdown ยังไม่มีค่าส่ง/โค้ด — ลูกค้าเห็นตัวเลขเดียวกับแถวแรกของสรุปในหน้าตะกร้า);
+  (ข) ฝัง `CartTotals` ทั้งชุดใน dropdown — ซ้ำกับหน้าตะกร้า และ dropdown สูงขึ้น ~4 แถว
+- **Q-R51-2** ✅ owner ตอบ (ก) 2026-11-29 — (ข้อมูลขัดกับตัวอย่าง — ไม่ block) ตัวอย่าง "+ เสื้อยืด S ฿590 × 2 + โค้ด SAVE50" ของแผนรวม flash ฿693 กับโค้ดใน cart เดียว แต่ flash เป็น promotion อัตโนมัติแบบ exclusive (ADR-009 "code ชนะ flash", spec 03 FS-5):
+  ใส่โค้ดแล้วเสื้อสเวตเตอร์กลับเป็น ฿990 → ตะกร้าจริงได้ รวมค่าสินค้า ฿2,170 / ส่วนลด −฿50 / ยอดรวม ฿2,130 (ไม่ใช่ ฿1,833) — (ก) **[แนะนำ]** คง ADR-009; qa/e2e ใช้ "price list แบบ sale + โค้ด + qty > 1" แทน "flash + โค้ด" (AC-201/202)
+  และ unit ครอบเคสซ้อนด้วย fixture (AC-200 (6)); (ข) ให้ flash ซ้อนโค้ดได้ — เปลี่ยน ADR-009/spec 03 (นอกขอบเขตรอบนี้)
+- **Q-R51-3** ✅ owner ตอบ (ก) 2026-11-29 — (ไม่ block) ราคาต่อชิ้นหลังส่วนลดอัตโนมัติที่หารไม่ลงตัว (ส่วนลดแบบ `across` เช่น ฿100 ลดบน 3 ชิ้น → ฿33.333…/ชิ้น) แสดงปัดเป็น ฿33.33 × 3 = ฿99.99 แต่ "รวมค่าสินค้า" = ฿100.00 —
+  (ก) **[แนะนำ — default]** ยอมรับต่างได้ไม่เกิน 0.005 × จำนวน เฉพาะกรณีนี้ (ค่าดิบบวกลงตัวตามกฎ 158d; ราคา THB ของร้านเป็นจำนวนเต็มและ flash ใช้ % ต่อชิ้น จึงเกิดยาก);
+  (ข) แถวที่หารไม่ลงตัวแสดงยอดของแถวเพิ่มในวงเล็บ — กลับไปมียอดรวมต่อแถวบางกรณี (ขัดข้อ 3 ของคำตัดสิน); (ค) ปัดราคาต่อชิ้นก่อนแล้วรวม — สรุปบวกไม่ได้ `total` ของ Medusa ±สตางค์
+- คำตัดสินที่ planner ใช้ (ไม่ใช่คำถาม — แก้ได้ถ้า owner ไม่เห็นด้วย): group buy (`GB-*`) นับเป็นส่วนลดอัตโนมัติ (ขีดฆ่าในแถว ไม่อยู่ในบรรทัดส่วนลด); code ที่ไม่พบ promotion นับเป็นโค้ด;
+  `/cart` ไม่มีข้อความ "× n" ซ้ำกับ select จำนวน; หลายโค้ดรวมบรรทัดเดียว "ส่วนลด (โค้ด A, B)"

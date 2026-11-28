@@ -1169,6 +1169,46 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
   แล้วใช้ `outline` + `default`); (ข) แนวข้อความใช้ margin ติดลบ (กฎ 84; ทางอื่น: คง padding ของ default แล้วยอมรับการเยื้อง); (ค) ประโยคลิงก์สลับไม่มี "." และเว้นด้วย padding ของปุ่ม (กฎ 85) ·
   "ควรพิจารณา" 3–5 ของ REPORT SFUI-22 ไม่อยู่ใน SFUI-23 (ข้อ 3–4 อยู่ในตาราง "ไม่รวม" แล้ว; ข้อ 5 นอกขอบเขตกฎ 77)
 
+## ส่วนเก็บตกทดสอบด้วยมือ (รอบ 51 — owner 2026-11-29, ก่อน release v0.4.0)
+Status: accepted (owner 2026-11-29 "แก้ทั้งหมดก่อน release") · ที่มา: ทดสอบด้วยมือบน `615b9cde` — B3, B4 (B1/B2 อยู่ใน spec 01 หัวข้อ "Follow-up รอบ 51", ADR-035) · กฎ 86–87, AC-76–77, task SFUI-24b
+Out of scope: ตัวเลือก "Default option" บน PDP (option select ของ starter — ไม่ได้รายงาน), สร้าง option ใหม่ให้สินค้าที่ไม่มี option, index ค้นหาฝั่ง backend (ไม่ re-index)
+
+### What Medusa already gives us
+| Need | Medusa provides | Use as-is / extend / custom |
+|---|---|---|
+| กล่องเลือกที่อยู่ที่บันทึกไว้ | `AddressSelect` + `Select` ของ shadcn (รอบ 49) | ใช้ตามเดิม — ถอด class ของกล่องครอบ (กฎ 86) |
+| option ของสินค้าที่ไม่มีตัวเลือก | Medusa admin 2.22.1 สร้าง option `title: "Default option"`, `values: ["Default option value"]` ให้เมื่อสร้างสินค้าแบบไม่มี variant (`@medusajs/dashboard` `dist/product-create-*.mjs` `createDefaultOptionAndVariant`); Store API คืนเป็น option ปกติ | ใช้ตามเดิม — storefront ข้ามคู่นี้ในตัวกรอง (กฎ 87) |
+| facet ตัวเลือกใน `/store` | `useRefinementList` ของ react-instantsearch (label `"<option>:<ค่า>"`) | ใช้ตามเดิม — กรองใน `groupItems` |
+
+### Business rules (ต่อจากกฎ 85)
+86. (B3) `checkout/components/shipping-address/index.tsx` กล่อง `saved-address-greeting` (~`:124–127`): ถอด `rounded-lg bg-card p-5` (พื้น `bg-card` สีเดียวกับพื้นหน้า — มองไม่เห็นกล่อง เห็นแค่ระยะเยื้อง 20px)
+    คง `mb-6 flex flex-col gap-y-4` และ testid; ข้อความและ `AddressSelect` ชิดแนวซ้ายเดียวกับช่องฟอร์มด้านล่าง; ไม่แตะไฟล์อื่น
+87. (B4) `store/components/store-refinements/option-refinements.tsx` `groupItems` (~`:28`): ข้าม item ที่ title = `"Default option"` **และ** ค่า = `"Default option value"` (ค่าคงที่ที่มีชื่อ + comment อ้าง dashboard ของ Medusa 2.22.1)
+    ก่อนสร้างกลุ่ม → ไม่มีกลุ่ม/ปุ่ม "Default option" (กลุ่มที่ไม่มีค่าไม่ถูกสร้าง); option อื่นชื่อ "Default option" แต่ค่าอื่น หรือค่าเดียวกันใต้ title อื่น ยังแสดง; export `groupItems` ให้ unit test ได้
+
+### Acceptance criteria (ต่อจาก AC-75)
+- AC-76 (SFUI-24b, กฎ 86) e2e (`e2e/sfui-24b-manual-findings.spec.ts`, 1280×800 + 375×812, ลูกค้า login ที่มีที่อยู่บันทึกไว้ → checkout ขั้นที่อยู่): `saved-address-greeting` `getComputedStyle` padding ทั้ง 4 ด้าน `0px`
+  และ `backgroundColor` โปร่งใส (`rgba(0, 0, 0, 0)`) (**ล้มบน develop** — 20px); `getBoundingClientRect().left` ของ greeting = left ของ `shipping-first-name-input` (±1px); e2e เดิมที่อ้าง testid นี้ (grep `saved-address-greeting`) ผ่าน
+- AC-77 (SFUI-24b, กฎ 87) unit Vitest `groupItems`: items มี `Default option:Default option value` + `ขนาด:M` → ได้ 1 กลุ่ม (`ขนาด`) (**ล้มบน develop** — 2 กลุ่ม); `Default option:แดง` → กลุ่ม "Default option" ยังมี;
+  e2e `/th/store` (route mock ของ search response แบบ AC-189/AC-195 ของ spec 01 ที่เพิ่ม facet `Default option:Default option value`): ไม่มี `option-refinement-title` ที่ข้อความเท่ากับ `"Default option"` และจำนวน `option-refinement` = จำนวน facet ที่ไม่ใช่คู่ default
+
+### Test plan
+| ชนิด | AC |
+|---|---|
+| unit (Vitest) | AC-77 (`groupItems`) |
+| e2e (Playwright, prod build) + qa | AC-76, AC-77 |
+- qa บน prod build: checkout กล่องทักทายไม่เยื้อง (1280 + 375), `/th/store` ไม่มี "Default option" กับข้อมูลจริงที่มีบัตรกำนัล · evidence `docs/evidence/r51/SFUI-24b/`
+
+### Tasks (รอบ 51)
+| ID | Task | ไฟล์ที่แตะ | ขนาด | AC | Depends | UI/qa |
+|----|------|------|------|----|---------|------|
+| SFUI-24b | กล่อง `saved-address-greeting` ไม่เยื้อง + ตัวกรองข้าม "Default option" (กฎ 86–87) | `modules/checkout/components/shipping-address/index.tsx`, `modules/store/components/store-refinements/option-refinements.tsx`, unit + `e2e/sfui-24b-manual-findings.spec.ts` (ใหม่), `docs/evidence/r51/SFUI-24b/REPORT.md` (qa — session หลัก commit) | ~30 LOC + ~80 LOC test | AC-76, AC-77 | PR เอกสารรอบ 51 | ✓ |
+
+ลำดับ: ∥ PAY-26, SFUI-24a, SFUI-24c ของ spec 01 (ไม่มีไฟล์ร่วม) — ตาราง/ลำดับรวมอยู่ใน spec 01 "Tasks (รอบ 51)" และ ROADMAP
+
+### Open questions (รอบ 51)
+none (คำถาม Q-R51-1..3 ของ B2 อยู่ใน spec 01)
+
 ## Open questions
 - ~~ADR-032 D1–D5~~ ตัดสินแล้ว (owner 2026-11-27): **รับตามข้อเสนอ** — D1 = ก, D2 = ก (placeholder เฉพาะเบอร์โทร/รหัสไปรษณีย์), D3 = ก (`*` อย่างเดียว ไม่ใส่ "(ไม่บังคับ)"),
   D4 = ก, D5 = ก; ความสูงช่อง 36px ตาม default ของ shadcn; เพิ่มกติกาการจัดวาง (กฎ 37, AC-37) — breakpoint ตาม class มาตรฐานของ Tailwind: คู่ช่องตั้งแต่ `md:` (owner 2026-11-27)
