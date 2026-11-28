@@ -64,6 +64,7 @@ test("AC-199: บัตร → เพิ่มที่อยู่ในบั�
     await continueToReview(page)
     await page.getByTestId("submit-order-button").click()
     await expect(page.getByTestId("promptpay-qr")).toBeVisible({ timeout: 30_000 })
+    await page.getByTestId("promptpay-qr").scrollIntoViewIfNeeded()
     await evidence("01-promptpay-qr-after-card-and-new-address")
   })
 

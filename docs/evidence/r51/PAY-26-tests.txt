@@ -55,5 +55,19 @@ Tests:       2732 passed, 2732 total
 ### pnpm lint / pnpm --filter backend typecheck / pnpm --filter storefront typecheck / NODE_ENV=production pnpm --filter backend build
 exit 0 ทั้งหมด (lint: 0 errors; warning เดิม 4 ข้อไม่ใช่ไฟล์ของ task)
 
-### e2e AC-199 (apps/storefront/e2e/pay-26-shared-stripe-customer.spec.ts)
-ยังไม่รัน — `playwright test --list` พบ 1 test; รอรันกับ Stripe test key (CI storefront-e2e หรือในเครื่องตาม CLAUDE.md)
+### e2e Stripe test จริงในเครื่อง (prod build: backend :9561 + storefront :8561, stripe listen → /hooks/payment/stripe_stripe, DB medusa_pay_26, Redis db 13)
+#### RED — medusa-config ชั่วคราวกลับเป็น @medusajs/medusa/payment-stripe (ไม่ commit): pay-26-shared-stripe-customer.spec.ts
+  ✘  1 [chromium] › e2e/pay-26-shared-stripe-customer.spec.ts:19:5 › AC-199: บัตร → เพิ่มที่อยู่ในบัญชี → พร้อมเพย์แสดง QR และ Stripe มี customer ตัวเดียว (20.3s)
+    Error: expect(page).toHaveURL(expected) failed
+    Expected pattern: /[?&]step=review(&|$)/
+    Received string:  "http://localhost:8561/th/checkout?step=payment"
+  1 failed
+backend log: An error occurred in createAccountHolder when creating a Stripe customer: Keys for idempotent requests can only be used with the same parameters they were first used with. Try using a key other than 'cus_<medusa customer id>' …
+
+#### GREEN — provider ของ PAY-26: AC-199 + e2e เดิม core-19f + sfui-3d-payment
+  ✓  1 [chromium] › e2e/core-19f-switch-payment-method.spec.ts:20:5 › AC-113: บัตร → พร้อมเพย์ → บัตร แล้วกด Continue 1 ครั้ง → review แสดงบัตรและ cart มี session บัตรเท่านั้น (10.7s)
+  ✓  2 [chromium] › e2e/pay-26-shared-stripe-customer.spec.ts:19:5 › AC-199: บัตร → เพิ่มที่อยู่ในบัญชี → พร้อมเพย์แสดง QR และ Stripe มี customer ตัวเดียว (11.9s)
+  ✓  3 [chromium] › e2e/sfui-3d-payment.spec.ts:9:5 › AC-12: focus ตัวเลือกบัตรแล้วกด ArrowDown → พร้อมเพย์ถูกเลือก (aria-checked) (8.3s)
+  3 passed (32.0s)
+
+หลังรัน: เพิ่ม scrollIntoViewIfNeeded ของ promptpay-qr ก่อน evidence() (ภาพในเครื่องตัด QR ที่ขอบล่าง — ไม่ได้ commit ภาพ, qa เก็บภาพเอง)
