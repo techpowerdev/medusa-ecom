@@ -1187,9 +1187,9 @@ Out of scope: ตัวเลือก "Default option" บน PDP (option selec
     ก่อนสร้างกลุ่ม → ไม่มีกลุ่ม/ปุ่ม "Default option" (กลุ่มที่ไม่มีค่าไม่ถูกสร้าง); option อื่นชื่อ "Default option" แต่ค่าอื่น หรือค่าเดียวกันใต้ title อื่น ยังแสดง; export `groupItems` ให้ unit test ได้
 
 ### Acceptance criteria (ต่อจาก AC-75)
-- AC-76 (SFUI-24b, กฎ 86) e2e (`e2e/sfui-24b-manual-findings.spec.ts`, 1280×800 + 375×812, ลูกค้า login ที่มีที่อยู่บันทึกไว้ → checkout ขั้นที่อยู่): `saved-address-greeting` `getComputedStyle` padding ทั้ง 4 ด้าน `0px`
+- AC-76 (SFUI-24b, กฎ 86) ☑ (PR ของ SFUI-24b) e2e (`e2e/sfui-24b-manual-findings.spec.ts`, 1280×800 + 375×812, ลูกค้า login ที่มีที่อยู่บันทึกไว้ → checkout ขั้นที่อยู่): `saved-address-greeting` `getComputedStyle` padding ทั้ง 4 ด้าน `0px`
   และ `backgroundColor` โปร่งใส (`rgba(0, 0, 0, 0)`) (**ล้มบน develop** — 20px); `getBoundingClientRect().left` ของ greeting = left ของ `shipping-first-name-input` (±1px); e2e เดิมที่อ้าง testid นี้ (grep `saved-address-greeting`) ผ่าน
-- AC-77 (SFUI-24b, กฎ 87) unit Vitest `groupItems`: items มี `Default option:Default option value` + `ขนาด:M` → ได้ 1 กลุ่ม (`ขนาด`) (**ล้มบน develop** — 2 กลุ่ม); `Default option:แดง` → กลุ่ม "Default option" ยังมี;
+- AC-77 (SFUI-24b, กฎ 87) ☑ (PR ของ SFUI-24b) unit Vitest `groupItems`: items มี `Default option:Default option value` + `ขนาด:M` → ได้ 1 กลุ่ม (`ขนาด`) (**ล้มบน develop** — 2 กลุ่ม); `Default option:แดง` → กลุ่ม "Default option" ยังมี;
   e2e `/th/store` (route mock ของ search response แบบ AC-189/AC-195 ของ spec 01 ที่เพิ่ม facet `Default option:Default option value`): ไม่มี `option-refinement-title` ที่ข้อความเท่ากับ `"Default option"` และจำนวน `option-refinement` = จำนวน facet ที่ไม่ใช่คู่ default
 
 ### Test plan
@@ -1202,7 +1202,7 @@ Out of scope: ตัวเลือก "Default option" บน PDP (option selec
 ### Tasks (รอบ 51)
 | ID | Task | ไฟล์ที่แตะ | ขนาด | AC | Depends | UI/qa |
 |----|------|------|------|----|---------|------|
-| SFUI-24b | กล่อง `saved-address-greeting` ไม่เยื้อง + ตัวกรองข้าม "Default option" (กฎ 86–87) | `modules/checkout/components/shipping-address/index.tsx`, `modules/store/components/store-refinements/option-refinements.tsx`, unit + `e2e/sfui-24b-manual-findings.spec.ts` (ใหม่), `docs/evidence/r51/SFUI-24b/REPORT.md` (qa — session หลัก commit) | ~30 LOC + ~80 LOC test | AC-76, AC-77 | PR เอกสารรอบ 51 | ✓ |
+| SFUI-24b | ☑ (PR ของ SFUI-24b) — กล่อง `saved-address-greeting` ไม่เยื้อง + ตัวกรองข้าม "Default option" (กฎ 86–87) | `modules/checkout/components/shipping-address/index.tsx`, `modules/store/components/store-refinements/option-refinements.tsx`, unit + `e2e/sfui-24b-manual-findings.spec.ts` (ใหม่), `docs/evidence/r51/SFUI-24b/REPORT.md` (qa — session หลัก commit) | ~30 LOC + ~80 LOC test | AC-76, AC-77 | PR เอกสารรอบ 51 | ✓ |
 
 ลำดับ: ∥ PAY-26, SFUI-24a, SFUI-24c ของ spec 01 (ไม่มีไฟล์ร่วม) — ตาราง/ลำดับรวมอยู่ใน spec 01 "Tasks (รอบ 51)" และ ROADMAP
 
