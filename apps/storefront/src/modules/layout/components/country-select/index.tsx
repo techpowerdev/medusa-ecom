@@ -79,8 +79,9 @@ const CountrySelect = ({ toggleState, regions }: CountrySelectProps) => {
         onOpenChange={(next) => (next ? open() : close())}
       >
         <SelectTrigger
-          // SFUI-3c: หน้าตาเดิมเป็นข้อความธรรมดาใน side menu (ไม่มีกรอบ) และ side menu มีลูกศรของตัวเองแล้ว → ซ่อน chevron ของ SelectTrigger
-          className="h-auto data-[size=default]:h-auto w-full border-0 bg-transparent p-0 py-1 text-inherit shadow-none text-sm leading-5 [&>svg]:hidden"
+          // SFUI-3c: side menu มีลูกศรของตัวเองแล้ว → ซ่อน chevron ของ SelectTrigger
+          // SFUI-20c (spec 09 กฎ 72, 75): ไม่มี className ขนาด (h-*/p*/text-*/leading-*) — ขนาด default ของ shadcn
+          className="w-full border-0 bg-transparent text-inherit shadow-none [&>svg]:hidden"
           data-testid="country-select-button"
         >
           <div className="flex items-start gap-x-2">

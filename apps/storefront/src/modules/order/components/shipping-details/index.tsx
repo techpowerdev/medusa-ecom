@@ -34,7 +34,7 @@ const ShippingDetails = ({ order }: ShippingDetailsProps) => {
             {order.shipping_address?.first_name}{" "}
             {order.shipping_address?.last_name}
           </p>
-          {/* SFUI-18a (spec 09 กฎ 57): ที่อยู่ตามลำดับไทย + บรรทัดประเทศ */}
+          {/* SFUI-18a (spec 09 กฎ 57): ที่อยู่ตามลำดับไทย; SFUI-20c (กฎ 71): ไม่มีบรรทัดประเทศ */}
           {addressLines(order.shipping_address).map((line, i) => (
             <p key={i} className="text-sm leading-[1.4rem] text-muted-foreground">
               {line}

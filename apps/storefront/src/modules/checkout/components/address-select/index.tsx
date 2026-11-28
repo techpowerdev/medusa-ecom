@@ -87,7 +87,7 @@ const AddressSelect = ({
                     </span>
                   )}
                   <div className="flex flex-col text-left text-sm leading-6 font-normal mt-2">
-                    {/* SFUI-18a (spec 09 กฎ 57): ที่อยู่ตามลำดับไทย + บรรทัดประเทศ */}
+                    {/* SFUI-18a (spec 09 กฎ 57): ที่อยู่ตามลำดับไทย; SFUI-20c (กฎ 71): ไม่มีบรรทัดประเทศ */}
                     {addressLines(address).map((line, i) => (
                       <span key={i}>{line}</span>
                     ))}

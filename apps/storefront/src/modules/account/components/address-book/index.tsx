@@ -9,15 +9,16 @@ type AddressBookProps = {
   region: HttpTypes.StoreRegion
 }
 
-const AddressBook: React.FC<AddressBookProps> = ({ customer, region }) => {
+// SFUI-20b/20c (spec 09 กฎ 70): ฟอร์มที่อยู่ไม่ใช้ region แล้ว — คง prop `region` ของหน้า (ไม่แก้ page ที่เป็นไฟล์ของ 21b)
+const AddressBook: React.FC<AddressBookProps> = ({ customer }) => {
   const { addresses } = customer
   return (
     <div className="w-full">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 mt-4">
-        <AddAddress region={region} addresses={addresses} />
+        <AddAddress />
         {addresses.map((address) => {
           return (
-            <EditAddress region={region} address={address} key={address.id} />
+            <EditAddress address={address} key={address.id} />
           )
         })}
       </div>
