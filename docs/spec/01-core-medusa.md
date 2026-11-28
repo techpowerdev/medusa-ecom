@@ -3086,7 +3086,7 @@ Out of scope: ลบ `OptionsPicker` (ดูรายการไม่ทำใ
      (d) toggle "เฉพาะสินค้าลดราคา" (`store-refinements/on-sale-toggle.tsx`) แสดงจำนวนของสถานะเปิด (`value.onFacetValue.count`) ไม่ใช่ `value.count` ของสถานะปัจจุบัน
 155. (CORE-99 — a11y ต่อจาก CORE-90; review/qa #525) (a) static ของกฎข้อ 146b ครอบ `<button`/`<Button` ที่อยู่ภายใน `<a`, `LocalizedClientLink` หรือ `Link` ของ `next/link` (ไม่ใช่แค่ลูกตรง) — แก้ทุกจุดที่พบ (nav = CORE-97);
      (b) `buttonClassName` ไม่ใส่ `disabled:*` ให้ `<a>`; (c) helper `expectSingleTabStop` (`e2e/support/keyboard.ts`) ล้มเมื่อ focus อยู่ที่ `BODY`;
-     (d) ปุ่มสลับ login/register: "." ท้ายประโยคไม่ถูกแยกจากคำด้วย padding (`px-2`); (e) ลิงก์ใน `cart/components/sign-in-prompt` ใช้ testid `cart-sign-in-link` (เดิม `sign-in-button` ซ้ำกับ submit ของ login — แบบกฎข้อ 146a) และแก้ e2e ที่ใช้
+     (d) ปุ่มสลับ login/register: "." ท้ายประโยคไม่ถูกแยกจากคำด้วย padding (`px-2`) (**แทนด้วย spec 09 กฎ 85 — แก้ในรอบ 50 — SFUI-23**: ประโยคไม่มี "." แล้ว; ข้อ (d) ครบเมื่อ SFUI-23 merge — CORE-99 ไม่ต้องทำ); (e) ลิงก์ใน `cart/components/sign-in-prompt` ใช้ testid `cart-sign-in-link` (เดิม `sign-in-button` ซ้ำกับ submit ของ login — แบบกฎข้อ 146a) และแก้ e2e ที่ใช้
 156. (CORE-100 — test/code hygiene storefront; review #530, #533, #541, #546, CORE-92 #535) (a) ลบ `eslint-disable` `react-hooks/purity` ที่ `(main)/page.tsx` ~`:116`, `g/[token]/page.tsx` ~`:46`, `orders/[id]/pay/page.tsx` ~`:37` แบบกฎข้อ 148d;
      (b) `checkout-affiliate-coverage.test.ts`: ชื่อ metadata arg เทียบด้วย `/^(is)?retry$/i` + กรณีควบคุม `noRetry`; `core-84` regex `COMPARE` จับ `.test(` ที่ prettier ตัดหลายบรรทัด;
      (c) `core-93-label-chip` e2e ยืนยันว่าถูกตัดจริง (`scrollWidth > clientWidth` + `text-overflow: ellipsis`); (d) e2e ที่จับรูป payload ของ server action (`actionPayload` ของ PAY-16) ระบุเวอร์ชัน Next ที่ probe ใน comment;
@@ -3100,7 +3100,7 @@ Out of scope: ลบ `OptionsPicker` (ดูรายการไม่ทำใ
   e2e `/th/store` ≥ 2 หน้า (route mock แบบ AC-189): Tab ถึงปุ่ม `aria-current="page"` ได้ และ Enter ที่หน้า 2 → `document.activeElement` คือปุ่มหน้า 2 (`--repeat-each=3`, ล้มบน develop);
   unit toggle: `onFacetValue.count` = 1, `value.count` = 2 → แสดง "(1)" (ล้มบน develop)
 - AC-196 (CORE-99, กฎข้อ 155) static + mutation: ห่อ `<button>` ใน `<a>` หรือ `Link` ในไฟล์ใดก็ได้ → test ล้ม; unit: class ของ `buttonClassName` ไม่มี `disabled:`; unit ของ helper: focus `BODY` → throw;
-  e2e 375: ข้อความรอบปุ่มสลับไม่มีช่องว่างก่อน "." ; หน้า cart ไม่มี `sign-in-button` และหน้า login มี 1 ตัว
+  e2e 375: ข้อความรอบปุ่มสลับไม่มีช่องว่างก่อน "." (**แทนด้วย spec 09 AC-75 — แก้ในรอบ 50 — SFUI-23**: ไม่มี "."); หน้า cart ไม่มี `sign-in-button` และหน้า login มี 1 ตัว
 - AC-197 (CORE-100, กฎข้อ 156) lint ไม่มี `eslint-disable` purity ในสามไฟล์; mutation ของ (b)(c) (แนบใน PR): metadata arg ชื่อ `noRetry` ยังถูกนับ, `COMPARE` หลายบรรทัดถูกจับ, ลบ `truncate` → e2e ล้ม; unit (e) ผ่าน
 ### Test plan (รอบ 43)
 | ระดับ | AC |
