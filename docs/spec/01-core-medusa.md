@@ -2585,7 +2585,7 @@ none
      (c) โค้ดของเราที่สร้าง promotion fixed ในอนาคต (script/workflow/e2e helper ที่ไม่ได้ตั้งใจทดสอบฝั่ง `false`) ต้องส่ง `is_tax_inclusive: true` — ตอนนี้ไม่มีจุดที่ต้องแก้ (ดูข้อเท็จจริงข้างบน) → CORE-64 **ไม่แก้โค้ดใต้ `src/`**;
      (d) ถ้าระหว่างทำพบว่า `discount_total` ไม่เท่าจำนวนที่ตั้งแม้ `is_tax_inclusive: true` (เกิน ±0.01) → หยุดและรายงาน planner (ห้ามคำนวณชดเชยเอง)
 - (ยอมรับใน v1 — owner (2) = ข คงเดิม 2026-11-17, qa #386 O-2) **กฎข้อ 121b คงเดิม**: ล้างช่อง phone ของที่อยู่ในหน้าบัญชีแล้วบันทึก → ไม่ส่ง key `phone` เบอร์เดิมยังอยู่แม้ขึ้นว่าบันทึกสำเร็จ — ไม่มี task
-- (ยอมรับใน v1 — owner (5) คงเดิม 2026-11-17, qa #384 O-2) **กฎข้อ 115 คงเดิม**: ส่วนลดค่าส่ง 100% แสดง "ค่าจัดส่ง ฿10" (`original_shipping_total`) และ "ส่วนลด −฿10" แยกกัน — สูตร subtotal − ส่วนลด + ค่าส่ง = ยอดรวม ตรวจได้ทุกแถว; ไม่มี task
+- (ยอมรับใน v1 — owner (5) คงเดิม 2026-11-17, qa #384 O-2) **กฎข้อ 115 คงเดิม** (รอบ 51: ส่วนลดค่าส่งที่มาจากโค้ดยังแยกบรรทัด "ส่วนลด"; ส่วนลดค่าส่งอัตโนมัติแสดงเป็นค่าจัดส่งหลังลดตามกฎข้อ 158c): ส่วนลดค่าส่ง 100% แสดง "ค่าจัดส่ง ฿10" (`original_shipping_total`) และ "ส่วนลด −฿10" แยกกัน — สูตร subtotal − ส่วนลด + ค่าส่ง = ยอดรวม ตรวจได้ทุกแถว; ไม่มี task
 
 ### Acceptance criteria (รอบ 33)
 - AC-163 (CORE-64, กฎข้อ 122)
@@ -3156,7 +3156,7 @@ none (ไม่มี model/workflow/route ใหม่ — PAY-26 เปลี�
          "ภาษีมูลค่าเพิ่ม <rate>%" (`cart-taxes`, ป้าย `cart-taxes-label`; **แสดงเมื่อ > 0.005 เท่านั้น**; rate จาก `tax_lines.rate` ของรายการที่ไม่รวม VAT — ถ้ามีหลาย rate ป้ายไม่มี %) · เส้นคั่น · "ยอดรวมทั้งสิ้น" (`cart-total`);
          `data-value` ของทุกแถว = ค่าดิบก่อนปัด; ไม่มีคำ "รวม VAT", "รวม VAT แล้ว", "VAT", "ก่อนส่วนลด", "ไม่รวมภาษี" ในป้าย;
      (b) adjustment ของ "โค้ดที่ลูกค้าใส่เอง" = `code` ตรงกับ promotion ใน `promotions` ที่ `is_automatic === false` **และ** code ไม่ขึ้นต้น `GB-` (prefix ของ group buy — ค่าคงที่ในไฟล์ helper พร้อม comment อ้าง
-         `apps/backend/src/lib/promotion-exclusivity.ts`); code ที่ไม่พบใน `promotions` (เช่น promotion ถูกลบ) นับเป็นโค้ด (แสดงในบรรทัดส่วนลด — ไม่ซ่อนเงิน); นอกนั้น = "ส่วนลดอัตโนมัติ" (flash, group buy);
+         `apps/backend/src/lib/promotion-exclusivity.ts`); ลำดับตรวจ: ขึ้นต้น `GB-` → อัตโนมัติเสมอ (แม้ไม่พบใน `promotions`) ก่อน แล้ว code ที่ไม่พบใน `promotions` (เช่น promotion ถูกลบ) นับเป็นโค้ด (แสดงในบรรทัดส่วนลด — ไม่ซ่อนเงิน); นอกนั้น = "ส่วนลดอัตโนมัติ" (flash, group buy);
      (c) คำนวณทีละรายการ (line item และ shipping method) ในฐานของรายการนั้น (`is_tax_inclusive` ของรายการ; `r` = Σ `tax_lines.rate` / 100) — สูตรเดียวกับ `calculateAdjustmentTotal` ของ Medusa:
          adjustment บนฐานรายการ = `item.is_tax_inclusive ? s × (1 + r) : s` โดย `s = adj.is_tax_inclusive ? amount ÷ (1 + r) : amount` (adjustment ของค่าส่งใน cart ไม่มี `is_tax_inclusive` → false);
          ยอดของรายการ = `unit_price × quantity` (ค่าส่ง: `amount`) − Σ adjustment อัตโนมัติบนฐานรายการ;
@@ -3194,7 +3194,7 @@ none (ไม่มี model/workflow/route ใหม่ — PAY-26 เปลี�
   (2) มีโค้ด: เสื้อยืด 590 × 2 + โค้ด `SAVE50` (fixed 50, inclusive) + ค่าส่ง 10 → รวมค่าสินค้า 1,180, ส่วนลด 50, total 1,140, `codes` = ["SAVE50"];
   (3) ไม่รวม VAT ล้วน: 100 × 1 rate 7 → ภาษี 7, total 107; (4) ปน (ตัวอย่าง owner): A 107 รวม VAT, B 100 ไม่รวม VAT, ค่าส่ง 10 รวม VAT → 207 / 10 / ภาษี 7 / 224;
   (5) ปน + โค้ดลดทั้ง order (adjustment ทั้งแบบ inclusive และไม่ inclusive บนรายการรวม/ไม่รวม VAT); (6) adjustment อัตโนมัติ + โค้ดบน line เดียวกัน (fixture — ในร้านจริง flash exclusive ไม่ซ้อนโค้ด ADR-009);
-  (7) ส่วนลดค่าส่ง 100% จากโค้ด (`shipping_methods.adjustments`) และจากอัตโนมัติ; (8) qty 3 ส่วนลด across ที่ต่อชิ้นไม่ลงตัว (เช่น 100 ÷ 3) — ค่าดิบตามข้อ (d); (9) `GB-ABC` (`is_automatic: false`) → อัตโนมัติ;
+  (7) ส่วนลดค่าส่ง 100% จากโค้ด (`shipping_methods.adjustments`) และจากอัตโนมัติ; (8) qty 3 ส่วนลด across ที่ต่อชิ้นไม่ลงตัว (เช่น 100 ÷ 3) — ค่าดิบตามข้อ (d); (9) `GB-ABC` (`is_automatic: false`) → อัตโนมัติ และ `GB-XYZ` ที่ไม่พบใน `promotions` → อัตโนมัติเช่นกัน;
   (10) code ที่ไม่มีใน `promotions` → โค้ด; (11) rate ต่างกันสองค่า → ป้ายไม่มี %; (12) digital-only ไม่มี shipping method → ค่าจัดส่ง 0 และ `CartTotals` ไม่มี `cart-shipping` (แทน test เดิมของ `ev-7d-digital-only-totals.test.ts`)
 - AC-201 (SFUI-24a, กฎข้อ 158a, 158f) unit render (`renderToStaticMarkup` — แทน `src/core-57-cart-totals.test.ts`): ป้ายทุกแถวมีอักษรไทย และไม่มี `/VAT|ก่อนส่วนลด|ไม่รวมภาษี/`; fixture (1) ไม่มี `cart-taxes` และไม่มี `cart-discount`;
   fixture (2) `cart-discount-label` มี "SAVE50"; fixture (4) มี `cart-taxes` `data-value="7"` และ `cart-taxes-label` มี "7%"; static: ไม่มีไฟล์ `order/components/order-summary`, `order-details-template.tsx` import `CartTotals`;

@@ -14,7 +14,7 @@
      (`account_holders.find(ac => ac.provider_id === input.provider_id)`) → ลูกค้าที่มี holder ของ `pp_stripe_stripe` แล้ว ยังไม่มีของ `pp_stripe-promptpay_stripe`
      จึงเรียก `createPaymentAccountHolderStep` (`noCompensation: true`)
   2. `@medusajs/payment` `dist/services/payment-module.js:690–713` `createAccountHolder` ส่ง `idempotency_key: input.context?.customer?.id` — **ค่าเดียวกันทุก provider**
-  3. `@medusajs/payment-stripe` `dist/core/stripe-base.js:261–300` `createAccountHolder` เรียก `stripe.customers.create({ email, name, phone, shipping }, { idempotencyKey })`
+  3. `@medusajs/payment-stripe` `dist/core/stripe-base.js:261–300` `createAccountHolder` เรียก `stripe.customers.create({ email, name, phone, address? }, { idempotencyKey })` (spread `shipping` ออกเป็น key `address` จาก `billing_address` เมื่อมี)
      โดย `shipping` มาจาก `customer.billing_address` (default billing หรือที่อยู่แรก — `create-payment-session.js:60–66`)
   4. ภายใน 24 ชม. Stripe ปฏิเสธ request ที่ใช้ idempotency key เดิมแต่พารามิเตอร์ต่าง → ตอนจ่ายบัตรลูกค้ายังไม่มีที่อยู่ (`shipping` ไม่มี) พอเพิ่มที่อยู่แล้วเลือกพร้อมเพย์ → error
 - **ไม่ใช่ regression**: pin 2.22.1 ตั้งแต่ CORE-1 จึงอยู่ใน v0.1.0–v0.3.1 ด้วย; ไม่เคยเจอเพราะ e2e `core-19f` สลับวิธีจ่ายโดยไม่เปลี่ยนข้อมูลลูกค้า และ integration
@@ -59,6 +59,7 @@
 + provider id, webhook, region, payment session เดิมไม่เปลี่ยน — ไม่มี migration
 − เรามีโค้ดที่สืบทอดจาก class ภายในของ Medusa (`dist/services`) — bump Medusa ต้องรัน test ของ AC-198 และตรวจ signature ของ `createAccountHolder` ทุกครั้ง
 − dependency ใหม่ใน `apps/backend/package.json` 1 ตัว (package เดิมของ Medusa)
+− module ใหม่ register แค่ 2 service (บัตร + พร้อมเพย์) — provider Stripe อื่นที่ package เดิม register ไว้ (bancontact, blik, giropay, ideal, przelewy24, oxxo) จะหายไป**โดยตั้งใจ** (ร้านขายเฉพาะไทย); PAY-26 ต้องตรวจว่าไม่มี region/seed ผูก provider เหล่านั้น (ใน storefront เหลือแค่ constant ของ starter `src/lib/constants.tsx`)
 − **ข้อควรระวัง**: `deleteAccountHolder` ของ provider ลบ `cus_…` ใน Stripe — เมื่อใช้ร่วมสอง holder การลบ holder หนึ่งจะทำให้อีก holder ชี้ customer ที่ถูกลบ;
   2.22.1 ไม่มี flow ที่เรียก (ข้อมูลในบริบท) และเราไม่มี flow ลบ — ถ้าอนาคตเพิ่ม flow ลบ account holder/ลบลูกค้าที่ลบ holder ให้ override `deleteAccountHolder`
   (ลบ customer เมื่อไม่มี holder อื่นใช้แล้วเท่านั้น) ใน task นั้น
