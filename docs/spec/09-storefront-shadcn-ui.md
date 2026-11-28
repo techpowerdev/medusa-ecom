@@ -822,7 +822,7 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
 | 30 | 20c | `lib/util/address-lines.ts` + ผู้ใช้ 7 ไฟล์ (กฎ 57) | สรุปที่อยู่มีบรรทัดประเทศ (checkout review แสดง "TH") | ไม่มีบรรทัดประเทศ (กฎ 71) |
 | 31 | 20c | `modules/layout/components/side-menu/index.tsx:93-107`; `modules/layout/components/country-select/index.tsx:83-84` | ตัวเลือก region แสดง "Thailand" ตัวเลือกเดียว, dropdown ทับข้อความที่ 390px, trigger override 28px | ซ่อนเมื่อ ≤ 1 ประเทศ + ถอด override (กฎ 72) |
 | 32 | 21a | `shipping-address/index.tsx:142,239`; `billing_address/index.tsx:34`; `add-address.tsx`/`edit-address-modal.tsx` (`gap-2` + `gap-y-2` :95/:154); `profile-billing-address:126`; `profile-name:62`; `profile-phone:60`; `profile-password:43`; `login:52`; `register:48`; `discount-code:157` | gap ระหว่างช่อง 8px/16px ปน (`gap-2`, `gap-y-2`, `gap-x-4 gap-y-2`) | `gap-4` (16px) ทุกฟอร์ม (กฎ 73) |
-| 33 | 21d | `modules/checkout/components/error-message/index.tsx:8` (ผู้ใช้ 8 ไฟล์); `add-address.tsx:177`; `edit-address-modal.tsx:246`; `register/index.tsx:95`; `returns/components/return-request-form/index.tsx:150,158`; `group-join.tsx:134,215,290` | error ระดับฟอร์ม `text-rose-500` 12–14px | `shadcn add alert` → `Alert variant="destructive"` ผ่าน `ErrorMessage` (กฎ 74 — owner Q-R50-2) |
+| 33 | 21d | `modules/checkout/components/error-message/index.tsx:8` (ผู้ใช้ 12 ไฟล์ ~19 จุด) + hard-code `text-rose-500` (`add-address.tsx:177`, `edit-address-modal.tsx:246`, `register/index.tsx:95`, `return-request-form/index.tsx:150,158`, `group-join.tsx:134,215,290`) + Badge destructive ของ `account-info` `error-message` + span ของ `delete-button` | error `text-rose-500`/`text-xs` 12–14px ปนกัน ทั้งระดับฟอร์มและในแถว | ระดับฟอร์ม → `Alert variant="destructive"` ผ่าน `ErrorMessage`; ในแถว/เซลล์ → `FieldError` ตรง (กฎ 74 — owner Q-R50-2 ทาง (ข); ตาราง testid ในกฎ 74) |
 | 34 | 21a | `modules/checkout/components/address-select/index.tsx:45-47` | `shipping-address-select` 46px `px-16` | `SelectTrigger` default (กฎ 75) |
 | 35 | 21a | `add-address.tsx:86-88`; `edit-address-modal.tsx:144-146`; `layout/components/side-menu/index.tsx:62-68`; `layout/components/search/drawer.tsx:49`; `products/components/product-actions/mobile-actions.tsx:193-195` | ปุ่มปิด overlay เขียนเอง icon 20px (mobile-actions 48×48) | `DialogClose`/`SheetClose asChild` + `Button variant="ghost" size="icon"` (กฎ 76) — จาก "ควรพิจารณา" |
 | 36 | 21b | `<h1` 27 ไฟล์ใน `src/` (ยกเว้น `modules/home/components/hero`) | 16px `uppercase` (auth/verify/affiliate login), 24/36 (affiliate), 30/48 (account/404/search/policy/group), 32/40 (PDP), 32/48 (order) | `text-3xl font-semibold tracking-tight` (กฎ 77) |
@@ -899,12 +899,38 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
     `SelectTrigger` ของ `layout/components/country-select` ไม่มี className ขนาด (กฎ 75); `SheetDescription` คงข้อความเดิม (baseline กฎ 10)
 73. (owner — gap) container ที่จัดช่องกรอกของทุกฟอร์มในตาราง inventory ของรอบ 48 (ระดับ grid/flex ของช่อง รวมคู่ `md:grid-cols-2`) ใช้ **`gap-4`** (16px ทั้งแนวตั้ง/แนวนอน) — ไม่มี `gap-2`, `gap-y-*`, `gap-x-*`
     ปนในระดับช่อง; ไม่ใช้ `FieldGroup` (default `gap-7` ต่างค่าที่ owner เลือก); ระยะภายใน `Field` (label–control–error) เป็นของ shadcn ไม่แก้
-74. (owner 2026-11-28 — Q-R50-2 = ใช้ `Alert`) error ระดับฟอร์ม**ทุกจุด** (testid ของกฎ 32e + `group-join`, `return-request-form`, add/edit address, register — ตาราง inventory ข้อ 33) = `Alert` ของ shadcn
-    (`pnpm dlx shadcn@4.23.1 add alert` — กฎ 64) ตามตัวอย่าง docs: `<Alert variant="destructive" id={id} data-testid="<เดิม>">` → icon `CircleAlert` (lucide, ไม่ส่ง `size-*`) → `<AlertDescription>{ข้อความ}</AlertDescription>`
-    (ไม่มี `AlertTitle` — ข้อความเดียว); `ErrorMessage` ของ `checkout/components/error-message` (prop เดิม `error`/`id`/`data-testid`, `error` ว่าง → ไม่ render) เปลี่ยนไส้เป็นโครงนี้
-    และจุด hard-code ทุกจุดในข้อ 33 เปลี่ยนไปใช้ `ErrorMessage` (ผู้ใช้ ≥ 2 — ไม่สร้าง component ใหม่); **testid คงเดิมและอยู่บน `Alert` root** (`role="alert"` มาจาก component);
-    `id` ของ `promotion-error` ยังอยู่บน root (`aria-describedby` ของ `discount-input` — กฎ 32d); `textContent` ของ testid = ข้อความเดิม (icon ไม่มีข้อความ) → e2e ที่ตรวจ error ใช้ testid/ข้อความเดิมไม่ต้องแก้;
-    ไม่มี className ที่เปลี่ยนสี/padding/ขนาดของ `Alert` (ระยะห่างภายนอก `mt-*` ได้); ไม่มี `text-rose-` ใน `src/**` (ไม่ใช่ test); error ระดับช่อง (`FieldError`, กฎ 32) ไม่เปลี่ยน
+74. (owner 2026-11-28 — Q-R50-2 = ใช้ `Alert` **กับ error ระดับฟอร์ม** เช่น login ผิด, จ่ายเงินไม่สำเร็จ, ที่อยู่ไม่ครบ — ทาง (ข) ของ re-review #624) แยกสองแบบ **โดยไม่สร้าง component/prop ใหม่**:
+    (a) **ระดับฟอร์ม/ขั้นของฟอร์ม** = `Alert` ของ shadcn (`pnpm dlx shadcn@4.23.1 add alert` — กฎ 64) ตามตัวอย่าง docs: `<Alert variant="destructive" id={id} data-testid="<เดิม>">` → icon `CircleAlert`
+        (lucide, ไม่ส่ง `size-*`) → `<AlertDescription>{ข้อความ}</AlertDescription>` (ไม่มี `AlertTitle`); `ErrorMessage` ของ `checkout/components/error-message` (prop เดิม `error`/`id`/`data-testid`,
+        `error` ว่าง → ไม่ render) เปลี่ยนไส้เป็นโครงนี้ และ**ใช้เฉพาะ error ระดับฟอร์ม**; จุด hard-code ระดับฟอร์มเปลี่ยนไปใช้ `ErrorMessage`
+    (b) **ในแถว/เซลล์/ใต้ตัวเลือก (inline)** = `FieldError` ของ `@/components/ui/field` ใช้ตรง (`<FieldError data-testid="<เดิม>">{ข้อความ}</FieldError>` — `text-sm text-destructive`, `role="alert"`, ไม่มีกรอบ;
+        className layout ได้ เช่น `basis-full order-last`) — ไม่ผ่าน `ErrorMessage`
+    (c) ตาราง testid (จากโค้ดจริง ณ `523056bb` — 12 ไฟล์ที่ import `ErrorMessage` + hard-code; testid ใหม่ที่ไม่อยู่ในตารางนี้ → reviewer ถาม planner):
+
+    | testid | ไฟล์ (`src/modules/`) | แบบ |
+    |---|---|---|
+    | `login-error-message` | `account/components/login/index.tsx` | (a) |
+    | `register-error`, `register-email-exists` (hard-code) | `account/components/register/index.tsx` | (a) |
+    | `affiliate-login-error`, `affiliate-register-error` | `affiliate/components/auth-forms/index.tsx` | (a) |
+    | `address-error-message` (×2) | `checkout/components/addresses/index.tsx` | (a) |
+    | `address-error` (hard-code) | `account/components/address-card/{add-address,edit-address-modal}.tsx` | (a) |
+    | `error-message` (Badge destructive ใน wrapper ที่มี transition — testid คงบน wrapper, `ErrorMessage` ไม่ส่ง testid อยู่ข้างใน) | `account/components/account-info/index.tsx` | (a) |
+    | `promotion-error` (`id` ผูก `aria-describedby` — กฎ 32d) | `checkout/components/discount-code/index.tsx` | (a) — error ของฟอร์มโค้ดส่วนลด |
+    | `delivery-option-error-message` | `checkout/components/shipping/index.tsx` | (a) — error ของขั้นจัดส่ง |
+    | `payment-method-error-message`, `payment-session-pending-error` | `checkout/components/payment/index.tsx` | (a) |
+    | `stripe-payment-error-message`, `manual-payment-error-message` (ผ่าน `PlaceOrderNotice`) | `checkout/components/payment-button/index.tsx` | (a) |
+    | `promptpay-payment-error-message` (×3) | `checkout/components/promptpay-payment/index.tsx` | (a) |
+    | `order-pay-error`, `order-pay-element-error` | `order/components/order-pay/index.tsx` | (a) |
+    | `order-pay-card-error`, `promptpay-payment-error-message` | `order/components/order-pay/pay-buttons.tsx` | (a) |
+    | `return-error`, `return-contact-store` (hard-code; มีลิงก์ติดต่อร้านใน `AlertDescription` ได้) | `returns/components/return-request-form/index.tsx` | (a) |
+    | `group-join-error` (×2, hard-code) | `group-buy/components/group-page/group-join.tsx` | (a) |
+    | `group-units-limit` (hard-code — ใต้รายการที่เลือก) | `group-buy/components/group-page/group-join.tsx` | (b) |
+    | `product-error-message` (ใน `TableCell` ของแถวตะกร้า) | `cart/components/item/index.tsx:172` | (b) — เลิกใช้ `ErrorMessage` |
+    | `cart-item-remove-error` (span `text-xs` ในแถว) | `common/components/delete-button/index.tsx` | (b) |
+
+    (d) ทั้งสองแบบ: testid คงเดิมบน root (`Alert`/`FieldError` — `role="alert"` จาก component); `id` ของ `promotion-error` อยู่บน root; `textContent` = ข้อความเดิม (icon ไม่มีข้อความ);
+        ไม่มี className ที่เปลี่ยนสี/padding/ขนาดตัวอักษรของ `Alert`/`FieldError` (ระยะห่าง/ตำแหน่งภายนอกได้); ไม่มี `text-rose-` ใน `src/**` (ไม่ใช่ test); error ระดับช่อง (`useFieldError`, กฎ 32) ไม่เปลี่ยน;
+        ข้อความสำเร็จ (`success-message` Badge) ไม่อยู่ในขอบเขต
 75. `SelectTrigger` ทุกตัวใน `src/modules/**` ไม่มี className ขนาด (`h-*`, `px-*`, `py-*`, `text-*` ขนาด) — layout `w-full`/`w-auto` ได้ (กฎ 40b); ใช้กับ `checkout/address-select` และ `layout/country-select`
 76. ปุ่มปิด overlay ในตาราง inventory ข้อ 35 = `DialogClose asChild`/`SheetClose asChild` → `<Button variant="ghost" size="icon" aria-label="<ไทยเดิม>" data-testid="<เดิม>">` + icon `X` (default `size-4`);
     ยังใช้ `showCloseButton={false}` กับ content ของ `ui/` (ปุ่มในตัวมีข้อความ "Close" — กฎ 3); focus/Escape/คืน focus ตามกฎ 11
@@ -913,7 +939,8 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
     `text-transform: none`; `<h1>` ที่เดิมไม่มี class (เช่น `store-page-title`) ใส่ class เดียวกัน; หัวข้อระดับอื่น (h2/h3) ไม่อยู่ในขอบเขต
 78. testid/ข้อความ/baseline/e2e: testid เดิมคงที่บน element ที่ทำหน้าที่เดิม (ยกเว้นที่กฎ 70/71 ลบ); `e2e/support/sfui-baseline.json` แก้ได้**เฉพาะ**: ลบ testid `shipping-country-select`, `billing-country-select`, `country-select`,
     `billing-country-code-select`, `address-province-country` และข้อความ `เลือกประเทศ` (20b/20c), ข้อความ `MISSING_ADDRESS_MESSAGE` เป็นค่าใหม่ของกฎ 69 (20a); e2e เดิมแก้ได้เฉพาะไฟล์ที่ task ระบุในตาราง Tasks
-    และเฉพาะ (i) ค่าที่คาดของขนาด/ฟอนต์ที่รอบนี้ตั้งใจเปลี่ยน (`sfui-3d-payment`, `core-79`, `core-90`, `sfui-9a..9e-font`, `sfui-5b-catalog`, `sfui-5c-checkout-heading`, `sfui-6-parity` ถ้าเกี่ยว),
+    และเฉพาะ (i) ค่าที่คาดของขนาด/ฟอนต์ที่รอบนี้ตั้งใจเปลี่ยน (`sfui-3d-payment`, `core-79`, `core-90`, `sfui-9a..9e-font`, `sfui-5b-catalog`, `sfui-5c-checkout-heading`, `sfui-6-parity` ถ้าเกี่ยว; ของ error ตามกฎ 74 (SFUI-21d): `sfui-9c-font.spec.ts:99-101` (`address-error-message`)
+    และ `sfui-9a-font.spec.ts:155-157` (`cart-item-remove-error`) — เฉพาะค่าที่คาดของฟอนต์ ที่ grep `font(`/`getComputedStyle`/`toHaveCSS` บน testid ในตารางกฎ 74c พบ ณ `523056bb`),
     (ii) ลบบรรทัดเลือก/ตรวจประเทศ (20b), (iii) เพิ่มบรรทัดกรอกจังหวัด + fixture API ที่อยู่ที่บันทึกไว้เติม `province` (20a — เพิ่มอย่างเดียว), (iv) ตัวโต้ตอบที่ element เปลี่ยนชนิด (checkbox ตัวกรอง, chip, แบ่งหน้า, การ์ดตัวเลือกจัดส่ง/ชำระเงินที่ข้อความย้ายออกจาก `RadioGroupItem` ไปอยู่ใน `FieldLabel` — กฎ 80)
     โดย assertion ผลทางธุรกิจคงเดิม
 79. ปิดรอบ (SFUI-22): ไม่มี JSX `<button` ใน `src/modules/**`, `src/app/**` (ไม่ใช่ test) นอก allow-list ใน guard (ไฟล์ + testid + เหตุผล — เช่น trigger ของ Radix ที่ใช้ `asChild` ไม่ได้);
@@ -984,11 +1011,15 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
   การ์ดที่เลือก `border-color` เท่ากันทั้งสองขั้นและต่างจากการ์ดที่ไม่เลือก; คลิกที่ `FieldTitle` ของการ์ด → `aria-checked="true"` บน testid ของการ์ดนั้น; ลูกศรเปลี่ยนตัวเลือก; Stripe Payment Element
   อยู่นอก `<label>` (`iframe.closest("label") === null`) และกรอกบัตร + `submit-payment-button` ไปขั้น review ได้ (Stripe test); e2e เดิมที่เลือกตัวเลือกจัดส่ง/ชำระเงิน (75 จุด/32 ไฟล์) ผ่านโดยแก้ตามกฎ 78 (iv) เท่านั้น
 - AC-70 (SFUI-21d, กฎ 64, 74) (1) static (ใน `sfui-21-consistency.unit.spec.ts`): `src/components/ui/alert.tsx` ใน `shadcn-ui.json` (`--dry-run --diff` "No changes." ใน PR); ไม่มี `text-rose-` ใน `src/**`;
-  `checkout/components/error-message/index.tsx` render `Alert variant="destructive"` + `AlertDescription`; ไฟล์ในข้อ 33 ไม่มี element error ระดับฟอร์มที่เขียนเอง (ใช้ `ErrorMessage`);
+  `checkout/components/error-message/index.tsx` render `Alert variant="destructive"` + `AlertDescription`; testid แบบ (a) ทุกตัวในตารางกฎ 74c อยู่บน `<ErrorMessage` (หรือ `error-message` ของ `account-info` ที่ครอบ `ErrorMessage`)
+  และแบบ (b) ทุกตัวอยู่บน `<FieldError`; `cart/components/item/index.tsx` ไม่ import `ErrorMessage`;
   (2) unit `error-message` (render จริง): `error` ว่าง → ไม่ render; มีค่า → root `role="alert"`, `data-slot="alert"`, มี testid และ `id` ที่ส่งเข้า, `textContent` = ข้อความ;
   (3) e2e ใหม่ `e2e/sfui-21d-alert.spec.ts`: trigger error ระดับฟอร์มจริง (`address-error-message` ด้วยจังหวัดช่องว่างล้วน, `login-error-message` รหัสผิด, `register-email-exists` หรือ `register-error`, `promotion-error` โค้ดผิด,
-  `address-error` ใน modal ที่อยู่) → testid มองเห็น, `[data-slot="alert"]`, `role="alert"`, ข้อความเป็นไทยตามเดิม; `discount-input` `aria-describedby` ยังอ้าง id ของ `promotion-error` (กฎ 32d);
-  e2e เดิมที่ตรวจ error เหล่านี้ (AC-33) ผ่านโดยไม่แก้
+  `address-error` ใน modal ที่อยู่, `error-message` ของ `account-info`) → testid (หรือลูก) เป็น `[data-slot="alert"]`, `role="alert"`, ข้อความเป็นไทยตามเดิม; `discount-input` `aria-describedby` ยังอ้าง id ของ `promotion-error` (กฎ 32d);
+  inline: `product-error-message` (stock ไม่พอ — ตามแนว core-48) และ `cart-item-remove-error` (ลบไม่สำเร็จ — ตามแนว core-19c) เป็น `[data-slot="field-error"]` ไม่มี `[data-slot="alert"]`, computed `font-size` 14px
+  และสีเท่า `FieldError`, ที่ 390px แถวตะกร้าไม่ล้นแนวนอนและ error ไม่ทับ element อื่นในแถว;
+  e2e เดิมที่ตรวจ error เหล่านี้ (AC-33, core-19c, core-48 ฯลฯ) ผ่านโดยไม่แก้ **ยกเว้นค่าที่คาดของฟอนต์ตามกฎ 78 (i)** (`sfui-9c-font` ขั้น `address-error-message`, `sfui-9a-font` ขั้น `cart-item-remove-error`)
+  — ถ้า core-19c (error ≤ 2 บรรทัด) ล้มเพราะตัวอักษร 14px → หยุดรายงาน planner
 
 ### Test plan
 | ชนิด | AC |
@@ -1008,8 +1039,9 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
 ### Tasks (รอบ 50)
 เจ้าของไฟล์ร่วม (แก้ตามลำดับ stack — Depends ในตารางครอบทุกสายนี้แล้ว): ฟอร์มที่อยู่ add/edit address (19a → 19b → 20a → 20b → 20c → 21a → 21d), `checkout/components/shipping/index.tsx` (19a → 19b → 20c → 21c),
 `checkout/components/payment/index.tsx` (19a → 19b), `payment-container` (21c เท่านั้น), `group-join.tsx` (19a → 20c → 21d), `login`/`register` (19b → 21b → 21a → 21d), `option-refinements.tsx` (19d เท่านั้น),
-`checkout/components/error-message` + `returns/components/return-request-form` (21d เท่านั้น), `e2e/sfui-13-form-guard.unit.spec.ts` (19c → 19d → 20b), `e2e/sfui-19-button-size.{spec,unit.spec}.ts` (19a → 19b → 22),
-`e2e/sfui-20-address.spec.ts` (20a → 20b → 20c), `e2e/sfui-21-consistency.unit.spec.ts` (21b → 21a → 21c → 21d → 22), `sfui-baseline.json` (20a → 20b → 20c), `sfui-9a-font.spec.ts` (20b → 21b),
+`checkout/components/error-message` + `returns/components/return-request-form` + `cart/components/item` (21d เท่านั้น), `common/components/delete-button` (19b → 21d), `account-info` (19a → 21d),
+`sfui-9c-font.spec.ts` (21b → 21d), `e2e/sfui-13-form-guard.unit.spec.ts` (19c → 19d → 20b), `e2e/sfui-19-button-size.{spec,unit.spec}.ts` (19a → 19b → 22),
+`e2e/sfui-20-address.spec.ts` (20a → 20b → 20c), `e2e/sfui-21-consistency.unit.spec.ts` (21b → 21a → 21c → 21d → 22), `sfui-baseline.json` (20a → 20b → 20c), `sfui-9a-font.spec.ts` (20b → 21b → 21d),
 `shadcn-ui.json` (19c → 19d → 21d) · ไม่แตะ `apps/backend/**`, `package.json`/lockfile · LOC ไม่นับไฟล์ที่ CLI สร้างและ `shadcn-ui.json`
 
 | Task | งาน — ไฟล์ที่เป็นเจ้าของ | AC | Depends | ∥ | LOC |
@@ -1024,7 +1056,7 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
 | SFUI-21b | `h1` ขนาดเดียว (inventory 36, กฎ 77): `<h1` 27 ไฟล์; ใหม่ `e2e/sfui-21-consistency.unit.spec.ts` (AC-65 (1)), `e2e/sfui-21-heading.spec.ts`; แก้ค่าที่คาดของ `h1` ใน `sfui-9a..9e-font`, `sfui-5c-checkout-heading` (กฎ 78 (i)) | AC-65, AC-68 | SFUI-19b, SFUI-20b (`sfui-9a-font`) | ∥ 20c | ~300 |
 | SFUI-21a | ฟอร์ม consistency (inventory 32, 34, 35 — กฎ 73, 75–76): gap ในไฟล์ข้อ 32, `checkout/components/address-select` (ข้อ 34), ปุ่มปิด overlay ข้อ 35 (`add-address`, `edit-address-modal`, `side-menu`, `search/drawer.tsx`, `mobile-actions.tsx`); ขยาย `sfui-21-consistency.unit.spec.ts` (AC-66 (1)); ใหม่ `e2e/sfui-21-forms.spec.ts` | AC-66, AC-68 | SFUI-20c, SFUI-21b | — | ~230 |
 | SFUI-21c | การ์ดตัวเลือกจัดส่ง/ชำระเงิน = Choice Card ของ shadcn (inventory 37, กฎ 80 — owner Q-R50-1): `checkout/components/shipping/index.tsx` (3 จุด `OPTION_CLASS`), `checkout/components/payment-container/index.tsx` (ลบ `OptionDot` ถ้าไม่มีผู้ใช้อื่น); ขยาย `sfui-21-consistency.unit.spec.ts` (AC-69 (1)); ใหม่ `e2e/sfui-21c-choice-card.spec.ts`; e2e เดิมที่อ่านข้อความในตัวเลือกตามกฎ 78 (iv) | AC-69, AC-68 | SFUI-21a (`sfui-21-consistency`; ได้ 20c ของ `shipping/index.tsx` มาด้วย) | — | ~280 |
-| SFUI-21d | error ระดับฟอร์ม = `Alert` ของ shadcn (inventory 33, กฎ 74 — owner Q-R50-2): `shadcn add alert`; `checkout/components/error-message/index.tsx` + unit ใหม่; จุด hard-code ข้อ 33 (`add-address`, `edit-address-modal`, `register`, `returns/components/return-request-form`, `group-join.tsx`) → `ErrorMessage`; ขยาย `sfui-21-consistency.unit.spec.ts` (AC-70 (1)); ใหม่ `e2e/sfui-21d-alert.spec.ts` | AC-70, AC-68 | SFUI-21c (`sfui-21-consistency`; ได้ 19d ของ `shadcn-ui.json`, 21a ของฟอร์มที่อยู่/register, 20c ของ `group-join` มาด้วย) | — | ~250 |
+| SFUI-21d | error ระดับฟอร์ม = `Alert`, inline = `FieldError` (inventory 33, กฎ 74 — owner Q-R50-2 ทาง (ข)): `shadcn add alert`; `checkout/components/error-message/index.tsx` + unit ใหม่; จุด hard-code ระดับฟอร์ม (`add-address`, `edit-address-modal`, `register`, `returns/components/return-request-form`, `group-join.tsx` `group-join-error`, `account/components/account-info` `error-message`) → `ErrorMessage`; inline (`cart/components/item/index.tsx` `product-error-message`, `group-join.tsx` `group-units-limit`, `common/components/delete-button` `cart-item-remove-error`) → `FieldError`; ค่าฟอนต์ของ error ใน `sfui-9c-font.spec.ts` และ `sfui-9a-font.spec.ts` (กฎ 78 (i)); ขยาย `sfui-21-consistency.unit.spec.ts` (AC-70 (1)); ใหม่ `e2e/sfui-21d-alert.spec.ts` | AC-70, AC-68 | SFUI-21c (`sfui-21-consistency`; ได้ 19d ของ `shadcn-ui.json`, 19b ของ `delete-button`, 21a ของฟอร์มที่อยู่/register, 20c ของ `group-join`, 21b ของ `sfui-9a-font` มาด้วย) | — | ~320 |
 | SFUI-22 | ปิดรอบ: guard `<button` ดิบ + allow-list (กฎ 79 — เจอนอกรายการหยุดแจ้ง planner) ใน `sfui-21-consistency.unit.spec.ts`; ขยาย `sfui-19-button-size.spec.ts` (AC-67 (2)); ติ๊ก AC-55–70 + Status ของส่วนนี้; ROADMAP; อัปเดต body #603 (session หลัก) | AC-67, AC-68 | SFUI-21d | — | ~150 |
 
 ลำดับ: 19a → (19b ∥ (19c → 19d)) → 20a (หลัง 19b) → 20b (หลัง 20a + 19d) → 20c · 21b (หลัง 19b + 20b) ∥ 20c → 21a (หลัง 20c + 21b) → 21c → 21d → 22
@@ -1034,7 +1066,7 @@ Data model / Workflows / API routes: none · Admin UI: none · Storefront pages:
 
 ### Open questions (รอบ 50)
 - ~~Q-R50-1~~ = **ทำรอบนี้** (owner 2026-11-28): การ์ดจัดส่ง/ชำระเงินใช้โครงเดียวกัน = Choice Card ของ shadcn (กฎ 80, SFUI-21c)
-- ~~Q-R50-2~~ = **ใช้ `Alert` ของ shadcn** (owner 2026-11-28): error ระดับฟอร์มทุกจุด = `Alert variant="destructive"` (กฎ 74 ฉบับแก้, SFUI-21d)
+- ~~Q-R50-2~~ = **ใช้ `Alert` ของ shadcn กับ error ระดับฟอร์ม** (owner 2026-11-28 — ทาง (ข)): ระดับฟอร์ม = `Alert variant="destructive"`, inline ในแถว/เซลล์ = `FieldError` (กฎ 74, SFUI-21d)
 - SFUI-20b ~450 LOC — owner รับ (2026-11-28) · review #624 blocker 3 → กฎ 70 ทาง (ก) (`formData` เก็บ `ADDRESS_COUNTRY_CODE`)
 
 ## Open questions

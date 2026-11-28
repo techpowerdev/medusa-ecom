@@ -43,8 +43,10 @@ spec 01 กฎข้อ 55/56, 63(d), 73(c), 110(b)(d), 116(a), 121(a), 137, 146
   ส่วนที่ไม่ใช้จาก `pagination`: `PaginationPrevious`/`PaginationNext` (ข้อความอังกฤษ; ร้านไม่มีปุ่มก่อน/ถัดไปอยู่แล้ว), `PaginationEllipsis` (`sr-only` "More pages" ตายตัว) → จุดไข่ปลาคง `<span aria-hidden>` เดิม;
   `Pagination` ส่ง `aria-label="แบ่งหน้า"` ทับ (prop ถูก spread หลังค่าเริ่มต้น)
 - ข `switch` สำหรับ "เฉพาะสินค้าลดราคา" — ต้อง add component ใหม่และต่างจาก checkbox ตัวกรองข้างกัน → ไม่เลือก (ใช้ checkbox ทั้งกลุ่ม)
-- **ค (owner เลือก 2026-11-28 — Q-R50-2)** `shadcn add alert` → error ระดับฟอร์ม**ทุกจุด** = `Alert variant="destructive"` + icon + `AlertDescription` ผ่าน `ErrorMessage` เดิม
-  (testid คงเดิมบน `Alert` root, `role="alert"` จาก component) — แทนข้อเสนอเดิมของ planner (ข้อความ `text-sm text-destructive`) ที่ owner ไม่รับ
+- **ค (owner เลือก 2026-11-28 — Q-R50-2, ขอบเขตทาง (ข) ของ re-review #624)** `shadcn add alert` → error **ระดับฟอร์ม/ขั้นของฟอร์ม** (login ผิด, จ่ายเงินไม่สำเร็จ, ที่อยู่ไม่ครบ ฯลฯ)
+  = `Alert variant="destructive"` + icon + `AlertDescription` ผ่าน `ErrorMessage` เดิม (testid คงเดิมบน `Alert` root, `role="alert"` จาก component); error **inline ในแถว/เซลล์**
+  (`product-error-message`, `cart-item-remove-error`, `group-units-limit`) = `FieldError` ของ `ui/field` ใช้ตรง (ไม่เป็นกล่อง — กล่องในเซลล์ตารางเบียดแถว) — ไม่มี component/prop ใหม่;
+  แทนข้อเสนอเดิมของ planner (ข้อความ `text-sm text-destructive` ทุกจุด) ที่ owner ไม่รับ; ตาราง testid ครบอยู่ใน spec 09 กฎ 74c
 - ง `ToggleGroup type="single"` แทน radio ของตัวเลือกสินค้า (`option-select`) — radio native เป็นส่วนของฟอร์ม no-JS บน PDP และ Radix ToggleGroup ไม่ส่งค่าใน `<form>` → ไม่เลือก (นอกขอบเขต)
 - จ `command` สำหรับช่องค้นหาใน drawer — เป็นการออกแบบใหม่ ไม่ใช่การถอด override → ไม่เลือก (ช่อง `search-input` ของ drawer คงเดิม)
 ### D5 — ประเทศในฟอร์มที่อยู่
@@ -83,7 +85,9 @@ D1 = ก, D2 = ก, D3 = ก, D4 = ก + ค, D5 = ก, D6 = ก, D7 ตาม�
 − e2e ~25 ไฟล์ที่เลือก/ตรวจประเทศต้องแก้ (ลบบรรทัดเลือกประเทศ) และ e2e ฟอนต์ของรอบ 45 (`sfui-9a..9e`, `sfui-5b/5c`) ที่ล็อกขนาดหัวข้อต้องเปลี่ยนค่าที่คาด (หน้าตาตั้งใจเปลี่ยน — ยกเว้นกฎ 19)
 − ที่อยู่เดิมของลูกค้าที่ไม่มีจังหวัดต้องกรอกเพิ่มเมื่อเลือกใช้ใน checkout (error ระดับช่องเหมือนตำบลในรอบ 49) · ที่อยู่เดิมที่ `country_code` ไม่ใช่ `th` ถูกบันทึกเป็น `th` เมื่อแก้ไขผ่านฟอร์ม
 − error ระดับฟอร์มเปลี่ยนจากข้อความบรรทัดเดียวเป็นกล่อง `Alert` (มีขอบ + icon) — หน้าตาเปลี่ยนมากขึ้นตามที่ owner เลือก; การ์ดตัวเลือกเปลี่ยนเป็น Choice Card (indicator วงกลมของ shadcn แทน `OptionDot`)
-  และข้อความชื่อ/ราคาย้ายออกจาก `RadioGroupItem` → e2e ที่อ่านข้อความภายใน testid ของตัวเลือกต้องแก้ (spec 09 กฎ 78 (iv))
+  และข้อความชื่อ/ราคาย้ายออกจาก `RadioGroupItem` → e2e ที่อ่านข้อความภายใน testid ของตัวเลือกต้องแก้ (spec 09 กฎ 78 (iv));
+  **ช่องกรอกบัตร/QR ของ Stripe ย้ายไปอยู่ใต้การ์ด นอกกรอบ** (กรอบอยู่ที่ `FieldLabel` และ iframe อยู่ใน `<label>` ไม่ได้ — เดิมอยู่ในกรอบเดียวกับตัวเลือก) — ตั้งใจ **ไม่ใช่ defect** (qa/reviewer)
+− error ในแถวตะกร้า (`product-error-message`, `cart-item-remove-error`) ตัวใหญ่ขึ้น 12px → 14px ตาม `FieldError` — e2e ฟอนต์ `sfui-9a`/`sfui-9c` ปรับค่าที่คาด (spec 09 กฎ 78 (i))
 − component ใหม่ใน `ui/` 4 ไฟล์ (`pagination`, `toggle`, `toggle-group`, `alert`) + hash ใน `e2e/support/shadcn-ui.json` — ไม่มี dependency ใหม่ (`radix-ui`, `lucide-react`, `class-variance-authority`, `cn` มีแล้ว)
 − แบ่งหน้าเปลี่ยนจาก `<button>` เป็นลิงก์ `<a href>` (ตามตัวอย่าง docs) — มี `href` จริงของหน้าถัดไป (กดด้วย JS ยังใช้ router/`refine` เดิม)
 − **release v0.4.0 (#603) พักจนรอบ 50 merge ครบ** (owner 2026-11-28)

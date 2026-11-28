@@ -246,7 +246,7 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 | SFUI-21b | 09 | `h1` ขนาดเดียว `text-3xl font-semibold tracking-tight` (27 ไฟล์) | SFUI-19b, 20b | ✓ | ☐ |
 | SFUI-21a | 09 | gap ฟอร์ม 16px, `SelectTrigger`/ปุ่มปิด overlay default | SFUI-20c, 21b | ✓ | ☐ |
 | SFUI-21c | 09 | การ์ดจัดส่ง/ชำระเงิน = Choice Card ของ shadcn (owner Q-R50-1) | SFUI-21a | ✓ | ☐ |
-| SFUI-21d | 09 | error ระดับฟอร์มทุกจุด = `Alert` ของ shadcn (`shadcn add alert` — owner Q-R50-2) | SFUI-21c | ✓ | ☐ |
+| SFUI-21d | 09 | error ระดับฟอร์ม = `Alert` (`shadcn add alert`), inline ในแถว = `FieldError` (owner Q-R50-2) | SFUI-21c | ✓ | ☐ |
 | SFUI-22 | 09 | ปิดรอบ: guard `<button>` ดิบ + e2e ทุกปุ่ม 36px + ติ๊ก AC + #603 | SFUI-21d | — | ☐ |
 
 - ลำดับ: 19a → (19b ∥ 19c → 19d) → 20a → 20b (หลัง 20a + 19d) → 20c ∥ 21b → 21a → 21c → 21d → 22
@@ -258,7 +258,7 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 
 - **v0.4.0**: #603 **พักจนรอบ 50 merge ครบ** (owner 2026-11-28) → แล้ว owner merge `develop → main` + tag `v0.4.0`
 
-- **รอบ 50**: ไม่มีคำถามค้าง — ADR-034 accepted · ~~Q-R50-1~~ = ทำ (Choice Card, SFUI-21c) · ~~Q-R50-2~~ = ใช้ `Alert` (SFUI-21d) · SFUI-20b ~450 LOC owner รับ (2026-11-28)
+- **รอบ 50**: ไม่มีคำถามค้าง — ADR-034 accepted · ~~Q-R50-1~~ = ทำ (Choice Card, SFUI-21c) · ~~Q-R50-2~~ = `Alert` เฉพาะ error ระดับฟอร์ม (SFUI-21d) · SFUI-20b ~450 LOC owner รับ (2026-11-28)
 
 - **รอบ 49**: ADR-033 accepted, ~~Q-R49-1~~ = ก, ~~Q-R49-2~~ = ข, ~~Q-R49-3~~ = stack ได้, ~~Q-R49-4~~ = บังคับ (owner 2026-11-28) · ยังเปิด (ไม่ block รอบ 49):
   - Q-R49-5 ย้าย component ร่วมของรอบ 48 (`Input`, `Checkbox`, spinner) ไปประกอบตามตัวอย่าง docs ของ shadcn ไหม — เสนอ ไม่ทำตอนนี้ (backlog หลัง v0.4.0)
