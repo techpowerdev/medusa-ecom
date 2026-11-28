@@ -1,5 +1,5 @@
 # SFUI-19c — ผลทดสอบ (spec 09 กฎ 64–66, AC-60/68; ADR-034 D4)
-สภาพแวดล้อม: ฐาน feat/SFUI-19a-button-default-size (92ee3019, stack บน develop c0310565), node 24, prod build — backend :9491
+สภาพแวดล้อม: ฐาน feat/SFUI-19b-raw-buttons-to-shadcn (40579545 — rebase จาก 19a 92ee3019 ที่ใช้รันผล; ไฟล์ของ 19b ไม่ซ้ำกับ 19c), stack บน develop c0310565, node 24, prod build — backend :9491
 (NODE_ENV=production, start จาก .medusa/server, DB medusa_sfui19c, Redis db 13), storefront :8491 (next build + start); ไม่มี Stripe key
 
 ## shadcn CLI (กฎ 64)
