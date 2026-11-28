@@ -15,6 +15,11 @@ import { OPTION_VALUES_ATTRIBUTE } from "./attributes"
 
 const FACET_LIMIT = 200
 
+// SFUI-24b (spec 09 กฎ 87): Medusa admin 2.22.1 (`@medusajs/dashboard` `createDefaultOptionAndVariant`) สร้าง option นี้
+// ให้สินค้าที่ไม่มี variant (เช่น บัตรกำนัล) — ไม่ใช่ตัวเลือกจริง จึงไม่แสดงในตัวกรอง (ข้ามเฉพาะเมื่อ title และค่าตรงกันทั้งคู่)
+const MEDUSA_DEFAULT_OPTION_TITLE = "Default option"
+const MEDUSA_DEFAULT_OPTION_VALUE = "Default option value"
+
 type OptionGroup = {
   title: string
   values: {
@@ -25,7 +30,7 @@ type OptionGroup = {
   }[]
 }
 
-function groupItems(
+export function groupItems(
   items: ReturnType<typeof useRefinementList>["items"]
 ): OptionGroup[] {
   const groups = new Map<string, OptionGroup>()
@@ -39,6 +44,13 @@ function groupItems(
 
     const title = item.label.slice(0, separator)
     const label = item.label.slice(separator + 1)
+
+    if (
+      title === MEDUSA_DEFAULT_OPTION_TITLE &&
+      label === MEDUSA_DEFAULT_OPTION_VALUE
+    ) {
+      continue
+    }
 
     if (!groups.has(title)) {
       groups.set(title, { title, values: [] })

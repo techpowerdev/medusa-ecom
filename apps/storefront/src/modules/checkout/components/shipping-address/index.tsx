@@ -121,8 +121,9 @@ const ShippingAddress = ({
   return (
     <>
       {customer && (addressesInRegion?.length || 0) > 0 && (
+        // SFUI-24b (spec 09 กฎ 86): ไม่มีกล่องพื้น/padding — ข้อความและ AddressSelect ชิดแนวซ้ายเดียวกับช่องฟอร์ม
         <div
-          className="rounded-lg bg-card mb-6 flex flex-col gap-y-4 p-5"
+          className="mb-6 flex flex-col gap-y-4"
           data-testid="saved-address-greeting"
         >
           <p className="text-xs leading-5 font-normal">
