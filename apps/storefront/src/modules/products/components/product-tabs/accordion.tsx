@@ -35,7 +35,7 @@ const Item: React.FC<AccordionItemProps> = ({
         className
       )}
     >
-      <AccordionTrigger className="items-center px-1 py-1.5 font-normal text-muted-foreground">
+      <AccordionTrigger className="items-center text-muted-foreground">
         {title}
       </AccordionTrigger>
       <AccordionContent className="px-1 pb-0">

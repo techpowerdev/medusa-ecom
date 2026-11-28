@@ -1,8 +1,10 @@
 "use client"
 
+import { useId } from "react"
 import { useRefinementList } from "react-instantsearch"
 
-import { cn } from "@/lib/utils"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Field, FieldLabel } from "@/components/ui/field"
 
 type RefinementGroupProps = {
   attribute: string
@@ -15,6 +17,7 @@ const RefinementGroup = ({ attribute, title }: RefinementGroupProps) => {
     limit: 20,
     sortBy: ["count:desc", "name:asc"],
   })
+  const id = useId()
 
   if (!items.length) {
     return null
@@ -29,28 +32,21 @@ const RefinementGroup = ({ attribute, title }: RefinementGroupProps) => {
         {title}
       </span>
       <ul className="flex flex-col gap-y-2 pr-6">
-        {items.map((item) => (
+        {/* SFUI-19d (spec 09 กฎ 67b): ตัวอย่าง docs ของ checkbox — `Field orientation="horizontal"` → `Checkbox` → `FieldLabel` */}
+        {items.map((item, index) => (
           <li key={item.value}>
-            <label className="flex cursor-pointer items-start gap-x-2">
-              <input
-                type="checkbox"
+            <Field orientation="horizontal">
+              <Checkbox
+                id={`${id}-${index}`}
                 checked={item.isRefined}
-                onChange={() => refine(item.value)}
-                className="mt-1 shrink-0 accent-primary"
+                onCheckedChange={() => refine(item.value)}
                 data-testid={`refinement-${attribute}`}
               />
-              <span
-                className={cn(
-                  "text-xs leading-5 font-normal min-w-0 break-words",
-                  item.isRefined ? "text-foreground" : "text-muted-foreground"
-                )}
-              >
+              <FieldLabel htmlFor={`${id}-${index}`} className="min-w-0 break-words">
                 {item.label}
-              </span>
-              <span className="text-xs leading-5 font-normal shrink-0 text-muted-foreground">
-                ({item.count})
-              </span>
-            </label>
+                <span className="shrink-0 text-muted-foreground">({item.count})</span>
+              </FieldLabel>
+            </Field>
           </li>
         ))}
       </ul>

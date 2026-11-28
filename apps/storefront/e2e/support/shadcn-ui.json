@@ -19,6 +19,8 @@
     "sheet.tsx": "ea473d38a26a9b0b879e5a13139899ad45e9782e896b3fa205c7763a6c506876",
     "slider.tsx": "6a531f6182de6efec2c25d30a7626b66cbf11cf52d505e47f907124934f7188e",
     "table.tsx": "bd1a9fc83a5a2149e504038e274bb7e5a0351af59f6896df52ac4d5b439695ac",
-    "textarea.tsx": "5cafcfeeee29534f449387a16b585f5923d2faab1a0cdc50a874416b175f59ce"
+    "textarea.tsx": "5cafcfeeee29534f449387a16b585f5923d2faab1a0cdc50a874416b175f59ce",
+    "toggle-group.tsx": "659d8d40849a9b23e86682e5cbb3dfef6cbd5a8536a5f50eecef8d60a5f66b63",
+    "toggle.tsx": "28ae7d72730890a3ba6c668fd511c63a358ad26534c2c25d5922748d47e1fa99"
   }
 }

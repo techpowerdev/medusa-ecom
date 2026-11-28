@@ -9,7 +9,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { cn } from "@/lib/utils"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 import { OPTION_VALUES_ATTRIBUTE } from "./attributes"
 
@@ -93,7 +93,7 @@ const OptionRefinements = () => {
           className="overflow-hidden border-b-0"
         >
           {/* SFUI-4: chevron มาจาก AccordionTrigger ของ shadcn (หมุนเมื่อเปิดด้วย data-state) */}
-          <AccordionTrigger className="items-center py-3">
+          <AccordionTrigger className="items-center">
             {/* CORE-87 (spec 01 กฎข้อ 143): ไม่มีตัวเลขที่หัว — facet ของ index มีจำนวนต่อ "<option>:<ค่า>" เท่านั้น
                 ไม่มีจำนวนสินค้าต่อ option และรวมจากค่าย่อยไม่ได้ (สินค้าหนึ่งมีหลายค่า) */}
             <span
@@ -104,25 +104,31 @@ const OptionRefinements = () => {
             </span>
           </AccordionTrigger>
           <AccordionContent className="pb-4 pt-1">
-            <div className="flex flex-wrap gap-2">
+            {/* SFUI-19d (spec 09 กฎ 67a): `toggle-group` ของ shadcn — กลุ่มส่งค่าที่เลือกทั้งหมด จึง refine เฉพาะค่าที่เปลี่ยน */}
+            <ToggleGroup
+              type="multiple"
+              variant="outline"
+              spacing={2}
+              className="flex-wrap"
+              value={group.values.filter((v) => v.isRefined).map((v) => v.value)}
+              onValueChange={(next) => {
+                const changed = group.values.find(
+                  (v) => v.isRefined !== next.includes(v.value)
+                )
+                if (changed) refine(changed.value)
+              }}
+            >
               {group.values.map((value) => (
-                <button
+                <ToggleGroupItem
                   key={value.value}
-                  onClick={() => refine(value.value)}
-                  aria-pressed={value.isRefined}
-                  className={cn(
-                    "border-border border text-xs leading-5 font-normal h-10 rounded-rounded px-3 flex items-center gap-x-1.5 transition-colors duration-150",
-                    value.isRefined
-                      ? "border-primary text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
+                  value={value.value}
                   data-testid="option-refinement"
                 >
                   {value.label}
                   <span className="text-muted-foreground">({value.count})</span>
-                </button>
+                </ToggleGroupItem>
               ))}
-            </div>
+            </ToggleGroup>
           </AccordionContent>
         </AccordionItem>
       ))}

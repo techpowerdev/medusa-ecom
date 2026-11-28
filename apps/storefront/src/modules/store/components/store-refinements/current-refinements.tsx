@@ -3,6 +3,7 @@
 import { X } from "lucide-react"
 import { useClearRefinements, useCurrentRefinements } from "react-instantsearch"
 
+import { Button } from "@/components/ui/button"
 import { indexedCurrency, priceAttribute } from "@lib/search-client"
 import { convertToLocale } from "@lib/util/money"
 import {
@@ -82,13 +83,13 @@ const CurrentRefinements = ({ currencyCode }: { currencyCode: string }) => {
           ตัวกรองที่เลือก
         </span>
         {canClearAll && (
-          <button
+          <Button
+            variant="link"
             onClick={clearAll}
-            className="text-sm leading-5 font-medium text-primary underline-offset-4 hover:underline"
             data-testid="clear-refinements"
           >
             ล้างทั้งหมด
-          </button>
+          </Button>
         )}
       </div>
 
@@ -104,16 +105,18 @@ const CurrentRefinements = ({ currencyCode }: { currencyCode: string }) => {
               className="min-w-0 max-w-full"
             >
               {/* CORE-93 (กฎข้อ 149): ชื่อยาว (เช่น tag) ตัดด้วย truncate บรรทัดเดียว และ title บอกข้อความเต็ม */}
-              <button
+              {/* SFUI-19d (spec 09 กฎ 67c): `Button variant="outline"` ขนาด default */}
+              <Button
+                variant="outline"
                 onClick={() => refine(refinement)}
                 aria-label={`ลบตัวกรอง ${label}`}
                 title={label}
-                className="border-primary text-foreground border text-xs leading-5 font-normal h-8 max-w-full rounded-rounded px-3 flex items-center gap-x-1.5 transition-colors duration-150 hover:bg-muted"
+                className="max-w-full"
                 data-testid="remove-refinement"
               >
                 <span className="truncate">{label}</span>
-                <X aria-hidden="true" className="size-[15px] shrink-0 text-muted-foreground" />
-              </button>
+                <X aria-hidden="true" />
+              </Button>
             </li>
           )
         })}

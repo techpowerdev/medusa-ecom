@@ -1,6 +1,10 @@
 "use client"
 
+import { useId } from "react"
 import { useToggleRefinement } from "react-instantsearch"
+
+import { Checkbox } from "@/components/ui/checkbox"
+import { Field, FieldLabel } from "@/components/ui/field"
 
 import { priceAttribute } from "@lib/search-client"
 
@@ -14,29 +18,28 @@ const OnSaleToggle = ({ currencyCode }: { currencyCode: string }) => {
     attribute: priceAttribute("on_sale", currencyCode),
     on: true,
   })
+  const id = useId()
 
   if (!canRefine) {
     return null
   }
 
+  // SFUI-19d (spec 09 กฎ 67b): ตัวอย่าง docs ของ checkbox — `Field orientation="horizontal"` → `Checkbox` → `FieldLabel`
   return (
-    <label className="flex cursor-pointer items-center gap-x-2">
-      <input
-        type="checkbox"
+    <Field orientation="horizontal">
+      <Checkbox
+        id={id}
         checked={value.isRefined}
-        onChange={() => refine(value)}
-        className="shrink-0 accent-primary"
+        onCheckedChange={() => refine(value)}
         data-testid="on-sale-toggle"
       />
-      <span className="text-sm leading-5 font-medium text-muted-foreground">
+      <FieldLabel htmlFor={id}>
         เฉพาะสินค้าลดราคา
-      </span>
-      {typeof value.count === "number" && (
-        <span className="text-xs leading-5 font-normal text-muted-foreground">
-          ({value.count})
-        </span>
-      )}
-    </label>
+        {typeof value.count === "number" && (
+          <span className="text-muted-foreground">({value.count})</span>
+        )}
+      </FieldLabel>
+    </Field>
   )
 }
 
