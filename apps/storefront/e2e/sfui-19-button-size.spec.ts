@@ -49,7 +49,8 @@ const INVENTORY = [
 
 // SFUI-22 (spec 09 กฎ 79, AC-67 (2)): วัดทุกปุ่มบนหน้า — `button` (ปุ่มดิบ/ของ Radix), `[data-variant][data-size]` (Button ที่ถูก Slot ของ
 // `<…Trigger asChild>` ทับ data-slot และ `Button asChild` บน `<a>`/`<span>` — review 19b) และ `[role="button"]`
-const BUTTON_SELECTOR = 'button, [data-variant][data-size], [role="button"]'
+// review SFUI-22: root ของ toggle-group (กล่องครอบ chip) ไม่ใช่ปุ่ม — ไม่วัด
+const BUTTON_SELECTOR = 'button, [data-variant][data-size]:not([data-slot="toggle-group"]), [role="button"]'
 
 /** รายการปิดของกฎ 79 — ปุ่มที่ไม่อยู่ใต้กฎขนาด (เพิ่มเองไม่ได้: เจอปุ่มอื่นที่ไม่ใช่ 36px = หยุดแจ้ง planner) */
 const RULE_79_EXEMPT = [

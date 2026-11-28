@@ -14,6 +14,6 @@ DB medusa_sfui22, Redis db 12, Stripe test + stripe listen), storefront :8481
 - e2e sfui-19-button-size (AC-56/AC-67 1280+390 รวม login/register, AC-57 3DS + พร้อมเพย์ Stripe test, AC-59) + sfui-21-forms (1280+390,
   คลิก close-modal-button จริง) + sfui-19d-refinements (chip ลดราคาหาด้วย testid+title จาก code): 8 passed (--workers=1)
 - ไม่พบปุ่มนอกรายการปิดของกฎ 79 ที่ไม่ใช่ 36px; ลิงก์ buttonVariants ที่อยู่ในหน้า (hero-cta, order-details-link) 36px —
-  pagination-link ไม่มีในชุดหน้า P ของ seed (ครอบโดย AC-60 sfui-19c); root toggle-group ที่ selector จับด้วยสูง 36px (1280/390)
+  pagination-link ไม่มีในชุดหน้า P ของ seed (ครอบโดย AC-60 sfui-19c); root toggle-group ตัดออกจาก selector (`:not([data-slot="toggle-group"])` — review SFUI-22)
 - playwright project unit (รวม evidence-budget, AC-19): 274 passed; vitest: 140 files / 2089 passed
 - pnpm lint && pnpm typecheck: ผ่าน (warning เดิม 27 ไม่มีในไฟล์ของ task); pnpm --filter storefront build: ผ่าน
