@@ -16,8 +16,8 @@ import {
 import { continueToReview } from "./support/stripe"
 import { THAI, latinWordsOutsideAllowList } from "./support/thai-text"
 
-// CORE-60: spec 01 AC-159 (กฎข้อ 118, Q-C8 = ก) — ป้ายแถวแรกของ cart-totals บอกว่าเป็นยอดก่อนส่วนลดเฉพาะเมื่อมีส่วนลด
-// ตัวเลข/แถวคงเดิม (กฎข้อ 115) และที่ 375 จำนวนเงินอยู่บรรทัดเดียวไม่ทับป้าย
+// CORE-60: spec 01 AC-159 — SFUI-24a (กฎข้อ 158 แทนกฎข้อ 118/120): ป้ายแถวแรก "รวมค่าสินค้า" คงเดิมทั้งมี/ไม่มีส่วนลด
+// โค้ดของลูกค้าอยู่ในป้ายแถวส่วนลด (cart-discount-label) และที่ 375 จำนวนเงินอยู่บรรทัดเดียวไม่ทับป้าย
 // หา element ภายใน cart-totals ด้วย data-testid เท่านั้น (dropdown มี cart-subtotal-label ชื่อเดียวกัน) ไม่ match ประโยคไทยตรงตัว
 test.use({ evidenceTarget: { feature: "core", taskId: "CORE-60" }, viewport: { width: 1280, height: 800 } })
 
@@ -41,7 +41,7 @@ async function subtotalLabel(page: Page) {
   return text
 }
 
-test("AC-159: ป้ายแถวแรกของ cart-totals เปลี่ยนเมื่อมีส่วนลด ตัวเลขเท่าเดิม และไม่ล้นที่ 375", async ({
+test("AC-159 (กฎข้อ 158): ป้ายแถวแรกของ cart-totals คงเดิมเมื่อมีโค้ด ป้ายส่วนลดมีโค้ด และไม่ล้นที่ 375", async ({
   page,
   context,
   request,
@@ -75,7 +75,7 @@ test("AC-159: ป้ายแถวแรกของ cart-totals เปลี�
     })
 
     let withDiscount = ""
-    await step("(b) ใช้โค้ดส่วนลดแล้ว: ป้ายเปลี่ยน ตัวเลข = original_item_total และแถวรวมได้ยอดสุทธิ", async () => {
+    await step("(b) ใช้โค้ดส่วนลดแล้ว: ป้ายแถวแรกคงเดิม ป้ายส่วนลดมีโค้ด ตัวเลข = original_item_total และแถวรวมได้ยอดสุทธิ", async () => {
       const code = `CORE60${Date.now()}${crypto.randomInt(1e6)}`
       const created = await request.post(`${BACKEND_URL}/admin/promotions`, {
         headers: admin,
@@ -102,7 +102,8 @@ test("AC-159: ป้ายแถวแรกของ cart-totals เปลี�
       await page.reload()
       await expect(totals.getByTestId("cart-discount")).toBeVisible()
       withDiscount = await subtotalLabel(page)
-      expect(withDiscount).not.toBe(withoutDiscount)
+      expect(withDiscount).toBe(withoutDiscount)
+      await expect(totals.getByTestId("cart-discount-label")).toContainText(code)
 
       const subtotal = await dataValue(totals.getByTestId("cart-subtotal"))
       expect(Math.abs(subtotal - Number(cart.original_item_total))).toBeLessThanOrEqual(0.01)
@@ -154,7 +155,7 @@ test("AC-159: ป้ายแถวแรกของ cart-totals เปลี�
   }
 })
 
-// CORE-62: spec 01 AC-161 (กฎข้อ 120) — ส่วนลดเฉพาะค่าส่ง ราคาสินค้าไม่ลด → ป้ายแถวแรกคงป้ายเมื่อไม่มีส่วนลด แต่ยังมีแถวส่วนลด
+// CORE-62: spec 01 AC-161 — SFUI-24a (กฎข้อ 158): ส่วนลดเฉพาะค่าส่งจากโค้ด → ป้ายแถวแรกคงเดิม และยังมีแถวส่วนลด
 test.describe("CORE-62", () => {
   test.use({ evidenceTarget: { feature: "core", taskId: "CORE-62" } })
 

@@ -21,7 +21,9 @@ export const retrieveOrder = async (id: string) => {
           // CORE-20: เงื่อนไขขอคืนสินค้า (requires_shipping, วันที่ส่ง/ได้รับ) และ cart ของ order สำหรับ return option
           ",+items.requires_shipping,*fulfillments,+cart.id" +
           // CORE-20d (กฎข้อ 66b): ช่วงคืนคิดต่อ line — ต้องรู้ว่า fulfillment ไหนมี line ใด
-          ",+fulfillments.items.line_item_id",
+          ",+fulfillments.items.line_item_id" +
+          // SFUI-24a (spec 01 กฎข้อ 158b, 158f): แยกโค้ดของลูกค้าออกจากส่วนลดอัตโนมัติใน CartTotals
+          ",+promotions.code,+promotions.is_automatic",
       },
       headers,
       cache: "no-store",

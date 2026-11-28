@@ -52,7 +52,9 @@ export async function retrieveCart(
 ) {
   const id = cartId || (await getCartId())
   fields ??=
-    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, +items.requires_shipping, *promotions, +shipping_methods.name"
+    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, +items.requires_shipping, *promotions, +shipping_methods.name" +
+    // SFUI-24a (spec 01 กฎข้อ 158f): ภาษีที่ต้องบวกเพิ่มของรายการที่ไม่รวม VAT (price-breakdown)
+    ", +items.tax_total, +shipping_methods.total, +shipping_methods.tax_total"
 
   if (!id) {
     return null
