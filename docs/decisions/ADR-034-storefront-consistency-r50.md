@@ -46,7 +46,7 @@ spec 01 กฎข้อ 55/56, 63(d), 73(c), 110(b)(d), 116(a), 121(a), 137, 146
 - **ค (owner เลือก 2026-11-28 — Q-R50-2, ขอบเขตทาง (ข) ของ re-review #624)** `shadcn add alert` → error **ระดับฟอร์ม/ขั้นของฟอร์ม** (login ผิด, จ่ายเงินไม่สำเร็จ, ที่อยู่ไม่ครบ ฯลฯ)
   = `Alert variant="destructive"` + icon + `AlertDescription` ผ่าน `ErrorMessage` เดิม (testid คงเดิมบน `Alert` root, `role="alert"` จาก component); error **inline ในแถว/เซลล์**
   และข้อความที่ผูกกับตัวเลือก/แถว (`product-error-message`, `cart-item-remove-error`, `group-units-limit`, `group-leave-error`, ข้อความเกินสิทธิ์/เกินคงเหลือของ flash)
-  = `FieldError` ของ `ui/field` ใช้ตรง; notice `cart-error-notice` = `Alert` variant `default`; empty state ของส่วน/หน้าและ notice สถานะที่มีปุ่มในบรรทัด **ไม่รวม** (เหตุผลในตาราง) (ไม่เป็นกล่อง — กล่องในเซลล์ตารางเบียดแถว) — ไม่มี component/prop ใหม่;
+  = `FieldError` ของ `ui/field` ใช้ตรง (ไม่เป็นกล่อง — กล่องในเซลล์ตารางเบียดแถว); notice `cart-error-notice` = `Alert` variant `default`; empty state ของส่วน/หน้าและ notice สถานะ **ไม่รวม** (เหตุผลในตาราง) — ไม่มี component/prop ใหม่;
   แทนข้อเสนอเดิมของ planner (ข้อความ `text-sm text-destructive` ทุกจุด) ที่ owner ไม่รับ; ตาราง testid ครบอยู่ใน spec 09 กฎ 74c
 - ง `ToggleGroup type="single"` แทน radio ของตัวเลือกสินค้า (`option-select`) — radio native เป็นส่วนของฟอร์ม no-JS บน PDP และ Radix ToggleGroup ไม่ส่งค่าใน `<form>` → ไม่เลือก (นอกขอบเขต)
 - จ `command` สำหรับช่องค้นหาใน drawer — เป็นการออกแบบใหม่ ไม่ใช่การถอด override → ไม่เลือก (ช่อง `search-input` ของ drawer คงเดิม)
