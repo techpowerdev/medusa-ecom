@@ -91,6 +91,19 @@ export function lineAmount(item: PricedLine, promotions: PricedPromotion[] | nul
   return num(item.unit_price) * num(item.quantity) - splitAdjustments(item, promotions).automatic
 }
 
+/** SFUI-24c (กฎข้อ 159a): ราคาต่อชิ้นของแถว = ยอดของ line ÷ quantity (ส่วนลดจากโค้ดไม่ลดราคาในแถว) */
+export function lineUnitPrice(item: PricedLine, promotions: PricedPromotion[] | null | undefined) {
+  const quantity = num(item.quantity)
+  return quantity ? lineAmount(item, promotions) / quantity : 0
+}
+
+/** SFUI-24c (กฎข้อ 159b): ราคาอ้างอิงก่อนลด = compare_at_unit_price ของ price list แบบ sale ถ้าสูงกว่า unit_price ไม่งั้น unit_price */
+export function lineReferenceUnitPrice(item: PricedLine & { compare_at_unit_price?: Amount }) {
+  const unit = num(item.unit_price)
+  const compareAt = num(item.compare_at_unit_price)
+  return compareAt > unit + 0.005 ? compareAt : unit
+}
+
 export function priceBreakdown(doc: PricedDocument): PriceBreakdown {
   const { promotions } = doc
   const codes = new Set<string>()

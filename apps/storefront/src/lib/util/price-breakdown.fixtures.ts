@@ -293,3 +293,26 @@ export const DIGITAL_ONLY = {
   ],
   shipping_methods: [],
 }
+
+/** SFUI-24c (กฎข้อ 159b): price list แบบ sale 450 (ราคาฐาน 500 = compare_at_unit_price) × 2 ไม่มี adjustment + ค่าส่ง 10 → 910 */
+export const SALE = {
+  currency_code: "thb",
+  total: 910,
+  promotions: [],
+  items: [
+    {
+      id: "item_sale",
+      unit_price: 450,
+      compare_at_unit_price: 500,
+      quantity: 2,
+      is_tax_inclusive: true,
+      requires_shipping: true,
+      tax_lines: VAT,
+      tax_total: inclusiveTax(900),
+      adjustments: [],
+    },
+  ],
+  shipping_methods: [
+    { amount: 10, is_tax_inclusive: true, tax_lines: VAT, total: 10, tax_total: inclusiveTax(10), adjustments: [] },
+  ],
+}

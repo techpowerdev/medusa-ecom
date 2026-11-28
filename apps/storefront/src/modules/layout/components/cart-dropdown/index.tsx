@@ -10,10 +10,11 @@ import { cn } from "@/lib/utils"
 import { retrieveCart } from "@lib/data/cart"
 import { CART_UPDATED_EVENT } from "@lib/util/cart-events"
 import { convertToLocale } from "@lib/util/money"
+import { priceBreakdown } from "@lib/util/price-breakdown"
 import { HttpTypes } from "@medusajs/types"
 import DeleteButton from "@modules/common/components/delete-button"
 import LineItemOptions from "@modules/common/components/line-item-options"
-import LineItemPrice from "@modules/common/components/line-item-price"
+import LineItemUnitPrice from "@modules/common/components/line-item-unit-price"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Thumbnail from "@modules/products/components/thumbnail"
 import { usePathname } from "next/navigation"
@@ -49,8 +50,8 @@ const CartDropdown = ({
 
   const totalItems = countItems(cartState)
 
-  // CORE-26 (กฎข้อ 81a): ยอดของสินค้าหลังส่วนลดและรวม VAT ที่ Medusa คำนวณ — ตรงกับราคาต่อ line ที่แสดง
-  const itemTotal = cartState?.item_total ?? 0
+  // SFUI-24c (spec 01 กฎข้อ 159d แทนกฎข้อ 81a): "รวมค่าสินค้า" จาก helper เดียวกับ CartTotals = Σ ราคาต่อชิ้น × จำนวนของแถว
+  const itemTotal = cartState ? priceBreakdown(cartState).subtotal : 0
   const itemRef = useRef<number>(totalItems || 0)
 
   useEffect(() => {
@@ -239,10 +240,12 @@ const CartDropdown = ({
                               </span>
                             </div>
                             <div className="flex justify-end">
-                              <LineItemPrice
+                              <LineItemUnitPrice
                                 item={item}
+                                promotions={cartState.promotions}
                                 style="tight"
                                 currencyCode={cartState.currency_code}
+                                showQuantity
                               />
                             </div>
                           </div>
@@ -264,9 +267,7 @@ const CartDropdown = ({
                     className="text-foreground font-semibold"
                     data-testid="cart-subtotal-label"
                   >
-                    ยอดรวมสินค้า{" "}
-                    {/* eslint-disable-next-line no-restricted-syntax -- "VAT" เป็นคำย่อที่ลูกค้าไทยใช้ ป้ายตาม Q-C1 ที่ owner ตัดสิน (spec 01 กฎข้อ 81a) */}
-                    <span className="font-normal">(รวม VAT)</span>
+                    รวมค่าสินค้า
                   </span>
                   <span
                     className="text-base leading-6 font-semibold"

@@ -37,6 +37,7 @@ const ItemsPreviewTemplate = ({ cart }: ItemsTemplateProps) => {
                       item={item}
                       type="preview"
                       currencyCode={cart.currency_code}
+                      promotions={cart.promotions}
                     />
                   )
                 })

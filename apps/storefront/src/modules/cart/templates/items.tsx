@@ -51,11 +51,9 @@ const ItemsTemplate = ({
             <TableHead className="h-12 whitespace-normal px-2 small:px-4 text-muted-foreground">
               จำนวน
             </TableHead>
-            <TableHead className="h-12 whitespace-normal px-4 hidden small:table-cell text-muted-foreground">
-              ราคา
-            </TableHead>
+            {/* SFUI-24c (spec 01 กฎข้อ 159a): ไม่มีคอลัมน์ยอดรวม — ราคาต่อชิ้นอยู่คอลัมน์สุดท้าย */}
             <TableHead className="h-12 whitespace-normal px-4 pr-0! text-right text-muted-foreground">
-              รวม
+              ราคา
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -71,6 +69,7 @@ const ItemsTemplate = ({
                       key={item.id}
                       item={item}
                       currencyCode={cart?.currency_code}
+                      promotions={cart?.promotions}
                       flashRemaining={flashExceeded?.[item.id]}
                       flashCustomerRemaining={flashCustomerLimit?.[item.id]}
                     />
