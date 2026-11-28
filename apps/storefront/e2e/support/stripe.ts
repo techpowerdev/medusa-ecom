@@ -1,4 +1,4 @@
-import { APIRequestContext, BrowserContext, Frame, Page, expect } from "@playwright/test"
+import { APIRequestContext, BrowserContext, Frame, Locator, Page, expect } from "@playwright/test"
 
 import { BACKEND_URL } from "./fixtures"
 import { Customer, shippingOptionId } from "./medusa"
@@ -165,9 +165,34 @@ export async function fillCard(page: Page, number: string) {
   }
 }
 
+/**
+ * SFUI-19a (spec 09 กฎ 61, ADR-034 D2): รอจนจุดกลางของปุ่มรับคลิกได้จริง — Playwright scroll แล้ว dispatch คลิกทันที
+ * ขณะ hit-test ของ iframe ข้าม origin (Stripe Elements) ยังเป็นตำแหน่งก่อน scroll ทำให้คลิกตกใน iframe (ผู้ใช้จริงเลื่อนเมาส์ภายหลังจึงไม่เกิด)
+ * → scroll ก่อน แล้วรอจน `elementFromPoint` ที่จุดกลางเป็นปุ่ม/ลูกของปุ่ม และกล่องของปุ่มนิ่ง 2 รอบติด (ไม่คลิกเอง —
+ * ผู้เรียกคลิกครั้งเดียวหลังจากนี้ ตาม CORE-19b AC-64 ที่ห้าม retry click)
+ */
+export async function waitUntilHittable(locator: Locator) {
+  await locator.scrollIntoViewIfNeeded()
+  let last = ""
+  await expect(async () => {
+    const box = await locator.boundingBox()
+    const key = JSON.stringify(box)
+    const hit = await locator.evaluate((el) => {
+      const r = el.getBoundingClientRect()
+      const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+      return !!top && el.contains(top)
+    })
+    const stable = key === last
+    last = key
+    expect(hit && stable, "จุดกลางของปุ่มรับคลิกได้และกล่องนิ่ง").toBe(true)
+  }).toPass({ timeout: 10_000 })
+}
+
 /** กด "Continue to review" ครั้งเดียวแล้วรอขั้น review (CORE-19b, spec 01 AC-64: ไม่มีการกดซ้ำ) */
 export async function continueToReview(page: Page) {
-  await page.getByTestId("submit-payment-button").click()
+  const button = page.getByTestId("submit-payment-button")
+  await waitUntilHittable(button)
+  await button.click()
   await expect(page).toHaveURL(/[?&]step=review(&|$)/, { timeout: 10_000 })
   await expect(page.getByTestId("submit-order-button")).toBeVisible({ timeout: 10_000 })
 }
