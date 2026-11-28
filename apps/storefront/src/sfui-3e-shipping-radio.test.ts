@@ -4,7 +4,7 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 // SFUI-3e (spec 09 กฎ 4, 9, 12–13, AC-13): ตัวเลือกจัดส่งเป็น RadioGroup ของ shadcn (Radix) จริง (ไม่ mock) —
-// ตัวเลือกคือปุ่ม role="radio" ที่มี testid `delivery-option-radio` + `data-option-id` และชื่อ/ราคาอยู่ข้างใน,
+// ตัวเลือกคือปุ่ม role="radio" ที่มี testid `delivery-option-radio` + `data-option-id` และชื่อ/ราคาอยู่ในการ์ด (`<label>` ของ Choice Card — SFUI-21c กฎ 80),
 // ไม่มีตัวที่ติ๊กตอนเริ่ม (core-32: `[aria-checked="true"], [checked]` = 0), RadioGroup ไม่อยู่ใน <form> จึงไม่มี input ซ่อน
 // (ไม่ต้องกันบั๊ก form reset ของ Radix — qa #353 D-1), เลือกแล้วเรียก setShippingMethod ครั้งเดียว และล้มแล้วกลับค่าเดิม
 const step = { value: "delivery" as string | null }
@@ -58,6 +58,8 @@ const render = async (cart: unknown, availableShippingMethods: unknown[]) => {
 
 const option = (id: string) =>
   container.querySelector<HTMLButtonElement>(`[data-testid="delivery-option-radio"][data-option-id="${id}"]`)!
+/** SFUI-21c (กฎ 80): ข้อความของตัวเลือกอยู่ใน FieldLabel (`<label>`) ที่ครอบปุ่ม ไม่ใช่ในปุ่ม */
+const cardText = (el: HTMLElement) => el.closest("label")?.textContent ?? ""
 const radios = () => Array.from(container.querySelectorAll<HTMLElement>('[data-testid="delivery-option-radio"]'))
 const click = async (el: HTMLElement) => {
   await act(async () => {
@@ -80,15 +82,16 @@ describe("SFUI-3e: ตัวเลือกจัดส่งใน RadioGroup �
     container.remove()
   })
 
-  it("testid + data-option-id อยู่บนปุ่ม role=radio ใน radiogroup ที่มีชื่อและราคาอยู่ข้างใน", async () => {
+  it("testid + data-option-id อยู่บนปุ่ม role=radio ใน radiogroup และชื่อ/ราคาอยู่ในการ์ด (label) ของปุ่ม", async () => {
     await render(cartWith(), [standard, express])
     const el = option(standard.id)
     expect(el.tagName).toBe("BUTTON")
     expect(el.getAttribute("role")).toBe("radio")
     expect(el.getAttribute("data-slot")).toBe("radio-group-item")
     expect(el.closest('[role="radiogroup"]')).not.toBeNull()
-    expect(el.textContent).toContain("มาตรฐาน")
-    expect(el.textContent).toMatch(/50/)
+    expect(el.closest("label")?.htmlFor).toBe(el.id)
+    expect(cardText(el)).toContain("มาตรฐาน")
+    expect(cardText(el)).toMatch(/50/)
     expect(radios()).toHaveLength(2)
   })
 
@@ -164,14 +167,14 @@ describe("SFUI-3e: ตัวเลือกจัดส่งใน RadioGroup �
     await render(cartWith(), [standard, short, ok])
     const pickupToggle = radios().find((r) => !r.hasAttribute("data-option-id"))!
     expect(pickupToggle.getAttribute("role")).toBe("radio")
-    expect(pickupToggle.textContent).toContain("รับสินค้าด้วยตนเอง")
+    expect(cardText(pickupToggle)).toContain("รับสินค้าด้วยตนเอง")
     await click(pickupToggle)
     expect(setShippingMethod).toHaveBeenCalledWith({ cartId: "cart_1", shippingMethodId: ok.id })
     expect(pickupToggle.getAttribute("aria-checked")).toBe("true")
-    const branches = radios().filter((r) => r.textContent?.includes("สาขา so_pick"))
+    const branches = radios().filter((r) => cardText(r).includes("สาขา so_pick"))
     expect(branches).toHaveLength(2)
-    const shortBtn = branches.find((r) => r.textContent?.includes("so_pick_short")) as HTMLButtonElement
-    const okBtn = branches.find((r) => r.textContent?.includes("so_pick_ok")) as HTMLButtonElement
+    const shortBtn = branches.find((r) => cardText(r).includes("so_pick_short")) as HTMLButtonElement
+    const okBtn = branches.find((r) => cardText(r).includes("so_pick_ok")) as HTMLButtonElement
     expect(shortBtn.disabled).toBe(true)
     expect(okBtn.getAttribute("aria-checked")).toBe("true")
   })

@@ -302,7 +302,6 @@ const Payment = ({
                 value={selectedPaymentMethod}
                 onValueChange={(value: string) => setPaymentMethod(value)}
                 disabled={awaitingPaidOrder || paidOrder.busy}
-                className="block"
               >
                 {availablePaymentMethods.map((paymentMethod) => (
                   <div

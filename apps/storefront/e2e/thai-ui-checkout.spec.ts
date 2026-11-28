@@ -7,7 +7,7 @@ import {
   shippingOptionId,
   signInAs,
 } from "./support/medusa"
-import { THAI, expectThai } from "./support/thai-text"
+import { THAI, expectThai, latinWordsOutsideAllowList } from "./support/thai-text"
 import { addToCartFromPdp, waitForServerAction } from "./support/server-action"
 
 // CORE-4d: spec 01 CORE-4 (ADR-014) AC-48 ส่วน "ทุกขั้นของ checkout" + AC-75 (ประโยคยอมรับเงื่อนไขในขั้น review)
@@ -82,7 +82,12 @@ test("AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษา�
   await step("ขั้นชำระเงิน", async () => {
     await expect(page.getByTestId(`payment-option-${MANUAL}`)).toBeVisible()
     await page.getByTestId(`payment-option-${MANUAL}`).click()
-    await expectThai(page, ["payment-heading", `payment-option-${MANUAL}`, "submit-payment-button"])
+    await expectThai(page, ["payment-heading", "submit-payment-button"])
+    // SFUI-21c (spec 09 กฎ 78 (iv), 80): ชื่อวิธีชำระอยู่ในการ์ด (label ของ Choice Card) ที่ครอบปุ่ม radio
+    const manualCard = page.locator('label[data-slot="field-label"]', { has: page.getByTestId(`payment-option-${MANUAL}`) })
+    const manualText = (await manualCard.textContent()) ?? ""
+    expect(manualText).toMatch(THAI)
+    expect(latinWordsOutsideAllowList(manualText), manualText).toEqual([])
     await evidence("4d-03-payment-th")
     await page.getByTestId("submit-payment-button").click()
   })

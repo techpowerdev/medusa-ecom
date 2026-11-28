@@ -3,10 +3,8 @@ import { act, type ReactElement } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest"
 
-import { RadioGroupItem } from "@/components/radio-group"
 import { SheetContent } from "@/components/sheet"
 import { Slider } from "@/components/slider"
-import { RadioGroup, RadioGroupItem as UiRadioGroupItem } from "@/components/ui/radio-group"
 import { Sheet, SheetContent as UiSheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet"
 import { Slider as UiSlider } from "@/components/ui/slider"
 
@@ -94,34 +92,5 @@ describe("Slider (wrapper src/components/slider.tsx)", () => {
     const el = render(<Slider {...props} thumbLabels={["ราคาต่ำสุด", "ราคาสูงสุด"]} />)
     const thumbs = Array.from(el.querySelectorAll("[role=slider]"))
     expect(thumbs.map((t) => t.getAttribute("aria-label"))).toEqual(["ราคาต่ำสุด", "ราคาสูงสุด"])
-  })
-})
-
-describe("RadioGroupItem (wrapper src/components/radio-group.tsx)", () => {
-  const group = (item: ReactElement) => (
-    <RadioGroup value="a">
-      {item}
-    </RadioGroup>
-  )
-
-  it("ไม่มี children → DOM เท่ากับ RadioGroupItem ของ shadcn", () => {
-    const props = { value: "a", className: "w-full", "data-testid": "opt" }
-    const ui = normalize(render(group(<UiRadioGroupItem {...props} />)).innerHTML)
-    expect(normalize(render(group(<RadioGroupItem {...props} />)).innerHTML)).toBe(ui)
-  })
-
-  it("children อยู่ในปุ่ม role=radio ต่อจาก indicator (ชื่อวิธีชำระเป็นชื่อของปุ่ม)", () => {
-    const el = render(
-      group(
-        <RadioGroupItem value="a" data-testid="opt">
-          <span>บัตรเครดิต</span>
-        </RadioGroupItem>
-      )
-    )
-    const radio = el.querySelector("[role=radio]")!
-    expect(radio.getAttribute("data-testid")).toBe("opt")
-    expect(radio.textContent).toBe("บัตรเครดิต")
-    expect(radio.lastElementChild!.tagName).toBe("SPAN")
-    expect(radio.firstElementChild!.getAttribute("data-slot")).toBe("radio-group-indicator")
   })
 })

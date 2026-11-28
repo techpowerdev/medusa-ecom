@@ -12,7 +12,6 @@ import { STOREFRONT, readSource } from "./support/sfui-source"
 /** ไฟล์ที่ไม่ใช่ test ใน `src/components/**` และ `src/modules/common/components/**` ณ develop `6257d781` (ก่อนรอบ 49) — ลบได้ เพิ่มไม่ได้ */
 const KNOWN_COMPONENT_FILES = [
   "src/components/button.tsx",
-  "src/components/radio-group.tsx",
   "src/components/sheet.tsx",
   "src/components/slider.tsx",
   ...Object.keys(manifest.files).map((name) => `src/components/ui/${name}`),

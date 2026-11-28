@@ -98,7 +98,8 @@ test("AC-156: ค่าจัดส่งใน cart-totals = ราคา optio
     const shippingRow = page.getByTestId("cart-totals").getByTestId("cart-shipping")
     await expect(shippingRow).toBeVisible()
     const radio = page.locator(`[data-testid="delivery-option-radio"][data-option-id="${chosen.id}"]`)
-    await expect(radio).toContainText(await shippingRow.innerText())
+    // SFUI-21c (spec 09 กฎ 78 (iv), 80): ราคาอยู่ในการ์ด (label ของ Choice Card) ที่ครอบปุ่ม radio
+    await expect(page.locator('label[data-slot="field-label"]', { has: radio })).toContainText(await shippingRow.innerText())
   })
 
   await step("ขั้น review: แถวเดิมยังเป็นฐานรวม VAT", async () => {

@@ -241,7 +241,7 @@ export default function OrderPay({ initial, email, redirect, serverNow }: Props)
         >
           <div className="flex flex-col gap-y-4" data-testid="order-pay-form">
             {/* SFUI-3d (spec 09 กฎ 4): RadioGroup ของ shadcn — ตัวเลือกคือ PaymentContainer (RadioGroupItem) */}
-            <RadioGroup value={selected} onValueChange={select} disabled={busy} className="block">
+            <RadioGroup value={selected} onValueChange={select} disabled={busy}>
               <StripePaymentContainer
                 paymentProviderId={CARD}
                 selectedPaymentOptionId={selected}
