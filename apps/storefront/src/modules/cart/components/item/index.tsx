@@ -131,8 +131,10 @@ const Item = ({
             "max-small:block max-small:min-w-0 max-small:pt-0": card,
           })}
         >
-          {/* qa #142 D-2 (CORE-19c): `contents!` ให้ปุ่มลบและข้อความ error เป็น flex item ของแถวนี้ — error ขึ้นบรรทัดใหม่กว้างเต็ม w-28 */}
-          <div className="flex flex-wrap gap-2 items-center w-28">
+          {/* qa #142 D-2 (CORE-19c): `contents!` ให้ปุ่มลบและข้อความ error เป็น flex item ของแถวนี้ — error ขึ้นบรรทัดใหม่กว้างเต็มเซลล์
+              (SFUI-21d: FieldError 14px — `w-max min-w-28 max-w-full` แทน `w-28` เดิมที่บีบเป็น 3 บรรทัด: ไม่มี error กว้าง 112px เท่าเดิม (core-42),
+              มี error กล่องกว้างตามข้อความแต่ไม่เกินเซลล์) */}
+          <div className="flex flex-wrap gap-2 items-center w-max min-w-28 max-w-full">
             <DeleteButton
               id={item.id}
               className="contents!"
