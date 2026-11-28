@@ -135,7 +135,8 @@ test("AC-21: cart dropdown, หน้า cart, select ที่อยู่ใ�
     expect.soft(await font(dropdown.locator("h3").first())).toEqual(LARGE_SEMI)
     const item = dropdown.getByTestId("cart-item").first()
     expect.soft(await font(item.getByTestId("product-link").locator(".."))).toEqual(BASE_REGULAR)
-    expect.soft(await font(item.getByTestId("product-price"))).toEqual(BASE_REGULAR)
+    // SFUI-24c (spec 01 กฎข้อ 159): แถวไม่มียอดรวม — ราคาต่อชิ้น × จำนวน ขนาดเดียวกับราคาเดิม
+    expect.soft(await font(item.getByTestId("product-unit-price"))).toEqual(BASE_REGULAR)
     expect.soft(await font(item.getByTestId("cart-item-remove-button").locator(".."))).toEqual(SMALL_REGULAR)
     expect.soft(await font(dropdown.getByTestId("cart-subtotal"))).toEqual(LARGE_SEMI)
     // กล่องส่วนท้ายของ dropdown (ปู่ของ cart-subtotal)
@@ -143,11 +144,10 @@ test("AC-21: cart dropdown, หน้า cart, select ที่อยู่ใ�
     await evidence("03-cart-dropdown")
   })
 
-  await step("หน้า cart: ราคาต่อหน่วย/ราคารวม 14px/24px/400, ปุ่มลบ 12px/20px/400 และ error ของการลบ 12px/20px/400", async () => {
+  await step("หน้า cart: ราคาต่อชิ้น 14px/24px/400 (ไม่มีราคารวม — SFUI-24c), ปุ่มลบ 12px/20px/400 และ error ของการลบ 12px/20px/400", async () => {
     await page.mouse.move(0, 400)
     const row = page.getByTestId("product-row").first()
     expect.soft(await font(row.getByTestId("product-unit-price").first())).toEqual(BASE_REGULAR)
-    expect.soft(await font(row.getByTestId("product-price").first())).toEqual(BASE_REGULAR)
     expect.soft(await font(row.getByTestId("product-delete-button").locator(".."))).toEqual(SMALL_REGULAR)
 
     await failNextServerAction(page)

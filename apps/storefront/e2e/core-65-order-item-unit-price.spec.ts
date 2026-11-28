@@ -18,8 +18,9 @@ import {
 } from "./support/medusa"
 import { THAI } from "./support/thai-text"
 
-// CORE-65: spec 01 AC-164 (กฎข้อ 123, owner ก 2026-11-18) — แถวสินค้าของ order ไม่แสดงราคาต่อหน่วยเมื่อ quantity === 1
-// (เดิม qty 1 เห็นราคาสองชุดที่เท่ากัน) qty ≥ 2 คงต่อหน่วย + รวม; `Item` ตัวเดียวกันใช้ทั้ง order-completed และ account order details
+// CORE-65: spec 01 AC-164 — SFUI-24c (กฎข้อ 159 แทนกฎข้อ 123; AC-202 (d)): แถวสินค้าของ order แสดงราคาต่อชิ้น × จำนวนทุก qty
+// ไม่มียอดรวมต่อแถว และโค้ดส่วนลดของลูกค้าไม่ลดราคาในแถว (อยู่ในบรรทัดส่วนลดของสรุป) — ไม่มีราคาขีดฆ่า;
+// `Item` ตัวเดียวกันใช้ทั้ง order-completed และ account order details
 // หาด้วย data-testid เท่านั้น ตัวเลขเทียบหลังตัดอักขระที่ไม่ใช่ตัวเลข/จุด ไม่ match ป้ายข้อความ
 test.use({ evidenceTarget: { feature: "core", taskId: "CORE-65" }, viewport: { width: 1280, height: 800 } })
 
@@ -43,8 +44,8 @@ async function orderLine(request: APIRequestContext, store: Headers, orderId: st
   return { quantity: item.quantity, total: Number(item.total), original_total: Number(item.original_total) }
 }
 
-/** ตรวจแถวสินค้าแถวเดียวภายใน container ตามกฎข้อ 123 (a)/(b)/(c) */
-async function expectRow(page: Page, containerId: string, line: Line, discounted: boolean) {
+/** ตรวจแถวสินค้าแถวเดียวภายใน container ตามกฎข้อ 159a–b (ส่วนลดของ case เป็นโค้ด → ไม่ลดราคาในแถว) */
+async function expectRow(page: Page, containerId: string, line: Line) {
   const container = page.getByTestId(containerId)
   await expect(container).toBeVisible()
   expect((await container.textContent()) ?? "", "หน้าเป็นภาษาไทย").toMatch(THAI)
@@ -52,27 +53,18 @@ async function expectRow(page: Page, containerId: string, line: Line, discounted
   await expect(row).toHaveCount(1)
 
   await expect(row.getByTestId("product-quantity")).toHaveText(String(line.quantity))
-  // (a)/(b): ราคารวม 1 ตัวเสมอ, ราคาเดิมเฉพาะเมื่อลด, ราคาต่อหน่วยเฉพาะ qty ≥ 2 ([] = ไม่มี element ในแถว)
-  const multi = line.quantity >= 2
-  await expectAmounts(row.getByTestId("product-price"), [line.total], "product-price = item.total")
-  await expectAmounts(
-    row.getByTestId("product-original-price"),
-    discounted ? [line.original_total] : [],
-    "product-original-price = original_total"
-  )
+  // ไม่มียอดรวมต่อแถว; ราคาต่อชิ้นทุก qty = original_total ÷ จำนวน (โค้ดไม่ลดราคาในแถว) ([] = ไม่มี element ในแถว)
+  await expectAmounts(row.getByTestId("product-price"), [], "ไม่มี product-price")
+  await expectAmounts(row.getByTestId("product-original-price"), [], "ไม่มี product-original-price")
   await expectAmounts(
     row.getByTestId("product-unit-price"),
-    multi ? [line.total / line.quantity] : [],
-    "product-unit-price = total / quantity"
+    [line.original_total / line.quantity],
+    "product-unit-price = original_total / quantity"
   )
-  await expectAmounts(
-    row.getByTestId("product-unit-original-price"),
-    multi && discounted ? [line.original_total / line.quantity] : [],
-    "product-unit-original-price"
-  )
+  await expectAmounts(row.getByTestId("product-unit-original-price"), [], "โค้ดไม่ทำให้มีราคาขีดฆ่า")
 }
 
-test("AC-164 (a)–(d): แถวสินค้าของ order — qty 1 ไม่มีราคาต่อหน่วย, qty 2 คงต่อหน่วย + รวม ที่ 1280 และ 375", async ({
+test("AC-164/AC-202 (d): แถวสินค้าของ order — ราคาต่อชิ้น × จำนวนทุก qty ไม่มียอดรวมต่อแถว ที่ 1280 และ 375", async ({
   page,
   context,
   request,
@@ -137,7 +129,7 @@ test("AC-164 (a)–(d): แถวสินค้าของ order — qty 1 ไ
         await step(`order-completed ${c.name} ที่ ${viewport.width}`, async () => {
           await page.setViewportSize(viewport)
           await page.goto(`/${CC}/order/${orders[c.name].id}/confirmed`)
-          await expectRow(page, "order-complete-container", orders[c.name].line, c.discounted)
+          await expectRow(page, "order-complete-container", orders[c.name].line)
           const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
           expect(scrollWidth, "scrollWidth").toBeLessThanOrEqual(viewport.width)
           await page.getByTestId("order-complete-container").getByTestId("product-row").scrollIntoViewIfNeeded()
@@ -146,10 +138,10 @@ test("AC-164 (a)–(d): แถวสินค้าของ order — qty 1 ไ
       }
     }
 
-    await step("(d) /account/orders/details ของ order qty 1 แบบลด ที่ 1280 เป็นไปตาม (a)", async () => {
+    await step("(d) /account/orders/details ของ order qty 1 แบบลด ที่ 1280 เป็นไปตามกฎข้อ 159", async () => {
       await page.setViewportSize(VIEWPORTS[0])
       await page.goto(`/${CC}/account/orders/details/${orders["qty1-discount"].id}`)
-      await expectRow(page, "order-details-container", orders["qty1-discount"].line, true)
+      await expectRow(page, "order-details-container", orders["qty1-discount"].line)
     })
   } finally {
     await deleteAllThenExpectOk(request, admin, [

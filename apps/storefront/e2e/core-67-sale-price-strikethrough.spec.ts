@@ -22,6 +22,8 @@ import { THAI } from "./support/thai-text"
 // CORE-67: spec 01 AC-166b (กฎข้อ 125, owner สั่งทำ 2026-11-18) — ราคาจาก price list แบบ sale มีราคาขีดฆ่าจาก
 // `compare_at_unit_price` ที่ Medusa ตั้งให้ line (500 ไม่ใช่ 450) ใน /cart, preview ของ checkout และ order-completed
 // และไม่ซ้อนกับ promotion (ราคาขีดฆ่าตัวเดียวต่อแถว) หาด้วย data-testid เท่านั้น ตัวเลขเทียบผ่าน `support/amounts.ts`
+// SFUI-24c (กฎข้อ 159 แทนกฎข้อ 125b–d): แถวแสดงราคาต่อชิ้น × จำนวน — ขีดฆ่า = compare_at_unit_price ต่อชิ้น, ราคาต่อชิ้น = ราคา sale
+// (โค้ดของลูกค้าไม่ลดราคาในแถว — อยู่ในบรรทัดส่วนลดของสรุป) ไม่มียอดรวมต่อแถว
 test.use({ evidenceTarget: { feature: "core", taskId: "CORE-67" }, viewport: { width: 1280, height: 800 } })
 
 const BASE = 500
@@ -63,17 +65,17 @@ async function orderLine(request: APIRequestContext, store: Headers, orderId: st
   return toLine(order.items[0], what)
 }
 
-/** แถวสินค้าแถวเดียว: ราคาขีดฆ่ารวม 1 ตัว = ref และราคาปัจจุบัน = total; ราคาต่อหน่วยตาม `unit` (false = ไม่มี element) */
-async function expectRow(container: Locator, line: Line, unit: boolean) {
+/** แถวสินค้าแถวเดียว: ไม่มียอดรวมต่อแถว, ราคาขีดฆ่าต่อชิ้น 1 ตัว = ref ÷ จำนวน (= ราคาฐาน) และราคาต่อชิ้น = ราคา sale */
+async function expectRow(container: Locator, line: Line) {
   await expect(container).toBeVisible()
   expect((await container.textContent()) ?? "", "หน้าเป็นภาษาไทย").toMatch(THAI)
   const row = container.getByTestId("product-row")
   await expect(row).toHaveCount(1)
-  await expectAmounts(row.getByTestId("product-original-price"), [line.ref], "product-original-price = ref")
-  await expectAmounts(row.getByTestId("product-price"), [line.total], "product-price = total")
+  await expectAmounts(row.getByTestId("product-original-price"), [], "ไม่มี product-original-price")
+  await expectAmounts(row.getByTestId("product-price"), [], "ไม่มี product-price")
   const q = line.quantity
-  await expectAmounts(row.getByTestId("product-unit-original-price"), unit ? [line.ref / q] : [], "unit original = ref / qty")
-  await expectAmounts(row.getByTestId("product-unit-price"), unit ? [line.total / q] : [], "unit price = total / qty")
+  await expectAmounts(row.getByTestId("product-unit-original-price"), [line.ref / q], "unit original = ref / qty")
+  await expectAmounts(row.getByTestId("product-unit-price"), [SALE], "unit price = ราคา sale")
 }
 
 /** สินค้าชั่วคราว 1 variant ราคาฐาน THB 500 (ไม่ตัด stock) คืน id ของ product/variant */
@@ -195,19 +197,18 @@ test("AC-166b: price list แบบ sale แสดงราคาเดิม (c
       await step(`(b1)/(b3) /cart ของ ${name} ที่ 1280: ราคาเดิมขีดฆ่าจาก compare_at_unit_price`, async () => {
         await openCart(name)
         await page.goto(`/${CC}/cart`)
-        // หน้า /cart คงคอลัมน์ราคาต่อหน่วยทุก qty (กฎข้อ 124d)
-        await expectRow(page.getByTestId("cart-container"), carts[name].line, true)
+        await expectRow(page.getByTestId("cart-container"), carts[name].line)
         if (name === "S2") await evidence("cart-sale-qty2-1280")
       })
     }
 
     for (const name of ["S1", "S2", "SP"]) {
-      await step(`(b2)/(b3) preview ของ checkout ของ ${name}: ราคาต่อหน่วยเฉพาะ qty ≥ 2 (กฎข้อ 124)`, async () => {
+      await step(`(b2)/(b3) preview ของ checkout ของ ${name}: ราคาต่อชิ้น × จำนวนทุก qty (กฎข้อ 159a)`, async () => {
         await openCart(name)
         await page.goto(`/${CC}/checkout`)
         await expect(page.getByTestId("checkout-summary-heading")).toHaveText(THAI)
         const { line } = carts[name]
-        await expectRow(page.getByTestId("items-table"), line, line.quantity >= 2)
+        await expectRow(page.getByTestId("items-table"), line)
         await page.getByTestId("items-table").getByTestId("product-row").scrollIntoViewIfNeeded()
         if (name === "SP") await evidence("preview-sale-promo-1280")
       })
@@ -219,7 +220,7 @@ test("AC-166b: price list แบบ sale แสดงราคาเดิม (c
         orderIds.push(id)
         const line = await orderLine(request, store, id, `order ${name}`)
         await page.goto(`/${CC}/order/${id}/confirmed`)
-        await expectRow(page.getByTestId("order-complete-container"), line, false)
+        await expectRow(page.getByTestId("order-complete-container"), line)
         await page.getByTestId("order-complete-container").getByTestId("product-row").scrollIntoViewIfNeeded()
         if (name === "SP") await evidence("order-sale-promo-1280")
       })

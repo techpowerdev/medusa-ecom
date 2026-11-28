@@ -69,7 +69,8 @@ test("AC-16 (กฎ 19): ตารางตะกร้า — เซลล์�
   await step("หัวตาราง: สูง 48px และ white-space normal", async () => {
     const heads = page.getByTestId("cart-items-header").locator("th")
     await expect(heads.first()).toBeVisible()
-    for (const i of [0, 2, 4]) {
+    // SFUI-24c (spec 01 กฎข้อ 159a): ไม่มีคอลัมน์ "รวม" — หัวตาราง 4 ช่อง (ช่องสุดท้าย = ราคา)
+    for (const i of [0, 2, 3]) {
       const s = await style(heads.nth(i))
       expect.soft(s.height, `th ${i}`).toBe("48px")
       expect.soft(s.whiteSpace, `th ${i}`).toBe("normal")

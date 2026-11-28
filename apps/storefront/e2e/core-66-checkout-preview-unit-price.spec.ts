@@ -18,8 +18,8 @@ import {
 } from "./support/medusa"
 import { THAI } from "./support/thai-text"
 
-// CORE-66: spec 01 AC-165 (กฎข้อ 124, owner ข 2026-11-18) — preview ของ checkout (`cart/components/item` type="preview")
-// ไม่แสดงราคาต่อหน่วยเมื่อ quantity === 1 (เดิมเห็นราคาสองชุดที่เท่ากัน) qty ≥ 2 คงต่อหน่วย + รวม; หน้า /cart คงเดิม
+// CORE-66: spec 01 AC-165 — SFUI-24c (กฎข้อ 159 แทนกฎข้อ 124; AC-202 (d)): preview ของ checkout (`cart/components/item` type="preview")
+// แสดงราคาต่อชิ้น × จำนวนทุก qty ไม่มียอดรวมต่อแถว; โค้ดของลูกค้าไม่ลดราคาในแถว (ไม่มีราคาขีดฆ่า); /cart ไม่มี × n (จำนวนคือ select)
 // หาด้วย data-testid เท่านั้น ตัวเลขเทียบหลังตัดอักขระที่ไม่ใช่ตัวเลข/จุด (ส่วนต่าง ≤ การปัด 2 ตำแหน่ง — `support/amounts.ts`) ไม่ match ป้ายข้อความ
 test.use({ evidenceTarget: { feature: "core", taskId: "CORE-66" }, viewport: { width: 1280, height: 800 } })
 
@@ -47,35 +47,26 @@ async function cartLine(request: APIRequestContext, store: Headers, cartId: stri
   return { quantity: item.quantity, total: Number(item.total), original_total: Number(item.original_total) }
 }
 
-/** ตรวจแถวสินค้าแถวเดียวใน preview ของ checkout (`items-table`) ตามกฎข้อ 124 (a)/(b)/(c) */
-async function expectPreviewRow(page: Page, line: Line, discounted: boolean) {
+/** ตรวจแถวสินค้าแถวเดียวใน preview ของ checkout (`items-table`) ตามกฎข้อ 159a–b (ส่วนลดของ case เป็นโค้ด) */
+async function expectPreviewRow(page: Page, line: Line) {
   await expect(page.getByTestId("checkout-summary-heading")).toHaveText(THAI)
   const row = page.getByTestId("items-table").getByTestId("product-row")
   await expect(row).toHaveCount(1)
 
-  // (a)/(b): ราคารวม 1 ตัวเสมอ, ราคาเดิมเฉพาะเมื่อลด, ราคาต่อหน่วยเฉพาะ qty ≥ 2 ([] = ไม่มี element ในแถว)
-  const multi = line.quantity >= 2
-  await expectAmounts(row.getByTestId("product-price"), [line.total], "product-price = item.total")
-  await expectAmounts(
-    row.getByTestId("product-original-price"),
-    discounted ? [line.original_total] : [],
-    "product-original-price = original_total"
-  )
+  // ไม่มียอดรวมต่อแถว; ราคาต่อชิ้นทุก qty = original_total ÷ จำนวน (โค้ดไม่ลดราคาในแถว) ([] = ไม่มี element ในแถว)
+  await expectAmounts(row.getByTestId("product-price"), [], "ไม่มี product-price")
+  await expectAmounts(row.getByTestId("product-original-price"), [], "ไม่มี product-original-price")
   await expectAmounts(
     row.getByTestId("product-unit-price"),
-    multi ? [line.total / line.quantity] : [],
-    "product-unit-price = total / quantity"
+    [line.original_total / line.quantity],
+    "product-unit-price = original_total / quantity"
   )
-  await expectAmounts(
-    row.getByTestId("product-unit-original-price"),
-    multi && discounted ? [line.original_total / line.quantity] : [],
-    "product-unit-original-price = original_total / quantity"
-  )
-  // (c): จำนวนของ line ห่อด้วย product-quantity (ข้อความที่เห็นเท่าเดิม "1x")
+  await expectAmounts(row.getByTestId("product-unit-original-price"), [], "โค้ดไม่ทำให้มีราคาขีดฆ่า")
+  // "฿<ราคาต่อชิ้น> × <จำนวน>" — จำนวนห่อด้วย product-quantity
   await expect(row.getByTestId("product-quantity")).toHaveText(String(line.quantity))
 }
 
-test("AC-165 (a)–(d): preview ของ checkout — qty 1 ไม่มีราคาต่อหน่วย, qty 2 คงต่อหน่วย + รวม ที่ 1280 และ 375; /cart คงเดิม", async ({
+test("AC-165/AC-202 (d): preview ของ checkout — ราคาต่อชิ้น × จำนวนทุก qty ไม่มียอดรวมต่อแถว ที่ 1280 และ 375; /cart ไม่มี × n", async ({
   page,
   context,
   request,
@@ -141,7 +132,7 @@ test("AC-165 (a)–(d): preview ของ checkout — qty 1 ไม่มีร�
           await page.setViewportSize(viewport)
           await openCart(c.name)
           await page.goto(`/${CC}/checkout`)
-          await expectPreviewRow(page, carts[c.name].line, c.discounted)
+          await expectPreviewRow(page, carts[c.name].line)
           const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
           expect(scrollWidth, "scrollWidth").toBeLessThanOrEqual(viewport.width)
           await page.getByTestId("items-table").getByTestId("product-row").scrollIntoViewIfNeeded()
@@ -150,15 +141,16 @@ test("AC-165 (a)–(d): preview ของ checkout — qty 1 ไม่มีร�
       }
     }
 
-    await step("(d) /cart ของ cart qty 1 แบบลด ที่ 1280 ยังมีราคาต่อหน่วย (หน้า cart ไม่เปลี่ยน)", async () => {
+    await step("(d) /cart ของ cart qty 1 แบบลด ที่ 1280 มีราคาต่อชิ้น ไม่มียอดรวมต่อแถวและไม่มี × n", async () => {
       await page.setViewportSize(VIEWPORTS[0])
       await openCart("qty1-discount")
       await page.goto(`/${CC}/cart`)
       const row = page.getByTestId("cart-container").getByTestId("product-row")
       await expect(row).toHaveCount(1)
       const { line } = carts["qty1-discount"]
-      await expectAmounts(row.getByTestId("product-unit-price"), [line.total], "/cart product-unit-price")
-      await expectAmounts(row.getByTestId("product-price"), [line.total], "/cart product-price")
+      await expectAmounts(row.getByTestId("product-unit-price"), [line.original_total], "/cart product-unit-price")
+      await expectAmounts(row.getByTestId("product-price"), [], "/cart ไม่มี product-price")
+      await expect(row.getByTestId("product-quantity")).toHaveCount(0)
     })
   } finally {
     await deleteAllThenExpectOk(request, admin, [promotionId && `/admin/promotions/${promotionId}`])
