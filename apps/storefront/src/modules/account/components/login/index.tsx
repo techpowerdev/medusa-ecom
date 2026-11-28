@@ -86,8 +86,9 @@ const Login = ({ setCurrentView, defaultEmail, notice }: Props) => {
           เข้าสู่ระบบ
         </SubmitButton>
       </form>
-      <span className="text-center text-foreground text-xs leading-5 font-normal mt-6">
-        ยังไม่เป็นสมาชิก?{" "}
+      {/* SFUI-23 (spec 09 กฎ 85): ประโยค text-sm เท่าปุ่ม ไม่มี "." — ระยะเว้นคือ padding ซ้ายของปุ่ม */}
+      <div className="mt-6 flex flex-wrap items-center justify-center text-sm text-foreground">
+        <span>ยังไม่เป็นสมาชิก?</span>
         <Button
           type="button"
           variant="link"
@@ -97,8 +98,7 @@ const Login = ({ setCurrentView, defaultEmail, notice }: Props) => {
         >
           สมัครสมาชิก
         </Button>
-        .
-      </span>
+      </div>
     </div>
   )
 }
