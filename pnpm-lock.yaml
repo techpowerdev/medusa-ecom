@@ -219,6 +219,9 @@ importers:
       '@medusajs/medusa':
         specifier: 2.22.1
         version: 2.22.1(121d0a76df108d1a8cd5fc13d04eb769)
+      '@medusajs/payment-stripe':
+        specifier: 2.22.1
+        version: 2.22.1(@medusajs/framework@2.22.1(@medusajs/cli@2.22.1(@types/node@20.19.43)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))(@types/node@20.19.43)(debug@4.4.3(supports-color@8.1.1))(ioredis@5.11.1(supports-color@8.1.1))(supports-color@8.1.1)(vite@7.3.7(@types/node@20.19.43)(jiti@1.21.7)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))(zod@4.2.0))
       '@medusajs/ui':
         specifier: 4.2.8
         version: 4.2.8(@types/react-dom@19.0.5(@types/react@19.0.5))(@types/react@19.0.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)

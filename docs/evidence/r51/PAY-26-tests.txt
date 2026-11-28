@@ -1,0 +1,59 @@
+# PAY-26 (spec 01 กฎข้อ 157, AC-198, ADR-035) — ผลทดสอบในเครื่อง 2026-11-29 (node v22.23.3) — spike ก่อน #639 merge
+
+## RED (develop 615b9cde + test ใหม่ ยังไม่มี provider subclass)
+### integration: pay-26-shared-stripe-customer.spec.ts — session ที่สองได้ 500 (StripeIdempotencyError จาก createAccountHolder)
+FAIL integration-tests/http/pay-26-shared-stripe-customer.spec.ts (13.004 s)
+    ✕ (a)(c)(d) card → add address → PromptPay: 200, one Stripe customer, key per provider (2003 ms)
+    ✕ (b)(c)(d) PromptPay → add address → card: 200, one Stripe customer, key per provider (1495 ms)
+  ●  › (a)(c)(d) card → add address → PromptPay: 200, one Stripe customer, key per provider
+    expect(received).toEqual(expected) // deep equality
+    - Expected  - 4
+    + Received  + 2
+      Object {
+    -   "providers": Array [
+    -     "pp_stripe-promptpay_stripe",
+    -   ],
+    -   "status": 200,
+    +   "providers": undefined,
+    +   "status": 500,
+      }
+      158 |
+      159 |       const switched = await newSession(collectionId, second, customer.auth)
+    > 160 |       expect({ status: switched.status, providers: switched.data.payment_collection?.payment_sessions?.map((s) => s.provider_id) }).toEqual({
+          |                                                                                                                                     ^
+      161 |         status: 200,
+      162 |         providers: [second],
+      163 |       })
+
+### unit: src/modules/stripe-shared-customer/__tests__/shared-customer.unit.spec.ts
+FAIL src/modules/stripe-shared-customer/__tests__/shared-customer.unit.spec.ts
+    Cannot find module '../shared-customer' from 'src/modules/stripe-shared-customer/__tests__/shared-customer.unit.spec.ts'
+
+## GREEN
+### integration: pay-26-shared-stripe-customer.spec.ts
+PASS integration-tests/http/pay-26-shared-stripe-customer.spec.ts (11.56 s)
+    ✓ (a)(c)(d) card → add address → PromptPay: 200, one Stripe customer, key per provider (1353 ms)
+    ✓ (b)(c)(d) PromptPay → add address → card: 200, one Stripe customer, key per provider (1468 ms)
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 total
+
+### integration เดิม (AC-198 d — ไม่แก้ไฟล์): stripe-webhook.spec.ts
+PASS integration-tests/http/stripe-webhook.spec.ts (56.653 s)
+    ✓ registers Stripe card and PromptPay providers and enables both in region Thailand (560 ms)
+      ✓ creates exactly one order with one capture when the same succeeded event is delivered repeatedly (14861 ms)
+      ✓ ignores events with an invalid signature (9077 ms)
+      ✓ creates exactly one order with one capture when the same succeeded event is delivered repeatedly (14550 ms)
+      ✓ ignores events with an invalid signature (8975 ms)
+Test Suites: 1 passed, 1 total
+Tests:       5 passed, 5 total
+
+### pnpm --filter backend test:unit
+PASS src/modules/stripe-shared-customer/__tests__/shared-customer.unit.spec.ts
+Test Suites: 139 passed, 139 total
+Tests:       2732 passed, 2732 total
+
+### pnpm lint / pnpm --filter backend typecheck / pnpm --filter storefront typecheck / NODE_ENV=production pnpm --filter backend build
+exit 0 ทั้งหมด (lint: 0 errors; warning เดิม 4 ข้อไม่ใช่ไฟล์ของ task)
+
+### e2e AC-199 (apps/storefront/e2e/pay-26-shared-stripe-customer.spec.ts)
+ยังไม่รัน — `playwright test --list` พบ 1 test; รอรันกับ Stripe test key (CI storefront-e2e หรือในเครื่องตาม CLAUDE.md)
