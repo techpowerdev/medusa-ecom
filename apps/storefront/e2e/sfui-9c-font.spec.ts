@@ -94,6 +94,7 @@ test("AC-21: checkout (not-found, ที่อยู่, จัดส่ง, ช
 
     // เขต/อำเภอเป็นช่องว่างล้วน → ErrorMessage ของ checkout (CORE-52)
     await page.getByTestId("shipping-city-input").fill("   ")
+    await page.getByTestId("shipping-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
     await page.getByTestId("shipping-email-input").fill(customer.email)
     await page.getByTestId("submit-address-button").click()
     const error = page.getByTestId("address-error-message")

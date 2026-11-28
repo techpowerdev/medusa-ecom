@@ -219,7 +219,17 @@ export async function poolGroup(
   return { admin, pk, variantId, variants, regionId: region.id, groupId: group.id, token: group.join_token }
 }
 
-export type AddressInput = { first_name: string; last_name: string; address_1: string; city: string; postal_code: string; phone: string }
+export type AddressInput = {
+  first_name: string
+  last_name: string
+  address_1: string
+  /** SFUI-18c/20a: ตำบล และจังหวัด (บังคับในฟอร์มตั้งแต่รอบ 49/50 — fixture ที่ส่งผ่านฟอร์มต้องมี) */
+  address_2?: string
+  province?: string
+  city: string
+  postal_code: string
+  phone: string
+}
 
 /** ที่อยู่ที่บันทึกไว้ของลูกค้า (ประเทศไทย) — คืน id ตามลำดับที่ส่ง */
 export async function addAddresses(request: APIRequestContext, pk: string, customer: Customer, list: AddressInput[]) {

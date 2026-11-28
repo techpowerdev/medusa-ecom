@@ -257,12 +257,14 @@ test("AC-52: checkout ที่อยู่จัดส่ง + ใบเสร�
       "shipping-address-input": "99/1 หมู่ 2",
       "shipping-address-2-input": "คลองเตยเหนือ",
       "shipping-city-input": "วัฒนา",
+      "shipping-province-input": "กรุงเทพมหานคร", // SFUI-20a (กฎ 69)
       "shipping-postal-code-input": "10110",
       "billing-first-name-input": "สมหญิง",
       "billing-last-name-input": "รักไทย",
       "billing-address-input": "7 ถนนสีลม",
       "billing-address-2-input": "สุริยวงศ์",
       "billing-city-input": "บางรัก",
+      "billing-province-input": "กรุงเทพมหานคร", // SFUI-20a (กฎ 69)
       "billing-postal-input": "10500",
     })
     await chooseOption(page.getByTestId("billing-country-select"), CC)
@@ -319,6 +321,7 @@ test("AC-52: บัญชี — เพิ่ม/แก้ที่อยู่ 
       "address-1-input": "99/1 หมู่ 2",
       "address-2-input": "คลองเตยเหนือ",
       "city-input": "วัฒนา",
+      "state-input": "กรุงเทพมหานคร", // SFUI-20a (กฎ 69)
       "postal-code-input": "10110",
     })
     await chooseOption(modal.getByTestId("country-select"), CC)
@@ -364,6 +367,7 @@ test("AC-52: บัญชี — เพิ่ม/แก้ที่อยู่ 
       "billing-address-1-input": "7 ถนนสีลม",
       "billing-address-2-input": "สุริยวงศ์",
       "billing-city-input": "บางรัก",
+      "billing-province-input": "กรุงเทพมหานคร", // SFUI-20a (กฎ 69)
       "billing-postcal-code-input": "10500",
       "billing-phone-input": "0812345678",
     })
@@ -389,7 +393,8 @@ test("AC-53: checkout — ตำบลว่าง → error ใต้ช่อ�
   const customer = await createCustomer(request, pk)
   // ที่อยู่ที่บันทึกไว้ก่อนรอบ 49 (ไม่มี address_2)
   await addAddresses(request, pk, customer, [
-    { first_name: "สมชาย", last_name: "ใจดี", address_1: "11 ถนนพระราม 4", city: "วัฒนา", postal_code: "10110", phone: "0812345678" },
+    // SFUI-20a (กฎ 69): จังหวัดบังคับ — fixture มีจังหวัด (test นี้ตรวจเฉพาะตำบล)
+    { first_name: "สมชาย", last_name: "ใจดี", address_1: "11 ถนนพระราม 4", city: "วัฒนา", province: "กรุงเทพมหานคร", postal_code: "10110", phone: "0812345678" },
   ])
   await signInAs(context, baseURL!, customer)
   await page.goto(`/${CC}/products/t-shirt`)

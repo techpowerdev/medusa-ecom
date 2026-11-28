@@ -58,7 +58,7 @@ const serverCart = (...items: { requires_shipping: boolean }[]) =>
   retrieve.mockResolvedValue({ cart: { id: "cart_1", items } })
 
 // SFUI-18c (spec 09 กฎ 55): ตำบล/แขวง บังคับ
-const REQUIRED = ["first_name", "last_name", "address_1", "address_2", "postal_code", "city"] as const
+const REQUIRED = ["first_name", "last_name", "address_1", "address_2", "city", "province", "postal_code"] as const // SFUI-20a (กฎ 69)
 
 const fillAddress = (form: FormData, prefix: "shipping_address" | "billing_address") => {
   form.set(`${prefix}.first_name`, "สมชาย")
@@ -67,6 +67,7 @@ const fillAddress = (form: FormData, prefix: "shipping_address" | "billing_addre
   form.set(`${prefix}.address_2`, "คลองเตยเหนือ")
   form.set(`${prefix}.postal_code`, "10110")
   form.set(`${prefix}.city`, "วัฒนา")
+  form.set(`${prefix}.province`, "กรุงเทพมหานคร")  // SFUI-20a (spec 09 กฎ 69): จังหวัดบังคับ
   form.set(`${prefix}.country_code`, "th")
   return form
 }
@@ -128,6 +129,7 @@ describe("setAddresses: ช่องบังคับที่เป็นช�
     serverCart(shirt)
     const form = shippingForm()
     form.set("shipping_address.city", "  วัฒนา  ")
+    form.set("shipping_address.province", "กรุงเทพมหานคร")  // SFUI-20a (spec 09 กฎ 69): จังหวัดบังคับ
     form.set("shipping_address.first_name", " สมชาย")
 
     expect(await submitResult(form)).toBe("REDIRECT /th/checkout?step=delivery")

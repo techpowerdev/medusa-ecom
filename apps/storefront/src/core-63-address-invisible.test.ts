@@ -53,8 +53,8 @@ vi.mock("next/navigation", () => ({
   unstable_rethrow: vi.fn(),
 }))
 
-// SFUI-18c (spec 09 กฎ 55): ตำบล/แขวง (address_2) บังคับกรอก
-const REQUIRED = ["first_name", "last_name", "address_1", "address_2", "postal_code", "city"] as const
+// SFUI-18c (spec 09 กฎ 55): ตำบล/แขวง (address_2) บังคับกรอก; SFUI-20a (กฎ 69): จังหวัด (province) บังคับกรอก
+const REQUIRED = ["first_name", "last_name", "address_1", "address_2", "city", "province", "postal_code"] as const
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -76,22 +76,21 @@ describe("setAddresses: ช่องไม่บังคับ (กฎข้อ
     form.set("shipping_address.address_2", "คลองเตยเหนือ")
     form.set("shipping_address.postal_code", "10110")
     form.set("shipping_address.city", "วัฒนา")
+    form.set("shipping_address.province", "กรุงเทพมหานคร")
     form.set("shipping_address.country_code", "th")
     return form
   }
   const submit = async (form: FormData) =>
     (await import("@lib/data/cart")).setAddresses(null, form).catch((e: Error) => e.message)
 
-  it("company/province/phone ที่มีแต่ zero-width → ส่ง \"\"", async () => {
+  it("company/phone ที่มีแต่ zero-width → ส่ง \"\"", async () => {
     const form = checkoutForm()
     form.set("shipping_address.company", ZW)
-    form.set("shipping_address.province", ` ${ZW}\uFEFF `)
     form.set("shipping_address.phone", "\u2060")
 
     expect(await submit(form)).toBe("REDIRECT /th/checkout?step=delivery")
     const { shipping_address } = update.mock.calls[0][1]
     expect(shipping_address.company).toBe("")
-    expect(shipping_address.province).toBe("")
     expect(shipping_address.phone).toBe("")
     expect(shipping_address.country_code).toBe("th")
   })
@@ -122,6 +121,14 @@ describe("setAddresses: ช่องไม่บังคับ (กฎข้อ
     expect(await submit(blank)).toBe(await missingMessage())
     expect(update).toHaveBeenCalledTimes(1)
   })
+
+  // SFUI-20a (spec 09 กฎ 69, AC-62): จังหวัดบังคับ — ช่องว่าง/zero-width ล้วน → MISSING_ADDRESS_MESSAGE ไม่เรียก update
+  it.each([` ${ZW}\uFEFF `, "   ", ""])("province = %j → MISSING_ADDRESS_MESSAGE ไม่เรียก update", async (value) => {
+    const form = checkoutForm()
+    form.set("shipping_address.province", value)
+    expect(await submit(form)).toBe(await missingMessage())
+    expect(update).not.toHaveBeenCalled()
+  })
 })
 
 const accountForm = () => {
@@ -133,7 +140,7 @@ const accountForm = () => {
   form.set("address_2", "คลองเตยเหนือ")
   form.set("city", "วัฒนา")
   form.set("postal_code", "10110")
-  form.set("province", "")
+  form.set("province", "กรุงเทพมหานคร")
   form.set("country_code", "th")
   form.set("phone", "")
   return form
@@ -186,7 +193,7 @@ describe("addCustomerAddress (กฎข้อ 121b)", () => {
       address_2: "คลองเตยเหนือ",
       city: "วัฒนา",
       postal_code: "10110",
-      province: "",
+      province: "กรุงเทพมหานคร",
       country_code: "th",
       phone: "",
     })
@@ -224,7 +231,7 @@ describe("updateCustomerAddress (กฎข้อ 121b)", () => {
       address_2: "คลองเตยเหนือ",
       city: "วัฒนา",
       postal_code: "10110",
-      province: "",
+      province: "กรุงเทพมหานคร",
       country_code: "th",
       phone: "0812345678",
     })

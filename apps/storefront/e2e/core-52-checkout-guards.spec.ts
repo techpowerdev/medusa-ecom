@@ -160,6 +160,7 @@ for (const viewport of VIEWPORTS) {
       await page.getByTestId("shipping-address-2-input").fill("คลองเตยเหนือ")
       await page.getByTestId("shipping-postal-code-input").fill("10110")
       await page.getByTestId("shipping-city-input").fill("   ")
+      await page.getByTestId("shipping-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
       await chooseOption(page.getByTestId("shipping-country-select"), CC)
       await page.getByTestId("shipping-email-input").fill(customer.email)
       const saved = waitForServerAction(page, (body) => body.includes(customer.email))
@@ -196,6 +197,7 @@ for (const viewport of VIEWPORTS) {
       await page.getByTestId("shipping-address-2-input").fill("คลองเตยเหนือ")
       await page.getByTestId("shipping-postal-code-input").fill("10110")
       await page.getByTestId("shipping-city-input").fill("วัฒนา")
+      await page.getByTestId("shipping-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
       await chooseOption(page.getByTestId("shipping-country-select"), CC)
       await page.getByTestId("shipping-email-input").fill(customer.email)
       const checkbox = page.getByTestId("billing-address-checkbox")
@@ -207,6 +209,7 @@ for (const viewport of VIEWPORTS) {
       await page.getByTestId("billing-address-2-input").fill("คลองเตยเหนือ")
       await page.getByTestId("billing-postal-input").fill("10500")
       await page.getByTestId("billing-city-input").fill("   ")
+      await page.getByTestId("billing-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
       await chooseOption(page.getByTestId("billing-country-select"), CC)
       const failed = waitForServerAction(page, (body) => body.includes(customer.email))
       await page.getByTestId("submit-address-button").click()
@@ -218,6 +221,7 @@ for (const viewport of VIEWPORTS) {
       await expectSelected(page.getByTestId("billing-country-select"), CC)
 
       await page.getByTestId("billing-city-input").fill("บางรัก")
+      await page.getByTestId("billing-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
       const saved = waitForServerAction(page, (body) => body.includes(customer.email))
       await page.getByTestId("submit-address-button").click()
       expect((await saved).headers()["x-action-redirect"]).toMatch(/step=delivery/)
@@ -248,6 +252,7 @@ for (const viewport of VIEWPORTS) {
       await page.getByTestId("billing-address-2-input").fill("คลองเตยเหนือ")
       await page.getByTestId("billing-postal-input").fill("10110")
       await page.getByTestId("billing-city-input").fill("   ")
+      await page.getByTestId("billing-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
       await chooseOption(page.getByTestId("billing-country-select"), CC)
       await page.getByTestId("billing-email-input").fill(customer.email)
       const saved = waitForServerAction(page, (body) => body.includes(customer.email))
@@ -317,6 +322,7 @@ test.describe("CORE-58 อักขระที่มองไม่เห็น
     await page.getByTestId("shipping-postal-code-input").fill("10110")
     const before = await call(request, storeHeaders(pk, customer), `/store/carts/${cartId}?fields=id,*shipping_address`)
     await page.getByTestId("shipping-city-input").fill(ZWSP)
+    await page.getByTestId("shipping-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
     await chooseOption(page.getByTestId("shipping-country-select"), CC)
     await page.getByTestId("shipping-email-input").fill(customer.email)
     const saved = waitForServerAction(page, (body) => body.includes(customer.email))
@@ -352,6 +358,7 @@ test.describe("CORE-58 อักขระที่มองไม่เห็น
     await page.getByTestId("billing-postal-input").fill("10110")
     const before = await call(request, storeHeaders(pk, customer), `/store/carts/${cartId}?fields=id,*billing_address`)
     await page.getByTestId("billing-city-input").fill(ZWSP)
+    await page.getByTestId("billing-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
     await chooseOption(page.getByTestId("billing-country-select"), CC)
     await page.getByTestId("billing-email-input").fill(customer.email)
     const saved = waitForServerAction(page, (body) => body.includes(customer.email))

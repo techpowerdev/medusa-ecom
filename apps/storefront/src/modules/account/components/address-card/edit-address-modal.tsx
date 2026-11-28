@@ -204,6 +204,7 @@ const EditAddress: React.FC<EditAddressProps> = ({
                 name="province"
                 autoComplete="address-level1"
                 defaultValue={address.province || undefined}
+                required
                 data-testid="state-input"
               />
               <Input

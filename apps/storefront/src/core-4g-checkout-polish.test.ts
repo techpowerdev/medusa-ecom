@@ -80,6 +80,7 @@ describe("medusaError คง status (AC-99)", () => {
     form.set("shipping_address.last_name", "Jaidee")
     form.set("shipping_address.postal_code", "10110")
     form.set("shipping_address.city", "Bangkok")
+    form.set("shipping_address.province", "กรุงเทพมหานคร")  // SFUI-20a (spec 09 กฎ 69): จังหวัดบังคับ
     form.set("same_as_billing", "on")
     expect(await setAddresses(null, form)).toBe(SIGN_IN_AGAIN_MESSAGE)
   })

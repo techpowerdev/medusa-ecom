@@ -31,7 +31,7 @@ const SHIPPING: Fields = {
   "shipping-address-input": [true, ADDRESS_1],
   "shipping-address-2-input": [true, null], // SFUI-18c (กฎ 55): ตำบลบังคับ
   "shipping-city-input": [true, null],
-  "shipping-province-input": [false, null],
+  "shipping-province-input": [true, null], // SFUI-20a (กฎ 69): จังหวัดบังคับ
   "shipping-postal-code-input": [true, POSTAL],
   "shipping-country-select": [true, null],
   "shipping-email-input": [true, null],
@@ -44,7 +44,7 @@ const BILLING: Fields = {
   "billing-address-input": [true, ADDRESS_1],
   "billing-address-2-input": [true, null],
   "billing-city-input": [true, null],
-  "billing-province-input": [false, null],
+  "billing-province-input": [true, null], // SFUI-20a (กฎ 69): จังหวัดบังคับ
   "billing-postal-input": [true, POSTAL],
   "billing-country-select": [true, null],
   "billing-phone-input": [false, PHONE],
