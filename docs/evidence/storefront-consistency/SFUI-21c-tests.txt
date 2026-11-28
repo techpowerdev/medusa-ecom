@@ -1,0 +1,19 @@
+# SFUI-21c — ผลทดสอบ (spec 09 กฎ 78 (i)/(iv), 80; AC-69/68; ADR-034 D8)
+สภาพแวดล้อม: stack บน feat/SFUI-21a-form-consistency (e15cbf72), node 24, prod build — backend :9491 (NODE_ENV=production,
+start จาก .medusa/server, DB medusa_sfui21c, Redis db 13, Stripe test + stripe listen ชุด events ของ CI), storefront :8491
+
+## Red
+- static sfui-21-consistency.unit (เพิ่ม AC-69 (1)) ก่อนแก้: 2 failed / 8 — shipping มี OPTION_CLASS + import OptionDot,
+  payment-container ซ่อน radio-group-indicator; RadioGroupItem 4 ตัวไม่อยู่ใน FieldLabel → Field horizontal และมี className
+- e2e ใหม่ sfui-21c-choice-card บน build ที่ src = 21a: 2 failed / 2 ("RadioGroupItem อยู่ใน FieldLabel → Field": null)
+
+## Green
+- e2e sfui-21c-choice-card (1280 + 390, Stripe test จริง): 2 passed — ขอบ/มุม/padding การ์ดเท่ากันทั้งขั้นจัดส่งและชำระเงิน,
+  สีกรอบการ์ดที่เลือกเท่ากันทั้งสองขั้นและต่างจากที่ไม่เลือก, คลิก FieldTitle เลือกได้, ArrowDown เปลี่ยนตัวเลือก,
+  iframe ของ Stripe ไม่อยู่ใน <label>, กรอกบัตร 4242 แล้วไปขั้น review
+- e2e ที่อ้าง delivery-option-radio / payment-option-* / checkout / order-pay (58 ไฟล์, --workers=2): 178 passed, 1 skipped
+  (pay-19 — ต้องมี E2E_PROMPTPAY_REFUND_EMAIL ของ CI), 1 failed = sfui-9c-font (locator span ในปุ่ม radio — แก้ตามกฎ 78 (i)/(iv))
+  → หลังแก้ sfui-9c-font: 1 passed; รอบยืนยัน sfui-21c + thai-ui-checkout + core-57: 4 passed
+- playwright project unit (รวม evidence-budget, AC-19): 265 passed; vitest (apps/storefront): 139 files / 2088 tests passed
+- pnpm lint && pnpm typecheck: ผ่าน (0 error); pnpm --filter storefront build: ผ่าน
+- pnpm dlx shadcn@4.23.1 add field radio-group --dry-run --diff: radio-group, label, separator, field = "No changes."

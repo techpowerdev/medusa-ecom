@@ -1,7 +1,7 @@
 "use client"
 import { Button } from "@/components/button"
-import { RadioGroupItem } from "@/components/radio-group"
-import { RadioGroup } from "@/components/ui/radio-group"
+import { Field, FieldContent, FieldDescription, FieldLabel, FieldTitle } from "@/components/ui/field"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
 import { setShippingMethod } from "@lib/data/cart"
 import { calculatePriceForShippingOption } from "@lib/data/fulfillment"
@@ -12,10 +12,9 @@ import { selectedShippingOptionId, shippingOptionsForCart } from "@lib/util/ship
 import { HttpTypes } from "@medusajs/types"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import Divider from "@modules/common/components/divider"
-import OptionDot from "@modules/common/components/option-dot"
 import { CircleCheck, LoaderCircle } from "lucide-react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useId, useState } from "react"
 
 /** CORE-4i-b (กฎข้อ 72): เลือกวิธีจัดส่งแล้วคืนข้อความไทยเมื่อล้ม (`unauthorized` → SIGN_IN_AGAIN_MESSAGE), สำเร็จ → null */
 export const selectShippingMethod = async (cartId: string, shippingMethodId: string): Promise<string | null> => {
@@ -26,10 +25,8 @@ export const selectShippingMethod = async (cartId: string, shippingMethodId: str
 const PICKUP_OPTION_ON = "__PICKUP_ON"
 const PICKUP_OPTION_OFF = "__PICKUP_OFF"
 
-// SFUI-3e (spec 09 กฎ 4, 9, 12): ตัวเลือก = RadioGroupItem ของ shadcn (ปุ่ม role="radio" ที่มี testid และชื่อ/ราคาอยู่ข้างใน)
-// ทั้งแถวเป็นปุ่ม (คลิกได้ทั้งแถวเหมือนเดิม); indicator ของ shadcn ซ่อน — วาดวงกลมเองในแถว (แบบเดียวกับ PaymentContainer ของ SFUI-3d)
-const OPTION_CLASS =
-  "group flex size-auto aspect-auto w-full items-center justify-between rounded-md text-xs leading-5 font-normal text-left shadow-none cursor-pointer py-4 px-8 mb-2 hover:border-ring [&>[data-slot=radio-group-indicator]]:hidden"
+// SFUI-21c (spec 09 กฎ 80, ADR-034 D8): ตัวเลือก = "Choice Card" ของ shadcn (`field` + `radio-group`) — FieldLabel (การ์ด คลิกได้ทั้งใบ)
+// → Field horizontal → FieldContent (ชื่อ/ราคา) + RadioGroupItem (indicator default; testid/data-option-id/aria-disabled อยู่ที่นี่ — กฎ 9)
 
 type ShippingProps = {
   cart: HttpTypes.StoreCart
@@ -47,6 +44,7 @@ const Shipping: React.FC<ShippingProps> = ({
     ? cart.shipping_methods?.filter((m) => m.shipping_option_id === selectedOptionId).at(-1)
     : undefined
   const [isLoading, setIsLoading] = useState(false)
+  const uid = useId()
   const [isLoadingPrices, setIsLoadingPrices] = useState(true)
 
   const [showPickupOptions, setShowPickupOptions] =
@@ -194,7 +192,7 @@ const Shipping: React.FC<ShippingProps> = ({
               </p>
             ) : (
             <div data-testid="delivery-options-container">
-              <div className="pb-8 md:pt-0 pt-2">
+              <div className="grid gap-3 pb-8 md:pt-0 pt-2">
                 {/* SFUI-3e (spec 09 กฎ 4, 12–13): RadioGroup ของ shadcn — ลูกศรเปลี่ยนตัวเลือก; ไม่อยู่ใน <form> (ไม่มี input ซ่อน
                     และไม่โดน reset ของ form) — คลิกตัวที่เลือกอยู่ไม่เรียก onValueChange เหมือน headless เดิม */}
                 {hasPickupOptions && (
@@ -209,25 +207,20 @@ const Shipping: React.FC<ShippingProps> = ({
                         handleSetShippingMethod(id, "pickup")
                       }
                     }}
-                    className="block"
                   >
-                    <RadioGroupItem
-                      value={PICKUP_OPTION_ON}
-                      data-testid="delivery-option-radio"
-                      className={cn(OPTION_CLASS, {
-                        "border-primary": showPickupOptions === PICKUP_OPTION_ON,
-                      })}
-                    >
-                      <span className="flex items-center gap-x-4">
-                        <OptionDot />
-                        <span className="text-sm leading-6 font-normal">
-                          รับสินค้าด้วยตนเอง
-                        </span>
-                      </span>
-                      <span className="justify-self-end text-foreground">
-                        -
-                      </span>
-                    </RadioGroupItem>
+                    <FieldLabel htmlFor={`${uid}-pickup`}>
+                      <Field orientation="horizontal">
+                        <FieldContent>
+                          <FieldTitle>รับสินค้าด้วยตนเอง</FieldTitle>
+                          <FieldDescription>-</FieldDescription>
+                        </FieldContent>
+                        <RadioGroupItem
+                          value={PICKUP_OPTION_ON}
+                          id={`${uid}-pickup`}
+                          data-testid="delivery-option-radio"
+                        />
+                      </Field>
+                    </FieldLabel>
                   </RadioGroup>
                 )}
                 <RadioGroup
@@ -237,7 +230,6 @@ const Shipping: React.FC<ShippingProps> = ({
                       return handleSetShippingMethod(v, "shipping")
                     }
                   }}
-                  className="block"
                 >
                   {_shippingMethods?.map((option) => {
                     const isDisabled =
@@ -246,43 +238,39 @@ const Shipping: React.FC<ShippingProps> = ({
                       typeof calculatedPricesMap[option.id] !== "number"
 
                     return (
-                      <RadioGroupItem
-                        key={option.id}
-                        value={option.id}
-                        data-testid="delivery-option-radio"
-                        data-option-id={option.id}
-                        disabled={isDisabled}
-                        // คง aria-disabled แบบ headless เดิม (Radix ใส่แค่ disabled)
-                        aria-disabled={isDisabled || undefined}
-                        className={cn(OPTION_CLASS, {
-                          "border-primary": option.id === shippingMethodId,
-                          "hover:border-input cursor-not-allowed": isDisabled,
-                        })}
-                      >
-                        <span className="flex items-center gap-x-4">
-                          <OptionDot />
-                          <span className="text-sm leading-6 font-normal">
-                            {option.name}
-                          </span>
-                        </span>
-                        <span className="justify-self-end text-foreground">
-                          {option.price_type === "flat" ? (
-                            convertToLocale({
-                              amount: option.amount!,
-                              currency_code: cart?.currency_code,
-                            })
-                          ) : calculatedPricesMap[option.id] ? (
-                            convertToLocale({
-                              amount: calculatedPricesMap[option.id],
-                              currency_code: cart?.currency_code,
-                            })
-                          ) : isLoadingPrices ? (
-                            <LoaderCircle className="size-4 animate-spin" />
-                          ) : (
-                            "-"
-                          )}
-                        </span>
-                      </RadioGroupItem>
+                      <FieldLabel key={option.id} htmlFor={`${uid}-${option.id}`}>
+                        <Field orientation="horizontal" data-disabled={isDisabled || undefined}>
+                          <FieldContent>
+                            <FieldTitle>{option.name}</FieldTitle>
+                            <FieldDescription>
+                              {option.price_type === "flat" ? (
+                                convertToLocale({
+                                  amount: option.amount!,
+                                  currency_code: cart?.currency_code,
+                                })
+                              ) : calculatedPricesMap[option.id] ? (
+                                convertToLocale({
+                                  amount: calculatedPricesMap[option.id],
+                                  currency_code: cart?.currency_code,
+                                })
+                              ) : isLoadingPrices ? (
+                                <LoaderCircle className="size-4 animate-spin" />
+                              ) : (
+                                "-"
+                              )}
+                            </FieldDescription>
+                          </FieldContent>
+                          <RadioGroupItem
+                            value={option.id}
+                            id={`${uid}-${option.id}`}
+                            data-testid="delivery-option-radio"
+                            data-option-id={option.id}
+                            disabled={isDisabled}
+                            // คง aria-disabled แบบ headless เดิม (Radix ใส่แค่ disabled)
+                            aria-disabled={isDisabled || undefined}
+                          />
+                        </Field>
+                      </FieldLabel>
                     )
                   })}
                 </RadioGroup>
@@ -310,29 +298,14 @@ const Shipping: React.FC<ShippingProps> = ({
                         return handleSetShippingMethod(v, "pickup")
                       }
                     }}
-                    className="block"
                   >
                     {_pickupMethods?.map((option) => {
                       return (
-                        <RadioGroupItem
-                          key={option.id}
-                          value={option.id}
-                          disabled={option.insufficient_inventory}
-                          aria-disabled={option.insufficient_inventory || undefined}
-                          data-testid="delivery-option-radio"
-                          className={cn(OPTION_CLASS, {
-                            "border-primary": option.id === shippingMethodId,
-                            "hover:border-input cursor-not-allowed":
-                              option.insufficient_inventory,
-                          })}
-                        >
-                          <span className="flex items-start gap-x-4">
-                            <OptionDot />
-                            <span className="flex flex-col">
-                              <span className="text-sm leading-6 font-normal">
-                                {option.name}
-                              </span>
-                              <span className="text-sm leading-6 font-normal text-muted-foreground">
+                        <FieldLabel key={option.id} htmlFor={`${uid}-${option.id}`}>
+                          <Field orientation="horizontal" data-disabled={option.insufficient_inventory || undefined}>
+                            <FieldContent>
+                              <FieldTitle>{option.name}</FieldTitle>
+                              <FieldDescription>
                                 {/* SFUI-18a (spec 09 กฎ 57): ที่อยู่ของจุดรับสินค้าตามลำดับไทย บรรทัดเดียว (ไม่มีจุลภาค/ช่องว่างซ้อน) */}
                                 {addressLines(
                                   (option as unknown as { service_zone?: { fulfillment_set?: { location?: { address: HttpTypes.StoreCartAddress } } } }).service_zone?.fulfillment_set?.location
@@ -340,16 +313,23 @@ const Shipping: React.FC<ShippingProps> = ({
                                 )
                                   .filter(Boolean)
                                   .join(" ")}
-                              </span>
-                            </span>
-                          </span>
-                          <span className="justify-self-end text-foreground">
-                            {convertToLocale({
-                              amount: option.amount!,
-                              currency_code: cart?.currency_code,
-                            })}
-                          </span>
-                        </RadioGroupItem>
+                              </FieldDescription>
+                              <FieldDescription>
+                                {convertToLocale({
+                                  amount: option.amount!,
+                                  currency_code: cart?.currency_code,
+                                })}
+                              </FieldDescription>
+                            </FieldContent>
+                            <RadioGroupItem
+                              value={option.id}
+                              id={`${uid}-${option.id}`}
+                              disabled={option.insufficient_inventory}
+                              aria-disabled={option.insufficient_inventory || undefined}
+                              data-testid="delivery-option-radio"
+                            />
+                          </Field>
+                        </FieldLabel>
                       )
                     })}
                   </RadioGroup>

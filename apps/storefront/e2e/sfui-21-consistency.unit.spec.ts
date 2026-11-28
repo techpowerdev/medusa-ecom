@@ -177,3 +177,68 @@ test("AC-66 (1): ปุ่มปิด overlay ในไฟล์ข้อ 35 = 
   expect(closes, "ปุ่มปิดในไฟล์ข้อ 35").toBe(5)
   expect(found).toEqual([])
 })
+
+// ---- SFUI-21c (spec 09 กฎ 80; AC-69 (1) — owner Q-R50-1: การ์ดตัวเลือกจัดส่ง/ชำระเงิน = Choice Card ของ shadcn) ----
+
+const SHIPPING = "src/modules/checkout/components/shipping/index.tsx"
+const PAYMENT_CONTAINER = "src/modules/checkout/components/payment-container/index.tsx"
+
+/** `RadioGroupItem` ที่ parent (JSX element) ไม่ใช่ `Field orientation="horizontal"` ใน `FieldLabel` หรือมี className */
+export function choiceCardViolations(file: string, sf = parseTsx(file)): { count: number; bad: string[] } {
+  const bad: string[] = []
+  let count = 0
+  const parentElement = (n: ts.Node) => {
+    let p = n.parent
+    while (p && !ts.isJsxElement(p)) p = p.parent
+    return p as ts.JsxElement | undefined
+  }
+  const visit = (n: ts.Node) => {
+    const el = openingOf(n)
+    if (el && el.tagName.getText(sf) === "RadioGroupItem") {
+      count++
+      const field = parentElement(n)
+      const label = field && parentElement(field)
+      const ok =
+        !attrOf(el, sf, "className") &&
+        field?.openingElement.tagName.getText(sf) === "Field" &&
+        attrOf(field.openingElement, sf, "orientation")?.initializer?.getText(sf) === '"horizontal"' &&
+        label?.openingElement.tagName.getText(sf) === "FieldLabel" &&
+        !!attrOf(label.openingElement, sf, "htmlFor")
+      if (!ok) bad.push(`${file}:${lineOf(sf, n)}`)
+    }
+    n.forEachChild(visit)
+  }
+  visit(sf)
+  return { count, bad }
+}
+
+test("AC-69 (1): ตัวตรวจ Choice Card (positive/negative control)", () => {
+  const src = (code: string) => ts.createSourceFile("c.tsx", code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const good = src('const a = <FieldLabel htmlFor="x"><Field orientation="horizontal"><FieldContent /><RadioGroupItem value="x" id="x" /></Field></FieldLabel>')
+  expect(choiceCardViolations("c.tsx", good)).toEqual({ count: 1, bad: [] })
+  const bad = src(
+    [
+      'const a = <RadioGroupItem value="x" className="w-full" />',
+      'const b = <FieldLabel htmlFor="x"><Field><RadioGroupItem value="x" id="x" /></Field></FieldLabel>',
+      'const c = <FieldLabel htmlFor="x"><Field orientation="horizontal"><RadioGroupItem value="x" id="x" className="border-0" /></Field></FieldLabel>',
+      'const d = <div><Field orientation="horizontal"><RadioGroupItem value="x" id="x" /></Field></div>',
+    ].join("\n")
+  )
+  expect(choiceCardViolations("c.tsx", bad).bad).toEqual(["c.tsx:1", "c.tsx:2", "c.tsx:3", "c.tsx:4"])
+})
+
+test("AC-69 (1): shipping ไม่มี OPTION_CLASS, payment-container ไม่มี OptionDot/การซ่อน indicator (กฎ 80)", () => {
+  expect(readSource(SHIPPING)).not.toContain("OPTION_CLASS")
+  for (const file of [SHIPPING, PAYMENT_CONTAINER]) {
+    expect(readSource(file), file).not.toMatch(/import OptionDot|option-dot/)
+    expect(readSource(file), file).not.toContain("radio-group-indicator]:hidden")
+  }
+})
+
+test("AC-69 (1): ทุก RadioGroupItem ในสองไฟล์อยู่ใน FieldLabel → Field orientation=horizontal และไม่มี className (กฎ 80)", () => {
+  const shipping = choiceCardViolations(SHIPPING)
+  const payment = choiceCardViolations(PAYMENT_CONTAINER)
+  expect(shipping.count, "RadioGroupItem ใน shipping (pickup toggle, จัดส่ง, สาขา)").toBe(3)
+  expect(payment.count, "RadioGroupItem ใน payment-container").toBe(1)
+  expect([...shipping.bad, ...payment.bad]).toEqual([])
+})

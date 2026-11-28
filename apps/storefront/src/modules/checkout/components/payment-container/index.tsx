@@ -1,10 +1,9 @@
-import { RadioGroupItem } from "@/components/radio-group"
-import { cn } from "@/lib/utils"
-import React, { useContext, useEffect, useRef, useState, type JSX } from "react"
+import { Field, FieldContent, FieldDescription, FieldLabel, FieldTitle } from "@/components/ui/field"
+import { RadioGroupItem } from "@/components/ui/radio-group"
+import React, { useContext, useEffect, useId, useRef, useState, type JSX } from "react"
 
 import { isManual } from "@lib/constants"
 import { intentIsTerminal } from "@lib/util/payment-session"
-import OptionDot from "@modules/common/components/option-dot"
 import SkeletonCardDetails from "@modules/skeletons/components/skeleton-card-details"
 import { PaymentElement, useStripe } from "@stripe/react-stripe-js"
 import PaymentTest from "../payment-test"
@@ -18,53 +17,40 @@ type PaymentContainerProps = {
   children?: React.ReactNode
 }
 
-// SFUI-3d (spec 09 กฎ 4, 9): ตัวเลือก = RadioGroupItem ของ shadcn (ต้องอยู่ใน RadioGroup ของผู้เรียก) — testid อยู่บนปุ่ม role="radio"
-// ที่มีชื่อวิธีชำระอยู่ข้างใน; ช่องกรอกบัตร (children) อยู่นอกปุ่ม (iframe ของ Stripe อยู่ใน <button> ไม่ได้) แต่ในกรอบเดียวกัน
+// SFUI-21c (spec 09 กฎ 80, ADR-034 D8): ตัวเลือก = "Choice Card" ของ shadcn (`field` + `radio-group`) โครงเดียวกับตัวเลือกจัดส่ง —
+// FieldLabel (การ์ด คลิกได้ทั้งใบ) → Field horizontal → FieldContent (ชื่อวิธี + icon) + RadioGroupItem (ต้องอยู่ใน RadioGroup ของผู้เรียก;
+// testid/aria-disabled อยู่ที่ปุ่ม role="radio" — กฎ 9); ช่องกรอกบัตร/QR (children) อยู่ถัดจาก label นอก <label> (iframe ของ Stripe อยู่ใน label ไม่ได้)
 const PaymentContainer: React.FC<PaymentContainerProps> = ({
   paymentProviderId,
-  selectedPaymentOptionId,
   paymentInfoMap,
   disabled = false,
   children,
 }) => {
   const isDevelopment = process.env.NODE_ENV === "development"
-  const selected = selectedPaymentOptionId === paymentProviderId
+  const id = useId()
 
   return (
-    <div
-      className={cn("flex flex-col text-xs leading-5 font-normal border rounded-rounded mb-2 hover:border-ring", {
-        "border-primary": selected,
-      })}
-    >
-      <RadioGroupItem
-        value={paymentProviderId}
-        disabled={disabled}
-        // คง aria-disabled แบบ headless เดิม (Radix ใส่แค่ disabled) — payments-order-pay อ่านค่านี้ระหว่างส่ง
-        aria-disabled={disabled || undefined}
-        data-testid={`payment-option-${paymentProviderId}`}
-        // ปุ่มเต็มกรอบ (คลิกได้ทั้งแถวเหมือนเดิม); indicator ของ shadcn ซ่อน — วาดวงกลมเองในแถว
-        className="group flex size-auto aspect-auto w-full flex-col items-stretch gap-y-2 rounded-[inherit] border-0 px-8 py-4 text-left shadow-none cursor-pointer [&>[data-slot=radio-group-indicator]]:hidden"
-      >
-        {/* เนื้อหาในปุ่มเป็น span (phrasing content ของ <button>) */}
-        <span className="flex items-center justify-between">
-          <span className="flex items-center gap-x-4">
-            <OptionDot />
-            <span className="text-sm leading-6 font-normal">
+    <div className="flex flex-col gap-2">
+      <FieldLabel htmlFor={id}>
+        <Field orientation="horizontal" data-disabled={disabled || undefined}>
+          <FieldContent>
+            <FieldTitle>
               {paymentInfoMap[paymentProviderId]?.title || paymentProviderId}
-            </span>
-            {isManual(paymentProviderId) && isDevelopment && (
-              <PaymentTest className="hidden small:block" />
-            )}
-          </span>
-          <span className="justify-self-end text-foreground">
-            {paymentInfoMap[paymentProviderId]?.icon}
-          </span>
-        </span>
-        {isManual(paymentProviderId) && isDevelopment && (
-          <PaymentTest className="small:hidden text-[10px]" />
-        )}
-      </RadioGroupItem>
-      {children ? <div className="-mt-2 px-8 pb-4">{children}</div> : null}
+              {isManual(paymentProviderId) && isDevelopment && <PaymentTest />}
+            </FieldTitle>
+            <FieldDescription>{paymentInfoMap[paymentProviderId]?.icon}</FieldDescription>
+          </FieldContent>
+          <RadioGroupItem
+            value={paymentProviderId}
+            id={id}
+            disabled={disabled}
+            // คง aria-disabled แบบ headless เดิม (Radix ใส่แค่ disabled) — payments-order-pay อ่านค่านี้ระหว่างส่ง
+            aria-disabled={disabled || undefined}
+            data-testid={`payment-option-${paymentProviderId}`}
+          />
+        </Field>
+      </FieldLabel>
+      {children}
     </div>
   )
 }

@@ -14,7 +14,8 @@ import { addToCartFromPdp } from "./support/server-action"
 // SFUI-9c (spec 09 กฎ 22, AC-21): checkout + cart หลังแทน utility ขนาดฟอนต์ของ starter ด้วย utility มาตรฐานของ Tailwind
 // ค่าที่คาด = ค่าที่ render จริงที่ปลาย develop ก่อนแก้ (spec นี้ต้องผ่านทั้งบน commit ฐานและหลังแก้) — จุดตัวอย่างครบทุกขนาดในขอบเขต:
 // 12px/20px/400, 12px/20px/600, 14px/24px/400, 14px/24px/600, 30px/48px/600 (ไม่มีจุดที่เข้ากฎ 22b/22c ในขอบเขต)
-// (ปุ่ม RadioGroupItem มี span ของ indicator `data-slot="radio-group-indicator"` นำหน้าเมื่อถูกเลือก — ข้ามด้วย :not([data-slot]))
+// SFUI-21c (spec 09 กฎ 78 (i)/(iv), 80): การ์ดตัวเลือกจัดส่ง/ชำระเงินเป็น Choice Card ของ shadcn — ชื่อตัวเลือกอยู่ใน `FieldTitle`
+// ของ `<label data-slot="field-label">` ที่ครอบปุ่ม radio (ไม่ใช่ span ในปุ่ม) ค่าที่คาด = default ของ `ui/field` ที่ render จริง (CHOICE)
 test.use({ evidenceTarget: { feature: "storefront-ui", taskId: "SFUI-9c" } })
 
 type Font = { size: string; lineHeight: string; weight: string }
@@ -29,7 +30,12 @@ const SMALL_REGULAR: Font = { size: "12px", lineHeight: "20px", weight: "400" }
 const SMALL_SEMI: Font = { size: "12px", lineHeight: "20px", weight: "600" }
 const BASE_REGULAR: Font = { size: "14px", lineHeight: "24px", weight: "400" }
 const BASE_SEMI: Font = { size: "14px", lineHeight: "24px", weight: "600" }
+const CHOICE: Font = { size: "14px", lineHeight: "19.25px", weight: "500" } // SFUI-21c: FieldLabel/FieldTitle ของ ui/field = text-sm leading-snug font-medium
 const XXL_SEMI: Font = { size: "32px", lineHeight: "48px", weight: "600" } // SFUI-21b (spec 09 กฎ 77, 78 (i)): h1 ทุกหน้า text-3xl font-semibold tracking-tight = 32px/48px/600 (วัดบน build)
+
+/** SFUI-21c: การ์ด (label ของ Choice Card) ที่ครอบปุ่ม radio และ FieldTitle ของการ์ด */
+const choiceCard = (radio: Locator) => radio.locator('xpath=ancestor::label[@data-slot="field-label"]')
+const choiceTitle = (radio: Locator) => choiceCard(radio).locator('[data-slot="field-content"] > [data-slot="field-label"]')
 
 const savedAddress = {
   first_name: "สมชาย",
@@ -105,28 +111,26 @@ test("AC-21: checkout (not-found, ที่อยู่, จัดส่ง, ช
   const cartId = await cartReadyForPayment(request, pk, customer)
   await context.addCookies([{ name: "_medusa_cart_id", value: cartId, url: baseURL! }])
 
-  await step("ขั้นจัดส่ง: สรุปที่อยู่ 12px/20px/400, ชื่อวิธีจัดส่ง 14px/24px/400", async () => {
+  await step("ขั้นจัดส่ง: สรุปที่อยู่ 12px/20px/400, ชื่อวิธีจัดส่ง (FieldTitle) 14px/19.25px/500", async () => {
     await page.goto(`/${CC}/checkout?step=delivery`)
     const summary = page.getByTestId("shipping-address-summary")
     await expect(summary).toBeVisible()
     expect.soft(await font(summary.locator("../../.."))).toEqual(SMALL_REGULAR)
     const radio = page.getByTestId("delivery-option-radio").first()
     await expect(radio).toBeVisible()
-    expect.soft(await font(radio.locator(":scope > span:not([data-slot])").first().locator(":scope > span").nth(1))).toEqual(BASE_REGULAR)
+    expect.soft(await font(choiceTitle(radio))).toEqual(CHOICE)
     await evidence("02-checkout-delivery")
   })
 
-  await step("ขั้นชำระเงิน: สรุปวิธีจัดส่ง 12px/20px/400, กรอบตัวเลือกชำระเงิน 12px/20px/400, ชื่อวิธีชำระ 14px/24px/400", async () => {
+  await step("ขั้นชำระเงิน: สรุปวิธีจัดส่ง 12px/20px/400, การ์ดตัวเลือกชำระเงิน + ชื่อวิธีชำระ (FieldLabel/FieldTitle) 14px/19.25px/500", async () => {
     await page.goto(`/${CC}/checkout?step=payment`)
     const option = page.getByTestId("payment-option-pp_system_default")
     await expect(option).toBeVisible()
     expect
       .soft(await font(page.getByTestId("delivery-heading").locator("xpath=../following-sibling::div[1]/div[1]")))
       .toEqual(SMALL_REGULAR)
-    expect.soft(await font(option.locator(".."))).toEqual(SMALL_REGULAR)
-    expect
-      .soft(await font(option.locator(":scope > span:not([data-slot])").first().locator(":scope > span").first().locator(":scope > span").nth(1)))
-      .toEqual(BASE_REGULAR)
+    expect.soft(await font(choiceCard(option))).toEqual(CHOICE)
+    expect.soft(await font(choiceTitle(option))).toEqual(CHOICE)
     await evidence("03-checkout-payment")
   })
 })

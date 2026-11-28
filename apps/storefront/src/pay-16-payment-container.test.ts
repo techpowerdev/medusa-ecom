@@ -8,8 +8,8 @@ import PaymentContainer, { StripePaymentContainer } from "@modules/checkout/comp
 
 // PAY-16 (spec 06 กฎข้อ 18 c/d, review #541): ใช้ RadioGroup ของ shadcn (Radix) จริง (ไม่ mock) —
 // (d) group disabled ต้องถึงทุกตัวเลือก; (c) fieldsHidden แล้วไม่ render skeleton ของช่องบัตร
-// SFUI-3d (spec 09 กฎ 4, 9, 12, AC-12): testid อยู่บน RadioGroupItem (`role="radio"`) ที่มีชื่อวิธีชำระอยู่ข้างใน,
-// ช่องบัตร (Stripe) อยู่นอกปุ่มแต่ในกรอบตัวเลือก, คลิกตัวที่เลือกอยู่ไม่เรียก onValueChange (PAY-14/order-pay พึ่งพฤติกรรมนี้)
+// SFUI-3d (spec 09 กฎ 4, 9, 12, AC-12): testid อยู่บน RadioGroupItem (`role="radio"`); SFUI-21c (กฎ 80): ชื่อวิธีชำระอยู่ในการ์ด
+// (`<label>` ของ Choice Card) ที่ครอบปุ่ม, ช่องบัตร (Stripe) อยู่ถัดจากการ์ดนอก `<label>` ใน wrapper ของรายการเดียวกัน, คลิกตัวที่เลือกอยู่ไม่เรียก onValueChange (PAY-14/order-pay พึ่งพฤติกรรมนี้)
 const CARD = "pp_stripe_stripe"
 const MANUAL = "pp_system_default"
 const info = { [CARD]: { title: "บัตร", icon: h("span") }, [MANUAL]: { title: "ทดสอบ", icon: h("span") } }
@@ -82,7 +82,7 @@ describe("PAY-16: ตัวเลือกวิธีชำระใน RadioGr
     expect(byTestId("skeleton-card-details")).toBeNull()
   })
 
-  it("SFUI-3d: testid อยู่บนปุ่ม role=radio ที่มีชื่อวิธีชำระ และสถานะเลือกอยู่ใน aria-checked", async () => {
+  it("SFUI-3d: testid อยู่บนปุ่ม role=radio (ชื่อวิธีชำระอยู่ในการ์ด label ของปุ่ม) และสถานะเลือกอยู่ใน aria-checked", async () => {
     await render(false)
     const card = byTestId(`payment-option-${CARD}`)!
     const manual = byTestId(`payment-option-${MANUAL}`)!
@@ -90,16 +90,20 @@ describe("PAY-16: ตัวเลือกวิธีชำระใน RadioGr
     expect(card.getAttribute("role")).toBe("radio")
     expect(card.getAttribute("aria-checked")).toBe("true")
     expect(manual.getAttribute("aria-checked")).toBe("false")
-    expect(card.textContent).toContain("บัตร")
-    expect(manual.textContent).toContain("ทดสอบ")
+    expect(card.closest("label")?.htmlFor).toBe(card.id)
+    expect(card.closest("label")?.textContent).toContain("บัตร")
+    expect(manual.closest("label")?.textContent).toContain("ทดสอบ")
   })
 
-  it("SFUI-3d: ช่องบัตร (skeleton/Stripe) อยู่นอกปุ่ม radio แต่อยู่ในกรอบตัวเลือกเดียวกัน", async () => {
+  it("SFUI-3d/21c: ช่องบัตร (skeleton/Stripe) อยู่นอกปุ่ม radio และนอก label แต่อยู่ใน wrapper ของตัวเลือกเดียวกัน", async () => {
     await render(false)
     const skeleton = byTestId("skeleton-card-details")!
     const card = byTestId(`payment-option-${CARD}`)!
+    const label = card.closest("label")!
     expect(card.contains(skeleton)).toBe(false)
-    expect(card.parentElement!.contains(skeleton)).toBe(true)
+    expect(label.contains(skeleton)).toBe(false)
+    expect(skeleton.closest("label")).toBeNull()
+    expect(label.parentElement!.contains(skeleton)).toBe(true)
   })
 
   it("SFUI-3d: คลิกตัวที่ยังไม่เลือก → onValueChange(id); คลิกตัวที่เลือกอยู่ → ไม่เรียก", async () => {
