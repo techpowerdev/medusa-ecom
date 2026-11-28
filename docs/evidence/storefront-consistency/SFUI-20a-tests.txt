@@ -1,0 +1,18 @@
+# SFUI-20a — ผลทดสอบ (spec 09 กฎ 69, AC-62/68)
+สภาพแวดล้อม: stack บน feat/SFUI-19d-filters-toggle-checkbox (1fbfa0b0), node 24, prod build — backend :9481 (NODE_ENV=production,
+start จาก .medusa/server, DB medusa_sfui20a, Redis db 12), storefront :8481, Stripe test จริง (stripe listen → :9481)
+
+## Red
+- vitest (address-required.test, core-63-address-invisible.test, error-message.test ก่อนแก้ util): 13 failed / 54 —
+  REQUIRED_ADDRESS_FIELDS ไม่มี province, ไม่มี ADDRESS_COUNTRY_CODE, province ว่าง/ช่องว่าง/zero-width ไม่ missing,
+  ข้อความ MISSING_ADDRESS_MESSAGE เดิม, setAddresses/addCustomerAddress/updateCustomerAddress รับ province ว่าง
+- e2e ใหม่ sfui-20-address.spec บน build ที่ src = 19d: 2 failed / 2 (shipping-province-input / state-input ไม่มี `required`)
+
+## Green
+- vitest (apps/storefront): 138 files / 2089 tests passed
+- playwright project unit (รวม sfui-baseline AC-5, evidence-budget): 257 passed
+- e2e ใหม่ sfui-20-address.spec (AC-62 checkout + บัญชี 5 ฟอร์ม): 2 passed
+- e2e ที่อ้างฟอร์มที่อยู่/จังหวัด/checkoutToPayment (33 ไฟล์, --workers=1): 102 passed / 1 failed (8.6m) — sfui-11-form-field AC-28
+  ตาราง flag บังคับ `shipping-province-input: false` → แก้เป็น true แล้วรันซ้ำ sfui-11 + group-buy-join + group-buy-ui-polish +
+  sfui-12c-feature-forms: 17 passed / 17 (group join ด้วยที่อยู่ที่บันทึกไว้ไม่ตรวจเพิ่ม — กฎ 69)
+- pnpm lint && pnpm typecheck: ผ่าน (0 error); pnpm --filter storefront build: ผ่าน

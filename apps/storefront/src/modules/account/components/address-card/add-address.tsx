@@ -145,6 +145,7 @@ const AddAddress = ({
                 label="จังหวัด"
                 name="province"
                 autoComplete="address-level1"
+                required
                 data-testid="state-input"
               />
               <Input

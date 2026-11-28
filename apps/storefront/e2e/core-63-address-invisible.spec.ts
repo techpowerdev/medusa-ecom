@@ -65,6 +65,7 @@ test.describe("AC-162", () => {
           await modal.getByTestId(testId).fill(value)
         }
         await modal.getByTestId("city-input").fill(ZWSP)
+        await modal.getByTestId("state-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
         await chooseOption(modal.getByTestId("country-select"), CC)
       })
 
@@ -84,6 +85,7 @@ test.describe("AC-162", () => {
 
       await step("แก้เขต/อำเภอเป็นค่าจริงแล้วบันทึก → ที่อยู่เพิ่ม 1", async () => {
         await modal.getByTestId("city-input").fill("วัฒนา")
+        await modal.getByTestId("state-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
         const saved = waitForServerAction(page)
         await modal.getByTestId("save-button").click()
         expect((await saved).status(), "server action ของ addCustomerAddress").toBe(200)

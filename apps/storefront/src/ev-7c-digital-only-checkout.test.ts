@@ -463,6 +463,7 @@ describe("setAddresses แบบ digital-only (กฎข้อ 24b)", () => {
     form.set("shipping_address.last_name", "Jaidee")
     form.set("shipping_address.postal_code", "10110")
     form.set("shipping_address.city", "Bangkok")
+    form.set("shipping_address.province", "กรุงเทพมหานคร")  // SFUI-20a (spec 09 กฎ 69): จังหวัดบังคับ
     form.set("same_as_billing", "on")
 
     await setAddresses(null, form)

@@ -157,6 +157,7 @@ test.describe("AC-112", () => {
       "billing-address-2-input": "คลองเตยเหนือ",
       "billing-postcal-code-input": "10110",
       "billing-city-input": "วัฒนา",
+      "billing-province-input": "กรุงเทพมหานคร", // SFUI-20a (กฎ 69)
     }
 
     await step("เปิด editor ที่อยู่ใบเสร็จ กรอกครบ และ mock server action ให้ล้มระดับ network", async () => {

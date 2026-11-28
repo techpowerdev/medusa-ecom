@@ -227,6 +227,7 @@ test("AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมือง�
     await page.getByTestId("shipping-address-2-input").fill("คลองเตยเหนือ")
     await page.getByTestId("shipping-postal-code-input").fill("10110")
     await page.getByTestId("shipping-city-input").fill(LONG_CITY)
+    await page.getByTestId("shipping-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
     await chooseOption(page.getByTestId("shipping-country-select"), CC)
     await page.getByTestId("shipping-phone-input").fill("0812345678")
     await page.getByTestId("billing-address-checkbox").click()
@@ -236,6 +237,7 @@ test("AC-132 (qa #267 D-1): ชื่อ/ที่อยู่/เมือง�
     await page.getByTestId("billing-address-2-input").fill("คลองเตยเหนือ")
     await page.getByTestId("billing-postal-input").fill("10110")
     await page.getByTestId("billing-city-input").fill(LONG_CITY)
+    await page.getByTestId("billing-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
     await chooseOption(page.getByTestId("billing-country-select"), CC)
     await page.getByTestId("submit-address-button").click()
     await expect(page).toHaveURL(/step=delivery/, { timeout: 30_000 })
@@ -275,6 +277,7 @@ test("AC-132 (qa #267 D-1): digital-only — ชื่อ/ที่อยู่/
     await page.getByTestId("billing-address-2-input").fill("คลองเตยเหนือ")
     await page.getByTestId("billing-postal-input").fill("10110")
     await page.getByTestId("billing-city-input").fill(LONG_CITY)
+    await page.getByTestId("billing-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
     await chooseOption(page.getByTestId("billing-country-select"), CC)
     await page.getByTestId("billing-phone-input").fill("0812345678")
     await page.getByTestId("submit-address-button").click()

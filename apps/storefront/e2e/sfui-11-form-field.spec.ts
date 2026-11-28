@@ -33,7 +33,7 @@ const SHIPPING: Fields = {
   "shipping-postal-code-input": true,
   "shipping-city-input": true,
   "shipping-country-select": true,
-  "shipping-province-input": false,
+  "shipping-province-input": true, // SFUI-20a (spec 09 กฎ 69): จังหวัดบังคับ
   "shipping-email-input": true,
   "shipping-phone-input": false,
 }

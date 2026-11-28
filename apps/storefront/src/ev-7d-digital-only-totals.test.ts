@@ -123,6 +123,7 @@ describe("setAddresses ตัดสิน digital-only จาก cart ฝั่�
     form.set("billing_address.last_name", "ใจดี")
     form.set("billing_address.postal_code", "10110")
     form.set("billing_address.city", "วัฒนา")
+    form.set("billing_address.province", "กรุงเทพมหานคร")  // SFUI-20a (spec 09 กฎ 69): จังหวัดบังคับ
     return form
   }
   const shippingForm = (cc = "th") => {
@@ -136,6 +137,7 @@ describe("setAddresses ตัดสิน digital-only จาก cart ฝั่�
     form.set("shipping_address.last_name", "Jaidee")
     form.set("shipping_address.postal_code", "10110")
     form.set("shipping_address.city", "Bangkok")
+    form.set("shipping_address.province", "กรุงเทพมหานคร")  // SFUI-20a (spec 09 กฎ 69): จังหวัดบังคับ
     form.set("same_as_billing", "on")
     return form
   }

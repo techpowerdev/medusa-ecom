@@ -61,6 +61,7 @@ test("AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษา�
     await page.getByTestId("shipping-address-2-input").fill("คลองเตยเหนือ")
     await page.getByTestId("shipping-postal-code-input").fill("10110")
     await page.getByTestId("shipping-city-input").fill("Bangkok")
+    await page.getByTestId("shipping-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
     await chooseOption(page.getByTestId("shipping-country-select"), CC)
     await page.getByTestId("shipping-email-input").fill(customer.email)
     // CORE-43 (กฎข้อ 101b): setAddresses ใช้ > 5 วินาทีตอนเครื่องโหลดสูง (trace) — รอ action ที่ส่งอีเมลนี้ตอบ redirect ไปขั้นจัดส่ง

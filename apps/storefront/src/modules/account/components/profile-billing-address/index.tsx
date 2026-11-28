@@ -178,6 +178,7 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
               label="จังหวัด"
               name="province"
               defaultValue={billingAddress?.province || undefined}
+              required
               data-testid="billing-province-input"
             />
             <Input
