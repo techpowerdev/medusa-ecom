@@ -107,14 +107,14 @@ const attrOf = (el: ts.JsxOpeningElement | ts.JsxSelfClosingElement, sf: ts.Sour
   el.attributes.properties.find((p): p is ts.JsxAttribute => ts.isJsxAttribute(p) && p.name.getText(sf) === name)
 const lineOf = (sf: ts.SourceFile, n: ts.Node) => sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1
 
-/** container (JSX element) ที่มี `<Input` อยู่ภายในและ className มี gap-2, gap-x-… หรือ gap-y-… */
+/** container (JSX element) ที่มีช่อง (`<Input`/`<Select`/`<Checkbox` — review 21a) อยู่ภายในและ className มี gap-2, gap-x-… หรือ gap-y-… */
 export function fieldGapViolations(file: string, sf = parseTsx(file)): string[] {
   const out: string[] = []
   const visit = (n: ts.Node) => {
     const el = openingOf(n)
     if (el && ts.isJsxElement(n)) {
       const bad = classTokens(attrOf(el, sf, "className")).filter((t) => BAD_GAP.test(t))
-      const hasInput = n.getText(sf).includes("<Input")
+      const hasInput = /<(?:Input|Select|Checkbox)\b/.test(n.getText(sf))
       if (bad.length && hasInput) out.push(`${file}:${lineOf(sf, n)} ${bad.join(" ")}`)
     }
     n.forEachChild(visit)
@@ -126,12 +126,18 @@ export function fieldGapViolations(file: string, sf = parseTsx(file)): string[] 
 test("AC-66 (1): container ของช่องในไฟล์ข้อ 32 ไม่มี gap-2/gap-x-*/gap-y-* (กฎ 73 — gap-4)", () => {
   const control = ts.createSourceFile(
     "c.tsx",
-    'const a = <div className="grid gap-x-4 gap-y-2"><Input /></div>\nconst b = <div className="grid gap-4"><Input /></div>\nconst c = <div className="flex gap-x-2"><Button /></div>',
+    [
+      'const a = <div className="grid gap-x-4 gap-y-2"><Input /></div>',
+      'const b = <div className="grid gap-4"><Input /></div>',
+      'const c = <div className="flex gap-x-2"><Button /></div>',
+      'const d = <div className="flex flex-col gap-y-2"><Select name="x" /></div>',
+      'const e = <div className="flex gap-2"><Checkbox id="x" /></div>',
+    ].join("\n"),
     ts.ScriptTarget.Latest,
     true,
     ts.ScriptKind.TSX
   )
-  expect(fieldGapViolations("c.tsx", control)).toEqual(["c.tsx:1 gap-x-4 gap-y-2"])
+  expect(fieldGapViolations("c.tsx", control)).toEqual(["c.tsx:1 gap-x-4 gap-y-2", "c.tsx:4 gap-y-2", "c.tsx:5 gap-2"])
   expect(GAP_FILES.flatMap((f) => fieldGapViolations(f))).toEqual([])
 })
 
@@ -407,4 +413,52 @@ test("AC-71 (1): testid แบบ (a) ของ 21e บน <ErrorMessage, cart-e
 test("AC-71 (1): ไม่มี element ที่มีทั้ง text-destructive และ data-testid นอกแถว 'ไม่รวม' ของกฎ 74c", () => {
   const files = sourceFiles().filter((f) => /^src\/(modules|app)\//.test(f) && f.endsWith(".tsx"))
   expect(files.flatMap((f) => destructiveTestIdViolations(f, DESTRUCTIVE_EXCLUDED))).toEqual([])
+})
+
+// ---- SFUI-22 (spec 09 กฎ 79; AC-67 (1) — ปิดรอบ 50): ไม่มี JSX `<button` ดิบใน src/modules/**, src/app/** นอก allow-list ----
+
+/** allow-list ของกฎ 79: ไฟล์ → testid ของ `<button` ดิบ + เหตุผล (เพิ่มเองไม่ได้ — เจอนอกรายการ = หยุดแจ้ง planner) */
+const RAW_BUTTON_ALLOWED: { file: string; testId: string; reason: string }[] = [
+  {
+    file: "src/modules/account/components/address-card/add-address.tsx",
+    testId: "add-address-button",
+    reason: "การ์ดเพิ่มที่อยู่ (DialogTrigger asChild) สูงเท่าการ์ดที่อยู่ — อยู่ในรายการปิดของกฎ 79 ที่ไม่อยู่ใต้กฎขนาดปุ่ม",
+  },
+]
+
+/** `<button` (JSX intrinsic) ทุกตัวในไฟล์ → `<file>:<line> <testid|->` */
+export function rawButtons(file: string, sf = parseTsx(file)): string[] {
+  const out: string[] = []
+  const visit = (n: ts.Node) => {
+    const el = openingOf(n)
+    if (el && el.tagName.getText(sf) === "button") {
+      const init = attrOf(el, sf, "data-testid")?.initializer
+      out.push(`${file}:${lineOf(sf, n)} ${init && ts.isStringLiteral(init) ? init.text : "-"}`)
+    }
+    n.forEachChild(visit)
+  }
+  visit(sf)
+  return out
+}
+
+test("AC-67 (1): ตัวหา <button ดิบ (positive/negative control)", () => {
+  const sf = ts.createSourceFile(
+    "c.tsx",
+    'const a = <><button data-testid="x">a</button>\n<Button data-testid="y" />\n<button type="button" /><ButtonGroup /></>',
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX
+  )
+  expect(rawButtons("c.tsx", sf)).toEqual(["c.tsx:1 x", "c.tsx:3 -"])
+})
+
+test("AC-67 (1): ไม่มี JSX <button ดิบใน src/modules/**, src/app/** นอก allow-list ของกฎ 79", () => {
+  const files = sourceFiles().filter((f) => /^src\/(modules|app)\//.test(f) && f.endsWith(".tsx"))
+  const allowed = new Set(RAW_BUTTON_ALLOWED.map((a) => `${a.file} ${a.testId}`))
+  const found = files.flatMap((f) => rawButtons(f)).filter((hit) => !allowed.has(hit.replace(/:\d+ /, " ")))
+  expect(found).toEqual([])
+  // ทุกรายการใน allow-list ยังมีอยู่จริง (ลบปุ่มแล้วต้องลบรายการ)
+  for (const a of RAW_BUTTON_ALLOWED) {
+    expect(rawButtons(a.file).map((hit) => hit.replace(/:\d+ /, " ")), `${a.file} ${a.testId}`).toContain(`${a.file} ${a.testId}`)
+  }
 })

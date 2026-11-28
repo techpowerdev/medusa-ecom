@@ -3,6 +3,7 @@ import { Locator } from "@playwright/test"
 import { deleteAllThenExpectOk } from "./support/cleanup"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { STOREFRONT_COUNTRY as CC, type Headers, adminHeaders, ok } from "./support/medusa"
+import { readSource } from "./support/sfui-source"
 
 // SFUI-19d (spec 09 กฎ 64, 67–68, AC-61 (2) — ADR-034 D4): ตัวกรองของ /store ใช้ component ของ shadcn ตามค่าเริ่มต้น —
 // chip ตัวเลือก = `toggle-group` (36px), checkbox หมวด/ป้ายกำกับ/ลดราคา = `ui/checkbox` (16×16) + `Field`,
@@ -12,6 +13,14 @@ test.use({
   evidenceTarget: { feature: "storefront-consistency", taskId: "SFUI-19d" },
   viewport: { width: 1280, height: 800 },
 })
+
+/** ข้อความ chip ของตัวกรองลดราคา = ค่าที่ `refinementLabel` คืนสำหรับ `on_sale` (อ่านจาก code — ไม่ hard-code ซ้ำ) */
+const ON_SALE_CHIP_LABEL = (() => {
+  const source = readSource("src/modules/store/components/store-refinements/current-refinements.tsx")
+  const label = source.match(/priceAttribute\("on_sale",[^)]*\)\)\s*\{\s*return "([^"]+)"/)?.[1]
+  if (!label) throw new Error("หา label ของ chip ลดราคาใน current-refinements.tsx ไม่พบ")
+  return label
+})()
 
 const box = (locator: Locator) =>
   locator.evaluate((el) => {
@@ -147,7 +156,8 @@ test("AC-61: chip ตัวเลือก, checkbox ตัวกรอง, chip
       await expect(clear).toHaveAttribute("data-variant", "link")
       expect((await box(clear)).height).toBe("36px")
 
-      await chips.filter({ has: page.getByText("ลดราคา", { exact: true }) }).click()
+      // chip ของลดราคาหาด้วย testid + title (= ข้อความของ chip จาก refinementLabel ใน current-refinements.tsx) — ไม่หาด้วยข้อความ (review 19d)
+      await current.locator(`[data-testid="remove-refinement"][title="${ON_SALE_CHIP_LABEL}"]`).click()
       await expect(onSale).toHaveAttribute("aria-checked", "false")
       await expect(cards).toHaveCount(2)
       await clear.click()

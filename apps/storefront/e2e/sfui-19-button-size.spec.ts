@@ -18,9 +18,9 @@ import {
 import { chooseOption } from "./support/select"
 import { CARD_PROVIDER, HAS_STRIPE_UI, PROMPTPAY_PROVIDER, checkoutToPayment, continueToReview, fillCard } from "./support/stripe"
 
-// SFUI-19a (spec 09 กฎ 58–61, AC-56, AC-57 — ADR-034 D1/D2): ทุกปุ่มของ shadcn (`[data-slot="button"]`) ใช้ขนาดมาตรฐาน
+// SFUI-19a (spec 09 กฎ 58–61, AC-56, AC-57 — ADR-034 D1/D2): ทุกปุ่มบนหน้าใช้ขนาดมาตรฐานของ shadcn
 // size default/icon = 36px (icon 36×36) — ค่าที่คาดคือค่าที่ `buttonVariants` ของ ui/button render จริง (`h-9`/`size-9`);
-// ข้อยกเว้นเดียว `InputGroupButton size="icon-xs"` ภายใน `InputGroupAddon` = 24×24
+// `InputGroupButton size="icon-xs"` ภายใน `InputGroupAddon` = 24×24; SFUI-22 (กฎ 79, AC-67 (2)) ขยายเป็นทุก `BUTTON_SELECTOR` ยกเว้นรายการปิดของกฎ 79
 test.use({ evidenceTarget: { feature: "storefront-consistency", taskId: "SFUI-19a" } })
 
 const NEED_UI = "ต้องตั้ง STRIPE_API_KEY (sk_test_) + NEXT_PUBLIC_STRIPE_KEY (pk_test_) ของบัญชี Stripe เดียวกัน"
@@ -47,27 +47,69 @@ const INVENTORY = [
   "free-shipping-nudge-close",
 ]
 
+// SFUI-22 (spec 09 กฎ 79, AC-67 (2)): วัดทุกปุ่มบนหน้า — `button` (ปุ่มดิบ/ของ Radix), `[data-variant][data-size]` (Button ที่ถูก Slot ของ
+// `<…Trigger asChild>` ทับ data-slot และ `Button asChild` บน `<a>`/`<span>` — review 19b) และ `[role="button"]`
+// review SFUI-22: root ของ toggle-group (กล่องครอบ chip) ไม่ใช่ปุ่ม — ไม่วัด
+const BUTTON_SELECTOR = 'button, [data-variant][data-size]:not([data-slot="toggle-group"]), [role="button"]'
+
+/** รายการปิดของกฎ 79 — ปุ่มที่ไม่อยู่ใต้กฎขนาด (เพิ่มเองไม่ได้: เจอปุ่มอื่นที่ไม่ใช่ 36px = หยุดแจ้ง planner) */
+const RULE_79_EXEMPT = [
+  '[data-slot="radio-group-item"]',
+  '[data-slot="checkbox"]',
+  '[data-slot="accordion-trigger"]',
+  '[data-slot="select-trigger"]',
+  '[data-slot="toggle-group-item"]',
+  '[data-testid="nav-menu-button"]',
+  '[data-testid="add-address-button"]',
+].join(", ")
+
+/** ข้อยกเว้นของกฎ 59/79 ที่วัดแยกเป็น 24×24 */
+const ADDON_ICON_XS = '[data-slot="input-group-addon"] [data-size="icon-xs"]'
+
+/**
+ * ลิงก์ที่ใช้ `buttonVariants(...)` ตรง (ไม่มี data-variant/data-size — selector ข้างบนไม่จับ; review 19a) นอก inventory:
+ * ขนาด default ของ buttonVariants = 36px; `pagination-link` ของ ui/pagination
+ */
+const BUTTON_VARIANT_LINKS = [
+  '[data-testid="hero-cta"]',
+  '[data-testid="order-details-link"]',
+  '[data-testid="continue-shopping-button"]',
+  '[data-testid="group-order-pay-link"]',
+  '[data-testid="group-order-details-link"]',
+  'a[data-slot="pagination-link"]',
+].join(", ")
+
 type Off = { id: string; height: string; width: string; size: string | null }
 
-/** ปุ่ม `[data-slot="button"]` ที่มองเห็นแต่ขนาดไม่ตรง (36px / icon 36×36 / icon-xs ใน addon 24×24) */
+/** ปุ่มที่มองเห็นแต่ขนาดไม่ตรง (36px / icon 36×36 / icon-xs ใน addon 24×24) — ไม่นับรายการปิดของกฎ 79 */
 function offSizeButtons(page: Page): Promise<Off[]> {
-  return page.evaluate(() => {
-    const off: Off[] = []
-    for (const el of Array.from(document.querySelectorAll<HTMLElement>('[data-slot="button"]'))) {
-      if (el.getClientRects().length === 0) continue
-      const s = getComputedStyle(el)
-      if (s.visibility === "hidden") continue
-      const size = el.getAttribute("data-size")
-      const addonXs = size === "icon-xs" && !!el.closest('[data-slot="input-group-addon"]')
-      const want = addonXs ? "24px" : "36px"
-      const square = addonXs || size === "icon"
-      if (s.height !== want || (square && s.width !== want)) {
-        const id = el.getAttribute("data-testid") ?? `"${(el.textContent ?? "").trim().slice(0, 30)}"`
-        off.push({ id, height: s.height, width: s.width, size })
+  return page.evaluate(
+    ({ selector, exempt, addonXs, links }) => {
+      const off: Off[] = []
+      const els = new Set([
+        ...Array.from(document.querySelectorAll<HTMLElement>(selector)),
+        ...Array.from(document.querySelectorAll<HTMLElement>(links)),
+      ])
+      for (const el of els) {
+        if (el.getClientRects().length === 0) continue
+        const s = getComputedStyle(el)
+        if (s.visibility === "hidden") continue
+        const xs = el.matches(addonXs)
+        if (!xs && el.matches(exempt)) continue
+        const size = el.getAttribute("data-size")
+        const want = xs ? "24px" : "36px"
+        const square = xs || size === "icon"
+        if (s.height !== want || (square && s.width !== want)) {
+          const id =
+            el.getAttribute("data-testid") ??
+            `${el.tagName.toLowerCase()}[data-slot=${el.getAttribute("data-slot")}] "${(el.textContent ?? "").trim().slice(0, 30)}"`
+          off.push({ id, height: s.height, width: s.width, size })
+        }
       }
-    }
-    return off
-  })
+      return off
+    },
+    { selector: BUTTON_SELECTOR, exempt: RULE_79_EXEMPT, addonXs: ADDON_ICON_XS, links: BUTTON_VARIANT_LINKS }
+  )
 }
 
 /**
@@ -99,7 +141,7 @@ const VIEWPORTS = [
 ]
 
 for (const viewport of VIEWPORTS) {
-  test(`AC-56 (${viewport.width}): ทุกปุ่มบนชุดหน้า P สูง 36px (icon 36×36) ตามขนาดมาตรฐานของ shadcn`, async ({
+  test(`AC-56 / AC-67 (${viewport.width}): ทุกปุ่มบนชุดหน้า P + login/register สูง 36px (icon 36×36) ตามขนาดมาตรฐานของ shadcn`, async ({
     page,
     context,
     request,
@@ -110,6 +152,15 @@ for (const viewport of VIEWPORTS) {
     test.setTimeout(360_000)
     await page.setViewportSize(viewport)
     const desktop = viewport.width >= 1024
+
+    await step("AC-67: หน้า login และ register (ยังไม่ login)", async () => {
+      await visit(page, `/${CC}/account`, "login-page")
+      await expectDefaultButtons(page, "login")
+      await page.getByTestId("login-to-register-button").click()
+      await expect(page.getByTestId("register-page")).toBeVisible()
+      await expectDefaultButtons(page, "register")
+    })
+
     const admin = await adminHeaders(request)
     const pk = await publishableKey(request, admin)
     const customer: Customer = await createCustomer(request, pk)
