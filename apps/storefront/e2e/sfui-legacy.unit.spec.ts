@@ -97,10 +97,13 @@ test("AC-16: ทุก var(--…) ที่ src/** อ้างตรงมี�
     .map((name) => readSource(`src/styles/${name}`))
     .join("\n")
   const declared = new Set(Array.from(css.matchAll(/--([\w-]+)\s*:/g), (m) => m[1]))
-  const missing = sourceFiles().flatMap((file) =>
-    Array.from(readSource(file).matchAll(/var\(--([\w-]+)/g), (m) => m[1])
-      .filter((name) => !EXTERNAL_VAR.test(name) && !declared.has(name))
+  // SFUI-19d: ตัวแปรที่ไฟล์ตั้งเองใน inline style (`style={{ "--gap": … }}` ของ ui/toggle-group จาก CLI) นับว่ามีนิยามในไฟล์นั้น
+  const missing = sourceFiles().flatMap((file) => {
+    const source = readSource(file)
+    const inline = new Set(Array.from(source.matchAll(/["']--([\w-]+)["']\s*:/g), (m) => m[1]))
+    return Array.from(source.matchAll(/var\(--([\w-]+)/g), (m) => m[1])
+      .filter((name) => !EXTERNAL_VAR.test(name) && !declared.has(name) && !inline.has(name))
       .map((name) => `--${name} (${file})`)
-  )
+  })
   expect(missing, "ตัวแปร CSS ที่ไม่มีนิยาม").toEqual([])
 })

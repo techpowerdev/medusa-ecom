@@ -59,13 +59,6 @@ type Allowed = { file: string; tag: "input" | "select"; match: Record<string, st
 /** allow-list ของกฎ 26 (ไฟล์ + element) — `<input type="hidden">` ยกเว้นทุกไฟล์ใน src/modules, src/app */
 const ALLOW_LIST: Allowed[] = ([
   { file: "layout/components/search/index.tsx", tag: "input", match: { type: "search", "data-testid": "search-input" }, why: "ช่องค้นหาใน drawer" },
-  { file: "store/components/store-refinements/on-sale-toggle.tsx", tag: "input", match: { type: "checkbox", "data-testid": "on-sale-toggle" }, why: "ตัวกรอง" },
-  {
-    file: "store/components/store-refinements/refinement-group.tsx",
-    tag: "input",
-    match: { type: "checkbox", "data-testid": "refinement-${attribute}" },
-    why: "ตัวกรอง",
-  },
   // testid `option-button` อยู่บน <label> ไม่ใช่ <input> (sr-only)
   { file: "products/components/product-actions/option-select.tsx", tag: "input", match: { type: "radio" }, why: "ตัวเลือกสินค้า" },
   {
@@ -377,5 +370,37 @@ test.describe("AC-47 (SFUI-17): ไม่มี select native เหลือ", 
     }
     expect(outside).toEqual([])
     expect(inFillCard, "fillCard ยังเลือกประเทศ/ข้อมูลใน iframe ของ Stripe ด้วย selectOption").toBeGreaterThan(0)
+  })
+})
+
+// SFUI-19d (spec 09 กฎ 67b, 68; AC-61 (1)): checkbox ตัวกรองเป็น `ui/checkbox` (ไม่อยู่ใน allow-list) และ AccordionTrigger ใช้ขนาด default
+test.describe("AC-61 (SFUI-19d): ตัวกรองของ store", () => {
+  const FILTER_FILES = ["store/components/store-refinements/on-sale-toggle.tsx", "store/components/store-refinements/refinement-group.tsx"].map(
+    (f) => `src/modules/${f}`
+  )
+
+  test("allow-list ไม่มีรายการของ on-sale-toggle/refinement-group และสองไฟล์ render Checkbox ของ @/components/ui/checkbox", () => {
+    expect(ALLOW_LIST.filter((a) => FILTER_FILES.includes(a.file))).toEqual([])
+    for (const file of FILTER_FILES) {
+      expect(importsOf(file).some((i) => i.module === "src/components/ui/checkbox"), `${file} import ui/checkbox`).toBe(true)
+      const sf = parse(file)
+      expect(tagsOf(sf).filter((t) => t.tagName.getText(sf) === "Checkbox"), file).toHaveLength(1)
+    }
+  })
+
+  test("AccordionTrigger ของ product-tabs และ option-refinements ไม่มี className ที่เปลี่ยน padding/ความสูง/ตัวอักษร (กฎ 68)", () => {
+    const SIZE = /^(?:[a-z0-9-]+:)*(?:p[xytrbl]?-|h-|min-h-|max-h-|leading-|font-|text-(?:xs|sm|base|lg|\d?xl|\[))/
+    const found: string[] = []
+    let triggers = 0
+    for (const file of ["products/components/product-tabs/accordion.tsx", "store/components/store-refinements/option-refinements.tsx"].map((f) => `src/modules/${f}`)) {
+      const sf = parse(file)
+      for (const tag of tagsOf(sf).filter((t) => t.tagName.getText(sf) === "AccordionTrigger")) {
+        triggers++
+        const bad = (attrs(tag, sf).className ?? "").split(/\s+/).filter((t) => SIZE.test(t))
+        if (bad.length) found.push(`${file}:${line(sf, tag)} ${bad.join(" ")}`)
+      }
+    }
+    expect(triggers).toBe(2)
+    expect(found).toEqual([])
   })
 })

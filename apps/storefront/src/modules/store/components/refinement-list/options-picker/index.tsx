@@ -8,7 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { cn } from "@/lib/utils"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { sdk } from "@lib/config"
 import { HttpTypes } from "@medusajs/types"
 
@@ -110,27 +110,34 @@ const OptionsPicker = ({
                 </span>
               </AccordionTrigger>
               <AccordionContent className="pb-4 pt-1">
-                <div className="flex flex-wrap gap-2">
-                  {values.map((value) => {
-                    const isSelected = selectedValueIds.includes(value.id)
-
-                    return (
-                      <button
-                        key={value.id}
-                        onClick={() => toggleValue(value.id)}
-                        className={cn(
-                          "border-border border text-xs leading-5 font-normal h-10 rounded-rounded px-3 flex items-center transition-colors duration-150",
-                          isSelected
-                            ? "border-primary text-foreground"
-                            : "text-muted-foreground hover:text-foreground"
-                        )}
-                        aria-pressed={isSelected}
-                      >
-                        {value.label}
-                      </button>
+                {/* SFUI-19d (spec 09 กฎ 67a): `toggle-group` ของ shadcn — toggle เฉพาะค่าที่เปลี่ยน */}
+                <ToggleGroup
+                  type="multiple"
+                  variant="outline"
+                  spacing={2}
+                  className="flex-wrap"
+                  value={values
+                    .filter((value) => selectedValueIds.includes(value.id))
+                    .map((value) => value.id)}
+                  onValueChange={(next) => {
+                    const changed = values.find(
+                      (value) =>
+                        selectedValueIds.includes(value.id) !==
+                        next.includes(value.id)
                     )
-                  })}
-                </div>
+                    if (changed) toggleValue(changed.id)
+                  }}
+                >
+                  {values.map((value) => (
+                    <ToggleGroupItem
+                      key={value.id}
+                      value={value.id}
+                      data-testid="option-refinement"
+                    >
+                      {value.label}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
               </AccordionContent>
             </AccordionItem>
           )
