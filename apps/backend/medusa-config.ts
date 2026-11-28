@@ -72,11 +72,12 @@ module.exports = defineConfig({
     {
       // spec 06 / ADR-007: Stripe provider ทางการ → pp_stripe_stripe (บัตร) + pp_stripe-promptpay_stripe
       // webhook: endpoint เดียว /hooks/payment/stripe_stripe รับ event ของทั้งบัตรและ PromptPay (ADR-023 — secret ค่าเดียว)
+      // PAY-26 (ADR-035): subclass provider ของ Medusa ให้บัตร + พร้อมเพย์ใช้ Stripe customer ตัวเดียว (id/provider id เดิม)
       resolve: '@medusajs/medusa/payment',
       options: {
         providers: [
           {
-            resolve: '@medusajs/medusa/payment-stripe',
+            resolve: './src/modules/stripe-shared-customer',
             id: 'stripe',
             options: {
               apiKey: process.env.STRIPE_API_KEY,
