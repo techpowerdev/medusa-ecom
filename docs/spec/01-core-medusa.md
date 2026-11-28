@@ -810,8 +810,8 @@ none
     ที่มาจาก Stripe (โลโก้/ข้อความใน Elements) — ไม่ต้องใช้ข้อยกเว้น ESLint
 55. (CORE-4e) `<Elements>` ของ Stripe ส่ง `locale: "th"`; error ที่มาจาก server action ของ checkout (`setAddresses`, `submitPromotionForm`, `renewPromptPaySession` และ
     ข้อความรอสร้าง order ของพร้อมเพย์) ผ่าน `friendlyErrorMessage` (กฎ CORE-4 ข้อ 5) ไม่ส่ง `e.message`/`body.message` ภาษาอังกฤษของ Medusa ตรง; `STORE_NAME` ตามด้วยคำไทยมีเว้นวรรค
-    (`{STORE_NAME} แล้ว`); placeholder ของ `CountrySelect` = "เลือกประเทศ"
-56. (CORE-4e, qa #109) popup ทักทายที่อยู่และ shipping nudge มี `data-testid`; ปุ่มปิด (X) มี `aria-label` ภาษาไทย; floating label ของ input ที่อยู่ไม่ซ้อนกับค่าที่เติมจากการเลือก
+    (`{STORE_NAME} แล้ว`); placeholder ของ `CountrySelect` = "เลือกประเทศ" (**ท่อน `CountrySelect` แทนด้วย ADR-034 / spec 09 รอบ 50 กฎ 70 — ไม่มีช่องประเทศแล้ว เมื่อ SFUI-20b merge**)
+56. (CORE-4e, qa #109) (**ท่อนที่อ้างช่องประเทศ/`CountrySelect` แทนด้วย ADR-034 / spec 09 รอบ 50 กฎ 70 — SFUI-20b; ส่วน popup/nudge ยังมีผล**) popup ทักทายที่อยู่และ shipping nudge มี `data-testid`; ปุ่มปิด (X) มี `aria-label` ภาษาไทย; floating label ของ input ที่อยู่ไม่ซ้อนกับค่าที่เติมจากการเลือก
     ที่อยู่ที่บันทึกไว้
 57. (CORE-14d, #113) หลัง login แบบ no-JS ที่มี `add_variant` หน้า `/th/cart` ต้องแสดง cart (ไม่ค้าง skeleton) โดยไม่ต้องใช้ JavaScript; error ระหว่างเพิ่มลง cart หลัง login
     ไม่ถูกกลืน (`catch {}` ใน `lib/data/customer.ts`): ส่งต่อเป็น flag `add_error` ให้หน้าแสดง `add-variant-error` และ re-throw redirect/notFound ด้วย `unstable_rethrow`
@@ -836,7 +836,7 @@ none
 - AC-90 (CORE-4e, กฎข้อ 54–55) Given `apps/storefront/src` path 4d When grep ข้อความ UI Then ไม่มี `PromptPay` ในข้อความที่ storefront เขียนเอง (ยกเว้น id/ค่า provider/
   comment); `stripe-wrapper.tsx` ส่ง `locale: "th"` ให้ `<Elements>` (unit อ่าน props ที่ render หรือ grep); unit ของ `setAddresses`/`submitPromotionForm`/`renewPromptPaySession`
   ที่ mock SDK throw `new Error("Cart not found")` Then ข้อความที่คืนมีอักษรไทยและไม่มี `Cart not found` (Vitest); test ของ `renewPromptPaySession` ไม่ตัด source ด้วย `indexOf`
-- AC-91 (CORE-4e, กฎข้อ 55–56) Given checkout ขั้นที่อยู่ When e2e เปิด `CountrySelect` Then placeholder มีอักษรไทย; popup ทักทาย/nudge หาได้ด้วย test id และปุ่ม X มี `aria-label`
+- AC-91 (CORE-4e, กฎข้อ 55–56) (**ขั้น `CountrySelect` แทนด้วย ADR-034 / spec 09 AC-63 — SFUI-20b ลบขั้นนี้**) Given checkout ขั้นที่อยู่ When e2e เปิด `CountrySelect` Then placeholder มีอักษรไทย; popup ทักทาย/nudge หาได้ด้วย test id และปุ่ม X มี `aria-label`
   ที่มีอักษรไทย; เลือกที่อยู่ที่บันทึกไว้แล้ว `boundingBox` ของ label ไม่ทับกับข้อความค่าใน input; textContent รอบ `STORE_NAME` ไม่มีรูป `<STORE_NAME>แล้ว` ติดกัน (e2e, screenshot 1)
 - AC-92 (CORE-14d, กฎข้อ 57) Given Playwright `javaScriptEnabled: false` และลูกค้าไม่ล็อกอิน When เปิด `/th/account?add_variant=<ขายได้>&add_quantity=2` แล้ว login Then ไปหน้า
   `/th/cart` ที่มี `product-row` ของ variant นั้น qty 2 และไม่มี skeleton (`data-testid` ของ skeleton cart ไม่อยู่ใน DOM) ภายใน 10 วินาที; Given SDK เพิ่มลง cart ล้ม (variant ที่ลบระหว่างทาง) Then เห็น
@@ -910,7 +910,7 @@ none (storefront + e2e tooling)
 63. (CORE-4g — review/qa #131) (a) `medusaError` ใน `lib/data/cart.ts` (และ util ที่ใช้ร่วม) ต้องคง HTTP `status` ของ error เดิม เพื่อให้ `friendlyErrorMessage` แยก 401/403
     (ข้อความไทยให้เข้าสู่ระบบใหม่) ออกจาก fallback ทั่วไปได้; (b) ใส่โค้ดส่วนลดแล้ว cart ที่ได้กลับ**ไม่มี** code นั้นใน `promotions` (Medusa ตอบ 200) → แสดง `promotion-error`
     ข้อความไทย "ใช้โค้ดนี้ไม่ได้" (หมดอายุ/ไม่ตรงเงื่อนไข) ไม่เงียบ; (c) `compareAddresses` ถือ `null`/`undefined`/`""` เท่ากัน — เลือกที่อยู่ที่บันทึกไว้แล้ว dropdown แสดงที่อยู่นั้น
-    ไม่ใช่ "เลือกที่อยู่"; (d) `CountrySelect` สูงเท่า `Input` ในแถวเดียวกัน (±1px)
+    ไม่ใช่ "เลือกที่อยู่"; (d) `CountrySelect` สูงเท่า `Input` ในแถวเดียวกัน (±1px) (**(d) แทนด้วย ADR-034 / spec 09 รอบ 50 กฎ 70 — ไม่มี `CountrySelect` แล้ว (SFUI-20b); ช่องในแถวเดียวกันสูงเท่ากันยังมีผล**)
 64. (CORE-19c — qa #118 CORE-19a) `DeleteButton` (`modules/common/components/delete-button`) ส่งต่อ `data-testid` ที่ผู้เรียกส่งมา (เช่น `cart-item-remove-button` ของ starter) ไปที่ `<button>`;
     ลบล้ม → แสดงข้อความไทย `cart-item-remove-error` ใกล้ปุ่มและหยุด spinner (ไม่กลืน error เงียบ)
 65. (CORE-14f — qa #128 r2) การ์ด `add-variant-pending` (กฎข้อ 58) ห้ามบอกว่าสินค้า "ยังไม่ได้อยู่ในตะกร้า" — ถ้า variant อยู่ใน cart แล้วแสดงจำนวนปัจจุบัน (`add-variant-in-cart-qty`)
@@ -937,7 +937,7 @@ none (storefront + e2e tooling)
   (e2e + unit Vitest)
 - AC-99 (CORE-4g, กฎข้อ 63) unit: `medusaError` ของ `FetchError` status 401 คืน error ที่ `friendlyErrorMessage` แปลงเป็นข้อความ "เข้าสู่ระบบใหม่" (ต่างจากข้อความ fallback ของ status 500);
   `compareAddresses({…, company: null}, {…, company: ""})` = true; e2e: ใส่โค้ดของ promotion ที่ campaign หมดอายุ (สร้างผ่าน admin API) Then เห็น `promotion-error` มีอักษรไทย และ
-  `cart.promotions` ไม่มี code นั้น; เลือกที่อยู่ที่บันทึกไว้ที่มี field ว่างแล้ว dropdown ไม่แสดงข้อความ placeholder; หลัง `document.fonts.ready` ความสูงของ `CountrySelect` ต่างจาก `Input`
+  `cart.promotions` ไม่มี code นั้น; เลือกที่อยู่ที่บันทึกไว้ที่มี field ว่างแล้ว dropdown ไม่แสดงข้อความ placeholder; หลัง `document.fonts.ready` ความสูงของ `CountrySelect` (**ขั้นนี้แทนด้วย ADR-034 / spec 09 AC-63 — SFUI-20b ลบ**) ต่างจาก `Input`
   ข้างเคียง ≤ 1px; e2e ที่สร้าง/ลบข้อมูลตรวจ `response.ok()` ของ `request.delete` ใน `finally` (grep) (unit Vitest + e2e)
 - AC-100 (CORE-19c, กฎข้อ 64) Given cart 2 line When เปิด `/th/cart` และ cart dropdown Then ทุก line มี `cart-item-remove-button` ใน DOM; Given route mock ให้ request ของ
   server action ที่ลบ line (browser ส่งเป็น `POST` ไปที่หน้าเดิมพร้อม header `next-action` — `DELETE /store/carts/:id/line-items/:id` ยิงจาก Next server จึง mock จาก browser ไม่ได้)
@@ -1068,7 +1068,7 @@ none (แก้ seed, search ingestion และ storefront เท่านั�
     ของ Next ยัง throw ได้; ตอนนี้มีผู้ใช้ ≥ 2 ที่ → ย้ายการแปลง `FetchError` → ผล เป็น helper เดียวใน `lib/util/` (ใช้ร่วมกับ `deleteLineItem` ของ CORE-19d); UI แสดง `unauthorized`
     ด้วย constant `SIGN_IN_AGAIN_MESSAGE` ตัวเดียวทั้งเว็บ; ข้อยกเว้น literal `"unauthorized"`/`"failed"` ใน `user-messages-thai.test` จำกัดเฉพาะไฟล์ที่ใช้จริง (ไม่ยกเว้นทั้งโฟลเดอร์)
 73. (CORE-4j — qa/review #170) (a) โค้ดส่วนลด trim ช่องว่างหัวท้ายก่อนส่ง — **ไม่**แปลงตัวพิมพ์ (Medusa เทียบตัวพิมพ์ และ code ของร้านมีตัวเล็กได้ เช่น `GB-<token>`);
-    (b) ใส่โค้ดส่วนลดขณะฟอร์มที่อยู่ยังไม่บันทึก → ค่าที่พิมพ์ในฟอร์มที่อยู่ไม่หาย; (c) `billing-country-code-select` สูงเท่า input ข้างเคียง (±1px);
+    (b) ใส่โค้ดส่วนลดขณะฟอร์มที่อยู่ยังไม่บันทึก → ค่าที่พิมพ์ในฟอร์มที่อยู่ไม่หาย; (c) `billing-country-code-select` สูงเท่า input ข้างเคียง (±1px) (**(c) แทนด้วย ADR-034 / spec 09 รอบ 50 กฎ 70 — ไม่มี select ประเทศแล้ว (SFUI-20b)**);
     (d) helper e2e `createExpiredPromotion` ตรวจ `response.ok()` ของการลบ campaign
 74. (CORE-23c — qa/review #154, #150, qa #164 O-2) หน้า account: (a) ฟอร์มเพิ่ม/แก้ที่อยู่ (`address-card/add-address.tsx`, `edit-address-modal.tsx`) ที่บันทึกล้ม**คงค่าที่พิมพ์**
     และแสดง error ไทย (แบบกฎข้อ 61); (b) ฟอร์มที่อยู่ใบเสร็จ (`profile-billing-address`) เมื่อ server action ล้มระดับ network/5xx แสดง error ไทยในฟอร์ม ไม่ใช่หน้า "This page couldn't load";
@@ -2057,9 +2057,9 @@ none
 
 ### Business rules (รอบ 26)
 110. (CORE-52 — qa/review #320, review #314) (a) `/checkout` ที่ cart มี `items` ว่าง → redirect `/<countryCode>/cart`; `placeOrder` บน cart ที่ไม่มี item → redirect ไป `/<countryCode>/cart` เช่นกัน (ไม่เกิด order ไม่มีข้อความ error เงียบ);
-     (b) `setAddresses` trim ช่องบังคับ (`first_name`, `last_name`, `address_1`, `postal_code`, `city`) ของ shipping และ billing (รวม path `digital_only`) — ว่างหลัง trim → คืนข้อความไทยใน `address-error-message`, ไม่เรียก `updateCart`;
+     (b) `setAddresses` trim ช่องบังคับ (`first_name`, `last_name`, `address_1`, `postal_code`, `city` — **รายการแทนด้วย spec 09 กฎ 55 (+`address_2`, รอบ 49) และกฎ 69 (+`province`, ADR-034 รอบ 50 — SFUI-20a)**) ของ shipping และ billing (รวม path `digital_only`) — ว่างหลัง trim → คืนข้อความไทยใน `address-error-message`, ไม่เรียก `updateCart`;
      (c) `ShippingDetails` ไม่ render เมื่อ order ไม่มี `shipping_methods` (voucher ล้วน) — ทั้งหน้า confirmed และ `/account/orders/details/:id`;
-     (d) หลัง `setAddresses` คืน error `shipping-country-select`/`billing-country-select` คงค่าที่ผู้ใช้เลือก (form reset ของ React ต้องไม่ล้าง);
+     (d) หลัง `setAddresses` คืน error `shipping-country-select`/`billing-country-select` คงค่าที่ผู้ใช้เลือก (form reset ของ React ต้องไม่ล้าง) (**(d) แทนด้วย ADR-034 / spec 09 รอบ 50 กฎ 70 — ประเทศเป็น hidden `th` คงที่ (SFUI-20b); เจตนา "ค่าที่กรอกไม่หายหลัง error" ของช่องอื่นยังมีผล**);
      (e) `shipping-address/index.tsx:104` เลิก `eslint-disable` ใช้แบบ "ปรับ state เมื่อ prop เปลี่ยน" (`prevKey` ใน state เทียบระหว่าง render — review #314)
 111. (CORE-53 — test hygiene, review #312/#314) (a) `setsTimeout` จับ shorthand `{ timeout }`/`{ actionTimeout }` และไม่ตัด `/*` ที่อยู่ใน string; (b) `functionBody` ใน `core-4j-e2e-hygiene` ไม่อาศัย `indexOf("):")` และไม่นับวงเล็บ/`.ok()` ใน string/comment (เขียนใหม่หรือใช้ `typescript` ที่มีอยู่ — ไม่เพิ่ม dependency);
      (c) `core-4g-checkout-polish.spec.ts` ข้อความของ cleanup รวม `await promotion.text()`; (d) `core-4j-checkout-discount-address.spec.ts` cleanup ใน `finally` ใช้ `expect.soft` (ไม่กลบ error ของ `run()`)
@@ -2067,7 +2067,7 @@ none
 ### Acceptance criteria (follow-up รอบ 26)
 - AC-147 (CORE-52, กฎข้อ 110) e2e ใหม่ `e2e/core-52-checkout-guards.spec.ts`: Given ลูกค้าที่ checkout ถึงขั้น review (cart ใช้ได้) When ลบ item ทั้งหมดผ่าน Store API (token เจ้าของ cart) แล้ว reload `/th/checkout?step=review` Then URL = `/th/cart` และ `empty-cart-message` visible;
   When อยู่ขั้น review โดยไม่ reload แล้วลบ item ผ่าน API แล้วกดยืนยัน Then URL = `/th/cart`, `GET /store/orders` ไม่มี order ใหม่; When กรอก `shipping-city-input` เป็น `"   "` แล้วส่ง Then `address-error-message` มีอักษรไทย, URL ยังเป็น `step=address`, `GET` cart ไม่มีเมืองว่างใหม่;
-  และ `shipping-country-select` `toHaveValue("th")` (ค่าที่เลือกก่อน submit — ทำซ้ำกับ `billing-country-select` บน cart digital-only);
+  และ `shipping-country-select` `toHaveValue("th")` (ค่าที่เลือกก่อน submit — ทำซ้ำกับ `billing-country-select` บน cart digital-only) (**ขั้นนี้แทนด้วย ADR-034 / spec 09 AC-63: hidden `country_code` = `th` หลัง error — SFUI-20b**);
   Given order voucher ล้วน When เปิดหน้า confirmed และ `/th/account/orders/details/<id>` Then ไม่มี `shipping-details-heading`; Given order มีสินค้าจัดส่ง Then ยังมี `shipping-details-heading`; grep: `shipping-address/index.tsx` ไม่มี `eslint-disable`; AC-42 (spec 02), AC-111 ผ่าน
 - AC-148 (CORE-53, กฎข้อ 111) unit (Playwright `unit` project): `setsTimeout("{ timeout }") === true`, `setsTimeout('const a="/*"; export default { timeout: 1 }') === true`, comment ที่มีคำว่า timeout ยัง `false` (AC-144 เดิม); `functionBody` กับ fixture function ไม่มี return type คืน body ที่ถูก และ fixture ที่ `${name}.ok()` อยู่แค่ใน comment → test AC-111 ล้ม (positive control ใน PR);
   grep: `core-4g-checkout-polish.spec.ts` บรรทัด cleanup มี `promotion.text()`, `core-4j-checkout-discount-address.spec.ts` มี `expect.soft(res.ok()`; e2e `core-4g-*`, `core-4j-*` ผ่าน
@@ -2315,7 +2315,7 @@ Out of scope: validation ฝั่ง backend ของที่อยู่ (�
 none
 
 ### Business rules (รอบ 30)
-116. (CORE-58 — qa #353 O-1, re-review #353) (a) ช่องบังคับของ `setAddresses` (กฎข้อ 110b) ถือว่าว่างเมื่อไม่เหลืออักขระหลังตัด white space ของ JS **และ** zero-width `U+200B`, `U+200C`, `U+200D`, `U+2060`, `U+FEFF` → คืน `MISSING_ADDRESS_MESSAGE` ไม่เรียก `updateCart`;
+116. (CORE-58 — qa #353 O-1, re-review #353) (a) (**ชุดช่องบังคับตามกฎข้อ 110b ฉบับแทน — รวม `address_2` (spec 09 กฎ 55) และ `province` (spec 09 กฎ 69, ADR-034 — SFUI-20a)**) ช่องบังคับของ `setAddresses` (กฎข้อ 110b) ถือว่าว่างเมื่อไม่เหลืออักขระหลังตัด white space ของ JS **และ** zero-width `U+200B`, `U+200C`, `U+200D`, `U+2060`, `U+FEFF` → คืน `MISSING_ADDRESS_MESSAGE` ไม่เรียก `updateCart`;
      ค่าที่ส่งให้ `updateCart` ตัด white space และอักขระชุดนี้ที่หัว/ท้าย (คงอักขระกลางข้อความ) — ทำใน helper pure ของ `src/lib/util/` เพื่อ unit test (ไม่มี dependency ใหม่);
      (b) `normalize` ของข้อความ error เหลือที่เดียว — `insufficient-inventory.ts` และ `group-join-error.ts` import ตัวเดียวกับ `checkout-error.ts`/`empty-cart-completion.ts` (ตัวกลางรวม `.trim()` ของ `group-join-error` ไว้); ผลของ map และ contract test เดิมไม่เปลี่ยน
      **(ปิดรอบ 41 — ล้าสมัย)** หลัง CORE-82..84 (กฎข้อ 140) ไม่มี `normalize` ของข้อความ error เหลือใน storefront แล้ว (map ข้อความถูกแทนด้วย code; CORE-84 ลบตัวสุดท้าย) — ข้อ (b) ไม่มีผลบังคับอีก
@@ -2481,7 +2481,7 @@ none
      (c) ไม่เปลี่ยน: การ render แถว `cart-discount` (ยังใช้ `discount_total`), ตัวเลขทุกแถว/`data-value`, กฎข้อ 118b–d, dropdown; helper เงื่อนไขเป็น pure function ใน `src/lib/util/` (ทดสอบด้วย unit) หรือ inline ในคอมโพเนนต์ — เลือกใน PR
      ถ้าระหว่างทำพบว่า payload ของที่ใดไม่มี `item_total`/`original_item_total` → หยุดและรายงาน planner (ห้ามคำนวณยอดเอง — กฎข้อ 81)
 121. (CORE-63 — Q-C10 = ก owner 2026-11-17; ขยายกฎข้อ 116 ที่เดิมครอบเฉพาะช่องบังคับของ checkout) storefront ล้วน ใช้ `trimInvisible` (`src/lib/util/trim-invisible.ts`) ตัว**เดิม** ไม่สร้าง helper ใหม่:
-     (a) `setAddresses` (`src/lib/data/cart.ts` `addressFrom`): ช่องไม่บังคับ `company`, `province`, `phone` ผ่าน `trimInvisible` ด้วย — ว่างหลังตัดส่ง `""`; `country_code` ไม่แตะ (ค่าจาก select); ช่องบังคับคงกฎข้อ 116a;
+     (a) (**`province` ไม่ใช่ช่องไม่บังคับแล้ว — แทนด้วย ADR-034 / spec 09 กฎ 69 (SFUI-20a); `country_code` มาจาก hidden `th` ตามกฎ 70 (SFUI-20b) — การตัดด้วย `trimInvisible` ยังมีผล**) `setAddresses` (`src/lib/data/cart.ts` `addressFrom`): ช่องไม่บังคับ `company`, `province`, `phone` ผ่าน `trimInvisible` ด้วย — ว่างหลังตัดส่ง `""`; `country_code` ไม่แตะ (ค่าจาก select); ช่องบังคับคงกฎข้อ 116a;
      (b) ฟอร์มที่อยู่ในหน้าบัญชี — `addCustomerAddress`/`updateCustomerAddress` (`src/lib/data/customer.ts`; ผู้เรียก: `modules/account/components/address-card/{add-address,edit-address-modal}.tsx`, `profile-billing-address/index.tsx`):
          ทุกช่องข้อความผ่าน `trimInvisible`; ช่องบังคับชุดเดียวกับ checkout (`first_name`, `last_name`, `address_1`, `postal_code`, `city` — ย้าย `REQUIRED_ADDRESS_FIELDS` และ `MISSING_ADDRESS_MESSAGE` จาก `cart.ts` ไป `src/lib/util/` ที่เดียว (ผู้ใช้ 2 ที่ และ `cart.ts`/`customer.ts` เป็น `"use server"` ซึ่ง export ได้เฉพาะ async function))
          ว่างหลังตัด → คืน `{ success: false, error: <ข้อความไทยเดียวกับ MISSING_ADDRESS_MESSAGE> }` **ไม่เรียก** Store API; `phone` ของ `updateCustomerAddress` ที่ว่างหลังตัดคงพฤติกรรมเดิม (ไม่ส่ง key) — **รอบ 33: owner (2) = ข คงเดิม 2026-11-17 → ยอมรับใน v1 ว่าล้างช่องแล้วเบอร์เดิมยังอยู่ (qa #386 O-2)**;

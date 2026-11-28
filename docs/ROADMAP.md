@@ -10,9 +10,9 @@
   รอบ 43 ส่วน v0.3.1 (OPS-36 #554, PAY-23 #555, PAY-24 #556, OPS-39 #559) เป็น 🚀 · OPS-40 (PII ค่าเดี่ยวจาก review #559) ☑ #562 (merge 2026-11-26 — ข้อยกเว้น d1/d2/d3 ของกฎ 22d + กรณีรู้แล้ว `cart_13rjFZ` → OPS-41), **ไม่อยู่ใน v0.3.1**
 - **ยังไม่ release หลัง v0.3.1**: OPS-40 + รอบ 44 (SFUI, 16 task) + รอบ 45 (7 task) + รอบ 46 (admin ไทย, 5 task) + รอบ 47 (#600–#602) + รอบ 48 (ฟอร์ม, 6 task #604–#610)
   + SFUI-14 #612 + รอบ 49 (select/ที่อยู่ไทย, 9 task #614–#622) อยู่ใน `develop` เท่านั้น · owner **ยังไม่ go-live** (release `develop → main` เป็นของ owner)
-- **รอบปัจจุบัน**: **รอบ 50** (ปุ่มขนาดเดียว, ซ่อนประเทศ, จังหวัดบังคับ, consistency — spec 09, ADR-034 accepted) — **spec พร้อม**, 10 task ☐ ·
+- **รอบปัจจุบัน**: **รอบ 50** (ปุ่มขนาดเดียว, ซ่อนประเทศ, จังหวัดบังคับ, consistency — spec 09, ADR-034 accepted) — **spec พร้อม**, 12 task ☐ ·
   **release v0.4.0 (#603) พักจนรอบ 50 merge ครบ** (owner 2026-11-28) · รอบ 49 ☑ ครบ 2026-11-28 · รอบ 43 "หลัง go-live" (14 task) รอ owner สั่ง
-- **รอ owner ตัดสิน**: Q-R50-1/2 (ไม่ block) + Q-R49-5/6 + `disabled={updating}` ของจำนวนในตะกร้า (รอบ 49) + เรื่องก่อน go-live (Stripe live, ค่าส่ง, staging)
+- **รอ owner ตัดสิน**: Q-R49-5/6 + `disabled={updating}` ของจำนวนในตะกร้า (รอบ 49) + เรื่องก่อน go-live (Stripe live, ค่าส่ง, staging)
 - **ขั้นต่อไป**: PR เอกสารรอบ 50 → stack SFUI-19a..22 → owner merge/tag v0.4.0 (#603) → go-live (checklist ข้อ 1–16) → **v1.0.0**
 
 ### Release
@@ -241,23 +241,24 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 | SFUI-19c | 09 | ค้นหา (`Input`+`Button`, `InputGroup`) + `shadcn add pagination` | SFUI-19a | ✓ | ☐ |
 | SFUI-19d | 09 | ตัวกรอง store: `shadcn add toggle-group`, `ui/checkbox`, chip `Button`; `AccordionTrigger` default | SFUI-19c | ✓ | ☐ |
 | SFUI-20a | 09 | จังหวัดบังคับ (UI + server + ข้อความใหม่) + เพิ่มบรรทัดกรอกจังหวัดใน e2e | SFUI-19b | ✓ | ☐ |
-| SFUI-20b | 09 | ซ่อนประเทศ 5 ฟอร์ม (hidden `th`), ลบ `CountrySelect` ของ checkout + e2e ~25 ไฟล์ | SFUI-20a | ✓ | ☐ |
+| SFUI-20b | 09 | ซ่อนประเทศ 5 ฟอร์ม (hidden `th`), ลบ `CountrySelect` ของ checkout + e2e ~25 ไฟล์ | SFUI-20a, 19d | ✓ | ☐ |
 | SFUI-20c | 09 | สรุปที่อยู่ไม่มีบรรทัดประเทศ + ซ่อนตัวเลือก region เมื่อมีประเทศเดียว | SFUI-20b | ✓ | ☐ |
 | SFUI-21b | 09 | `h1` ขนาดเดียว `text-3xl font-semibold tracking-tight` (27 ไฟล์) | SFUI-19b, 20b | ✓ | ☐ |
-| SFUI-21a | 09 | gap ฟอร์ม 16px, error ระดับฟอร์ม `text-destructive`, `SelectTrigger`/ปุ่มปิด overlay default | SFUI-20c, 21b | ✓ | ☐ |
-| SFUI-22 | 09 | ปิดรอบ: guard `<button>` ดิบ + e2e ทุกปุ่ม 36px + ติ๊ก AC + #603 | SFUI-19d, 21a | — | ☐ |
+| SFUI-21a | 09 | gap ฟอร์ม 16px, `SelectTrigger`/ปุ่มปิด overlay default | SFUI-20c, 21b | ✓ | ☐ |
+| SFUI-21c | 09 | การ์ดจัดส่ง/ชำระเงิน = Choice Card ของ shadcn (owner Q-R50-1) | SFUI-21a | ✓ | ☐ |
+| SFUI-21d | 09 | error ระดับฟอร์มทุกจุด = `Alert` ของ shadcn (`shadcn add alert` — owner Q-R50-2) | SFUI-21c | ✓ | ☐ |
+| SFUI-22 | 09 | ปิดรอบ: guard `<button>` ดิบ + e2e ทุกปุ่ม 36px + ติ๊ก AC + #603 | SFUI-21d | — | ☐ |
 
-- ลำดับ: 19a → (19b ∥ 19c → 19d) → 20a → 20b → 20c ∥ 21b → 21a → 22 · merge: 19a → 19b → 19c → 19d → 20a → 20b → 20c → 21b → 21a → 22
-- **ไฟล์ร่วม** (stack ตามลำดับ): modal ที่อยู่ 19a → 19b → 20a → 20b → 20c → 21a · `sfui-13-form-guard` 19c → 19d → 20b · `sfui-baseline.json` 20a → 20b → 20c
-- ไม่มี dependency ใหม่ (component ใหม่จาก `shadcn add` 3 ไฟล์) · admin/backend ไม่กระทบ · evidence `docs/evidence/storefront-consistency/<TASK>/`
+- ลำดับ: 19a → (19b ∥ 19c → 19d) → 20a → 20b (หลัง 20a + 19d) → 20c ∥ 21b → 21a → 21c → 21d → 22
+- merge: 19a → 19b → 19c → 19d → 20a → 20b → 20c → 21b → 21a → 21c → 21d → 22
+- **ไฟล์ร่วม** (stack ตามลำดับ): modal ที่อยู่ 19a → 19b → 20a → 20b → 20c → 21a → 21d · `sfui-13-form-guard` 19c → 19d → 20b · `sfui-baseline.json` 20a → 20b → 20c
+- ไม่มี dependency ใหม่ (component ใหม่จาก `shadcn add` 4 ไฟล์) · admin/backend ไม่กระทบ · evidence `docs/evidence/storefront-consistency/<TASK>/`
 
 ## คำถามที่รอ owner
 
 - **v0.4.0**: #603 **พักจนรอบ 50 merge ครบ** (owner 2026-11-28) → แล้ว owner merge `develop → main` + tag `v0.4.0`
 
-- **รอบ 50**: ADR-034 accepted (owner ตัดสินครบ 2026-11-28) · ยังเปิด (ไม่ block):
-  - Q-R50-1 การ์ดตัวเลือกจัดส่ง (มีขอบ) กับชำระเงิน (ไม่มีขอบ) ทำให้เหมือนกันไหม — เสนอ ไม่ทำรอบนี้ (backlog)
-  - Q-R50-2 error ระดับฟอร์มใช้ `Alert` ของ shadcn ไหม — เสนอ ไม่ทำรอบนี้ (กฎ 74 ทำสี/ขนาดตรง `FieldError` แล้ว)
+- **รอบ 50**: ไม่มีคำถามค้าง — ADR-034 accepted · ~~Q-R50-1~~ = ทำ (Choice Card, SFUI-21c) · ~~Q-R50-2~~ = ใช้ `Alert` (SFUI-21d) · SFUI-20b ~450 LOC owner รับ (2026-11-28)
 
 - **รอบ 49**: ADR-033 accepted, ~~Q-R49-1~~ = ก, ~~Q-R49-2~~ = ข, ~~Q-R49-3~~ = stack ได้, ~~Q-R49-4~~ = บังคับ (owner 2026-11-28) · ยังเปิด (ไม่ block รอบ 49):
   - Q-R49-5 ย้าย component ร่วมของรอบ 48 (`Input`, `Checkbox`, spinner) ไปประกอบตามตัวอย่าง docs ของ shadcn ไหม — เสนอ ไม่ทำตอนนี้ (backlog หลัง v0.4.0)
@@ -330,7 +331,7 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 | รอบ 47 ทดสอบ manual ก่อน v0.4.0 | 02, 10 | ☑ | 2 ☑ (#600, #602; เอกสาร #601) | AI18N-N2, EV-27; วันที่ admin คง พ.ศ. (owner 2026-11-27) |
 | รอบ 48 ฟอร์ม storefront แบบ shadcn | 09 | ☑ | 6 ☑ (#605–#610; เอกสาร #604) | ADR-032 accepted 2026-11-27; stack; ยังไม่ release (#603) |
 | รอบ 49 select Radix + ที่อยู่ไทย | 09 | ☑ | 9 ☑ (#614–#622) + SFUI-14 ☑ #612 | ADR-033 accepted 2026-11-28; stack; ยังไม่ release (#603) |
-| รอบ 50 consistency + ที่อยู่ | 09 | ☐ | 10 ☐ | ADR-034 accepted 2026-11-28; stack; #603 พักจนรอบนี้ merge |
+| รอบ 50 consistency + ที่อยู่ | 09 | ☐ | 12 ☐ | ADR-034 accepted 2026-11-28; stack; #603 พักจนรอบนี้ merge |
 | รอบ 43 | 01, 03, 04, 06–08 | ◐ | 4 🚀 + 1 ☑ + 14 ☐ | 4 🚀 (3 train #557 + OPS-39 #559) ใน v0.3.1; OPS-40 ☑ #562 ก่อน go-live (ไม่อยู่ใน v0.3.1); 14 ตัวหลัง go-live (รวม OPS-41) |
 
 จำนวน task นับจากตารางใน history.md ณ 2026-11-24 และตารางรอบ 43 ด้านบน ณ 2026-11-25 (task ที่อยู่หลาย milestone นับที่ milestone หลักของ spec)

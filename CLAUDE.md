@@ -209,6 +209,7 @@ pnpm --filter storefront build && pnpm --filter storefront start
   font-weight, padding, สีพื้น, radius, ความสูงปุ่ม ฯลฯ) ไม่ใช่ค่าที่อ่านจากชื่อ class — ชื่อหลอกได้เพราะลำดับใน CSS/`@layer`, `clsx` ที่ไม่ merge
   และ `cn`/tailwind-merge ที่ตัด class (เคยพลาด: Heading `text-3xl-regular` จริง 24px ไม่ใช่ 32px, `Container` พื้นขาวทับ `bg-gray-50`, ปุ่ม `large`
   48px → 40px ทำคลิกตก iframe Stripe) → วัดด้วย `getComputedStyle` บน build ของ develop/commit ฐาน (หรือ compile CSS ของ develop) แล้ว assert ใน e2e
+  (ตั้งแต่ ADR-034 รอบ 50: ปุ่มทุกตัวรวมปุ่มจ่ายเงินใช้ size default ของ shadcn 36px โดยตั้งใจ — ไม่คงความสูงเดิม แต่ต้องพิสูจน์ใน e2e ด้วย `elementFromPoint` ว่าจุดคลิกอยู่บนปุ่ม ไม่ใช่ iframe ของ Stripe)
 - e2e ที่ใช้ Stripe รันในเครื่องได้: owner ตั้ง `STRIPE_TEST_API_KEY`/`STRIPE_TEST_PUBLISHABLE_KEY` ใน `~/.zshrc` → shell ของ agent ไม่เห็น
   ให้ `source ~/.zshrc` (ห้าม `cat`/พิมพ์ค่า) ส่งต่อด้วยชื่อแบบ CI (`STRIPE_API_KEY`, `NEXT_PUBLIC_STRIPE_KEY` — ดู `.github/workflows/ci.yml`)
   ก่อน start backend `export STRIPE_WEBHOOK_SECRET=$(stripe listen --print-secret)` (`medusa-config.ts` ใช้ตรวจลายเซ็น) แล้ว `stripe listen --events <ชุดเดียวกับ CI
