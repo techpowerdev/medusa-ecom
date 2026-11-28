@@ -1,6 +1,6 @@
 import { expect, test } from "./support/fixtures"
 import { STOREFRONT_COUNTRY as CC, adminHeaders, createCustomer, publishableKey, signInAs } from "./support/medusa"
-import { CARD_PROVIDER, HAS_STRIPE_SECRET, HAS_STRIPE_UI, PROMPTPAY_PROVIDER, checkoutToPayment, fillCard } from "./support/stripe"
+import { CARD_PROVIDER, HAS_STRIPE_SECRET, HAS_STRIPE_UI, PROMPTPAY_PROVIDER, checkoutToPayment, fillCard, waitUntilHittable } from "./support/stripe"
 
 // SFUI-3d (spec 09 กฎ 4, 9, 12, AC-12): ตัวเลือกวิธีชำระเป็น RadioGroup ของ shadcn (Radix) — ตัวเลือกคือปุ่ม role="radio"
 // ที่มี testid เดิม และลูกศรเปลี่ยนตัวเลือก (เลือกพร้อมเพย์ไม่ต้องกรอกบัตร จึงต้องการแค่ provider Stripe ฝั่ง backend)
@@ -63,7 +63,8 @@ test("AC-12: focus ตัวเลือกบัตรแล้วกด ArrowD
     await card.click()
     await fillCard(page, "4242424242424242")
     await expect(button).toBeEnabled({ timeout: 30_000 })
-    await button.scrollIntoViewIfNeeded()
+    // review SFUI-19a: รอ hit-test/ตำแหน่งนิ่งหลัง scroll ก่อนวัดและคลิก (จังหวะเดียวกับที่ continueToReview ใช้)
+    await waitUntilHittable(button)
     const hit = await button.evaluate((el) => {
       const r = el.getBoundingClientRect()
       const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
