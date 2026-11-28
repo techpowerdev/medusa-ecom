@@ -1,6 +1,5 @@
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { buttonVariants } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 
 /**
  * PAY-15 (spec 06 กฎข้อ 17) / PAY-19 (กฎข้อ 21): เงินถูกคืนและเหตุยังอยู่ในตะกร้าเดิม → ข้อความคืนเงิน + ลิงก์ "ไปที่ตะกร้า"
@@ -11,7 +10,7 @@ const RefundedGoToCart = ({ text, noticeTestId, linkTestId }: { text: string; no
     <p className="text-sm leading-[1.4rem] text-muted-foreground mb-2" data-testid={noticeTestId}>
       {text}
     </p>
-    <LocalizedClientLink href="/cart" className={cn(buttonVariants({ size: "lg" }), "h-12")} data-testid={linkTestId}>
+    <LocalizedClientLink href="/cart" className={buttonVariants()} data-testid={linkTestId}>
       ไปที่ตะกร้า
     </LocalizedClientLink>
   </>

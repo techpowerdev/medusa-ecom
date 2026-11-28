@@ -1,6 +1,6 @@
 import { expect, test } from "./support/fixtures"
 import { STOREFRONT_COUNTRY as CC, adminHeaders, createCustomer, publishableKey, signInAs } from "./support/medusa"
-import { CARD_PROVIDER, HAS_STRIPE_SECRET, PROMPTPAY_PROVIDER, checkoutToPayment } from "./support/stripe"
+import { CARD_PROVIDER, HAS_STRIPE_SECRET, HAS_STRIPE_UI, PROMPTPAY_PROVIDER, checkoutToPayment, fillCard } from "./support/stripe"
 
 // SFUI-3d (spec 09 กฎ 4, 9, 12, AC-12): ตัวเลือกวิธีชำระเป็น RadioGroup ของ shadcn (Radix) — ตัวเลือกคือปุ่ม role="radio"
 // ที่มี testid เดิม และลูกศรเปลี่ยนตัวเลือก (เลือกพร้อมเพย์ไม่ต้องกรอกบัตร จึงต้องการแค่ provider Stripe ฝั่ง backend)
@@ -55,8 +55,22 @@ test("AC-12: focus ตัวเลือกบัตรแล้วกด ArrowD
     await evidence("01-payment-arrowdown-promptpay")
   })
 
-  await step("D-1: ปุ่ม submit-payment-button สูง 48px เท่า size large เดิม (คลิกหลังกรอกบัตรไม่ตกใน iframe ของ Stripe)", async () => {
-    const box = await page.getByTestId("submit-payment-button").boundingBox()
-    expect(box?.height).toBe(48)
+  // SFUI-19a (spec 09 กฎ 61, AC-57 — ADR-034 D2): ปุ่มเป็น size default 36px; พิสูจน์ว่าหลังกรอกบัตร จุดกลางของปุ่มคือปุ่มเอง (ไม่ใช่ iframe ของ Stripe)
+  await step("D-1: submit-payment-button สูง 36px และหลังกรอกบัตร 4242 elementFromPoint ที่จุดกลางคือปุ่ม → คลิกแล้วไป step=review", async () => {
+    const button = page.getByTestId("submit-payment-button")
+    expect((await button.boundingBox())?.height).toBe(36)
+    test.skip(!HAS_STRIPE_UI, "ต้องตั้ง NEXT_PUBLIC_STRIPE_KEY (pk_test_) คู่กับ STRIPE_API_KEY — Stripe Elements ต้องโหลดใน browser")
+    await card.click()
+    await fillCard(page, "4242424242424242")
+    await expect(button).toBeEnabled({ timeout: 30_000 })
+    await button.scrollIntoViewIfNeeded()
+    const hit = await button.evaluate((el) => {
+      const r = el.getBoundingClientRect()
+      const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+      return { onButton: !!top && el.contains(top), tag: top?.tagName ?? null }
+    })
+    expect(hit, "จุดกลางของปุ่มต้องเป็นปุ่ม/ลูกของปุ่ม ไม่ใช่ iframe ของ Stripe").toEqual({ onButton: true, tag: expect.any(String) })
+    await button.click()
+    await expect(page).toHaveURL(/[?&]step=review(&|$)/, { timeout: 10_000 })
   })
 })

@@ -307,7 +307,7 @@ export default function ProductActions({
             }
             // FS-16 (กฎข้อ 21a): รอข้อมูล flash (sold_out/remaining) ก่อนให้กด
             aria-busy={flash.loading}
-            className="w-full h-10"
+            className="w-full"
             isLoading={isAdding}
             data-testid="add-product-button"
           >

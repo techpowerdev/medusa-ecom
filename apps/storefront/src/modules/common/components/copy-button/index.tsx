@@ -10,7 +10,6 @@ type Props = {
   successMessage: string
   buttonTestId: string
   statusTestId: string
-  size?: "small" | "medium"
   /** ทางเลือกแทนการคัดลอก (เช่น Web Share) — คืน true เมื่อจัดการแล้ว; ตัดสินตอนคลิก */
   share?: (text: string) => Promise<boolean>
   /**
@@ -38,7 +37,6 @@ export default function CopyButton({
   successMessage,
   buttonTestId,
   statusTestId,
-  size = "medium",
   share,
   layout = "stack",
 }: Props) {
@@ -83,7 +81,6 @@ export default function CopyButton({
       <Button
         type="button"
         variant="outline"
-        size={size === "small" ? "sm" : "default"}
         onClick={run}
         disabled={busy}
         isLoading={busy}

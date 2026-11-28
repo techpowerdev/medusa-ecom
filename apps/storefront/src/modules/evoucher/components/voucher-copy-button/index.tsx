@@ -11,7 +11,6 @@ export default function VoucherCopyButton({ code }: { code: string }) {
       successMessage="คัดลอกแล้ว"
       buttonTestId="voucher-copy-button"
       statusTestId="voucher-copy-status"
-      size="small"
       layout="row"
     />
   )

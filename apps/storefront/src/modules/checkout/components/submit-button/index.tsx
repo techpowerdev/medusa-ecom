@@ -7,7 +7,6 @@ import { useFormStatus } from "react-dom"
 export function SubmitButton({
   children,
   variant,
-  size,
   className,
   disabled,
   isLoading,
@@ -15,7 +14,6 @@ export function SubmitButton({
 }: {
   children: React.ReactNode
   variant?: ComponentProps<typeof Button>["variant"]
-  size?: ComponentProps<typeof Button>["size"]
   className?: string
   disabled?: boolean
   /** AF-22: pending จากภายนอก (ค่าที่สามของ useActionState) เมื่อฟอร์มส่งด้วย submitWithoutReset — ใช้แทน useFormStatus
@@ -27,7 +25,6 @@ export function SubmitButton({
 
   return (
     <Button
-      size={size}
       className={className}
       type="submit"
       isLoading={isLoading ?? pending}

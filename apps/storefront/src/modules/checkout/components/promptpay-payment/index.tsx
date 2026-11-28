@@ -70,7 +70,7 @@ const PromptPayPaymentButton = (props: Props) => {
   if (!stripeReady) {
     return (
       <>
-        <Button disabled size="lg" className="h-12" data-testid={props["data-testid"]}>
+        <Button disabled data-testid={props["data-testid"]}>
           {PAY_WITH_PROMPTPAY}
         </Button>
         <ErrorMessage
@@ -304,8 +304,6 @@ const PromptPayCheckout = ({ cart, notReady, "data-testid": dataTestId }: Props)
       <Button
         disabled={notReady || (!alreadyAuthorized && (!stripe || !clientSecret))}
         onClick={showQr}
-        size="lg"
-        className="h-12"
         isLoading={submitting}
         data-testid={expired || refunded ? "promptpay-retry-button" : dataTestId}
       >

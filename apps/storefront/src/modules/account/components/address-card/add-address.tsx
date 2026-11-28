@@ -185,7 +185,6 @@ const AddAddress = ({
               type="reset"
               variant="outline"
               onClick={close}
-              className="h-10"
               data-testid="cancel-button"
             >
               ยกเลิก

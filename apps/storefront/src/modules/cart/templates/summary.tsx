@@ -30,7 +30,7 @@ const Summary = ({ cart }: SummaryProps) => {
       <CartTotals totals={cart} />
       <LocalizedClientLink
         href={"/checkout?step=" + step}
-        className={cn(buttonVariants(), "w-full h-10")}
+        className={cn(buttonVariants(), "w-full")}
         data-testid="checkout-button"
       >
         ไปชำระเงิน

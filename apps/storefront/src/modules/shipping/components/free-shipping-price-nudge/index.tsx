@@ -214,12 +214,11 @@ function FreeShippingPopup({
       <div>
         <Button
           size="icon"
-          className="rounded-full bg-neutral-900 shadow-none outline-hidden border-none"
           onClick={() => setIsClosed(true)}
           aria-label="ปิดข้อความส่งฟรี"
           data-testid="free-shipping-nudge-close"
         >
-          <X className="size-4" />
+          <X />
         </Button>
       </div>
 

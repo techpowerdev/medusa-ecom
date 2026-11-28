@@ -389,9 +389,9 @@ const Payment = ({
           <PlaceOrderNotice shown={paidOrder.shown} errorTestId="payment-session-order-error" />
 
           <Button
-            size="lg"
-            // D-1: คงความสูง 48px ของ size large เดิม — lg (40px) ทำให้คลิกหลังกรอกบัตรตกใน iframe ของ Stripe
-            className="mt-6 h-12"
+            // SFUI-19a (spec 09 กฎ 61 — ADR-034 D2): size default 36px; การคลิกหลังกรอกบัตรไม่ตก iframe ของ Stripe พิสูจน์ด้วย
+            // elementFromPoint ใน sfui-3d-payment — ไม่แก้ด้วยความสูงปุ่ม
+            className="mt-6"
             onClick={handleSubmit}
             isLoading={isLoading || sessionNotInCartYet}
             disabled={
