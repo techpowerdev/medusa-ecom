@@ -1,7 +1,5 @@
 import { readFileSync } from "node:fs"
 import path from "node:path"
-import { createElement } from "react"
-import { renderToStaticMarkup } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { SIGN_IN_AGAIN_MESSAGE } from "@lib/util/error-message"
@@ -52,57 +50,7 @@ beforeEach(() => {
   update.mockResolvedValue({ cart: { id: "cart_1" } })
 })
 
-describe("CartTotals (กฎข้อ 28a)", () => {
-  const render = async (items?: { requires_shipping: boolean }[]) => {
-    const CartTotals = (await import("@modules/common/components/cart-totals")).default
-    return renderToStaticMarkup(
-      createElement(CartTotals, {
-        totals: { currency_code: "thb", original_item_total: 500, total: 500, tax_total: 32.71, items },
-      })
-    )
-  }
-
-  it("digital-only → ไม่มีแถวค่าจัดส่งและไม่มีคำว่าค่าจัดส่งเลย แต่ยังมีภาษี", async () => {
-    const html = await render([voucher, voucher])
-    expect(html).not.toContain("ค่าจัดส่ง")
-    expect(html).not.toContain('data-testid="cart-shipping"')
-    expect(html).toContain("ยอดรวมสินค้า (รวม VAT)")
-    expect(html).toContain('data-testid="cart-taxes"')
-  })
-
-  it.each([
-    ["cart ผสม", [voucher, shirt]],
-    ["สินค้าจัดส่งล้วน", [shirt]],
-    ["ไม่รู้รายการสินค้า", undefined],
-  ])("%s → ยังมีแถวค่าจัดส่ง", async (_, items) => {
-    const html = await render(items)
-    expect(html).toContain('data-testid="cart-shipping"')
-    expect(html).toContain("ยอดรวมสินค้า (รวม VAT)")
-  })
-})
-
-describe("CartTotals เมื่อ cart digital-only ยังมีค่าจัดส่งเก็บจริง (review #320)", () => {
-  // voucher + t-shirt เลือก Standard แล้วลบ t-shirt: Medusa 2.22.1 ไม่ลบ shipping method — ยอดรวมยังรวมค่าจัดส่ง
-  // CORE-57 (กฎข้อ 115c): เงื่อนไขและค่าของแถวใช้ original_shipping_total (รวม VAT = ราคา option)
-  it("original_shipping_total > 0 → คงแถวค่าจัดส่ง ไม่ให้ยอดรวมมีเงินที่ไม่มีแถวอธิบาย", async () => {
-    const CartTotals = (await import("@modules/common/components/cart-totals")).default
-    const html = renderToStaticMarkup(
-      createElement(CartTotals, {
-        totals: {
-          currency_code: "thb",
-          original_item_total: 500,
-          original_shipping_total: 10,
-          total: 510,
-          items: [voucher],
-        },
-      })
-    )
-    expect(html).toContain('data-testid="cart-shipping"')
-    expect(html).toMatch(/data-testid="cart-shipping"[^>]*data-value="10"/)
-    expect(html).toContain("ยอดรวมสินค้า (รวม VAT)")
-  })
-})
-
+// กฎข้อ 28a (แถวค่าจัดส่งของ CartTotals) ย้ายไป src/sfui-24a-cart-totals.test.ts (SFUI-24a, spec 01 AC-200 (12))
 describe("isDigitalOnlyCart (กฎข้อ 28b)", () => {
   it("รับเฉพาะ cart — ผลมาจาก requires_shipping ไม่มี parameter flag", () => {
     expect(isDigitalOnlyCart.length).toBe(1)

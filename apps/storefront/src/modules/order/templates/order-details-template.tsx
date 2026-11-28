@@ -2,11 +2,11 @@
 
 import { Button } from "@/components/ui/button"
 import { HttpTypes } from "@medusajs/types"
+import CartTotals from "@modules/common/components/cart-totals"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Help from "@modules/order/components/help"
 import Items from "@modules/order/components/items"
 import OrderDetails from "@modules/order/components/order-details"
-import OrderSummary from "@modules/order/components/order-summary"
 import ShippingDetails from "@modules/order/components/shipping-details"
 import { X } from "lucide-react"
 import React from "react"
@@ -52,7 +52,11 @@ const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
           </Button>
         )}
         <ShippingDetails order={order} />
-        <OrderSummary order={order} />
+        {/* SFUI-24a (spec 01 กฎข้อ 158): สรุปยอดตัวเดียวกับ cart/checkout/order-completed (แทน order-summary ของ starter) */}
+        <div data-testid="order-summary">
+          <h2 className="text-sm leading-6 font-semibold mb-2">สรุปคำสั่งซื้อ</h2>
+          <CartTotals totals={order} />
+        </div>
         <Help />
       </div>
     </div>

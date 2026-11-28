@@ -2,112 +2,73 @@
 
 import { isDigitalOnlyCart } from "@lib/util/digital-checkout"
 import { convertToLocale } from "@lib/util/money"
+import { PricedDocument, priceBreakdown } from "@lib/util/price-breakdown"
 import React from "react"
 
 type CartTotalsProps = {
-  totals: {
-    total?: number | null
-    tax_total?: number | null
+  totals: PricedDocument & {
     currency_code: string
-    original_item_total?: number | null
-    item_total?: number | null
-    original_shipping_total?: number | null
-    discount_total?: number | null
-    items?: { requires_shipping?: boolean | null }[] | null
+    items?: (NonNullable<PricedDocument["items"]>[number] & { requires_shipping?: boolean | null })[] | null
   }
 }
 
+// SFUI-24a (spec 01 กฎข้อ 158 — แทนกฎข้อ 81b, 115, 118, 120): สรุปยอดตัวเดียวของ /cart, checkout, order-completed และ
+// รายละเอียดคำสั่งซื้อ — รวมค่าสินค้า + ค่าจัดส่ง − ส่วนลด (โค้ด) + ภาษีมูลค่าเพิ่ม (เฉพาะรายการที่ไม่รวม VAT) = ยอดรวมทั้งสิ้น (`total` ของ Medusa)
+// data-value = ค่าดิบก่อนปัด; ส่วนลดอัตโนมัติ (flash/ซื้อกลุ่ม) อยู่ในรวมค่าสินค้าแล้ว ไม่มีแถวของตัวเอง
 const CartTotals: React.FC<CartTotalsProps> = ({ totals }) => {
-  const {
-    currency_code,
-    total,
-    tax_total,
-    original_item_total,
-    item_total,
-    original_shipping_total,
-    discount_total,
-  } = totals
-  // CORE-57 (spec 01 กฎข้อ 115): ทุกแถวรวม VAT — original_item_total − discount_total + original_shipping_total = total
-  // ไม่ใช้ item_total/shipping_total เพราะหักส่วนลดแล้ว แต่ discount_total รวมส่วนลดเดียวกันอีก (หักซ้ำ)
+  const { currency_code } = totals
+  const { subtotal, shipping, discount, tax, total, codes, taxRate, hasShippingCharge } = priceBreakdown(totals)
+  const money = (amount: number) => convertToLocale({ amount, currency_code })
   // EV-7d (spec 02 กฎข้อ 28a): cart digital-only ไม่มีการจัดส่ง — ไม่แสดงแถวและคำว่าค่าจัดส่ง
   // ยกเว้นยังมีค่าจัดส่งเก็บจริง (ลบสินค้าจัดส่งออกแล้ว Medusa ไม่ลบ shipping method) — ยอดรวมต้องมีแถวอธิบาย
-  const noShippingCharge = isDigitalOnlyCart(totals) && !original_shipping_total
-  // CORE-62 (spec 01 กฎข้อ 120): "ก่อนส่วนลด" เฉพาะเมื่อราคาสินค้าลดจริง (ส่วนลดค่าส่งอย่างเดียวคงป้ายเดิม)
-  // 0.005 กันเศษ float; ไม่มี field → ถือว่าไม่ลด; คง discount_total ร่วมด้วยเพื่อให้ป้ายสอดคล้องกับแถว cart-discount
-  const itemDiscounted =
-    !!discount_total &&
-    original_item_total != null &&
-    item_total != null &&
-    original_item_total - item_total > 0.005
+  const noShippingCharge = isDigitalOnlyCart(totals) && !hasShippingCharge
 
   return (
     <div data-testid="cart-totals">
       <div className="flex flex-col gap-y-2 text-sm leading-[1.4rem] text-muted-foreground ">
-        {/* CORE-60 (spec 01 กฎข้อ 118, Q-C8 = ก): ราคาสินค้าลด → บอกว่าเป็นยอดก่อนส่วนลด (เงื่อนไขตามกฎข้อ 120 — CORE-62)
-            ป้ายยาวตัดบรรทัดได้ (min-w-0) แต่จำนวนเงินอยู่บรรทัดเดียว (whitespace-nowrap) ที่ 375 */}
+        {/* ป้ายยาวตัดบรรทัดได้ (min-w-0) แต่จำนวนเงินอยู่บรรทัดเดียว (whitespace-nowrap) ที่ 375 */}
         <div className="flex items-center justify-between gap-x-2">
           <span className="min-w-0" data-testid="cart-subtotal-label">
-            {itemDiscounted
-              ? // eslint-disable-next-line no-restricted-syntax -- "VAT" เป็นหน่วย/รหัสตามภาคผนวก 2026-11-13 ของ ADR-014 (Q-C9 = ก) ป้ายตามกฎข้อ 118/120
-                "ยอดรวมสินค้าก่อนส่วนลด (รวม VAT)"
-              : // eslint-disable-next-line no-restricted-syntax -- "VAT" เป็นคำย่อที่ลูกค้าไทยใช้ ป้ายตาม Q-C7 ที่ owner ตัดสิน (spec 01 กฎข้อ 115a)
-                "ยอดรวมสินค้า (รวม VAT)"}
+            รวมค่าสินค้า
           </span>
-          <span
-            className="whitespace-nowrap"
-            data-testid="cart-subtotal"
-            data-value={original_item_total || 0}
-          >
-            {convertToLocale({ amount: original_item_total ?? 0, currency_code })}
+          <span className="whitespace-nowrap" data-testid="cart-subtotal" data-value={subtotal}>
+            {money(subtotal)}
           </span>
         </div>
         {!noShippingCharge && (
           <div className="flex items-center justify-between">
             <span>ค่าจัดส่ง</span>
-            <span
-              data-testid="cart-shipping"
-              data-value={original_shipping_total || 0}
-            >
-              {convertToLocale({
-                amount: original_shipping_total ?? 0,
-                currency_code,
-              })}
+            <span data-testid="cart-shipping" data-value={shipping}>
+              {money(shipping)}
             </span>
           </div>
         )}
-        {!!discount_total && (
+        {discount > 0.005 && (
+          <div className="flex items-center justify-between gap-x-2">
+            <span className="min-w-0" data-testid="cart-discount-label">
+              {codes.length ? `ส่วนลด (โค้ด ${codes.join(", ")})` : "ส่วนลด"}
+            </span>
+            <span className="whitespace-nowrap text-primary" data-testid="cart-discount" data-value={discount}>
+              - {money(discount)}
+            </span>
+          </div>
+        )}
+        {tax > 0.005 && (
           <div className="flex items-center justify-between">
-            <span>ส่วนลด</span>
-            <span
-              className="text-primary"
-              data-testid="cart-discount"
-              data-value={discount_total || 0}
-            >
-              -{" "}
-              {convertToLocale({
-                amount: discount_total ?? 0,
-                currency_code,
-              })}
+            <span data-testid="cart-taxes-label">
+              {taxRate === null ? "ภาษีมูลค่าเพิ่ม" : `ภาษีมูลค่าเพิ่ม ${taxRate}%`}
+            </span>
+            <span data-testid="cart-taxes" data-value={tax}>
+              {money(tax)}
             </span>
           </div>
         )}
-        <div className="flex justify-between">
-          {/* eslint-disable-next-line no-restricted-syntax -- "VAT" เป็นคำย่อที่ลูกค้าไทยใช้ ป้ายตาม Q-C7 ที่ owner ตัดสิน (spec 01 กฎข้อ 115a) */}
-          <span className="flex gap-x-1 items-center ">รวม VAT แล้ว</span>
-          <span data-testid="cart-taxes" data-value={tax_total || 0}>
-            {convertToLocale({ amount: tax_total ?? 0, currency_code })}
-          </span>
-        </div>
       </div>
       <div className="h-px w-full border-b border-gray-200 my-4" />
       <div className="flex items-center justify-between text-foreground mb-2 text-sm leading-[1.4rem] ">
         <span>ยอดรวมทั้งสิ้น</span>
-        <span
-          className="text-lg font-medium"
-          data-testid="cart-total"
-          data-value={total || 0}
-        >
-          {convertToLocale({ amount: total ?? 0, currency_code })}
+        <span className="text-lg font-medium" data-testid="cart-total" data-value={total}>
+          {money(total)}
         </span>
       </div>
       <div className="h-px w-full border-b border-gray-200 mt-4" />
