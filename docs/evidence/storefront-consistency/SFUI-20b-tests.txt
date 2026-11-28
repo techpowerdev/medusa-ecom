@@ -13,6 +13,11 @@ start จาก .medusa/server, DB medusa_sfui20b, Redis db 12), storefront :848
 - e2e sfui-20-address.spec (AC-62 ×2 + AC-63 ×2): 4 passed
 - e2e ที่แก้/อ้างฟอร์มที่อยู่/checkoutToPayment/shipping-address-select (44 ไฟล์, --workers=1): 138 passed / 2 failed (11.3m)
   - sfui-12b AC-34/37: SHIPPING_ORDER ยัง slice 9 ช่อง (รวมประเทศ) → แก้เป็น 8 แล้วรันซ้ำ 2 passed
-  - **sfui-16 AC-49 (ย้ายไป shipping-address-select ตามแถว): ล้ม** — ที่ 390×844 กล่อง shipping-address-options ขอบขวา 425px > 390
-    (ข้อความที่อยู่ในรายการไม่ตัดบรรทัด) — defect ของ checkout/components/address-select (ไฟล์ของ 21a) รอ planner
+  - sfui-16 AC-49 (ย้ายไป shipping-address-select ตามแถว): ล้ม — ที่ 390×844 กล่อง shipping-address-options ขอบขวา 425px > 390
+    (ข้อความที่อยู่ไม่ตัดบรรทัด) → คำตัดสิน session หลัก: ดึง checkout/components/address-select (inventory 34) จาก 21a มาแก้ใน 20b
+
+## หลังแก้ address-select (SelectTrigger default + SelectContent กว้างเท่า trigger)
+- sfui-16 AC-49 --repeat-each=3: 3 passed / 3
+- ชุดเดิม 44 ไฟล์ + sfui-3c-select + sfui-9c-font (DB/seed ใหม่, prod build, --workers=1): 140 passed / 140 (11.1m)
+- vitest 2085 passed; playwright project unit 257 passed
 - pnpm lint && pnpm typecheck: ผ่าน (0 error); pnpm --filter storefront build: ผ่าน

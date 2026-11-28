@@ -168,6 +168,10 @@ test.describe("SFUI-16b ที่อยู่ที่บันทึกไว�
     })
 
     await step("เลือก item ได้ และหน้าไม่ล้นแนวนอน", async () => {
+      await expect(async () => {
+        if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.tap()
+        await expect(options).toBeVisible({ timeout: 1_000 })
+      }).toPass()
       await page.getByTestId("shipping-address-option").first().tap()
       await expect(options).toBeHidden()
       await expect(page.getByTestId("shipping-first-name-input")).toHaveValue("สมศรี")
