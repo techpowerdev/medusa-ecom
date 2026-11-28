@@ -1,6 +1,6 @@
 # ROADMAP — milestone, ลำดับ PR, สถานะ
 
-อัปเดตล่าสุด: 2026-11-28 (รอบ 50 ทำครบ 14 task รวม SFUI-23 เก็บตก ☑ #638 — stack รอ merge; v0.4.0 #603 พร้อม merge หลังรอบ 50 merge ครบ) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
+อัปเดตล่าสุด: 2026-11-29 (รอบ 51 เปิด — แก้ข้อค้นพบจากทดสอบด้วยมือ 4 task; v0.4.0 #603 พักจนรอบ 51 merge ครบ) · ไฟล์นี้เก็บเฉพาะ "ตอนนี้" — ประวัติรายรอบ/ตาราง task ทุกตัวอยู่ที่
 [`docs/roadmap/history.md`](roadmap/history.md) และ follow-up เก่า (รอบ 13–39) อยู่ที่
 [`docs/roadmap/followups-archive.md`](roadmap/followups-archive.md)
 
@@ -9,11 +9,11 @@
 - **ตอนนี้**: **release v0.3.1 แล้ว (2026-11-25)** — #561 `develop → main` (merge commit `88bb0b63`, tag `v0.3.1`): รอบ 42 (21 task) +
   รอบ 43 ส่วน v0.3.1 (OPS-36 #554, PAY-23 #555, PAY-24 #556, OPS-39 #559) เป็น 🚀 · OPS-40 (PII ค่าเดี่ยวจาก review #559) ☑ #562 (merge 2026-11-26 — ข้อยกเว้น d1/d2/d3 ของกฎ 22d + กรณีรู้แล้ว `cart_13rjFZ` → OPS-41), **ไม่อยู่ใน v0.3.1**
 - **ยังไม่ release หลัง v0.3.1**: OPS-40 + รอบ 44 (SFUI, 16 task) + รอบ 45 (7 task) + รอบ 46 (admin ไทย, 5 task) + รอบ 47 (#600–#602) + รอบ 48 (ฟอร์ม, 6 task #604–#610)
-  + SFUI-14 #612 + รอบ 49 (select/ที่อยู่ไทย, 9 task #614–#622) อยู่ใน `develop` เท่านั้น · owner **ยังไม่ go-live** (release `develop → main` เป็นของ owner)
-- **รอบปัจจุบัน**: **รอบ 50** (ปุ่มขนาดเดียว, ซ่อนประเทศ, จังหวัดบังคับ, consistency — spec 09, ADR-034 accepted) — **ทำครบ 14 task ☑** (#625…#638, stack รอ merge) รวม **SFUI-23 ☑ #638** (เก็บตกจาก qa ปลาย stack — owner สั่งแก้ก่อน v0.4.0) ·
-  **release v0.4.0 (#603) พร้อม merge หลังรอบ 50 merge ครบ** (owner 2026-11-28) · รอบ 49 ☑ ครบ 2026-11-28 · รอบ 43 "หลัง go-live" (14 task) รอ owner สั่ง
+  + SFUI-14 #612 + รอบ 49 (select/ที่อยู่ไทย, 9 task #614–#622) + รอบ 50 (14 task #625–#638) อยู่ใน `develop` เท่านั้น · owner **ยังไม่ go-live** (release `develop → main` เป็นของ owner)
+- **รอบปัจจุบัน**: **รอบ 51** (แก้ข้อค้นพบจากทดสอบด้วยมือบน `615b9cde` — spec 01/09, ADR-035 accepted) ☐ 4 task + ปิดรอบ ·
+  **release v0.4.0 (#603) พักจนรอบ 51 merge ครบ** (owner 2026-11-29) · รอบ 50 ☑ merge ครบ 2026-11-28 (#625…#638) · รอบ 43 "หลัง go-live" (14 task) รอ owner สั่ง
 - **รอ owner ตัดสิน**: Q-R49-5/6 + `disabled={updating}` ของจำนวนในตะกร้า (รอบ 49) + เรื่องก่อน go-live (Stripe live, ค่าส่ง, staging)
-- **ขั้นต่อไป**: merge stack SFUI-19a..23 ตามลำดับ → owner merge/tag v0.4.0 (#603) → go-live (checklist ข้อ 1–16) → **v1.0.0**
+- **ขั้นต่อไป**: merge PR เอกสารรอบ 51 → PAY-26 ∥ SFUI-24a ∥ SFUI-24b → SFUI-24c → ปิดรอบ → owner merge/tag v0.4.0 (#603) → go-live (checklist ข้อ 1–16) → **v1.0.0**
 
 ### Release
 
@@ -23,7 +23,7 @@
 | v0.2.0 | 🚀 | 2026-11-19 | #423 (`e274d387`), tag `v0.2.0` | task ใน milestone/Admin UI ที่ merge หลัง v0.1.0 ถึงรอบ 39 |
 | v0.3.0 | 🚀 | 2026-11-24 | #521 (`47c3e545`), tag `v0.3.0`, [GitHub Release](https://github.com/techpowerdev/medusa-ecom/releases/tag/v0.3.0) | แก้จากการทดสอบ manual (รอบ 40 = 32 task) + รอบ 41 (36 task; PAY-13 ✕) |
 | v0.3.1 | 🚀 | 2026-11-25 | #561 (`88bb0b63`), tag `v0.3.1` | รอบ 42 (21 task 🚀 — history หัวข้อ "รอบ 42 — ผลจริง") + 4 task ก่อน go-live ของรอบ 43 (3 🚀 train #557 + OPS-39 🚀 #559; Q-R43-ฉ = ก แก้เพิ่ม + OPS-39 owner 2026-11-25) |
-| (ยังไม่ release → v0.4.0) | ☐ พร้อม merge หลังรอบ 50 merge ครบ (owner 2026-11-28) | — | #603 | OPS-40 #562 + รอบ 44 (#565–#581) + รอบ 45 (#583–#590) + รอบ 46 (#593–#599) + รอบ 47–48 (#600–#610) + SFUI-14 #612 + รอบ 49 (#614–#622) + รอบ 50 |
+| (ยังไม่ release → v0.4.0) | ☐ พักจนรอบ 51 merge ครบ (owner 2026-11-29) | — | #603 | OPS-40 #562 + รอบ 44 (#565–#581) + รอบ 45 (#583–#590) + รอบ 46 (#593–#599) + รอบ 47–48 (#600–#610) + SFUI-14 #612 + รอบ 49 (#614–#622) + รอบ 50 (#625–#638) + รอบ 51 |
 | go-live | ☐ owner ยังไม่ go-live | — | — | หลัง v0.3.1 + OPS-40 (☑ #562) + Go-live checklist ข้อ 1–16 |
 | v1.0.0 | ☐ | — | — | release แรกที่เปิดร้านจริง: Go-live checklist ครบ + smoke test บน production ผ่าน (Q-R43-จ owner 2026-11-25) |
 | หลัง go-live | ☐ รอ owner สั่ง | — | — | รอบ 43 อีก 14 task (รวม OPS-41) |
@@ -36,6 +36,23 @@
 
 - `docs/spec/*.md` คง ☑ = merge เข้า develop แล้ว **ไม่ sync ☑→🚀** — ROADMAP เป็นที่เดียวที่บอกสถานะ release (owner 2026-11-12)
 - task ที่ merge หลัง v0.3.1 ใช้ ☑ จนถึง release ถัดไป (v1.0.0) · บันทึกประวัติคงสัญลักษณ์ ณ วันที่บันทึก
+
+## รอบ 51 — แก้ข้อค้นพบจากทดสอบด้วยมือก่อน v0.4.0 (spec 01 "Follow-up รอบ 51", spec 09 "ส่วนเก็บตกทดสอบด้วยมือ (รอบ 51)", ADR-035 accepted 2026-11-29)
+
+ที่มา: ทดสอบ flow ลูกค้าบน browser จริง (`615b9cde`) — owner 2026-11-29 สั่งแก้ทั้งหมดก่อน release · **#603 พักจนรอบนี้ merge ครบ** · กฎ/AC/คำถามอยู่ใน spec
+
+| Task | spec | งาน (สั้น) | Depends | UI/qa | สถานะ |
+|---|---|---|---|---|---|
+| PAY-26 | 01 | (B1) พร้อมเพย์ 500 หลังจ่ายบัตร + แก้ที่อยู่ — provider subclass ใช้ Stripe customer เดียว (ADR-035) | PR เอกสารรอบ 51 | ✓ | ☐ |
+| SFUI-24a | 01 | (B2) `CartTotals` ตัวเดียวทุกหน้า (รวม order details) ป้ายใหม่ บวกลงตัว ภาษีเฉพาะที่ต้องบวกเพิ่ม | PR เอกสารรอบ 51 | ✓ | ☐ |
+| SFUI-24c | 01 | (B2) แถว = ราคาต่อชิ้น × จำนวน, ขีดฆ่าเฉพาะลดอัตโนมัติ/sale, รายการโค้ดเฉพาะของลูกค้า | SFUI-24a | ✓ | ☐ |
+| SFUI-24b | 09 | (B3 + B4) กล่องทักทายที่อยู่ไม่เยื้อง + ตัวกรองไม่มี "Default option" | PR เอกสารรอบ 51 | ✓ | ☐ |
+| R51-close | 01, 09 | ปิดรอบ: ติ๊ก AC, ย้ายตารางรอบ 44–51 ไป history, อัปเดต body #603 | ทุกตัวข้างบน | — | ☐ |
+
+- ลำดับ: PAY-26 ∥ 24a ∥ 24b → 24c (หลัง 24a) → ปิดรอบ · merge: PAY-26 → 24a → 24c → 24b · ทุก task ผ่าน qa (`docs/evidence/r51/<TASK>/`)
+- dependency ใหม่: `@medusajs/payment-stripe` 2.22.1 (PAY-26 — ADR-035 ข้อ 4) · ไฟล์ร่วม: e2e totals/แถว + `sfui-baseline.json` 24a → 24c
+- ขั้น 0 (ขนาน): qa ลอง flow ที่ยังไม่ทดสอบ (ซื้อกลุ่ม, บัตรกำนัล, ค้นหา, affiliate, admin, พร้อมเพย์ลูกค้าใหม่, คืนสินค้า) — เจอเพิ่มรวมรอบนี้
+- หลัง merge: restart server ทดสอบของ owner (backend ด้วย) → ลอง flow ซ้ำ → อัปเดต #603 → owner merge/tag v0.4.0
 
 ## รอบ 43 (ปิดรอบ 42 2026-11-24; owner ตอบ Q-R43 2026-11-25)
 
@@ -220,7 +237,7 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
   (`docs/evidence/storefront-select/SFUI-18c/REPORT.md`; ภาพของ 16a–18c commit มากับ #622)
 - **followup จาก review/qa**: รวมไว้ใน backlog รอบ 50 ด้านล่าง (ตรวจแล้วว่ายังไม่ถูกแก้ในรอบ 50; `hiddenSelectOf` ไม่ต้องทำแล้ว — `checkout/components/country-select` ถูกลบใน SFUI-20b)
 
-## รอบ 50 — ปุ่มขนาดเดียว, ซ่อนประเทศ, จังหวัดบังคับ, consistency (spec 09 "ส่วน consistency + ที่อยู่ (รอบ 50)", ADR-034 accepted 2026-11-28) (☑ 14 task รวม SFUI-23 — stack รอ merge)
+## รอบ 50 — ปุ่มขนาดเดียว, ซ่อนประเทศ, จังหวัดบังคับ, consistency (spec 09 "ส่วน consistency + ที่อยู่ (รอบ 50)", ADR-034 accepted 2026-11-28) (☑ merge ครบ 2026-11-28: #625…#638)
 
 ที่มา: owner ทดสอบหลังรอบ 49 (2026-11-28) + audit บน browser จริงของ qa (develop `523056bb`) · ทุกปุ่ม `default` 36px รวมปุ่มจ่ายเงิน (พิสูจน์ Stripe ใน e2e) ·
 ซ่อนช่อง/บรรทัดประเทศ (ส่ง `th`) · จังหวัดบังคับ · gap ฟอร์ม 16px · `h1` ขนาดเดียว · `shadcn add pagination toggle-group` · stack · **#603 พักจนรอบ 50 merge ครบ**
@@ -265,7 +282,12 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 
 ## คำถามที่รอ owner
 
-- **v0.4.0**: #603 **พร้อม merge หลังรอบ 50 merge ครบ** (owner 2026-11-28 — รอบ 50 ทำครบแล้ว รอ merge stack) → แล้ว owner merge `develop → main` + tag `v0.4.0`
+- **v0.4.0**: #603 **พักจนรอบ 51 merge ครบ** (owner 2026-11-29) → แล้ว owner merge `develop → main` + tag `v0.4.0`
+
+- **รอบ 51** — ✅ owner ตอบครบ (ก) 2026-11-29 (รายละเอียด spec 01 "Open questions (รอบ 51)"):
+  - Q-R51-1 ✅ owner ตอบ (ก) 2026-11-29: dropdown ตะกร้าแสดงแค่ "รวมค่าสินค้า"
+  - Q-R51-2 ✅ owner ตอบ (ก) 2026-11-29: ตัวอย่าง "flash + โค้ด" เกิดไม่ได้ (ADR-009 code ชนะ flash) → คง ADR-009, qa ใช้ sale + โค้ดแทน
+  - Q-R51-3 ✅ owner ตอบ (ก) 2026-11-29: ราคาต่อชิ้นที่หารไม่ลงตัว: ยอมรับต่างจาก "รวมค่าสินค้า" ≤ 0.005 × จำนวน
 
 - **รอบ 50**: ไม่มีคำถามค้าง — ADR-034 accepted · ~~Q-R50-1~~ = ทำ (Choice Card, SFUI-21c) · ~~Q-R50-2~~ = `Alert` เฉพาะ error ระดับฟอร์ม/การกระทำ (SFUI-21d, 21e) · SFUI-20b ~450 LOC owner รับ (2026-11-28) ·
   SFUI-23 ใช้ default ของ planner (ไม่ block): ลิงก์ popup ส่งฟรี `ghost` + `secondary`, แนวข้อความด้วย margin ติดลบ, ประโยคลิงก์สลับไม่มี "." (spec 09 Open questions รอบ 50)
@@ -341,7 +363,8 @@ ADR-030 accepted 2026-11-26 · **stack** (owner อนุญาต 2026-11-26 �
 | รอบ 47 ทดสอบ manual ก่อน v0.4.0 | 02, 10 | ☑ | 2 ☑ (#600, #602; เอกสาร #601) | AI18N-N2, EV-27; วันที่ admin คง พ.ศ. (owner 2026-11-27) |
 | รอบ 48 ฟอร์ม storefront แบบ shadcn | 09 | ☑ | 6 ☑ (#605–#610; เอกสาร #604) | ADR-032 accepted 2026-11-27; stack; ยังไม่ release (#603) |
 | รอบ 49 select Radix + ที่อยู่ไทย | 09 | ☑ | 9 ☑ (#614–#622) + SFUI-14 ☑ #612 | ADR-033 accepted 2026-11-28; stack; ยังไม่ release (#603) |
-| รอบ 50 consistency + ที่อยู่ | 09 | ☑ | 14 ☑ (#625…#638) | ADR-034 accepted 2026-11-28; stack; #603 พร้อม merge หลังรอบนี้ merge |
+| รอบ 50 consistency + ที่อยู่ | 09 | ☑ | 14 ☑ (#625…#638) | ADR-034 accepted 2026-11-28; stack; merge ครบ 2026-11-28 |
+| รอบ 51 ทดสอบด้วยมือก่อน v0.4.0 | 01, 09 | ☐ | 4 ☐ + ปิดรอบ | ADR-035 accepted 2026-11-29; #603 พักจนรอบนี้ merge |
 | รอบ 43 | 01, 03, 04, 06–08 | ◐ | 4 🚀 + 1 ☑ + 14 ☐ | 4 🚀 (3 train #557 + OPS-39 #559) ใน v0.3.1; OPS-40 ☑ #562 ก่อน go-live (ไม่อยู่ใน v0.3.1); 14 ตัวหลัง go-live (รวม OPS-41) |
 
 จำนวน task นับจากตารางใน history.md ณ 2026-11-24 และตารางรอบ 43 ด้านบน ณ 2026-11-25 (task ที่อยู่หลาย milestone นับที่ milestone หลักของ spec)
