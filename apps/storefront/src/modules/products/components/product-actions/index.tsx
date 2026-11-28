@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import ErrorMessage from "@modules/checkout/components/error-message"
 import Divider from "@modules/common/components/divider"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
 import { findVariantByOptions, optionsAsKeymap } from "@lib/util/product-variant-options"
@@ -317,15 +318,8 @@ export default function ProductActions({
               ? "สินค้าหมด"
               : "เพิ่มลงตะกร้า"}
           </Button>
-          {addError && (
-            <p
-              className="text-xs leading-5 font-normal text-destructive"
-              role="alert"
-              data-testid="add-to-cart-error"
-            >
-              {addError}
-            </p>
-          )}
+          {/* SFUI-21e (spec 09 กฎ 74 (a)): error ของการกระทำ "เพิ่มลงตะกร้า" = Alert ผ่าน ErrorMessage */}
+          <ErrorMessage error={addError} data-testid="add-to-cart-error" />
         </form>
         <MobileActions
           product={product}

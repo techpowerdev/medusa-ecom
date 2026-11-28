@@ -331,3 +331,80 @@ test("AC-70 (1): testid แบบ (a) ของ 21d อยู่บน <ErrorMes
   expect(bad).toEqual([])
   expect(readSource(M("cart/components/item/index.tsx"))).not.toContain("checkout/components/error-message")
 })
+
+// ---- SFUI-21e (spec 09 กฎ 74; AC-71 (1) — error ของการกระทำ/ข้อความผูกตัวเลือกนอก checkout) ----
+
+/** แบบ (a) ของ 21e: testid → ไฟล์ (บน `<ErrorMessage`) */
+const ALERT_21E: [string, string][] = [
+  ["add-to-cart-error", "products/components/product-actions/index.tsx"],
+  ["mobile-add-to-cart-error", "products/components/product-actions/mobile-actions.tsx"],
+  ["group-create-team-error", "home/components/campaigns/create-team-button.tsx"],
+]
+/** แบบ (b) ของ 21e: testid → ไฟล์ (บน `<FieldError`) */
+const INLINE_21E: [string, string][] = [
+  ["flash-qty-exceeds-remaining", "products/components/flash-sale/qty-exceeds-remaining.tsx"],
+  ["flash-customer-limit-reached", "products/components/flash-sale/customer-limit.tsx"],
+  ["cart-flash-exceeds-remaining", "cart/components/flash-exceeds-remaining/index.tsx"],
+  ["cart-flash-exceeds-customer-limit", "cart/components/flash-exceeds-remaining/index.tsx"],
+  ["group-leave-error", "group-buy/components/account-group-orders/leave-button.tsx"],
+]
+/** แถว "ไม่รวม" ของตารางกฎ 74c ที่มี `text-destructive` ได้ (ข้อความแทนเนื้อหา/ป้ายสถานะ) */
+const DESTRUCTIVE_EXCLUDED = new Set([
+  "products-error",
+  "search-drawer-error",
+  "nav-cart-dropdown-error",
+  "group-orders-error",
+  "affiliate-portal-error",
+  "verify-account-error",
+  "flash-sold-out",
+  "flash-card-sold-out",
+])
+
+/** JSX element ที่ className มี `text-destructive` และมี data-testid ที่ไม่อยู่ใน `allowed` (testid ที่ไม่ใช่ string literal นับว่าผิด) */
+export function destructiveTestIdViolations(file: string, allowed: Set<string>, sf = parseTsx(file)): string[] {
+  const out: string[] = []
+  const visit = (n: ts.Node) => {
+    const el = openingOf(n)
+    const testId = el && attrOf(el, sf, "data-testid")
+    if (el && testId && classTokens(attrOf(el, sf, "className")).some((t) => /(^|:)text-destructive$/.test(t))) {
+      const init = testId.initializer
+      const id = init && ts.isStringLiteral(init) ? init.text : null
+      if (!id || !allowed.has(id)) out.push(`${file}:${lineOf(sf, n)} ${id ?? testId.getText(sf)}`)
+    }
+    n.forEachChild(visit)
+  }
+  visit(sf)
+  return out
+}
+
+test("AC-71 (1): ตัวตรวจ text-destructive + testid (positive/negative control)", () => {
+  const sf = ts.createSourceFile(
+    "c.tsx",
+    'const a = <><p className="text-xs text-destructive" data-testid="x">e</p><p className="text-destructive" data-testid="ok">e</p><span className="text-destructive">*</span></>',
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX
+  )
+  expect(destructiveTestIdViolations("c.tsx", new Set(["ok"]), sf)).toEqual(["c.tsx:1 x"])
+})
+
+test("AC-71 (1): testid แบบ (a) ของ 21e บน <ErrorMessage, cart-error-notice บน <Alert ไม่ destructive, แบบ (b) บน <FieldError (กฎ 74)", () => {
+  const bad: string[] = []
+  for (const [id, f] of ALERT_21E) {
+    const tags = tagsWithTestId(M(f), id)
+    if (!tags.length || tags.some((t) => t !== "ErrorMessage")) bad.push(`${id} @ ${f}: [${tags.join(", ")}]`)
+  }
+  for (const [id, f] of INLINE_21E) {
+    const tags = tagsWithTestId(M(f), id)
+    if (!tags.length || tags.some((t) => t !== "FieldError")) bad.push(`${id} @ ${f}: [${tags.join(", ")}]`)
+  }
+  const notice = M("cart/components/cart-error-notice/index.tsx")
+  const tags = tagsWithTestId(notice, "cart-error-notice")
+  if (tags.join() !== "Alert" || readSource(notice).includes('variant="destructive"')) bad.push(`cart-error-notice: [${tags.join(", ")}]`)
+  expect(bad).toEqual([])
+})
+
+test("AC-71 (1): ไม่มี element ที่มีทั้ง text-destructive และ data-testid นอกแถว 'ไม่รวม' ของกฎ 74c", () => {
+  const files = sourceFiles().filter((f) => /^src\/(modules|app)\//.test(f) && f.endsWith(".tsx"))
+  expect(files.flatMap((f) => destructiveTestIdViolations(f, DESTRUCTIVE_EXCLUDED))).toEqual([])
+})
