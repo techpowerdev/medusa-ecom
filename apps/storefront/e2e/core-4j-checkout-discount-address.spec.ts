@@ -12,7 +12,7 @@ import {
 } from "./support/medusa"
 
 // CORE-4j: spec 01 กฎข้อ 73, AC-111 (qa/review #170) — โค้ดส่วนลดที่มีช่องว่างหัวท้ายใช้ได้ (trim, ไม่แปลงตัวพิมพ์),
-// ใส่โค้ดขณะฟอร์มที่อยู่ยังไม่บันทึกแล้วค่าที่พิมพ์ไม่หาย และ `billing-country-code-select` สูงเท่า input ข้างเคียง (±1px)
+// ใส่โค้ดขณะฟอร์มที่อยู่ยังไม่บันทึกแล้วค่าที่พิมพ์ไม่หาย (ส่วนความสูง `billing-country-code-select` แทนด้วย spec 09 กฎ 70 — SFUI-20b)
 // หา element ด้วย data-testid เท่านั้น; cart สร้างผ่าน Store API (กฎข้อ 101)
 test.use({ evidenceTarget: { feature: "core", taskId: "CORE-4j" } })
 
@@ -109,27 +109,4 @@ test("AC-111: โค้ดมีช่องว่างหัวท้ายใ
   }
 })
 
-test("AC-111: หลัง document.fonts.ready billing-country-code-select สูงเท่า input ข้างเคียง (±1px)", async ({
-  page,
-  context,
-  request,
-  baseURL,
-  evidence,
-}) => {
-  const pk = await publishableKey(request, await adminHeaders(request))
-  await signInAs(context, baseURL!, await createCustomer(request, pk))
-  await page.goto(`/${CC}/account/profile`)
-  const billing = page.getByTestId("account-billing-address-editor")
-  await billing.getByTestId("edit-button").click()
-  await expect(billing.getByTestId("edit-panel")).toHaveAttribute("data-open", "true")
-  const select = billing.getByTestId("billing-country-code-select")
-  await expect(select).toBeVisible()
-
-  await page.evaluate(() => document.fonts.ready)
-  const heightOf = async (testId: string) => (await billing.getByTestId(testId).boundingBox())!.height
-  const country = await heightOf("billing-country-code-select")
-  const province = await heightOf("billing-province-input")
-  expect(Math.abs(country - province), `country ${country} province ${province}`).toBeLessThanOrEqual(1)
-  await select.scrollIntoViewIfNeeded()
-  await evidence("4j-02-billing-country-select-height")
-})
+// SFUI-20b (spec 09 กฎ 70 — แทน spec 01 กฎข้อ 73(c)): ไม่มี billing-country-code-select แล้ว — test ความสูงถูกแทน

@@ -1,7 +1,7 @@
 import { HttpTypes } from "@medusajs/types"
 import Input from "@modules/common/components/input"
 import React, { useState } from "react"
-import CountrySelect from "../country-select"
+import { ADDRESS_COUNTRY_CODE } from "@lib/util/address-required"
 
 const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
   const [formData, setFormData] = useState<Record<string, string>>({
@@ -12,7 +12,8 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
     "billing_address.company": cart?.billing_address?.company || "",
     "billing_address.postal_code": cart?.billing_address?.postal_code || "",
     "billing_address.city": cart?.billing_address?.city || "",
-    "billing_address.country_code": cart?.billing_address?.country_code || "",
+    // SFUI-20b (spec 09 กฎ 70 ทาง (ก)): ประเทศคงที่ — ไม่มี UI ที่เขียนค่านี้
+    "billing_address.country_code": ADDRESS_COUNTRY_CODE,
     "billing_address.province": cart?.billing_address?.province || "",
     "billing_address.phone": cart?.billing_address?.phone || "",
   })
@@ -107,18 +108,8 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
           required
           data-testid="billing-postal-input"
         />
-        <CountrySelect
-          name="billing_address.country_code"
-          autoComplete="country"
-          region={cart?.region}
-          value={formData["billing_address.country_code"]}
-          onValueChange={(value) =>
-            setFormData((prev) => ({ ...prev, "billing_address.country_code": value }))
-          }
-          required
-          className="md:col-span-2"
-          data-testid="billing-country-select"
-        />
+        {/* SFUI-20b (spec 09 กฎ 70 — ADR-034 D5): ไม่ render ช่องประเทศ ส่งค่าคงที่ */}
+        <input type="hidden" name="billing_address.country_code" value={formData["billing_address.country_code"]} />
         <Input
           label="เบอร์โทรศัพท์"
           name="billing_address.phone"

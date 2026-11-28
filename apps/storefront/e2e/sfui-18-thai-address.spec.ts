@@ -221,7 +221,6 @@ test("AC-52: checkout ที่อยู่จัดส่ง + ใบเสร�
       "shipping-city-input",
       "shipping-province-input",
       "shipping-postal-code-input",
-      "shipping-country-select",
       "shipping-email-input",
       "shipping-phone-input",
     ])
@@ -243,7 +242,6 @@ test("AC-52: checkout ที่อยู่จัดส่ง + ใบเสร�
       "billing-city-input",
       "billing-province-input",
       "billing-postal-input",
-      "billing-country-select",
       "billing-phone-input",
     ])
     await expectAddressLabels(main, "billing-address-input", "billing-address-2-input")
@@ -267,7 +265,6 @@ test("AC-52: checkout ที่อยู่จัดส่ง + ใบเสร�
       "billing-province-input": "กรุงเทพมหานคร", // SFUI-20a (กฎ 69)
       "billing-postal-input": "10500",
     })
-    await chooseOption(page.getByTestId("billing-country-select"), CC)
     await page.getByTestId("submit-address-button").click()
     await expect(page).toHaveURL(/step=delivery/)
     const { cart } = await ok(
@@ -301,7 +298,6 @@ test("AC-52: บัญชี — เพิ่ม/แก้ที่อยู่ 
     "city-input",
     "state-input",
     "postal-code-input",
-    "country-select",
     "phone-input",
   ]
   const addresses = async () =>
@@ -324,7 +320,6 @@ test("AC-52: บัญชี — เพิ่ม/แก้ที่อยู่ 
       "state-input": "กรุงเทพมหานคร", // SFUI-20a (กฎ 69)
       "postal-code-input": "10110",
     })
-    await chooseOption(modal.getByTestId("country-select"), CC)
     await modal.getByTestId("save-button").click()
     await expect(modal).toBeHidden()
     await expect.poll(async () => (await addresses()).map((a) => a.address_2)).toEqual(["คลองเตยเหนือ"])
@@ -357,7 +352,6 @@ test("AC-52: บัญชี — เพิ่ม/แก้ที่อยู่ 
       "billing-city-input",
       "billing-province-input",
       "billing-postcal-code-input",
-      "billing-country-code-select",
       "billing-phone-input",
     ])
     await expectAddressLabels(billing, "billing-address-1-input", "billing-address-2-input")
@@ -371,7 +365,6 @@ test("AC-52: บัญชี — เพิ่ม/แก้ที่อยู่ 
       "billing-postcal-code-input": "10500",
       "billing-phone-input": "0812345678",
     })
-    await chooseOption(billing.getByTestId("billing-country-code-select"), CC)
     await billing.getByTestId("save-button").click()
     await expect.poll(async () => (await addresses()).find((a) => a.is_default_billing)?.address_2).toBe("สุริยวงศ์")
   })

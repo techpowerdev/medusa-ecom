@@ -1,15 +1,17 @@
+import fs from "node:fs"
+import path from "node:path"
+
 import { expect, test } from "@playwright/test"
 import ts from "typescript"
 
 import manifest from "./support/shadcn-ui.json"
-import { readSource, sourceFiles } from "./support/sfui-source"
+import { STOREFRONT, readSource, sourceFiles } from "./support/sfui-source"
 
 // SFUI-11a (spec 09 กฎ 28, 35, 36, AC-26): ช่องกรอกของ storefront ประกอบจาก `field` ของ shadcn (label เหนือช่อง)
 // ไม่มี floating label เดิม และไม่ส่ง className ที่เปลี่ยนสไตล์ default ของ primitive
 
 // SFUI-17 (spec 09 รอบ 49 กฎ 39): native-select ถูกลบ — select ใช้ Select ของ shadcn ประกอบตรงที่ใช้
 const COMMON = ["input", "checkbox"].map((name) => `src/modules/common/components/${name}/index.tsx`)
-const COUNTRY_SELECT = "src/modules/checkout/components/country-select/index.tsx"
 const PROFILE_BILLING = "src/modules/account/components/profile-billing-address/index.tsx"
 
 const parse = (file: string) =>
@@ -68,12 +70,11 @@ test('AC-26 (b): ไม่มีไฟล์ใน src/** ที่มี varian
 })
 
 // SFUI-16b (spec 09 กฎ 40b): profile-billing-address ประกอบ SelectTrigger ของ shadcn แทน NativeSelect
-test("AC-26 (c): CountrySelect และ profile-billing-address ไม่ส่ง h-12 ให้ SelectTrigger", () => {
-  const country = parse(COUNTRY_SELECT)
-  expect(literals(country).flatMap((t) => t.split(/\s+/)), COUNTRY_SELECT).not.toContain("h-12")
+// SFUI-20b (กฎ 70 — AC-26 (c) ส่วนประเทศแทนด้วย AC-63): ไม่มีช่องประเทศแล้ว — ไม่มี SelectTrigger และ CountrySelect ของ checkout ถูกลบ
+test("AC-26 (c): profile-billing-address ไม่ประกอบ Select ประเทศ (กฎ 70) และไม่มีไฟล์ CountrySelect ของ checkout", () => {
   const billing = jsxElements(parse(PROFILE_BILLING)).filter((el) => el.tagName.getText() === "SelectTrigger")
-  expect(billing.length, "profile-billing-address มี SelectTrigger").toBeGreaterThan(0)
-  for (const el of billing) expect(classTokens(el), PROFILE_BILLING).not.toContain("h-12")
+  expect(billing, PROFILE_BILLING).toHaveLength(0)
+  expect(fs.existsSync(path.join(STOREFRONT, "src/modules/checkout/components/country-select"))).toBe(false)
 })
 
 test("AC-26 (d): field, separator, input-group, textarea ของ CLI อยู่ใน e2e/support/shadcn-ui.json", () => {

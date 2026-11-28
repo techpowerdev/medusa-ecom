@@ -122,10 +122,11 @@ test.describe("16a: group buy join (AC-43)", () => {
 })
 
 // SFUI-16b — AC-49 (กฎ 46, Q-R49-1 = ก): มือถือใช้ popover ของ Radix — กล่องรายการอยู่ในจอทั้งกล่อง เลือกได้ หน้าไม่ล้นแนวนอน
-test.describe("SFUI-16b ประเทศ", () => {
+// SFUI-20b (spec 09 กฎ 70, แถว 20b — ข้อยกเว้นของกฎ 78 (ii)): ไม่มีช่องประเทศแล้ว → ขั้นมือถือของ checkout ย้ายไป shipping-address-select
+test.describe("SFUI-16b ที่อยู่ที่บันทึกไว้ (เดิม: ประเทศ)", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
 
-  test("AC-49: 390×844 แตะ shipping-country-select → shipping-country-select-options อยู่ในจอ เลือกได้ และไม่ล้นแนวนอน", async ({
+  test("AC-49: 390×844 แตะ shipping-address-select → shipping-address-options อยู่ในจอ เลือกได้ และไม่ล้นแนวนอน", async ({
     page,
     context,
     request,
@@ -136,13 +137,16 @@ test.describe("SFUI-16b ประเทศ", () => {
     test.setTimeout(120_000)
     const pk = await publishableKey(request, await adminHeaders(request))
     const customer = await createCustomer(request, pk)
+    await addAddresses(request, pk, customer, [
+      { first_name: "สมศรี", last_name: "มีสุข", address_1: "55 ถนนเพชรบุรี", address_2: "มักกะสัน", city: "ราชเทวี", province: "กรุงเทพมหานคร", postal_code: "10400", phone: "0812345678" },
+    ])
     await signInAs(context, baseURL!, customer)
     await page.goto(`/${CC}/products/t-shirt`)
     await addToCartFromPdp(page, { request, pk, customer })
     await page.goto(`/${CC}/checkout?step=address`)
 
-    const trigger = page.getByTestId("shipping-country-select")
-    const options = page.getByTestId("shipping-country-select-options")
+    const trigger = page.getByTestId("shipping-address-select")
+    const options = page.getByTestId("shipping-address-options")
     await step("แตะ trigger → กล่องรายการมองเห็นและอยู่ในจอทั้งกล่อง", async () => {
       await trigger.scrollIntoViewIfNeeded()
       // แตะเอง ไม่ใช้ helper: open() ของ support/select.ts ใช้ click (pointerType mouse) — AC-49 ต้องการการแตะ (touch) บนมือถือ
@@ -164,9 +168,14 @@ test.describe("SFUI-16b ประเทศ", () => {
     })
 
     await step("เลือก item ได้ และหน้าไม่ล้นแนวนอน", async () => {
-      await chooseOption(trigger, CC)
-      await expectSelected(trigger, CC)
+      await expect(async () => {
+        if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.tap()
+        await expect(options).toBeVisible({ timeout: 1_000 })
+      }).toPass()
+      await page.getByTestId("shipping-address-option").first().tap()
       await expect(options).toBeHidden()
+      await expect(page.getByTestId("shipping-first-name-input")).toHaveValue("สมศรี")
+      await expect(trigger).toContainText("55 ถนนเพชรบุรี")
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
     })
   })

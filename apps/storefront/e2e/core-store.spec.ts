@@ -10,7 +10,6 @@ import {
   variantOf,
 } from "./support/medusa"
 import { addToCartFromPdp } from "./support/server-action"
-import { chooseOption } from "./support/select"
 
 // CORE-6: spec 01 AC-1, AC-2, AC-3, AC-4, AC-6 — หา element ด้วย data-testid เท่านั้น (ADR-008 ข้อ 3)
 // ข้อมูลตั้งต้นจาก seed (CORE-2): region Thailand, t-shirt, shipping "Standard", manual payment provider
@@ -90,7 +89,6 @@ test("AC-1, AC-2, AC-3: checkout ด้วย manual payment → admin capture �
     await page.getByTestId("shipping-postal-code-input").fill("10110")
     await page.getByTestId("shipping-city-input").fill("Bangkok")
     await page.getByTestId("shipping-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
-    await chooseOption(page.getByTestId("shipping-country-select"), CC)
     await page.getByTestId("shipping-email-input").fill(customer.email)
     await page.getByTestId("submit-address-button").click()
   })

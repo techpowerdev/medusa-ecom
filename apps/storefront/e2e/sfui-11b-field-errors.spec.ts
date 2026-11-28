@@ -3,7 +3,6 @@ import type { Locator } from "@playwright/test"
 import { fieldErrorMessage } from "../src/lib/util/field-validation"
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { STOREFRONT_COUNTRY as CC, adminHeaders, createCustomer, publishableKey, signInAs } from "./support/medusa"
-import { expectSelected } from "./support/select"
 import { addToCartFromPdp } from "./support/server-action"
 import { expectThai } from "./support/thai-text"
 
@@ -107,30 +106,16 @@ test("AC-32: checkout step=address — ช่องว่างแสดง erro
   const main = page.locator("main")
   const firstName = page.getByTestId("shipping-first-name-input")
   const firstNameError = page.getByTestId("shipping-first-name-input-error")
-  const countryError = page.getByTestId("shipping-country-select-error")
-  // จำลองช่องประเทศว่าง (ผู้ใช้เลือกค่าว่างเองไม่ได้): ตั้ง select ซ่อนของ Radix (ข้าง trigger) เป็น "" แล้วส่ง change → onValueChange("") ให้ state ของฟอร์มเป็น ""
-  const emptyCountry = () =>
-    page.getByTestId("shipping-country-select").evaluate((trigger) => {
-      const select = trigger.parentElement!.querySelector("select")!
-      select.value = ""
-      select.dispatchEvent(new Event("change", { bubbles: true }))
-    })
+  // SFUI-20b (spec 09 กฎ 70): ไม่มีช่องประเทศแล้ว — บรรทัดของ shipping-country-select ใน test นี้ถูกลบ (กฎ 78 (ii))
 
   await step("กด submit-address-button โดยช่องว่าง", async () => {
     await expect(firstName).toHaveValue("")
-    // region th มีประเทศเดียว → Medusa สร้าง cart พร้อม shipping_address.country_code = th (ฟอร์มเติมประเทศไว้แล้ว)
-    await emptyCountry()
-    await expectSelected(page.getByTestId("shipping-country-select"), "")
     await page.getByTestId("submit-address-button").click()
     await expect(firstNameError).toBeVisible()
-    await expect(countryError).toBeVisible()
     await expect(firstNameError).toHaveText(await missingMessage(main, "shipping-first-name-input"))
-    await expect(countryError).toHaveText(await missingMessage(main, "shipping-country-select", "select"))
-    await expect(countryError).toHaveText("กรุณาเลือกประเทศ")
-    await expectThai(page, ["shipping-first-name-input-error", "shipping-country-select-error"])
+    await expectThai(page, ["shipping-first-name-input-error"])
     await expect(firstName).toBeFocused()
     await expectDescribedByError(firstName, firstNameError)
-    await expectDescribedByError(page.getByTestId("shipping-country-select"), countryError)
     await evidence("02-checkout-field-errors")
   })
 
@@ -139,21 +124,9 @@ test("AC-32: checkout step=address — ช่องว่างแสดง erro
     await page.getByTestId("shipping-address-option").first().click()
     await expect(firstName).toHaveValue("สมชาย")
     await expect(firstNameError).toHaveCount(0)
-    await expect(countryError).toHaveCount(0)
     await expect(firstName).not.toHaveAttribute("aria-invalid")
-    await expect(page.getByTestId("shipping-country-select")).not.toHaveAttribute("aria-invalid")
   })
 
-  // SFUI-16b (spec 09 AC-44, กฎ 43): ช่องอื่นครบ ประเทศว่าง → error ของ select และ focus อยู่ที่ trigger
-  await step("ประเทศว่างช่องเดียว → shipping-country-select-error และ focus ที่ trigger", async () => {
-    await emptyCountry()
-    await expectSelected(page.getByTestId("shipping-country-select"), "")
-    await page.getByTestId("submit-address-button").click()
-    await expect(countryError).toHaveText("กรุณาเลือกประเทศ")
-    await expect(firstNameError).toHaveCount(0)
-    await expect(page.getByTestId("shipping-country-select")).toBeFocused()
-    await expectDescribedByError(page.getByTestId("shipping-country-select"), countryError)
-  })
 })
 
 test("AC-32: affiliate สมัคร — รหัสแนะนำผิด pattern → error = title ของช่อง", async ({ page }) => {

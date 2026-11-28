@@ -41,18 +41,18 @@ const AddressSelect = ({
   return (
     // value "" = ยังไม่เลือก (แสดง placeholder) — คง controlled ตลอดแม้ที่อยู่ในฟอร์มไม่ตรงกับที่บันทึกไว้
     <Select onValueChange={handleSelect} value={selectedAddress?.id ?? ""}>
-      <SelectTrigger
-        className="w-full data-[size=default]:h-auto px-4 py-[10px] text-left bg-background text-sm leading-6 font-normal"
-        data-testid="shipping-address-select"
-      >
+      {/* SFUI-20b (spec 09 กฎ 75 — inventory 34 ย้ายจาก 21a): SelectTrigger ขนาด default ของ shadcn (ไม่มี className ขนาด) */}
+      <SelectTrigger className="w-full" data-testid="shipping-address-select">
         {/* ปุ่มแสดงเฉพาะบรรทัดที่อยู่ (ไม่ใช่เนื้อหาทั้งรายการ) ตามเดิม */}
         <SelectValue placeholder="เลือกที่อยู่">
           {selectedAddress?.address_1}
         </SelectValue>
       </SelectTrigger>
+      {/* SFUI-20b (AC-49 มือถือ): popper ของ Radix กว้างตามเนื้อหาจนล้นจอ 390px (ที่อยู่ยาวไม่ตัดบรรทัด) → ให้กล่องกว้างเท่า trigger
+          ด้วยตัวแปร `--radix-select-trigger-width` ที่ Radix ตั้งให้ (แบบเดียวกับ Viewport ของ ui/select) ข้อความในรายการจึงตัดบรรทัดภายในจอ */}
       <SelectContent
         position="popper"
-        className="max-h-60 text-xs leading-5 font-normal"
+        className="max-h-60 w-(--radix-select-trigger-width) text-xs leading-5 font-normal"
         data-testid="shipping-address-options"
       >
         {addresses.map((address) => {

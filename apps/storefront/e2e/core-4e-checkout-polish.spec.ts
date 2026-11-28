@@ -10,7 +10,6 @@ import {
   signInAs,
 } from "./support/medusa"
 import { Headers } from "./support/medusa"
-import { selectOptions } from "./support/select"
 import { THAI } from "./support/thai-text"
 import { addToCartFromPdp } from "./support/server-action"
 
@@ -190,22 +189,13 @@ test("AC-91: ขั้นที่อยู่ของ checkout — placeholder
     )
 
     await step(
-      "ขั้นที่อยู่: placeholder ของ CountrySelect เป็นไทย และ popup ทักทายมี test id",
+      "ขั้นที่อยู่: popup ทักทายมี test id (SFUI-20b: ไม่มี CountrySelect แล้ว — กฎ 70)",
       async () => {
         await page.goto(`/${CC}/cart`)
         await page.getByTestId("checkout-button").click()
         await expect(
           page.getByTestId("shipping-first-name-input")
         ).toBeVisible()
-        // SFUI-16b (spec 09 กฎ 41): placeholder อยู่บน trigger เมื่อค่าว่าง — cart ของ region th ตั้งประเทศไว้แล้ว
-        // จึงล้างค่าผ่าน select ซ่อนของ Radix (change → onValueChange("")) ก่อนอ่าน; ขั้นถัดไปเลือกที่อยู่ที่บันทึกไว้ (เติมประเทศใหม่)
-        const country = page.getByTestId("shipping-country-select")
-        await country.evaluate((trigger) => {
-          const select = trigger.parentElement!.querySelector("select")!
-          select.value = ""
-          select.dispatchEvent(new Event("change", { bubbles: true }))
-        })
-        expect((await selectOptions(country)).placeholder).toMatch(THAI)
         await expect(page.getByTestId("saved-address-greeting")).toBeVisible()
         await expect(page.getByTestId("saved-address-greeting")).toHaveText(
           THAI

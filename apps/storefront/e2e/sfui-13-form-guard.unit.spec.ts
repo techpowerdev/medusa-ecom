@@ -153,7 +153,6 @@ function importsOf(file: string) {
 const FIELD_COMPONENTS: Record<string, string> = {
   "src/modules/common/components/input": "Input",
   "src/modules/common/components/checkbox": "Checkbox",
-  "src/modules/checkout/components/country-select": "CountrySelect",
 }
 
 /** ค่าเริ่มต้นของ prop `label` ที่ component ตั้งเอง (CountrySelect: `label = "ประเทศ"` — SFUI-11a) */
@@ -257,7 +256,8 @@ test("AC-35 (กฎ 28–30): ทุก Input/CountrySelect/Checkbox ของ c
   // − 5 ของ SFUI-16a (spec 09 รอบ 49: select ของคืนสินค้า 2 + group join 3 เป็น Field + Select* ของ shadcn — ไม่ใช่ NativeSelect แล้ว)
   // − 1: SFUI-16b ประเทศของ profile-billing-address ประกอบ Select ของ shadcn ตรงที่ใช้ (spec 09 กฎ 40b — ไม่ใช่ component ของ common)
   // + 2: SFUI-18b ช่องตำบล/แขวงของ checkout (shipping-address-2-input, billing-address-2-input — spec 09 กฎ 52)
-  expect(counted).toBe(72)
+  // SFUI-20b (กฎ 70): CountrySelect ของ checkout ถูกลบ (4 ฟอร์ม) → 72 − 4
+  expect(counted).toBe(68)
 })
 
 test("AC-37 (3): container ของช่องในไฟล์ inventory ไม่มี breakpoint ของ starter และ grid-cols-2/[…] มี md: — ยกเว้นระดับฟอร์มตามค่าคงที่ ไฟล์ + class", () => {
@@ -298,11 +298,14 @@ const SELECT_INVENTORY = [
   "cart/components/item/index.tsx",
   "returns/components/return-request-form/index.tsx",
   "group-buy/components/group-page/group-join.tsx",
-  "account/components/profile-billing-address/index.tsx",
-  "checkout/components/country-select/index.tsx",
+  // SFUI-20b (กฎ 70): profile-billing-address ไม่ประกอบ Select ประเทศแล้ว และ checkout/components/country-select ถูกลบ
 ].map((f) => `src/modules/${f}`)
 
-const REMOVED_MODULES = ["src/modules/common/components/native-select", "src/modules/cart/components/cart-item-select"]
+const REMOVED_MODULES = [
+  "src/modules/common/components/native-select",
+  "src/modules/cart/components/cart-item-select",
+  "src/modules/checkout/components/country-select", // SFUI-20b (กฎ 70, AC-63 static)
+]
 
 /** ทุกไฟล์ .ts/.tsx ใต้ dir (รวม test) path สัมพัทธ์กับ apps/storefront */
 function allFiles(dir: string): string[] {

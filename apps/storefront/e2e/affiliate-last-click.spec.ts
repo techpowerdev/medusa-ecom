@@ -10,7 +10,6 @@ import {
   variantOf,
 } from "./support/medusa"
 import { addToCartFromPdp } from "./support/server-action"
-import { chooseOption } from "./support/select"
 
 // AF-3b (spec 05 กฎ 23, AC-21): last click — click Ann แล้ว add to cart, click Bob แล้ว checkout ทันทีโดยไม่ add เพิ่ม
 // → cart.metadata.affiliate_token ตอน complete เป็นของ Bob และ attribution ของ order เป็นของ Bob
@@ -89,7 +88,6 @@ test("AF-3b: click Ann → add to cart → click Bob → checkout ทันท�
     await page.getByTestId("shipping-postal-code-input").fill("10110")
     await page.getByTestId("shipping-city-input").fill("Bangkok")
     await page.getByTestId("shipping-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
-    await chooseOption(page.getByTestId("shipping-country-select"), CC)
     await page.getByTestId("shipping-email-input").fill(customer.email)
     await page.getByTestId("submit-address-button").click()
     const standardId = await shippingOptionId(request, context, pk, customer, "Standard")
