@@ -4,7 +4,7 @@ import Input from "@modules/common/components/input"
 import { mapKeys } from "lodash"
 import React, { useMemo, useState } from "react"
 import AddressSelect from "../address-select"
-import CountrySelect from "../country-select"
+import { ADDRESS_COUNTRY_CODE } from "@lib/util/address-required"
 
 const SAVED_ADDRESS_FIELDS = [
   "first_name",
@@ -38,7 +38,8 @@ const ShippingAddress = ({
     "shipping_address.company": cart?.shipping_address?.company || "",
     "shipping_address.postal_code": cart?.shipping_address?.postal_code || "",
     "shipping_address.city": cart?.shipping_address?.city || "",
-    "shipping_address.country_code": cart?.shipping_address?.country_code || "",
+    // SFUI-20b (spec 09 กฎ 70 ทาง (ก)): ประเทศคงที่ — ไม่มี UI ที่เขียนค่านี้ และไม่คัดลอกจากที่อยู่ต้นทาง
+    "shipping_address.country_code": ADDRESS_COUNTRY_CODE,
     "shipping_address.province": cart?.shipping_address?.province || "",
     "shipping_address.phone": cart?.shipping_address?.phone || "",
     email: cart?.email || customer?.email || "",
@@ -72,7 +73,7 @@ const ShippingAddress = ({
         "shipping_address.company": address?.company || "",
         "shipping_address.postal_code": address?.postal_code || "",
         "shipping_address.city": address?.city || "",
-        "shipping_address.country_code": address?.country_code || "",
+        "shipping_address.country_code": ADDRESS_COUNTRY_CODE,
         "shipping_address.province": address?.province || "",
         "shipping_address.phone": address?.phone || "",
       }))
@@ -215,18 +216,8 @@ const ShippingAddress = ({
           required
           data-testid="shipping-postal-code-input"
         />
-        <CountrySelect
-          name="shipping_address.country_code"
-          autoComplete="country"
-          region={cart?.region}
-          value={formData["shipping_address.country_code"]}
-          onValueChange={(value) =>
-            setFormData((prev) => ({ ...prev, "shipping_address.country_code": value }))
-          }
-          required
-          className="md:col-span-2"
-          data-testid="shipping-country-select"
-        />
+        {/* SFUI-20b (spec 09 กฎ 70 — ADR-034 D5): เปิดขายเฉพาะไทย → ไม่ render ช่องประเทศ ส่งค่าคงที่ */}
+        <input type="hidden" name="shipping_address.country_code" value={formData["shipping_address.country_code"]} />
       </div>
       <div className="my-8">
         <Checkbox

@@ -4,7 +4,6 @@ import { BACKEND_URL } from "./fixtures"
 import { Customer, shippingOptionId } from "./medusa"
 import { addToCartFromPdp } from "./server-action"
 import { stripeE2eMode } from "./stripe-env"
-import { chooseOption } from "./select"
 
 // PAY-2: อ่านผลจาก Stripe test mode ด้วย secret key จาก env (test key เท่านั้น) และพา checkout ไปถึงขั้น payment
 
@@ -116,7 +115,6 @@ export async function checkoutToPayment(
   await page.getByTestId("shipping-postal-code-input").fill("10110")
   await page.getByTestId("shipping-city-input").fill("Bangkok")
   await page.getByTestId("shipping-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
-  await chooseOption(page.getByTestId("shipping-country-select"), cc)
   await page.getByTestId("shipping-email-input").fill(customer.email)
   await page.getByTestId("submit-address-button").click()
 

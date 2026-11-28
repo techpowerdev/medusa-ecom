@@ -2,7 +2,6 @@ import type { Locator, Page } from "@playwright/test"
 
 import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { STOREFRONT_COUNTRY as CC, adminHeaders, createCustomer, publishableKey, signInAs } from "./support/medusa"
-import { selectOptions } from "./support/select"
 import { expectThai } from "./support/thai-text"
 
 // SFUI-12a (spec 09 กฎ 28–31, 33b, 37; AC-34, AC-37): ฟอร์มของบัญชี — label เหนือช่อง, placeholder ตามตาราง inventory,
@@ -38,7 +37,6 @@ const BILLING: Fields = [
   ["billing-city-input", true],
   ["billing-province-input", true], // SFUI-20a (กฎ 69): จังหวัดบังคับ
   ["billing-postcal-code-input", true, POSTAL],
-  ["billing-country-code-select", true],
   ["billing-phone-input", true, PHONE],
 ]
 const ADDRESS: Fields = [
@@ -50,7 +48,6 @@ const ADDRESS: Fields = [
   ["city-input", true],
   ["state-input", true], // SFUI-20a (กฎ 69): จังหวัดบังคับ
   ["postal-code-input", true, POSTAL],
-  ["country-select", true],
   ["phone-input", false, PHONE],
 ]
 const NAME_PAIRS = [["first-name-input", "last-name-input"]]
@@ -207,7 +204,6 @@ test("AC-34 + AC-37: profile — ชื่อ, เบอร์โทร, ที�
     await page.setViewportSize({ width: 1280, height: 800 })
     const scope = await editor("account-billing-address-editor")()
     await expectFields(page, scope, BILLING)
-    await expect(scope.getByTestId("billing-country-code-select-label")).toHaveText(/^ประเทศ/)
     await expectTel(scope, "billing-phone-input")
     await expectLayout(page, editor("account-billing-address-editor"), BILLING, BILLING_PAIRS)
     await page.setViewportSize({ width: 1280, height: 800 })
@@ -258,27 +254,4 @@ test("AC-34 + AC-37: address book — dialog เพิ่ม/แก้ที่�
   }
 })
 
-// AC-34 (กฎ 31a): ชุด option ของ <select> เท่า commit ฐาน — test นี้ผ่านทั้งบน 9b440e36 (ก่อน 12a) และหลังแก้
-// SFUI-16b (spec 09 กฎ 41): select ของ shadcn — placeholder ไม่ใช่ item และ option "-" ของ profile-billing-address ตัดออก
-test("AC-34 (กฎ 31a): billing-country-code-select และ country-select มี option เท่า commit ฐาน", async ({
-  page,
-  context,
-  request,
-  baseURL,
-}) => {
-  const { pk } = await signedIn(page, context, request, baseURL!)
-  const res = await request.get(`${BACKEND_URL}/store/regions`, { headers: { "x-publishable-api-key": pk } })
-  const regions: { countries: { iso_2: string; display_name: string }[] }[] = (await res.json()).regions
-  const all = regions.flatMap((r) => r.countries.map((c) => [c.iso_2, c.display_name, false]))
-  const own = regions.find((r) => r.countries.some((c) => c.iso_2 === CC))!.countries.map((c) => [c.iso_2, c.display_name, false])
-
-  await page.goto(`/${CC}/account/profile`)
-  const billing = page.getByTestId("account-billing-address-editor")
-  await billing.getByTestId("edit-button").click()
-  expect(await selectOptions(billing.getByTestId("billing-country-code-select"))).toEqual({ placeholder: "เลือก...", options: all })
-
-  await page.goto(`/${CC}/account/addresses`)
-  await page.getByTestId("add-address-button").click()
-  const modal = page.getByTestId("add-address-modal")
-  expect(await selectOptions(modal.getByTestId("country-select"))).toEqual({ placeholder: "เลือกประเทศ", options: own })
-})
+// SFUI-20b (spec 09 กฎ 70): ไม่มีช่องประเทศแล้ว — test AC-34 (กฎ 31a) "option ของ select ประเทศเท่า commit ฐาน" ถูกแทน

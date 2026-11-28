@@ -9,7 +9,6 @@ import {
 } from "./support/medusa"
 import { THAI, expectThai } from "./support/thai-text"
 import { addToCartFromPdp, waitForServerAction } from "./support/server-action"
-import { chooseOption } from "./support/select"
 
 // CORE-4d: spec 01 CORE-4 (ADR-014) AC-48 ส่วน "ทุกขั้นของ checkout" + AC-75 (ประโยคยอมรับเงื่อนไขในขั้น review)
 // หา element ด้วย data-testid เท่านั้น ตรวจ "เป็นภาษาไทย" ด้วยอักษรไทย (ไม่ hard-code ประโยค)
@@ -62,7 +61,6 @@ test("AC-48 (4d), AC-75: checkout ทุกขั้นเป็นภาษา�
     await page.getByTestId("shipping-postal-code-input").fill("10110")
     await page.getByTestId("shipping-city-input").fill("Bangkok")
     await page.getByTestId("shipping-province-input").fill("กรุงเทพมหานคร") // SFUI-20a (กฎ 69): จังหวัดบังคับ
-    await chooseOption(page.getByTestId("shipping-country-select"), CC)
     await page.getByTestId("shipping-email-input").fill(customer.email)
     // CORE-43 (กฎข้อ 101b): setAddresses ใช้ > 5 วินาทีตอนเครื่องโหลดสูง (trace) — รอ action ที่ส่งอีเมลนี้ตอบ redirect ไปขั้นจัดส่ง
     const saved = waitForServerAction(page, (body) => body.includes(customer.email))

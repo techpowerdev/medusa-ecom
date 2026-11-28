@@ -3,10 +3,9 @@ import { Locator, Page } from "@playwright/test"
 import { MISSING_ADDRESS_MESSAGE } from "../src/lib/util/address-required"
 import { fieldErrorMessage } from "../src/lib/util/field-validation"
 
-import { expect, test } from "./support/fixtures"
+import { BACKEND_URL, expect, test } from "./support/fixtures"
 import { addAddresses } from "./support/group-buy"
-import { STOREFRONT_COUNTRY as CC, adminHeaders, createCustomer, publishableKey, signInAs } from "./support/medusa"
-import { chooseOption } from "./support/select"
+import { STOREFRONT_COUNTRY as CC, adminHeaders, createCustomer, ok, publishableKey, signInAs, type Customer } from "./support/medusa"
 import { addToCartFromPdp, isServerAction, waitForServerAction } from "./support/server-action"
 
 // SFUI-20a (spec 09 กฎ 69, AC-62 — owner 2026-11-28: จังหวัดบังคับกรอก): ช่องจังหวัดทั้ง 5 ฟอร์ม `required` + `*`;
@@ -111,7 +110,6 @@ test("AC-62: checkout — จังหวัดว่าง → error ใต้�
     await page.getByTestId("shipping-email-input").fill(customer.email)
     await page.getByTestId("billing-address-checkbox").click()
     await fill(main, BILLING)
-    await chooseOption(page.getByTestId("billing-country-select"), CC)
     await expectRequiredProvince(page, main, "billing-province-input", submit)
   })
 
@@ -153,7 +151,6 @@ test("AC-62: บัญชี — modal เพิ่ม/แก้ที่อย�
     const modal = page.getByTestId("add-address-modal")
     await expect(modal).toBeVisible()
     await fill(modal, ACCOUNT)
-    await chooseOption(modal.getByTestId("country-select"), CC)
     await expectRequiredProvince(page, modal, "state-input", modal.getByTestId("save-button"))
     await modal.getByTestId("state-input").fill("   ")
     const saved = waitForServerAction(page)
@@ -187,7 +184,144 @@ test("AC-62: บัญชี — modal เพิ่ม/แก้ที่อย�
       "billing-postcal-code-input": "10500",
       "billing-phone-input": "0812345678",
     })
-    await chooseOption(billing.getByTestId("billing-country-code-select"), CC)
     await expectRequiredProvince(page, billing, "billing-province-input", billing.getByTestId("save-button"))
+  })
+})
+
+// SFUI-20b (spec 09 กฎ 70, AC-63 — ADR-034 D5, owner: ซ่อนประเทศ ส่ง th): ทั้ง 5 ฟอร์มไม่มีช่องประเทศ มี hidden `country_code` = th
+const OLD_COUNTRY_TESTIDS = ["shipping-country-select", "billing-country-select", "country-select", "billing-country-code-select"]
+const headersOf = (pk: string, customer: Customer) => ({ authorization: `Bearer ${customer.token}`, "x-publishable-api-key": pk })
+
+/** ฟอร์มไม่มี testid ประเทศเดิม, ไม่มี combobox ที่ชื่อ/label เป็นประเทศ, มี hidden `name` = th */
+async function expectHiddenCountry(scope: Locator, name: string) {
+  for (const id of OLD_COUNTRY_TESTIDS) await expect(scope.getByTestId(id), id).toHaveCount(0)
+  await expect(scope.getByRole("combobox", { name: /ประเทศ/ })).toHaveCount(0)
+  await expect(scope.locator(`input[type="hidden"][name="${name}"]`)).toHaveValue("th")
+}
+
+const SAVED_TH = {
+  first_name: "สมศรี",
+  last_name: "มีสุข",
+  address_1: "55 ถนนเพชรบุรี",
+  address_2: "มักกะสัน",
+  city: "ราชเทวี",
+  province: "กรุงเทพมหานคร",
+  postal_code: "10400",
+  phone: "0812345678",
+}
+
+test("AC-63: checkout — ไม่มีช่องประเทศ, ส่งแล้ว cart.country_code = th และที่อยู่ที่บันทึกไว้ (th) จับคู่กับ shipping-address-select ทั้งก่อนส่งและหลัง reload", async ({
+  page,
+  context,
+  request,
+  baseURL,
+  step,
+}) => {
+  test.setTimeout(150_000)
+  const pk = await publishableKey(request, await adminHeaders(request))
+  const customer = await createCustomer(request, pk)
+  await addAddresses(request, pk, customer, [SAVED_TH])
+  await signInAs(context, baseURL!, customer)
+  await page.goto(`/${CC}/products/t-shirt`)
+  await addToCartFromPdp(page, { request, pk, customer })
+  await page.goto(`/${CC}/checkout?step=address`)
+  const main = page.locator("main")
+  const trigger = page.getByTestId("shipping-address-select")
+  const expectSelected = async () => {
+    await expect(trigger).toContainText(SAVED_TH.address_1)
+    await expect(trigger.locator("[data-placeholder]")).toHaveCount(0)
+    expect(await trigger.getAttribute("data-placeholder")).toBeNull()
+  }
+
+  await step("ฟอร์มจัดส่ง + ใบเสร็จไม่มีช่องประเทศ มี hidden th", async () => {
+    await expectHiddenCountry(main, "shipping_address.country_code")
+    await page.getByTestId("billing-address-checkbox").click()
+    await expectHiddenCountry(main, "billing_address.country_code")
+    await page.getByTestId("billing-address-checkbox").click()
+  })
+
+  await step("เลือกที่อยู่ที่บันทึกไว้ → trigger แสดงที่อยู่นั้น (ไม่ใช่ placeholder)", async () => {
+    await trigger.click()
+    await page.getByTestId("shipping-address-option").first().click()
+    await expect(page.getByTestId("shipping-first-name-input")).toHaveValue(SAVED_TH.first_name)
+    await expectSelected()
+  })
+
+  await step("ส่ง → cart.shipping_address/billing_address.country_code = th (API)", async () => {
+    await page.getByTestId("shipping-email-input").fill(customer.email)
+    await page.getByTestId("submit-address-button").click()
+    await expect(page).toHaveURL(/step=delivery/, { timeout: 30_000 })
+    const id = (await context.cookies()).find((c) => c.name === "_medusa_cart_id")!.value
+    const { cart } = await ok(
+      await request.get(`${BACKEND_URL}/store/carts/${id}?fields=id,*shipping_address,*billing_address`, { headers: headersOf(pk, customer) }),
+      "cart"
+    )
+    expect(cart.shipping_address.country_code).toBe("th")
+    expect(cart.billing_address.country_code).toBe("th")
+  })
+
+  await step("reload ที่ขั้นที่อยู่ (cart มีที่อยู่นั้นแล้ว) → trigger ยังแสดงที่อยู่ที่บันทึกไว้", async () => {
+    await page.goto(`/${CC}/checkout?step=address`)
+    await expect(page.getByTestId("shipping-first-name-input")).toHaveValue(SAVED_TH.first_name)
+    await expectSelected()
+  })
+})
+
+test("AC-63: บัญชี — modal เพิ่ม/แก้ที่อยู่ และที่อยู่ใบเสร็จของโปรไฟล์ไม่มีช่องประเทศ บันทึกแล้ว country_code = th", async ({
+  page,
+  context,
+  request,
+  baseURL,
+  step,
+}) => {
+  test.setTimeout(150_000)
+  const pk = await publishableKey(request, await adminHeaders(request))
+  const customer = await createCustomer(request, pk)
+  await signInAs(context, baseURL!, customer)
+  const addresses = async () =>
+    (await ok(await request.get(`${BACKEND_URL}/store/customers/me/addresses`, { headers: headersOf(pk, customer) }), "addresses"))
+      .addresses as { address_1: string; country_code: string; is_default_billing: boolean }[]
+
+  await step("modal เพิ่มที่อยู่ (เดิมขึ้น 'กรุณาเลือกประเทศ') บันทึกสำเร็จ → country_code = th", async () => {
+    await page.goto(`/${CC}/account/addresses`)
+    await page.getByTestId("add-address-button").click()
+    const modal = page.getByTestId("add-address-modal")
+    await expect(modal).toBeVisible()
+    await expectHiddenCountry(modal, "country_code")
+    await fill(modal, { ...ACCOUNT, "state-input": "กรุงเทพมหานคร" })
+    await modal.getByTestId("save-button").click()
+    await expect(modal).toBeHidden({ timeout: 15_000 })
+    await expect.poll(async () => (await addresses()).map((a) => [a.address_1, a.country_code])).toEqual([[ACCOUNT["address-1-input"], "th"]])
+  })
+
+  await step("modal แก้ที่อยู่: ไม่มีช่องประเทศ บันทึกแล้วยังเป็น th", async () => {
+    await page.getByTestId("address-edit-button").first().click()
+    const modal = page.getByTestId("edit-address-modal")
+    await expect(modal).toBeVisible()
+    await expectHiddenCountry(modal, "country_code")
+    await modal.getByTestId("address-1-input").fill("100 ถนนสาทร")
+    await modal.getByTestId("save-button").click()
+    await expect(modal).toBeHidden({ timeout: 15_000 })
+    await expect.poll(async () => (await addresses()).map((a) => [a.address_1, a.country_code])).toEqual([["100 ถนนสาทร", "th"]])
+  })
+
+  await step("ที่อยู่ใบเสร็จของโปรไฟล์: ไม่มีช่องประเทศ บันทึกแล้ว country_code = th", async () => {
+    await page.goto(`/${CC}/account/profile`)
+    const billing = page.getByTestId("account-billing-address-editor")
+    await billing.getByTestId("edit-button").click()
+    await expect(billing.getByTestId("edit-panel")).toHaveAttribute("data-open", "true")
+    await expectHiddenCountry(billing, "country_code")
+    await fill(billing, {
+      "billing-first-name-input": "สมหญิง",
+      "billing-last-name-input": "รักไทย",
+      "billing-address-1-input": "7 ถนนสีลม",
+      "billing-address-2-input": "สุริยวงศ์",
+      "billing-city-input": "บางรัก",
+      "billing-province-input": "กรุงเทพมหานคร",
+      "billing-postcal-code-input": "10500",
+      "billing-phone-input": "0812345678",
+    })
+    await billing.getByTestId("save-button").click()
+    await expect.poll(async () => (await addresses()).find((a) => a.is_default_billing)?.country_code, { timeout: 15_000 }).toBe("th")
   })
 })

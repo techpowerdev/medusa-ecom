@@ -9,7 +9,6 @@ import {
   publishableKey,
   signInAs,
 } from "./support/medusa"
-import { selectOptions } from "./support/select"
 import { addToCartFromPdp } from "./support/server-action"
 import { expectThai } from "./support/thai-text"
 
@@ -33,7 +32,6 @@ const SHIPPING: Fields = {
   "shipping-city-input": [true, null],
   "shipping-province-input": [true, null], // SFUI-20a (กฎ 69): จังหวัดบังคับ
   "shipping-postal-code-input": [true, POSTAL],
-  "shipping-country-select": [true, null],
   "shipping-email-input": [true, null],
   "shipping-phone-input": [false, PHONE],
 }
@@ -46,7 +44,6 @@ const BILLING: Fields = {
   "billing-city-input": [true, null],
   "billing-province-input": [true, null], // SFUI-20a (กฎ 69): จังหวัดบังคับ
   "billing-postal-input": [true, POSTAL],
-  "billing-country-select": [true, null],
   "billing-phone-input": [false, PHONE],
 }
 const DIGITAL_EMAIL: Fields = { "billing-email-input": [true, null] }
@@ -54,7 +51,7 @@ const DISCOUNT: Fields = { "discount-input": [false, null] }
 
 /** ลำดับ DOM ของช่อง (กฎ 37a) และคู่ที่วางแถวเดียวกันที่ ≥ 768px (ตารางกฎ 37b) */
 const SHIPPING_ORDER = [
-  ...Object.keys(SHIPPING).slice(0, 9),
+  ...Object.keys(SHIPPING).slice(0, 8), // SFUI-20b (กฎ 70): ไม่มี shipping-country-select แล้ว (เดิม 9 ช่องก่อนอีเมล)
   "billing-address-checkbox",
   "shipping-email-input",
   "shipping-phone-input",
@@ -71,13 +68,6 @@ const BILLING_PAIRS: [string, string][] = [
   ["billing-province-input", "billing-postal-input"],
 ]
 
-/**
- * option ของ `<select>` ประเทศ ([value, ข้อความ, disabled]) ที่วัดบน commit ฐาน (`9b440e36` — ก่อน SFUI-12b) — กฎ 31a: ชุด option เท่าเดิม
- * (region th ของ seed มีประเทศเดียว) · SFUI-16b (spec 09 กฎ 41): select ของ shadcn — placeholder "เลือกประเทศ" ไม่ใช่ item
- */
-const COUNTRY_OPTIONS = [
-  ["th", "Thailand", false],
-]
 
 const labelText = (label: Locator) =>
   label.evaluate((el) => {
@@ -129,7 +119,6 @@ async function expectFields(page: Page, fields: Fields) {
   await expectThai(page, Object.keys(fields).map((id) => `${id}-label`))
 }
 
-const options = async (page: Page, id: string) => (await selectOptions(page.getByTestId(id))).options
 
 /** AC-37 ข้อ 1/3: แถวละช่องตามลำดับ DOM, left เท่ากัน, กว้างเท่ากัน (ยกเว้นแถว checkbox), ไม่ล้นแนวนอน */
 async function expectSingleColumn(page: Page, order: string[]) {
@@ -208,8 +197,6 @@ test("AC-34, AC-37: checkout ที่อยู่จัดส่ง + ใบเ
     const checkbox = (await page.getByTestId("billing-address-checkbox").boundingBox())!
     const checkboxLabel = (await page.getByTestId("billing-address-checkbox-label").boundingBox())!
     expect(checkboxLabel.x, "label ของ checkbox อยู่ขวาของ checkbox").toBeGreaterThanOrEqual(checkbox.x + checkbox.width)
-    expect(await options(page, "shipping-country-select")).toEqual(COUNTRY_OPTIONS)
-    expect(await options(page, "billing-country-select")).toEqual(COUNTRY_OPTIONS)
   })
 
   const order = [...SHIPPING_ORDER, ...Object.keys(BILLING)]
@@ -248,7 +235,6 @@ test("AC-34, AC-37: checkout ของ cart digital-only — อีเมลแ�
 
   await step("AC-34", async () => {
     await expectFields(page, { ...BILLING, ...DIGITAL_EMAIL })
-    expect(await options(page, "billing-country-select")).toEqual(COUNTRY_OPTIONS)
   })
   const order = [...Object.keys(BILLING), "billing-email-input"]
   for (const width of [375, 767]) {

@@ -32,7 +32,6 @@ const SHIPPING: Fields = {
   "shipping-company-input": false,
   "shipping-postal-code-input": true,
   "shipping-city-input": true,
-  "shipping-country-select": true,
   "shipping-province-input": true, // SFUI-20a (spec 09 กฎ 69): จังหวัดบังคับ
   "shipping-email-input": true,
   "shipping-phone-input": false,
@@ -159,8 +158,6 @@ test("AC-28: checkout step=address — label เหนือช่อง, checkb
       const checkboxLabel = (await page.getByTestId("billing-address-checkbox-label").boundingBox())!
       expect(checkboxLabel.x, "label ของ checkbox อยู่ขวาของ checkbox").toBeGreaterThanOrEqual(checkbox.x + checkbox.width)
 
-      const height = (id: string) => page.getByTestId(id).evaluate((el) => el.getBoundingClientRect().height)
-      expect(Math.abs((await height("shipping-country-select")) - (await height("shipping-city-input")))).toBeLessThanOrEqual(1)
       expect(await translatedLabels(main)).toEqual([])
       await expectNoOverflow(page)
       await evidence(width === 1280 ? "02-checkout-address-1280" : "03-checkout-address-390")

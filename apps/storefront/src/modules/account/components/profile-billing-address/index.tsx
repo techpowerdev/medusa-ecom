@@ -1,10 +1,9 @@
 "use client"
 
-import React, { useActionState, useEffect, useId, useMemo, useState } from "react"
+import React, { useActionState, useEffect, useMemo } from "react"
 
-import { Field, FieldLabel } from "@/components/ui/field"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import Input, { useFieldError } from "@modules/common/components/input"
+import Input from "@modules/common/components/input"
+import { ADDRESS_COUNTRY_CODE } from "@lib/util/address-required"
 
 import { addCustomerAddress, updateCustomerAddress } from "@lib/data/customer"
 import { HttpTypes } from "@medusajs/types"
@@ -44,18 +43,6 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
   const billingAddress = customer.addresses?.find(
     (addr) => addr.is_default_billing
   )
-
-  // SFUI-16b (spec 09 กฎ 40b, 41, 43): ประเทศ = Select ของ shadcn ประกอบตามตัวอย่าง docs (uncontrolled `defaultValue` + ค่าปัจจุบันใน state
-  // จาก `onValueChange` → ข้อความบน trigger ตรงค่าใน FormData); option `-` เดิมตัดออก
-  const countryId = useId()
-  const [countryCode, setCountryCode] = useState(billingAddress?.country_code || "")
-  const countryError = useFieldError<HTMLButtonElement>(null, {
-    id: countryId,
-    label: "ประเทศ",
-    testId: "billing-country-code-select",
-    control: "select",
-    props: { value: countryCode },
-  })
 
   const initialState: Record<string, unknown> = {
     isDefaultBilling: true,
@@ -190,46 +177,8 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
               data-testid="billing-postcal-code-input"
             />
           </div>
-          {/* CORE-4j (กฎข้อ 73c): สูงเท่า Input (h-9 ทั้งคู่) */}
-          <Field {...countryError.fieldProps}>
-            <FieldLabel htmlFor={countryId} data-testid="billing-country-code-select-label">
-              ประเทศ
-              <span aria-hidden="true" className="text-destructive">
-                *
-              </span>
-            </FieldLabel>
-            <Select
-              name="country_code"
-              required
-              defaultValue={billingAddress?.country_code || undefined}
-              onValueChange={setCountryCode}
-            >
-              <SelectTrigger
-                id={countryId}
-                data-testid="billing-country-code-select"
-                data-value={countryCode}
-                className="w-full"
-                {...countryError.controlProps}
-              >
-                <SelectValue placeholder="เลือก...">
-                  {regionOptions.find((option) => option?.value === countryCode)?.label}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent data-testid="billing-country-code-select-options">
-                {regionOptions.map((option) => (
-                  <SelectItem
-                    key={option?.value}
-                    value={option!.value!}
-                    data-testid="billing-country-code-select-option"
-                    data-value={option?.value}
-                  >
-                    {option?.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {countryError.messages}
-          </Field>
+          {/* SFUI-20b (spec 09 กฎ 70 — ADR-034 D5): ไม่ render ช่องประเทศ ส่งค่าคงที่ */}
+          <input type="hidden" name="country_code" value={ADDRESS_COUNTRY_CODE} />
           <Input
             label="เบอร์โทรศัพท์"
             name="phone"

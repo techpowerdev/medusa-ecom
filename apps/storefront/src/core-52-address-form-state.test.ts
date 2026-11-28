@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({
 }))
 vi.mock("@lib/data/cart", () => ({ setAddresses: vi.fn() }))
 
-// CORE-52 (spec 01 กฎข้อ 110d–e, AC-147): select ประเทศคงค่าที่เลือกเมื่อ form ถูก reset (React 19 reset `<form action>`
+// CORE-52 (spec 01 กฎข้อ 110d–e, AC-147): ค่าประเทศคงที่เมื่อ form ถูก reset (SFUI-20b: hidden แทน select) (React 19 reset `<form action>`
 // หลัง action คืน error) และ ShippingAddress sync จาก cart เมื่อที่อยู่ที่บันทึกเปลี่ยน (แบบปรับ state ระหว่าง render)
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 // SFUI-5a: checkbox เป็น Checkbox ของ shadcn (Radix วัดขนาดด้วย ResizeObserver ที่ jsdom ไม่มี)
@@ -43,48 +43,9 @@ afterEach(() => {
   container.remove()
 })
 
-// SFUI-16b (spec 09 กฎ 42, AC-44): testid อยู่บน SelectTrigger ของ Radix — ค่าปัจจุบันที่ `data-value`, ค่าที่ส่งจริงใน FormData (select ซ่อน)
-const trigger = (testId: string) => container.querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`)!
-const selected = (testId: string) => trigger(testId).getAttribute("data-value")
-
-describe("CountrySelect หลัง form.reset() (กฎข้อ 110d; spec 09 กฎ 42)", () => {
-  it("คงค่า value ที่ควบคุมอยู่ ไม่กลับไปค่าแรก และไม่เรียก onValueChange จาก reset", async () => {
-    const { default: CountrySelect } = await import("@modules/checkout/components/country-select")
-    const onValueChange = vi.fn()
-    const render = (value: string) =>
-      act(async () => {
-        root.render(
-          createElement(
-            "form",
-            null,
-            createElement(CountrySelect, {
-              name: "shipping_address.country_code",
-              region: region as never,
-              value,
-              onValueChange,
-              "data-testid": "shipping-country-select",
-            })
-          )
-        )
-      })
-    const form = () => container.querySelector("form")!
-
-    await render("")
-    await render("th")
-    expect(selected("shipping-country-select")).toBe("th")
-    expect(new FormData(form()).get("shipping_address.country_code")).toBe("th")
-
-    await act(async () => {
-      form().reset()
-      await new Promise((r) => setTimeout(r, 0))
-    })
-
-    expect(selected("shipping-country-select")).toBe("th")
-    expect(trigger("shipping-country-select").textContent).toContain("Thailand")
-    expect(new FormData(form()).get("shipping_address.country_code")).toBe("th")
-    expect(onValueChange).not.toHaveBeenCalled()
-  })
-})
+// SFUI-20b (spec 09 กฎ 70 — แทน CORE-52 กฎข้อ 110d ส่วน select ประเทศ): ไม่มีช่องประเทศแล้ว — hidden `shipping_address.country_code` = th คงที่
+// (ไม่คัดลอกจากที่อยู่ต้นทาง) และคงค่าหลัง form.reset()
+const hiddenCountry = () => new FormData(container.querySelector("form") ?? undefined).get("shipping_address.country_code")
 
 describe("ShippingAddress sync จากที่อยู่ใน cart (กฎข้อ 110e, 73b)", () => {
   const cart = (city: string, email = "a@example.com") =>
@@ -119,7 +80,16 @@ describe("ShippingAddress sync จากที่อยู่ใน cart (กฎ
 
     await render(cart("บางรัก"))
     expect(value("shipping-city-input")).toBe("บางรัก")
-    expect(selected("shipping-country-select")).toBe("th")
+    expect(container.querySelector<HTMLInputElement>('input[type="hidden"][name="shipping_address.country_code"]')!.value).toBe("th")
+  })
+
+  it("SFUI-20b (กฎ 70): ที่อยู่ใน cart เป็นประเทศอื่น → ค่าที่ส่ง (hidden) ยังเป็น ADDRESS_COUNTRY_CODE และไม่มีช่องประเทศ", async () => {
+    const { ADDRESS_COUNTRY_CODE } = await import("@lib/util/address-required")
+    const other = cart("วัฒนา") as unknown as { shipping_address: Record<string, string> }
+    other.shipping_address.country_code = "sg"
+    await render(other)
+    expect(container.querySelector<HTMLInputElement>('input[type="hidden"][name="shipping_address.country_code"]')!.value).toBe(ADDRESS_COUNTRY_CODE)
+    expect(container.querySelector('[data-testid="shipping-country-select"]')).toBeNull()
   })
 
   it("cart ไม่มีอีเมล → ใช้อีเมลของลูกค้า", async () => {
@@ -162,5 +132,8 @@ describe("ฟอร์มที่อยู่หลัง form.reset() (กฎ�
     expect(checked()).toBe("false")
     expect(sameAsBilling()).toBeNull()
     expect(input("billing-first-name-input")).not.toBeNull()
+    // SFUI-20b (กฎ 70): ประเทศ hidden คงค่า th หลัง reset ทั้งจัดส่งและใบเสร็จ
+    expect(hiddenCountry()).toBe("th")
+    expect(new FormData(container.querySelector("form")!).get("billing_address.country_code")).toBe("th")
   })
 })

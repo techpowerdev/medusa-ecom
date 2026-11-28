@@ -41,7 +41,8 @@ test("AC-99: request.delete ใน finally ตรวจ .ok() ทุกครั
 })
 
 test("AC-99: e2e ที่วัด layout ของฟอร์ม checkout รอ document.fonts.ready", () => {
-  for (const name of ["core-4e-checkout-polish.spec.ts", "core-4g-checkout-polish.spec.ts"]) {
+  // SFUI-20b (spec 09 กฎ 70): core-4g ไม่วัดความสูง CountrySelect แล้ว (ไม่มีช่องประเทศ) จึงไม่อยู่ในรายการ
+  for (const name of ["core-4e-checkout-polish.spec.ts"]) {
     expect(fs.readFileSync(path.join(E2E, name), "utf8"), name).toContain("document.fonts.ready")
   }
 })

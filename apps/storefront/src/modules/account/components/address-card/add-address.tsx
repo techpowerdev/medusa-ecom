@@ -19,15 +19,14 @@ import useToggleState from "@lib/hooks/use-toggle-state"
 import { HttpTypes } from "@medusajs/types"
 import { withActionFallback } from "@lib/util/action-fallback"
 import { submitWithoutReset } from "@lib/util/submit-without-reset"
-import CountrySelect from "@modules/checkout/components/country-select"
+import { ADDRESS_COUNTRY_CODE } from "@lib/util/address-required"
 import Input from "@modules/common/components/input"
 
 // CORE-23c (กฎข้อ 74a): action ล้ม (5xx/network) → error ไทยในฟอร์ม ไม่ใช่หน้า error ทั้งหน้า
 const saveAddress = withActionFallback(addCustomerAddress)
 
-const AddAddress = ({
-  region,
-}: {
+// SFUI-20b (spec 09 กฎ 70): ไม่มีช่องประเทศแล้ว — `region` ไม่ถูกใช้ (คง prop ของผู้เรียก address-book)
+const AddAddress = (_props: {
   region: HttpTypes.StoreRegion
   addresses: HttpTypes.StoreCustomerAddress[]
 }) => {
@@ -157,13 +156,8 @@ const AddAddress = ({
                 data-testid="postal-code-input"
               />
             </div>
-            <CountrySelect
-              region={region}
-              name="country_code"
-              required
-              autoComplete="country"
-              data-testid="country-select"
-            />
+            {/* SFUI-20b (spec 09 กฎ 70 — ADR-034 D5): ไม่ render ช่องประเทศ ส่งค่าคงที่ */}
+            <input type="hidden" name="country_code" value={ADDRESS_COUNTRY_CODE} />
             <Input
               label="เบอร์โทรศัพท์"
               name="phone"
